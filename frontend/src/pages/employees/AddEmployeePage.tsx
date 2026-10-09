@@ -70,70 +70,6 @@ const normalInputStyles = {
   },
 };
 
-export const DEPARTMENT_OPTIONS = [
-  'Engineering',
-  'Product',
-  'Design',
-  'Marketing',
-  'Sales',
-  'Human Resources',
-  'Operations',
-  'Finance',
-  'Quality Assurance',
-];
-
-export const ROLE_OPTIONS = [
-  'Developer',
-  'Tech Lead',
-  'Project Manager',
-  'Super Admin',
-];
-
-export const EMPLOYMENT_TYPE_OPTIONS = [
-  'Full Time',
-  'Contractor',
-  'Part Time',
-  'Intern',
-];
-
-export const STATUS_OPTIONS = [
-  'Active',
-  'Probation',
-  'On Leave',
-  'Notice Period',
-];
-
-export const LOCATION_OPTIONS = [
-  'Chennai HQ',
-  'Bangalore Office',
-  'Hyderabad Branch',
-  'Remote / Work from Home',
-  'Mumbai Hub',
-];
-
-export const GENDER_OPTIONS = [
-  'Male',
-  'Female',
-  'Non-Binary',
-  'Prefer not to say',
-];
-
-export const DEFAULT_DESIGNATIONS = [
-  'Senior Software Engineer',
-  'Fullstack Developer',
-  'Frontend Specialist',
-  'Backend Engineer',
-  'Tech Lead',
-  'Engineering Manager',
-  'Product Manager',
-  'UI/UX Designer',
-  'QA Automation Engineer',
-  'Cloud DevOps Architect',
-  'Data Scientist',
-  'HR Executive',
-  'Sales Executive',
-];
-
 export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   onBack,
   initialData,
@@ -174,13 +110,13 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     address: initialData?.address || '',
     avatar: initialData?.avatar || '',
 
-    department: initialData?.department || 'Engineering',
+    department: initialData?.department || '',
     designation: initialData?.designation || '',
-    role: initialData?.role || 'Developer',
+    role: initialData?.role || '',
     reportingManager: initialData?.reportingManager || '',
     joiningDate: initialData?.joiningDate || new Date().toISOString().split('T')[0],
-    employmentType: initialData?.employmentType || 'Full Time',
-    workLocation: initialData?.workLocation || 'Chennai HQ',
+    employmentType: initialData?.employmentType || '',
+    workLocation: initialData?.workLocation || '',
     status: initialData?.status || 'Active',
   });
 
@@ -200,20 +136,23 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     }
   }, [employees, isEditing, formData.empCode]);
 
-  // Dynamic lists computed from database employees + default templates
+  // 100% Dynamic lists derived from active database records
   const dynamicDepartments = useMemo(() => {
-    const existing = employees.map((e) => e.department).filter(Boolean);
-    return Array.from(new Set([...DEPARTMENT_OPTIONS, ...existing])).filter(Boolean);
+    return Array.from(
+      new Set(employees.map((e) => e.department?.trim()).filter(Boolean) as string[])
+    ).sort();
   }, [employees]);
 
   const dynamicDesignations = useMemo(() => {
-    const existing = employees.map((e) => e.designation).filter(Boolean);
-    return Array.from(new Set([...DEFAULT_DESIGNATIONS, ...existing])).filter(Boolean);
+    return Array.from(
+      new Set(employees.map((e) => e.designation?.trim()).filter(Boolean) as string[])
+    ).sort();
   }, [employees]);
 
   const dynamicRoles = useMemo(() => {
-    const existing = employees.map((e) => e.role).filter(Boolean);
-    return Array.from(new Set([...ROLE_OPTIONS, ...existing])).filter(Boolean);
+    return Array.from(
+      new Set(employees.map((e) => e.role?.trim()).filter(Boolean) as string[])
+    ).sort();
   }, [employees]);
 
   const dynamicManagers = useMemo(() => {
@@ -223,23 +162,27 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   }, [employees, isEditing, initialData]);
 
   const dynamicEmploymentTypes = useMemo(() => {
-    const existing = employees.map((e) => e.employmentType).filter(Boolean);
-    return Array.from(new Set([...EMPLOYMENT_TYPE_OPTIONS, ...existing])).filter(Boolean);
+    return Array.from(
+      new Set(employees.map((e) => e.employmentType?.trim()).filter(Boolean) as string[])
+    ).sort();
   }, [employees]);
 
   const dynamicLocations = useMemo(() => {
-    const existing = employees.map((e) => e.workLocation).filter(Boolean);
-    return Array.from(new Set([...LOCATION_OPTIONS, ...existing])).filter(Boolean);
+    return Array.from(
+      new Set(employees.map((e) => e.workLocation?.trim()).filter(Boolean) as string[])
+    ).sort();
   }, [employees]);
 
   const dynamicStatuses = useMemo(() => {
-    const existing = employees.map((e) => e.status).filter(Boolean);
-    return Array.from(new Set([...STATUS_OPTIONS, ...existing])).filter(Boolean);
+    return Array.from(
+      new Set(employees.map((e) => e.status?.trim()).filter(Boolean) as string[])
+    ).sort();
   }, [employees]);
 
   const dynamicGenders = useMemo(() => {
-    const existing = employees.map((e) => e.gender).filter(Boolean);
-    return Array.from(new Set([...GENDER_OPTIONS, ...existing])).filter(Boolean);
+    return Array.from(
+      new Set(employees.map((e) => e.gender?.trim()).filter(Boolean) as string[])
+    ).sort();
   }, [employees]);
 
   const [errors, setErrors] = useState<{ [key: string]: string | undefined }>({});
