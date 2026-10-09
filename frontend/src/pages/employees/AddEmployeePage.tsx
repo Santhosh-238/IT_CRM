@@ -523,13 +523,13 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                       onChange={(e) => {
                         const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
                         setFormData({ ...formData, phone: digits });
-                        if (errors.phone) validateField('phone', digits);
+                        validateField('phone', digits);
                       }}
                       onBlur={() => validateField('phone', formData.phone)}
                       styles={normalInputStyles}
                     />
 
-                    {/* 4. Email */}
+                    {/* 3. Email */}
                     <TextInput
                       label="Email"
                       placeholder="Enter email"
@@ -543,7 +543,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                       onChange={(e) => {
                         const val = e.target.value;
                         setFormData({ ...formData, email: val });
-                        if (errors.email) validateField('email', val);
+                        validateField('email', val);
                       }}
                       onBlur={() => validateField('email', formData.email)}
                       styles={normalInputStyles}
