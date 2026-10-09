@@ -1,0 +1,45 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String      @id @default(uuid())
+  email        String      @unique
+  name         String
+  phone        String?
+  passwordHash String
+  role         String      @default("SUPER_ADMIN")
+  avatar       String?
+  department   String?
+  refreshToken String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Employee {
+  id               String   @id @default(uuid())
+  empCode          String   @unique
+  name             String
+  email            String   @unique
+  phone            String?
+  avatar           String?
+  dob              String?
+  gender           String?
+  address          String?
+  department       String?  @default("Engineering")
+  designation      String?  @default("Employee")
+  role             String?  @default("Developer")
+  reportingManager String?
+  joiningDate      String?  @default("")
+  employmentType   String?  @default("Full Time")
+  workLocation     String?  @default("Chennai HQ")
+  status           String?  @default("Active")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
