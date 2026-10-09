@@ -5,10 +5,14 @@ import { Sidebar } from './Sidebar';
 import { useCRM } from '../../context/CRMContext';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { EmployeesPage, AddEmployeePage } from '../../pages/employees';
+import { ContactsPage, AddContactPage, ContactDetailsPage, ContactQualificationPage } from '../../pages/contacts';
+import { AccessControlPage } from '../../pages/access-control/AccessControlPage';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
+import { useContact } from '../../context/ContactContext';
 
 export const AppLayout: React.FC = () => {
   const { activeNav, setActiveNav } = useCRM();
+  const { selectedContact, deleteContact } = useContact();
 
   if (activeNav === 'signup') {
     return (
@@ -58,6 +62,68 @@ export const AppLayout: React.FC = () => {
           />
         );
       }
+      case 'contacts':
+        return <ContactsPage />;
+      case 'add-contact':
+      case 'contacts/add': {
+        let editData = null;
+        try {
+          const savedEdit = typeof window !== 'undefined' ? sessionStorage.getItem('crm_editing_contact') : null;
+          if (savedEdit) editData = JSON.parse(savedEdit);
+        } catch (e) {}
+
+        return (
+          <AddContactPage
+            onBack={() => {
+              if (typeof window !== 'undefined') sessionStorage.removeItem('crm_editing_contact');
+              setActiveNav('contacts');
+            }}
+            initialData={editData}
+          />
+        );
+      }
+      case 'contact-details': {
+        if (selectedContact) {
+          return (
+            <ContactDetailsPage
+              contact={selectedContact}
+              onBack={() => setActiveNav('contacts')}
+              onEdit={(c) => {
+                if (typeof window !== 'undefined') sessionStorage.setItem('crm_editing_contact', JSON.stringify(c));
+                setActiveNav('add-contact');
+              }}
+              onDelete={async (c) => {
+                await deleteContact(c.id);
+                setActiveNav('contacts');
+              }}
+            />
+          );
+        }
+        return <ContactsPage />;
+      }
+      case 'contact-qualification':
+      case 'contacts/qualification':
+      case 'contacts/qualify':
+      case 'qualification': {
+        let qualifyContact = selectedContact;
+        if (!qualifyContact && typeof window !== 'undefined') {
+          try {
+            const saved = sessionStorage.getItem('crm_qualifying_contact');
+            if (saved) qualifyContact = JSON.parse(saved);
+          } catch (e) {}
+        }
+        return (
+          <ContactQualificationPage
+            contact={qualifyContact}
+            onBack={() => setActiveNav('contacts')}
+            onSuccess={() => setActiveNav('contacts')}
+          />
+        );
+      }
+      case 'access-control':
+      case 'access-control-matrix':
+      case 'rbac':
+        return <AccessControlPage />;
       default:
         return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
     }

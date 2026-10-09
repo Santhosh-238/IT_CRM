@@ -4,41 +4,26 @@ import {
   Stack,
   Group,
   Text,
-  Badge,
   Box,
-  Paper,
-  ActionIcon,
-  Avatar,
-  Indicator,
-  Menu,
-  Tooltip,
-  useMantineColorScheme,
   ScrollArea,
 } from '@mantine/core';
 import {
   IconDashboard,
   IconUsersGroup,
+  IconAddressBook,
   IconTerminal2,
-  IconSun,
-  IconMoon,
-  IconLogout,
-  IconUserPlus,
-  IconLogin,
+  IconShieldLock,
 } from '@tabler/icons-react';
 import { useCRM } from '../../context/CRMContext';
-import { useEmployee } from '../../context/EmployeeContext';
-import { CRM_COLORS } from '../../theme/colors';
+import { usePermissions } from '../../context/AccessControlContext';
 
 interface SidebarProps {
   onSelectNav: (nav: string) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
-  const { activeNav, currentUser, logoutUser } = useCRM();
-  const { employees } = useEmployee();
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-  const isDark = colorScheme === 'dark';
-  const employeesCount = employees.length;
+  const { activeNav } = useCRM();
+  const { can } = usePermissions();
 
   return (
     <Box
@@ -49,7 +34,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
         borderRight: '1px solid var(--mantine-color-default-border)',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
         position: 'sticky',
         top: 0,
         flexShrink: 0,
@@ -93,10 +77,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
             </Text>
           </div>
         </Group>
-
-        <Badge size="xs" variant="light" color="blue" radius="sm" style={{ fontWeight: 700 }}>
-          v2.4
-        </Badge>
       </Box>
 
       {/* 2. Main Navigation Items */}
@@ -117,78 +97,39 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
             <NavLink
               label="Employees Directory"
               leftSection={<IconUsersGroup size={18} stroke={2} />}
-              rightSection={
-                employeesCount > 0 ? (
-                  <Badge size="xs" style={{ background: CRM_COLORS.pastelMint, color: CRM_COLORS.pastelMintText, fontWeight: 700 }}>
-                    {employeesCount} Staff
-                  </Badge>
-                ) : null
-              }
               active={activeNav === 'employees' || activeNav === 'add-employee' || activeNav === 'onboard-employee' || activeNav === 'onboard'}
               onClick={() => onSelectNav('employees')}
               className={activeNav === 'employees' || activeNav === 'add-employee' || activeNav === 'onboard-employee' || activeNav === 'onboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
               style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
             />
+            <NavLink
+              label="Contacts"
+              leftSection={<IconAddressBook size={18} stroke={2} />}
+              active={activeNav === 'contacts' || activeNav === 'add-contact' || activeNav === 'contact-details'}
+              onClick={() => onSelectNav('contacts')}
+              className={activeNav === 'contacts' || activeNav === 'add-contact' || activeNav === 'contact-details' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+              style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+            />
+          </Stack>
+
+          {/* 3. Administration Section */}
+          <Text size="10px" fw={800} c="dimmed" tt="uppercase" px="xs" mt="sm" style={{ letterSpacing: '0.08em' }}>
+            Administration & Security
+          </Text>
+          <Stack gap={6}>
+            {can('access_control', 'view') && (
+              <NavLink
+                label="Access Control & RBAC"
+                leftSection={<IconShieldLock size={18} stroke={2} />}
+                active={activeNav === 'access-control' || activeNav === 'rbac'}
+                onClick={() => onSelectNav('access-control')}
+                className={activeNav === 'access-control' || activeNav === 'rbac' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
           </Stack>
         </Stack>
       </ScrollArea>
-
-      {/* 3. Bottom User Profile & Theme Toggle */}
-      <Box p="md" style={{ borderTop: '1px solid var(--mantine-color-default-border)' }}>
-        <Paper
-          p="xs"
-          radius="12px"
-          style={{
-            background: 'var(--mantine-color-default-hover)',
-            border: '1px solid var(--mantine-color-default-border)',
-          }}
-        >
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <Menu shadow="md" width={220} position="top-start" radius="md">
-              <Menu.Target>
-                <Group gap="xs" style={{ cursor: 'pointer', flex: 1, minWidth: 0 }}>
-                  <Indicator inline size={9} offset={2} position="bottom-end" color="teal" withBorder>
-                    <Avatar src={currentUser.avatar} size={30} radius="md" />
-                  </Indicator>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <Text size="xs" fw={700} truncate style={{ lineHeight: 1.2 }}>
-                      {currentUser.name}
-                    </Text>
-                    <Text size="10px" c="dimmed" truncate>
-                      {currentUser.role}
-                    </Text>
-                  </div>
-                </Group>
-              </Menu.Target>
-              <Menu.Dropdown p={6}>
-                <Menu.Label>Active Account</Menu.Label>
-                <Menu.Item leftSection={<IconUserPlus size={15} />} onClick={() => onSelectNav('signup')}>
-                  Create New Account
-                </Menu.Item>
-                <Menu.Item leftSection={<IconLogin size={15} />} onClick={() => onSelectNav('login')}>
-                  Sign In (Login)
-                </Menu.Item>
-                <Menu.Divider />
-                <Menu.Item color="red" leftSection={<IconLogout size={15} />} onClick={() => logoutUser()}>
-                  Log Out
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
-
-            <Tooltip label={isDark ? 'Switch to Light' : 'Switch to Dark'}>
-              <ActionIcon
-                variant="subtle"
-                color={isDark ? 'yellow' : 'gray'}
-                size="sm"
-                radius="md"
-                onClick={() => toggleColorScheme()}
-              >
-                {isDark ? <IconSun size={15} /> : <IconMoon size={15} />}
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-        </Paper>
-      </Box>
     </Box>
   );
 };

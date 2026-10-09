@@ -65,10 +65,20 @@ export async function requireAuth(req, res, next) {
   if (!token) {
     // For demo/dev ease without hard blocking when running local client
     if (process.env.NODE_ENV !== 'production' && !req.headers['x-strict-auth']) {
+      try {
+        const firstUser = await prisma.user.findFirst({
+          select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
+        });
+        if (firstUser) {
+          req.user = firstUser;
+          return next();
+        }
+      } catch (e) {}
+
       req.user = {
         id: 'usr-dev-superadmin',
-        email: 'vikram.sundaram@omnitech.io',
-        name: 'Vikram Sundaram',
+        email: 'sandy@gmail.com',
+        name: 'Santhosh C',
         role: 'SUPER_ADMIN',
       };
       return next();

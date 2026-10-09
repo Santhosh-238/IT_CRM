@@ -8,15 +8,16 @@ import {
   Autocomplete,
   Textarea,
   Button,
+  UnstyledButton,
   Group,
   SimpleGrid,
   Stack,
-  Avatar,
   Badge,
   Divider,
   ThemeIcon,
   Progress,
   Tooltip,
+  useComputedColorScheme,
 } from '@mantine/core';
 import {
   IconArrowLeft,
@@ -26,7 +27,6 @@ import {
   IconPhone,
   IconUser,
   IconLock,
-  IconCamera,
   IconTrash,
   IconBuilding,
   IconBriefcase,
@@ -48,33 +48,37 @@ export interface AddEmployeePageProps {
   initialData?: Employee | null;
 }
 
-// Clean, standard normal input styling
-const normalInputStyles = {
-  label: {
-    fontWeight: 600,
-    fontSize: '13px',
-    marginBottom: '6px',
-    color: '#1E293B',
-  },
-  input: {
-    borderRadius: '8px',
-    fontSize: '14px',
-    height: '42px',
-    color: '#0F172A',
-  },
-  error: {
-    fontSize: '12px',
-    marginTop: '4px',
-    fontWeight: 500,
-  },
-};
-
 export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   onBack,
   initialData,
 }) => {
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
+  const isDark = computedColorScheme === 'dark';
+
+  const normalInputStyles = {
+    label: {
+      fontWeight: 600,
+      fontSize: '13px',
+      marginBottom: '6px',
+      color: isDark ? '#E2E8F0' : '#1E293B',
+    },
+    input: {
+      borderRadius: '8px',
+      fontSize: '14px',
+      height: '42px',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+      border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(15, 23, 42, 0.1)',
+      color: isDark ? '#F8FAFC' : '#0F172A',
+    },
+    error: {
+      fontSize: '12px',
+      marginTop: '4px',
+      fontWeight: 500,
+    },
+  };
+
   const { employees, addEmployee, updateEmployee } = useEmployee();
-  const isEditing = Boolean(initialData);
+  const isEditing = Boolean(initialData && initialData.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<{
@@ -87,7 +91,6 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     dob: string;
     gender: string;
     address: string;
-    avatar: string;
 
     // 2. Job & Organization Details
     department: string;
@@ -107,7 +110,6 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     dob: initialData?.dob || '',
     gender: initialData?.gender || '',
     address: initialData?.address || '',
-    avatar: initialData?.avatar || '',
 
     department: initialData?.department || '',
     designation: initialData?.designation || '',
@@ -187,21 +189,6 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   const [errors, setErrors] = useState<{ [key: string]: string | undefined }>({});
   const [loading, setLoading] = useState(false);
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result as string;
-        setFormData((prev) => ({ ...prev, avatar: base64 }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   // Dynamic calculations for Live Preview & Readiness
   const nameValid = formData.name.trim().length >= 3;
@@ -411,7 +398,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
 
     setLoading(true);
     let success = false;
-    if (isEditing && initialData) {
+    if (isEditing && initialData?.id) {
       success = await updateEmployee(initialData.id, formData);
     } else {
       success = await addEmployee(formData);
@@ -423,58 +410,75 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     }
   };
 
+  const paperBg = isDark ? '#111827' : '#FFFFFF';
+  const paperBorder = isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0';
+  const paperShadow = isDark ? '0 12px 36px rgba(0, 0, 0, 0.45)' : '0 2px 8px -2px rgba(0, 0, 0, 0.05)';
+  const headingColor = isDark ? '#F8FAFC' : '#0F172A';
+  const backBtnColor = isDark ? '#94A3B8' : '#475569';
+  const backBtnHover = isDark ? '#F8FAFC' : '#0F172A';
+
   return (
     <Box>
-      {/* 1. Top Navigation Bar */}
-      <Group justify="flex-start" align="center" mb="xl">
-        <Button
-          variant="default"
-          leftSection={<IconArrowLeft size={16} />}
-          radius="md"
-          size="sm"
+      {/* 1. Top Navigation */}
+      <Group justify="flex-start" align="center" mb="lg">
+        <UnstyledButton
           onClick={onBack}
           style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: backBtnColor,
             fontWeight: 600,
-            border: '1px solid #CBD5E1',
-            backgroundColor: '#FFFFFF',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+            fontSize: '14px',
+            cursor: 'pointer',
+            padding: '4px 0',
+            transition: 'color 0.15s ease, transform 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = backBtnHover;
+            e.currentTarget.style.transform = 'translateX(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = backBtnColor;
+            e.currentTarget.style.transform = 'translateX(0)';
           }}
         >
-          Back to Employee Directory
-        </Button>
+          <IconArrowLeft size={18} stroke={2.2} />
+          <Text fw={600} size="14px" style={{ color: 'inherit' }}>
+            Back to Employee Directory
+          </Text>
+        </UnstyledButton>
       </Group>
 
       {/* 2. Main Form Layout */}
       <form onSubmit={handleSubmit} noValidate autoComplete="off">
-        <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="xl" style={{ alignItems: 'flex-start' }}>
-          {/* Left 2 Columns: Form Sections */}
-          <Box style={{ gridColumn: 'span 2' }}>
-            <Stack gap="xl">
-              {/* SECTION 1: Personal & Contact Information */}
-              <Paper
-                p="xl"
-                radius="lg"
-                style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.05)',
-                }}
-              >
-                <Group gap="sm" mb="xl">
-                  <ThemeIcon size={40} radius="md" variant="light" color="blue">
-                    <IconUserPlus size={22} />
-                  </ThemeIcon>
-                  <div>
-                    <Text fw={700} size="md" style={{ color: '#0F172A' }}>
-                      Personal & Contact Information
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Enter basic identity, login access, and contact coordinates
-                    </Text>
-                  </div>
-                </Group>
+        <Box style={{ maxWidth: 960, margin: '0 auto' }}>
+          <Stack gap="xl">
+            {/* SECTION 1: Personal & Contact Information */}
+            <Paper
+              p="xl"
+              radius="lg"
+              style={{
+                background: paperBg,
+                border: paperBorder,
+                boxShadow: paperShadow,
+              }}
+            >
+              <Group gap="sm" mb="xl">
+                <ThemeIcon size={40} radius="md" variant="light" color="blue">
+                  <IconUserPlus size={22} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="md" style={{ color: headingColor }}>
+                    Personal & Contact Information
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    Enter basic identity, login access, and contact coordinates
+                  </Text>
+                </div>
+              </Group>
 
-                <Stack gap="lg">
+              <Stack gap="lg">
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                     {/* 1. Full Name */}
                     <TextInput
@@ -613,9 +617,9 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                 p="xl"
                 radius="lg"
                 style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.05)',
+                  background: paperBg,
+                  border: paperBorder,
+                  boxShadow: paperShadow,
                 }}
               >
                 <Group gap="sm" mb="xl">
@@ -623,7 +627,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                     <IconBriefcase size={22} />
                   </ThemeIcon>
                   <div>
-                    <Text fw={700} size="md" style={{ color: '#0F172A' }}>
+                    <Text fw={700} size="md" style={{ color: headingColor }}>
                       Job & Organization Details
                     </Text>
                     <Text size="xs" c="dimmed">
@@ -731,234 +735,44 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                   </SimpleGrid>
                 </Stack>
               </Paper>
+
+              {/* Bottom Action Buttons */}
+              <Group justify="flex-end" gap="sm" mt="sm">
+                <Button
+                  variant="default"
+                  size="sm"
+                  radius="md"
+                  onClick={onBack}
+                  style={{
+                    fontWeight: 600,
+                    border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #CBD5E1',
+                    color: isDark ? '#CBD5E1' : '#475569',
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  }}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  type="submit"
+                  size="sm"
+                  radius="md"
+                  loading={loading}
+                  leftSection={<IconCheck size={16} />}
+                  style={{
+                    background: isDark ? '#3B82F6' : '#0F172A',
+                    color: '#FFFFFF',
+                    fontWeight: 600,
+                    minWidth: 150,
+                    boxShadow: isDark ? '0 4px 14px rgba(59, 130, 246, 0.35)' : undefined,
+                  }}
+                >
+                  {isEditing ? 'Save Changes' : 'Add Employee'}
+                </Button>
+              </Group>
             </Stack>
           </Box>
-
-          {/* Right 1 Column: Clean, Elegant Live Preview & Actions */}
-          <Box style={{ position: 'sticky', top: 20 }}>
-            <Stack gap="md">
-              <Paper
-                p="xl"
-                radius="lg"
-                style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.05)',
-                }}
-              >
-                {/* Header */}
-                <Group justify="space-between" align="center" mb="lg">
-                  <Text fw={700} size="sm" style={{ color: '#0F172A' }}>
-                    Profile Preview
-                  </Text>
-                  {isEditing ? (
-                    <Badge size="sm" variant="light" color="blue">
-                      Editing
-                    </Badge>
-                  ) : isReady ? (
-                    <Badge size="sm" color="teal" variant="light" leftSection={<IconCheck size={12} />}>
-                      Ready
-                    </Badge>
-                  ) : (
-                    <Badge size="sm" variant="light" color="gray">
-                      {completedCount}/{totalFields} Complete
-                    </Badge>
-                  )}
-                </Group>
-
-                {/* Profile Hero Section */}
-                <Box style={{ textAlign: 'center', marginBottom: '16px' }}>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
-                    style={{ display: 'none' }}
-                  />
-                  <Tooltip label="Click to upload profile photo" position="top" withArrow>
-                    <Box
-                      onClick={handleAvatarClick}
-                      style={{
-                        position: 'relative',
-                        cursor: 'pointer',
-                        display: 'inline-block',
-                        borderRadius: '50%',
-                        transition: 'transform 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.04)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                    >
-                      <Avatar
-                        src={formData.avatar || undefined}
-                        size={80}
-                        radius="xl"
-                        mx="auto"
-                        color={formData.name.trim() ? 'dark' : 'gray'}
-                        style={{
-                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
-                          border: '2px solid #E2E8F0',
-                          fontWeight: 700,
-                          fontSize: 24,
-                          background: formData.avatar ? '#FFFFFF' : formData.name.trim() ? '#0F172A' : '#F8FAFC',
-                          color: formData.name.trim() ? '#FFFFFF' : '#64748B',
-                        }}
-                      >
-                        {!formData.avatar && (initials || <IconUser size={34} color="#94A3B8" />)}
-                      </Avatar>
-
-                      {/* Camera Icon */}
-                      <Box
-                        style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          right: 0,
-                          background: '#0F172A',
-                          color: '#FFFFFF',
-                          borderRadius: '50%',
-                          width: 24,
-                          height: 24,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-                          border: '2px solid #FFFFFF',
-                        }}
-                      >
-                        <IconCamera size={12} stroke={2.5} />
-                      </Box>
-                    </Box>
-                  </Tooltip>
-
-                  {formData.avatar && (
-                    <Box mt={4}>
-                      <Button
-                        variant="subtle"
-                        color="red"
-                        size="compact-xs"
-                        leftSection={<IconTrash size={12} />}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFormData((prev) => ({ ...prev, avatar: '' }));
-                          if (fileInputRef.current) fileInputRef.current.value = '';
-                        }}
-                      >
-                        Remove Photo
-                      </Button>
-                    </Box>
-                  )}
-
-                  <Text fw={700} size="md" mt="xs" style={{ color: formData.name.trim() ? '#0F172A' : '#94A3B8' }}>
-                    {formData.name.trim() || 'New Employee'}
-                  </Text>
-
-                  <Text size="xs" c="dimmed" mt={2}>
-                    {formData.designation.trim() ? `${formData.designation} • ${formData.department}` : formData.department}
-                  </Text>
-
-                  <Group justify="center" gap={6} mt="xs">
-                    <Badge size="xs" variant="outline" color="gray">
-                      {formData.empCode || 'EMP-XXXX'}
-                    </Badge>
-                    <Badge size="xs" variant="light" color="teal">
-                      {formData.status || 'Active'}
-                    </Badge>
-                    <Badge size="xs" variant="light" color="blue">
-                      {formData.employmentType || 'Full Time'}
-                    </Badge>
-                  </Group>
-                </Box>
-
-                <Divider my="sm" />
-
-                {/* Clean Key-Value Attributes */}
-                <Stack gap="xs" my="md">
-                  <Group justify="space-between" wrap="nowrap">
-                    <Text size="xs" c="dimmed">Email:</Text>
-                    <Text size="xs" fw={500} c={formData.email ? '#0F172A' : 'dimmed'} truncate style={{ maxWidth: 170 }}>
-                      {formData.email.trim() || '—'}
-                    </Text>
-                  </Group>
-
-                  <Group justify="space-between" wrap="nowrap">
-                    <Text size="xs" c="dimmed">Phone:</Text>
-                    <Text size="xs" fw={500} c={formData.phone ? '#0F172A' : 'dimmed'}>
-                      {formData.phone.trim() || '—'}
-                    </Text>
-                  </Group>
-
-                  <Group justify="space-between" wrap="nowrap">
-                    <Text size="xs" c="dimmed">Location:</Text>
-                    <Text size="xs" fw={500} c={formData.workLocation ? '#0F172A' : 'dimmed'}>
-                      {formData.workLocation || '—'}
-                    </Text>
-                  </Group>
-
-                  <Group justify="space-between" wrap="nowrap">
-                    <Text size="xs" c="dimmed">Joining Date:</Text>
-                    <Text size="xs" fw={500} c={formData.joiningDate ? '#0F172A' : 'dimmed'}>
-                      {formData.joiningDate || '—'}
-                    </Text>
-                  </Group>
-
-                  <Group justify="space-between" wrap="nowrap">
-                    <Text size="xs" c="dimmed">System Role:</Text>
-                    <Text size="xs" fw={500} c={formData.role ? '#0F172A' : 'dimmed'}>
-                      {formData.role || '—'}
-                    </Text>
-                  </Group>
-                </Stack>
-
-                {/* Form Progress */}
-                <Box mt="md" pt="xs" style={{ borderTop: '1px solid #F1F5F9' }}>
-                  <Group justify="space-between" mb={6}>
-                    <Text size="xs" c="dimmed" fw={600}>
-                      Form Completion
-                    </Text>
-                    <Text size="xs" fw={700} c={isReady ? 'teal' : 'blue'}>
-                      {completionPercentage}%
-                    </Text>
-                  </Group>
-                  <Progress
-                    value={completionPercentage}
-                    color={isReady ? 'teal' : 'blue'}
-                    size="sm"
-                    radius="xl"
-                  />
-                </Box>
-
-                <Divider my="md" />
-
-                {/* Action Buttons */}
-                <Stack gap="xs">
-                  <Button
-                    type="submit"
-                    size="md"
-                    radius="md"
-                    loading={loading}
-                    leftSection={<IconCheck size={18} />}
-                    style={{
-                      background: '#0F172A',
-                      color: '#FFFFFF',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {isEditing ? 'Save Changes' : 'Add Employee'}
-                  </Button>
-
-                  <Button
-                    variant="subtle"
-                    color="gray"
-                    radius="md"
-                    onClick={onBack}
-                  >
-                    Cancel
-                  </Button>
-                </Stack>
-              </Paper>
-            </Stack>
-          </Box>
-        </SimpleGrid>
-      </form>
+        </form>
     </Box>
   );
 };

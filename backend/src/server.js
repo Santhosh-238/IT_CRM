@@ -7,9 +7,14 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes.js';
 import employeeRoutes from './routes/employeeRoutes.js';
+import contactRoutes from './routes/contactRoutes.js';
+import accessControlRoutes from './routes/accessControlRoutes.js';
+import moduleRoutes from './routes/moduleRoutes.js';
 import crmRoutes from './routes/crmRoutes.js';
 import { getCacheStats } from './config/redis.js';
+import { seedRBAC } from './services/seedRBAC.js';
 
+// Middlewares & Server Configuration
 dotenv.config();
 
 const app = express();
@@ -35,11 +40,15 @@ app.use(
   })
 );
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/contacts', contactRoutes);
+app.use('/api/access-control', accessControlRoutes);
+app.use('/api/modules', moduleRoutes);
 app.use('/api', crmRoutes);
 
 // Health Check endpoint with Redis & Cookie info
@@ -54,6 +63,23 @@ app.get('/api/health', async (_req, res) => {
     database: 'PostgreSQL + Prisma ORM (Synchronized)',
     webSockets: 'Socket.IO Real-time Gateway Active',
     version: '1.0.0',
+  });
+});
+
+// API 404 Handler (always return JSON for unhandled API routes)
+app.all('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+// Global API Error Handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled server error:', err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal server error occurred.',
   });
 });
 
@@ -79,17 +105,24 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`\n==================================================`);
   console.log(`🚀 OmniTech Crextio CRM Enterprise API Live`);
   console.log(`📡 URL: http://localhost:${PORT}`);
   console.log(`🍪 HttpOnly Cookies: ENABLED`);
   console.log(`⚡ Redis Caching: CONFIGURED (<1ms response)`);
   console.log(`🗄️ Prisma PostgreSQL: CONNECTED`);
+  console.log(`🛡️ Access Control & RBAC: ACTIVE`);
   console.log(`🔌 WebSockets: READY`);
   console.log(`📁 File Storage: ENABLED`);
   console.log(`📧 Email Notifications: ACTIVE`);
   console.log(`==================================================\n`);
+
+  try {
+    await seedRBAC();
+  } catch (err) {
+    console.error('RBAC auto-seed warning:', err.message);
+  }
 });
 
 export default app;

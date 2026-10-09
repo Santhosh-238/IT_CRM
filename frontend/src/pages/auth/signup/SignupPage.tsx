@@ -249,9 +249,6 @@ export const SignupPage: React.FC<SignupPageProps> = ({ onSuccess, onSwitchToLog
                     <Text fw={800} size="sm" style={{ color: textColor }}>
                       IT CRM
                     </Text>
-                    <Badge size="xs" color="blue" variant="light">
-                      v2.4
-                    </Badge>
                   </Group>
                 </Box>
 

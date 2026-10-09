@@ -3,10 +3,9 @@ import {
   Group,
   TextInput,
   ActionIcon,
-  Menu,
   Avatar,
   Text,
-  Button,
+  Menu,
   useMantineColorScheme,
   useComputedColorScheme,
   Box,
@@ -17,9 +16,11 @@ import {
   IconSearch,
   IconSun,
   IconMoon,
-  IconUserShield,
   IconMicrophone,
   IconLogout,
+  IconUserPlus,
+  IconLogin,
+  IconChevronDown,
 } from '@tabler/icons-react';
 import { useCRM } from '../../context/CRMContext';
 import { CRM_COLORS } from '../../theme/colors';
@@ -31,7 +32,12 @@ export const Header: React.FC<HeaderProps> = () => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
 
-  const { currentUser, setCurrentUserRole, globalSearch, setGlobalSearch, logoutUser } = useCRM();
+  const { currentUser, setActiveNav, globalSearch, setGlobalSearch, logoutUser } = useCRM();
+
+  const pillBg = isDark ? '#1E293B' : '#F5F8FA';
+  const pillBorder = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.08)';
+  const textColor = isDark ? '#F8FAFC' : '#0F172A';
+  const iconColor = isDark ? '#94A3B8' : '#64748B';
 
   return (
     <Box
@@ -54,14 +60,14 @@ export const Header: React.FC<HeaderProps> = () => {
       <Group gap="md" style={{ flex: 1, maxWidth: 440 }}>
         <TextInput
           placeholder="Search employees, skills, department..."
-          leftSection={<IconSearch size={16} stroke={2} color={CRM_COLORS.textSecondary} />}
+          leftSection={<IconSearch size={16} stroke={2} color={iconColor} />}
           rightSection={
             <Group gap={4} pr={4}>
-              <Kbd size="xs" style={{ background: CRM_COLORS.backgroundLight, border: 'none', color: CRM_COLORS.textSecondary, fontWeight: 700 }}>
+              <Kbd size="xs" style={{ background: isDark ? '#0F172A' : '#E2ECF2', border: 'none', color: iconColor, fontWeight: 700 }}>
                 ⌘
               </Kbd>
               <ActionIcon size="xs" variant="subtle" color="gray">
-                <IconMicrophone size={14} color={CRM_COLORS.textSecondary} />
+                <IconMicrophone size={14} color={iconColor} />
               </ActionIcon>
             </Group>
           }
@@ -72,49 +78,22 @@ export const Header: React.FC<HeaderProps> = () => {
           variant="unstyled"
           styles={{
             input: {
-              background: CRM_COLORS.backgroundLight,
+              background: pillBg,
               paddingLeft: 38,
               paddingRight: 60,
               height: 38,
               borderRadius: 100,
               fontSize: 13,
               fontWeight: 500,
-              color: isDark ? CRM_COLORS.textOnPrimary : CRM_COLORS.textPrimary,
-              border: `1px solid ${CRM_COLORS.borderLight}`,
+              color: textColor,
+              border: `1px solid ${pillBorder}`,
             },
           }}
         />
       </Group>
 
-      {/* 2. Right: Role Switcher, Dark/Light, Log Out, User Avatar */}
+      {/* 2. Right: Dark/Light, User Avatar Menu */}
       <Group gap="sm">
-        {/* Role Switcher Pill */}
-        <Menu shadow="lg" width={220} position="bottom-end" radius="16px">
-          <Menu.Target>
-            <Button
-              variant="subtle"
-              size="xs"
-              radius="100px"
-              style={{
-                background: CRM_COLORS.backgroundLight,
-                color: CRM_COLORS.textPrimary,
-                fontWeight: 600,
-                border: `1px solid ${CRM_COLORS.borderLight}`,
-              }}
-              leftSection={<IconUserShield size={14} color={CRM_COLORS.primary} />}
-            >
-              {currentUser.role.replace('_', ' ')}
-            </Button>
-          </Menu.Target>
-          <Menu.Dropdown p="xs">
-            <Menu.Label>Simulate Role (RBAC)</Menu.Label>
-            <Menu.Item onClick={() => setCurrentUserRole('SUPER_ADMIN')}>Super Admin</Menu.Item>
-            <Menu.Item onClick={() => setCurrentUserRole('PROJECT_MANAGER')}>Project Manager</Menu.Item>
-            <Menu.Item onClick={() => setCurrentUserRole('TECH_LEAD')}>Tech Lead</Menu.Item>
-            <Menu.Item onClick={() => setCurrentUserRole('DEVELOPER')}>Developer</Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-
         {/* Dark / Light Toggle */}
         <Tooltip label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
           <ActionIcon
@@ -122,9 +101,9 @@ export const Header: React.FC<HeaderProps> = () => {
             size="md"
             radius="100px"
             style={{
-              background: CRM_COLORS.backgroundLight,
-              color: CRM_COLORS.textPrimary,
-              border: `1px solid ${CRM_COLORS.borderLight}`,
+              background: pillBg,
+              color: isDark ? '#F59E0B' : '#0F172A',
+              border: `1px solid ${pillBorder}`,
             }}
             onClick={() => setColorScheme(isDark ? 'light' : 'dark')}
           >
@@ -132,39 +111,60 @@ export const Header: React.FC<HeaderProps> = () => {
           </ActionIcon>
         </Tooltip>
 
-        {/* Log Out Button */}
-        <Button
-          size="xs"
-          radius="100px"
-          leftSection={<IconLogout size={14} />}
-          style={{
-            background: CRM_COLORS.pastelCoral,
-            color: CRM_COLORS.pastelCoralText,
-            fontWeight: 700,
-            border: `1px solid rgba(249, 183, 180, 0.5)`,
-          }}
-          onClick={() => logoutUser()}
-        >
-          Log Out
-        </Button>
+        {/* Interactive User Profile Dropdown Menu */}
+        <Menu shadow="xl" width={220} position="bottom-end" radius="16px" transitionProps={{ transition: 'pop-top-right' }}>
+          <Menu.Target>
+            <Group
+              gap="xs"
+              p={3}
+              pr="sm"
+              style={{
+                background: pillBg,
+                borderRadius: 100,
+                border: `1px solid ${pillBorder}`,
+                cursor: 'pointer',
+                userSelect: 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <Avatar src={currentUser.avatar || undefined} radius="100px" size="sm" color="blue">
+                {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+              </Avatar>
+              <Text size="xs" fw={700} style={{ color: textColor }}>
+                {currentUser.name || 'Account'}
+              </Text>
+              <IconChevronDown size={14} color={iconColor} />
+            </Group>
+          </Menu.Target>
+          <Menu.Dropdown p="xs">
+            {/* User Account Info */}
+            <Box px="xs" py={6}>
+              <Text size="xs" fw={800} style={{ color: textColor }}>
+                {currentUser.name || 'Guest User'}
+              </Text>
+              <Text size="10px" c="dimmed">
+                {currentUser.email || 'No email associated'}
+              </Text>
+            </Box>
+            <Menu.Divider />
 
-        {/* Profile Avatar Pill */}
-        <Group
-          gap="xs"
-          p={3}
-          pr="sm"
-          style={{
-            background: CRM_COLORS.backgroundLight,
-            borderRadius: 100,
-            border: `1px solid ${CRM_COLORS.borderLight}`,
-          }}
-        >
-          <Avatar src={currentUser.avatar} radius="100px" size="sm" />
-          <Text size="xs" fw={700} style={{ color: isDark ? CRM_COLORS.textOnPrimary : CRM_COLORS.textPrimary }}>
-            {currentUser.name}
-          </Text>
-        </Group>
+            <Menu.Label>Account</Menu.Label>
+            <Menu.Item leftSection={<IconUserPlus size={15} />} onClick={() => setActiveNav('signup')}>
+              Create New Account
+            </Menu.Item>
+            <Menu.Item leftSection={<IconLogin size={15} />} onClick={() => setActiveNav('login')}>
+              Sign In (Login)
+            </Menu.Item>
+
+            <Menu.Divider />
+            <Menu.Item color="red" leftSection={<IconLogout size={15} />} onClick={() => logoutUser()}>
+              Log Out
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
       </Group>
     </Box>
   );
 };
+
+export default Header;

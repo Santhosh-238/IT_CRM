@@ -172,9 +172,12 @@ export async function getCacheStats() {
   };
 }
 
+export const delCacheByPattern = delCache;
+
 export default {
   getCache,
   setCache,
   delCache,
+  delCacheByPattern,
   getCacheStats,
 };

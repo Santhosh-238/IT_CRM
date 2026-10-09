@@ -13,7 +13,6 @@ export async function createEmployee(req, res) {
       name,
       email,
       phone,
-      avatar,
       empCode: customEmpCode,
       dob,
       gender,
@@ -77,19 +76,22 @@ export async function createEmployee(req, res) {
 
     const cleanPhone = String(phone).trim();
 
-    // Check if email already exists in Employee table
+    // Check if email already exists in Employee or User table
     const existingEmailEmp = await prisma.employee.findUnique({
       where: { email: cleanEmail },
     });
+    const existingEmailUser = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
 
-    if (existingEmailEmp) {
+    if (existingEmailEmp || existingEmailUser) {
       return res.status(400).json({
         success: false,
-        message: 'An employee with this email address already exists.',
+        message: 'An account or employee with this email address already exists.',
       });
     }
 
-    // Check if phone number already exists in Employee table
+    // Check if phone number already exists in Employee or User table
     const existingPhoneEmp = await prisma.employee.findFirst({
       where: {
         OR: [
@@ -98,11 +100,19 @@ export async function createEmployee(req, res) {
         ],
       },
     });
+    const existingPhoneUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone },
+          ...(phoneDigits.length >= 10 ? [{ phone: { contains: phoneDigits.slice(-10) } }] : []),
+        ],
+      },
+    });
 
-    if (existingPhoneEmp) {
+    if (existingPhoneEmp || existingPhoneUser) {
       return res.status(400).json({
         success: false,
-        message: 'An employee with this phone number already exists.',
+        message: 'An account or employee with this phone number already exists.',
       });
     }
 
@@ -130,7 +140,6 @@ export async function createEmployee(req, res) {
         name: name.trim(),
         email: cleanEmail,
         phone: phone ? String(phone).trim() : null,
-        avatar: avatar || null,
         dob: dob ? String(dob).trim() : null,
         gender: gender ? String(gender).trim() : null,
         address: address ? String(address).trim() : null,

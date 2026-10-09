@@ -123,19 +123,6 @@ export const AuthShowcasePanel: React.FC<AuthShowcasePanelProps> = () => {
             </Text>
           </Box>
         </Group>
-
-        <Badge
-          size="xs"
-          style={{
-            background: 'rgba(56, 189, 248, 0.15)',
-            color: '#38BDF8',
-            fontWeight: 800,
-            borderRadius: 100,
-            border: '1px solid rgba(56, 189, 248, 0.3)',
-          }}
-        >
-          v2.4
-        </Badge>
       </Group>
 
       {/* Central IT Animation Element */}

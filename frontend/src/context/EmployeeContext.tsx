@@ -9,6 +9,13 @@ import {
   deleteEmployeeApi,
 } from '../services/employeeService';
 import { notifications } from '@mantine/notifications';
+import {
+  IconCheck,
+  IconUserCheck,
+  IconUserX,
+  IconTrash,
+  IconAlertCircle,
+} from '@tabler/icons-react';
 
 interface EmployeeContextType {
   employees: Employee[];
@@ -70,6 +77,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           title: 'Employee Added',
           message: `${result.data.name} (${result.data.empCode}) has been successfully added.`,
           color: 'teal',
+          icon: <IconUserCheck size={18} />,
         });
         fetchEmployeeStats();
         return true;
@@ -78,6 +86,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           title: 'Add Employee Failed',
           message: result.message || 'Could not add employee. Please try again.',
           color: 'red',
+          icon: <IconAlertCircle size={18} />,
         });
         return false;
       }
@@ -86,6 +95,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         title: 'Error',
         message: err.message || 'An unexpected error occurred.',
         color: 'red',
+        icon: <IconAlertCircle size={18} />,
       });
       return false;
     }
@@ -104,6 +114,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           title: 'Profile Updated',
           message: `${result.data.name}'s details updated successfully.`,
           color: 'teal',
+          icon: <IconCheck size={18} />,
         });
         fetchEmployeeStats();
         return true;
@@ -112,6 +123,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           title: 'Update Failed',
           message: result.message || 'Could not update employee details.',
           color: 'red',
+          icon: <IconAlertCircle size={18} />,
         });
         return false;
       }
@@ -120,6 +132,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         title: 'Error',
         message: err.message || 'An error occurred during update.',
         color: 'red',
+        icon: <IconAlertCircle size={18} />,
       });
       return false;
     }
@@ -133,10 +146,14 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         setEmployees((prev) =>
           prev.map((e) => (e.id === id ? { ...e, status } : e))
         );
+        const isInactive = (status || '').toUpperCase().includes('INACT');
         notifications.show({
-          title: 'Status Updated',
-          message: `Employee status changed to ${status}.`,
-          color: 'blue',
+          title: isInactive ? 'Employee Deactivated' : 'Employee Activated',
+          message: isInactive
+            ? 'Employee moved to Relieved / Inactive directory.'
+            : 'Employee restored to Active directory.',
+          color: isInactive ? 'orange' : 'teal',
+          icon: isInactive ? <IconUserX size={18} /> : <IconUserCheck size={18} />,
         });
         fetchEmployeeStats();
         return true;
@@ -158,8 +175,9 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
         notifications.show({
           title: 'Employee Removed',
-          message: 'Employee record has been successfully deleted.',
-          color: 'orange',
+          message: 'Employee record has been deleted.',
+          color: 'red',
+          icon: <IconTrash size={18} />,
         });
         fetchEmployeeStats();
         return true;
@@ -168,6 +186,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           title: 'Delete Failed',
           message: 'Could not delete employee record.',
           color: 'red',
+          icon: <IconAlertCircle size={18} />,
         });
         return false;
       }
@@ -176,6 +195,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         title: 'Error',
         message: err.message || 'Failed to remove employee.',
         color: 'red',
+        icon: <IconAlertCircle size={18} />,
       });
       return false;
     }

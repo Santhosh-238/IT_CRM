@@ -434,51 +434,31 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                   borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
                 }}
               >
-                {/* 1. CONTACT: Avatar badge + Name + Designation */}
+                {/* 1. CONTACT: Name + Designation */}
                 <Table.Td style={{ minWidth: 200 }}>
-                  <Group gap="sm" wrap="nowrap">
-                    <Box
+                  <Box>
+                    <Text
+                      fw={700}
+                      size="sm"
                       style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 8,
-                        backgroundColor: isDark ? '#3B82F6' : '#2563EB',
-                        color: '#FFFFFF',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        fontSize: 13,
-                        flexShrink: 0,
-                        boxShadow: isDark ? '0 2px 8px rgba(59, 130, 246, 0.3)' : '0 2px 6px rgba(37, 99, 235, 0.2)',
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        lineHeight: 1.2,
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      {getInitials(contact.name)}
-                    </Box>
-                    <Box style={{ minWidth: 110 }}>
-                      <Text
-                        fw={700}
-                        size="sm"
-                        style={{
-                          color: isDark ? '#F8FAFC' : '#0F172A',
-                          lineHeight: 1.2,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {contact.name}
-                      </Text>
-                      <Text
-                        size="11px"
-                        style={{
-                          color: isDark ? '#94A3B8' : '#64748B',
-                          marginTop: 2,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {contact.designation || contact.profession || contact.contactType || 'Contact'}
-                      </Text>
-                    </Box>
-                  </Group>
+                      {contact.name}
+                    </Text>
+                    <Text
+                      size="11px"
+                      style={{
+                        color: isDark ? '#94A3B8' : '#64748B',
+                        marginTop: 2,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {contact.designation || contact.profession || contact.contactType || 'Contact'}
+                    </Text>
+                  </Box>
                 </Table.Td>
 
                 {/* 2. COMPANY */}

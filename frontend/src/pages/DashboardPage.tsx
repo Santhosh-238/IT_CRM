@@ -11,6 +11,7 @@ import {
   SimpleGrid,
   Button,
   ThemeIcon,
+  useComputedColorScheme,
 } from '@mantine/core';
 import {
   IconUsers,
@@ -33,6 +34,8 @@ interface DashboardPageProps {
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const { currentUser } = useCRM();
   const { employees, employeeStats } = useEmployee();
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
+  const isDark = computedColorScheme === 'dark';
 
   const totalEmployees = employeeStats?.totalEmployees ?? employees.length;
   const activeCount = employeeStats?.activeCount ?? employees.filter((e) => e.status === 'ACTIVE').length;
@@ -45,13 +48,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
     ? Object.keys(employeeStats.departmentBreakdown).length
     : Array.from(new Set(employees.map((e) => e.department))).length;
 
+  const cardBg = isDark ? '#111827' : '#FFFFFF';
+  const cardBorder = isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(15, 23, 42, 0.07)';
+  const headingColor = isDark ? '#F8FAFC' : '#0F172A';
+  const statColor = isDark ? '#F8FAFC' : '#0F172A';
+
   return (
     <Stack gap="lg">
       {/* Top Page Title */}
       <Group justify="space-between" align="center">
         <div>
-          <Text fw={800} size="28px" style={{ letterSpacing: '-0.03em', color: CRM_COLORS.textPrimary }}>
-            Welcome back, {currentUser.name}
+          <Text fw={800} size="28px" style={{ letterSpacing: '-0.03em', color: headingColor }}>
+            Welcome back{currentUser.name ? `, ${currentUser.name}` : ''}
           </Text>
           <Text size="sm" c="dimmed">
             Enterprise IT CRM & Engineering Workforce Hub
@@ -64,9 +72,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           rightSection={<IconArrowRight size={14} />}
           onClick={() => onNavigate('employees')}
           style={{
-            background: CRM_COLORS.primary,
-            color: CRM_COLORS.textOnPrimary,
+            background: isDark ? '#3B82F6' : CRM_COLORS.primary,
+            color: '#FFFFFF',
             fontWeight: 700,
+            boxShadow: isDark ? '0 4px 14px rgba(59, 130, 246, 0.35)' : undefined,
           }}
         >
           View Employees Directory
@@ -77,32 +86,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
       <Grid gutter="md">
         {/* Left: User Profile Summary Card */}
         <Grid.Col span={{ base: 12, md: 5 }}>
-          <Paper p="xl" radius="24px" className="crextio-card" style={{ background: CRM_COLORS.cardBg, height: '100%' }}>
+          <Paper p="xl" radius="24px" className="crextio-card" style={{ background: cardBg, border: cardBorder, height: '100%' }}>
             <Stack justify="space-between" style={{ height: '100%' }}>
               <Group gap="md" align="center">
                 <Avatar
-                  src={currentUser.avatar}
+                  src={currentUser.avatar || undefined}
                   size={72}
                   radius="20px"
+                  color="blue"
                   style={{
-                    border: `3px solid ${CRM_COLORS.backgroundLight}`,
+                    border: `3px solid ${isDark ? '#1E293B' : CRM_COLORS.backgroundLight}`,
                     boxShadow: '0 8px 20px rgba(15, 23, 42, 0.08)',
                   }}
-                />
+                >
+                  {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+                </Avatar>
                 <Box>
-                  <Text fw={800} size="18px" style={{ color: CRM_COLORS.textPrimary }}>
-                    {currentUser.name}
+                  <Text fw={800} size="18px" style={{ color: headingColor }}>
+                    {currentUser.name || 'Admin User'}
                   </Text>
-                  <Badge size="sm" radius="sm" style={{ background: CRM_COLORS.primary, color: CRM_COLORS.textOnPrimary }} mt={4}>
-                    {currentUser.role.replace('_', ' ')}
+                  <Badge size="sm" radius="sm" style={{ background: isDark ? '#2563EB' : CRM_COLORS.primary, color: '#FFFFFF' }} mt={4}>
+                    {(currentUser.role || 'Super Admin').replace('_', ' ')}
                   </Badge>
                   <Text size="xs" c="dimmed" mt={4}>
-                    {currentUser.email}
+                    {currentUser.email || '—'}
                   </Text>
                 </Box>
               </Group>
 
-              <Box pt="md" style={{ borderTop: `1px solid ${CRM_COLORS.border}` }}>
+              <Box pt="md" style={{ borderTop: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : CRM_COLORS.border}` }}>
                 <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb="xs">
                   System Environment
                 </Text>
@@ -111,25 +123,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                     <ThemeIcon size="xs" color="teal" variant="light" radius="xl">
                       <IconShieldCheck size={12} />
                     </ThemeIcon>
-                    <Text size="xs" fw={600}>JWT Auth: Active</Text>
+                    <Text size="xs" fw={600} style={{ color: isDark ? '#CBD5E1' : undefined }}>JWT Auth: Active</Text>
                   </Group>
                   <Group gap={6}>
                     <ThemeIcon size="xs" color="blue" variant="light" radius="xl">
                       <IconBolt size={12} />
                     </ThemeIcon>
-                    <Text size="xs" fw={600}>Redis Cache: &lt;1ms</Text>
+                    <Text size="xs" fw={600} style={{ color: isDark ? '#CBD5E1' : undefined }}>Redis Cache: &lt;1ms</Text>
                   </Group>
                   <Group gap={6}>
                     <ThemeIcon size="xs" color="violet" variant="light" radius="xl">
                       <IconDatabase size={12} />
                     </ThemeIcon>
-                    <Text size="xs" fw={600}>PostgreSQL: Connected</Text>
+                    <Text size="xs" fw={600} style={{ color: isDark ? '#CBD5E1' : undefined }}>PostgreSQL: Connected</Text>
                   </Group>
                   <Group gap={6}>
                     <ThemeIcon size="xs" color="cyan" variant="light" radius="xl">
                       <IconUsers size={12} />
                     </ThemeIcon>
-                    <Text size="xs" fw={600}>Directory: Ready</Text>
+                    <Text size="xs" fw={600} style={{ color: isDark ? '#CBD5E1' : undefined }}>Directory: Ready</Text>
                   </Group>
                 </SimpleGrid>
               </Box>
@@ -141,7 +153,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
         <Grid.Col span={{ base: 12, md: 7 }}>
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             {/* Card 1: Total Workforce */}
-            <Paper p="lg" radius="20px" className="crextio-card" style={{ background: CRM_COLORS.cardBg }}>
+            <Paper p="lg" radius="20px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
               <Group justify="space-between" align="flex-start" mb="xs">
                 <Text size="xs" fw={700} c="dimmed" tt="uppercase">
                   Total Employees
@@ -150,7 +162,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                   <IconUsers size={18} />
                 </ThemeIcon>
               </Group>
-              <Text fw={800} size="32px" style={{ letterSpacing: '-0.03em', color: CRM_COLORS.textPrimary, lineHeight: 1.2 }}>
+              <Text fw={800} size="32px" style={{ letterSpacing: '-0.03em', color: statColor, lineHeight: 1.2 }}>
                 {totalEmployees}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
@@ -159,7 +171,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             </Paper>
 
             {/* Card 2: Active Staffing */}
-            <Paper p="lg" radius="20px" className="crextio-card" style={{ background: CRM_COLORS.cardBg }}>
+            <Paper p="lg" radius="20px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
               <Group justify="space-between" align="flex-start" mb="xs">
                 <Text size="xs" fw={700} c="dimmed" tt="uppercase">
                   Active Staffing
@@ -168,16 +180,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                   <IconUserCheck size={18} />
                 </ThemeIcon>
               </Group>
-              <Text fw={800} size="32px" style={{ letterSpacing: '-0.03em', color: CRM_COLORS.textPrimary, lineHeight: 1.2 }}>
+              <Text fw={800} size="32px" style={{ letterSpacing: '-0.03em', color: statColor, lineHeight: 1.2 }}>
                 {activeCount}
               </Text>
-              <Text size="xs" c="teal" fw={600} mt={4}>
+              <Text size="xs" c={isDark ? '#34D399' : 'teal'} fw={600} mt={4}>
                 {totalEmployees > 0 ? `${Math.round((activeCount / totalEmployees) * 100)}% active rate` : 'Ready for onboarding'}
               </Text>
             </Paper>
 
             {/* Card 3: Departments */}
-            <Paper p="lg" radius="20px" className="crextio-card" style={{ background: CRM_COLORS.cardBg }}>
+            <Paper p="lg" radius="20px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
               <Group justify="space-between" align="flex-start" mb="xs">
                 <Text size="xs" fw={700} c="dimmed" tt="uppercase">
                   Departments
@@ -186,7 +198,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                   <IconBuildingSkyscraper size={18} />
                 </ThemeIcon>
               </Group>
-              <Text fw={800} size="32px" style={{ letterSpacing: '-0.03em', color: CRM_COLORS.textPrimary, lineHeight: 1.2 }}>
+              <Text fw={800} size="32px" style={{ letterSpacing: '-0.03em', color: statColor, lineHeight: 1.2 }}>
                 {totalDepts}
               </Text>
               <Text size="xs" c="dimmed" mt={4}>
@@ -195,7 +207,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             </Paper>
 
             {/* Card 4: Avg Performance */}
-            <Paper p="lg" radius="20px" className="crextio-card" style={{ background: CRM_COLORS.cardBg }}>
+            <Paper p="lg" radius="20px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
               <Group justify="space-between" align="flex-start" mb="xs">
                 <Text size="xs" fw={700} c="dimmed" tt="uppercase">
                   Avg Rating
@@ -204,7 +216,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                   <IconStar size={18} />
                 </ThemeIcon>
               </Group>
-              <Text fw={800} size="32px" style={{ letterSpacing: '-0.03em', color: CRM_COLORS.textPrimary, lineHeight: 1.2 }}>
+              <Text fw={800} size="32px" style={{ letterSpacing: '-0.03em', color: statColor, lineHeight: 1.2 }}>
                 {avgRating} <Text span size="lg" c="dimmed" fw={500}>/ 5.0</Text>
               </Text>
               <Text size="xs" c="dimmed" mt={4}>

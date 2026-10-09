@@ -14,11 +14,60 @@ model User {
   phone        String?
   passwordHash String
   role         String      @default("SUPER_ADMIN")
+  roleId       String?
+  roleRelation Role?       @relation(fields: [roleId], references: [id], onDelete: SetNull)
   avatar       String?
   department   String?
   refreshToken String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+}
+
+model Role {
+  id           String           @id @default(uuid())
+  name         String           @unique
+  slug         String           @unique
+  description  String?
+  isSystem     Boolean          @default(false)
+  appType      String           @default("admin") // "admin" | "manager" | "sales_employee" | "support"
+  parentRoleId String?
+  parentRole   Role?            @relation("RoleHierarchy", fields: [parentRoleId], references: [id], onDelete: SetNull)
+  childRoles   Role[]           @relation("RoleHierarchy")
+  permissions  RolePermission[]
+  users        User[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model RolePermission {
+  id         String   @id @default(uuid())
+  roleId     String
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  moduleId   String   // e.g. "dashboard", "employees", "contacts", "companies", "leads", "access_control", "settings"
+  moduleName String
+  category   String   @default("Core") // "Core", "Sales & CRM", "Human Resources", "Administration"
+  canView    Boolean  @default(false)
+  canCreate  Boolean  @default(false)
+  canEdit    Boolean  @default(false)
+  canDelete  Boolean  @default(false)
+  canExport  Boolean  @default(false)
+  canApprove Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([roleId, moduleId])
+}
+
+model AccessAuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  userName   String?
+  action     String   // "ROLE_CREATED", "PERMISSIONS_UPDATED", "USER_ROLE_REASSIGNED", "ROLE_DELETED"
+  targetType String   // "Role", "Permission", "User"
+  targetName String?
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
 }
 
 model Employee {
@@ -27,7 +76,6 @@ model Employee {
   name             String
   email            String   @unique
   phone            String?
-  avatar           String?
   dob              String?
   gender           String?
   address          String?
@@ -42,4 +90,87 @@ model Employee {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
+
+model Contact {
+  // Primary Keys & Identifiers
+  id                     String    @id @default(uuid())
+  contactId              String    @unique // e.g. CNT-1001
+  uuid                   String?   @default(uuid())
+
+  // 1. Basic Contact Information
+  name                   String
+  email                  String?
+  phone                  String    // mobile_number / phone (Required)
+  address                String?
+  source                 String?   @default("Website") // Website, Referral, Cold Call, LinkedIn, Other
+  customSource           String?
+
+  // 2. Professional & Company Information
+  contactType            String?   @default("Company Representative") // Individual / Company Representative
+  companyName            String?
+  designation            String?
+  profession             String?   // when contactType is Individual
+  annualRevenue          String?
+
+  // 3. Requirement Details
+  category               String?   @default("Product") // Product / Service
+  productList            String[]  @default([]) // e.g. ["HRMS", "IT CRM"]
+  serviceList            String[]  @default([])
+  customProduct          String?
+
+  // 4. Interaction & Follow-up Details
+  contactMode            String?   @default("Call") // Call, Email, Meeting, WhatsApp, Other
+  customContactMode      String?
+  meetingType            String?   @default("Virtual") // Virtual, In-person
+  nextFollowDate         String?   // YYYY-MM-DD
+  remarks                String?
+  notes                  String?
+
+  // 5. Qualification & Project Details
+  status                 String?   @default("New") // New, Active, Inactive, Qualified, Disqualified
+  stage                  String?   @default("Initialization") // Initialization, Qualification, Meeting, Proposal, Closed
+  qualificationStatus    String?   @default("In Progress") // Qualified, Disqualified, In Progress
+  qualifiedBy            String?
+  qualificationDate      String?
+  priority               String?   @default("Medium") // High, Medium, Low
+  estimatedBudget        Float?
+  projectType            String?
+  expectedUsers          Int?
+  expectedGoLiveDate     String?
+  influencer             String?   // Decision Maker / Influencer
+  otherOptions           String?   // Competitors / Other Options
+  disqualificationReason String?
+
+  // 6. Assignment & System Metadata
+  assignedTo             String?   // Employee ID or User ID
+  assignedToName         String?   // Assigned Employee Name
+  assignedBy             String?
+  assignedAt             DateTime?
+  assignmentStatus       String?   @default("Unassigned") // Assigned / Unassigned
+  createdBy              String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+}
+
+model Company {
+  id             String   @id @default(uuid())
+  name           String   @unique
+  website        String?
+  industry       String?
+  address        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Lead {
+  id             String   @id @default(uuid())
+  leadId         String   @unique
+  title          String
+  companyName    String?
+  contactName    String?
+  status         String   @default("New")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
 

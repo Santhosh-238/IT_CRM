@@ -46,7 +46,7 @@
   --crm-warning: #F59E0B;
   --crm-danger: #EF4444;
 
-  /* Mantine Core Overrides */
+  /* Mantine Core Overrides (Light Mode Defaults) */
   --mantine-color-white: #FFFFFF !important;
   --mantine-color-body: #EDF3F7 !important;
   --mantine-color-default: #FFFFFF !important;
@@ -55,6 +55,36 @@
   --mantine-color-default-color: #0F172A !important;
   --mantine-primary-color-filled: #14181F !important;
   --mantine-primary-color-filled-hover: #232936 !important;
+}
+
+[data-mantine-color-scheme="dark"] {
+  --crm-primary: #3B82F6;
+  --crm-primary-hover: #2563EB;
+  --crm-primary-light: #1E293B;
+  --crm-primary-dark: #1D4ED8;
+
+  --crm-bg: #0B0F17;
+  --crm-bg-light: #0F172A;
+  --crm-bg-dark: #05080C;
+
+  --crm-card-bg: #111827;
+  --crm-card-surface: #111827;
+  --crm-card-bg-dark: #0B0F17;
+  --crm-border: rgba(255, 255, 255, 0.08);
+
+  --crm-text-primary: #F8FAFC;
+  --crm-text-secondary: #94A3B8;
+  --crm-text-muted: #64748B;
+  --crm-text-on-primary: #FFFFFF;
+
+  /* Mantine Core Overrides (Dark Mode) */
+  --mantine-color-body: #0B0F17 !important;
+  --mantine-color-default: #0F172A !important;
+  --mantine-color-default-hover: #1E293B !important;
+  --mantine-color-default-border: rgba(255, 255, 255, 0.08) !important;
+  --mantine-color-default-color: #F8FAFC !important;
+  --mantine-primary-color-filled: #3B82F6 !important;
+  --mantine-primary-color-filled-hover: #2563EB !important;
 }
 
 * {
@@ -80,7 +110,7 @@ body {
               radial-gradient(circle at 10% 80%, rgba(15, 23, 42, 0.9) 0%, transparent 50%),
               linear-gradient(180deg, #0B0F17 0%, #05080C 100%);
   background-attachment: fixed;
-  color: var(--crm-text-on-primary);
+  color: var(--crm-text-primary);
 }
 
 /* Custom sleek scrollbar */
@@ -98,8 +128,16 @@ body {
   border-radius: 9999px;
 }
 
+[data-mantine-color-scheme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(15, 23, 42, 0.3);
+}
+
+[data-mantine-color-scheme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Dynamic Crisp Floating Cards */
@@ -114,11 +152,11 @@ body {
 }
 
 [data-mantine-color-scheme="dark"] .crextio-card,
-[data-mantine-color-scheme="dark"] .mantine-Paper-root {
-  background: rgba(20, 24, 31, 0.85);
+[data-mantine-color-scheme="dark"] .mantine-Paper-root:not(.pastel-lime-card):not(.pastel-mint-card):not(.pastel-coral-card) {
+  background: #111827;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
-  color: var(--crm-text-on-primary);
+  color: var(--crm-text-primary);
 }
 
 /* 🍬 Signature Pastel Cards */
@@ -188,14 +226,15 @@ body {
 }
 
 [data-mantine-color-scheme="dark"] .crextio-pill-active {
-  background: #FFFFFF !important;
-  color: #0F172A !important;
-  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.15) !important;
+  background: #2563EB !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
 [data-mantine-color-scheme="dark"] .crextio-pill-active .mantine-NavLink-label,
 [data-mantine-color-scheme="dark"] .crextio-pill-active .mantine-NavLink-section {
-  color: #0F172A !important;
+  color: #FFFFFF !important;
 }
 
 .crextio-pill-inactive {
@@ -237,43 +276,73 @@ body {
 .mantine-Drawer-body,
 .mantine-Menu-dropdown,
 .mantine-Popover-dropdown,
-.mantine-Select-dropdown {
+.mantine-Select-dropdown,
+.mantine-Autocomplete-dropdown {
   background-color: #FFFFFF !important;
   color: var(--crm-text-primary) !important;
   border: 1px solid var(--crm-border) !important;
-  border-radius: 24px !important;
+  border-radius: 20px !important;
   box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.1) !important;
 }
 
 [data-mantine-color-scheme="dark"] .mantine-Modal-content,
+[data-mantine-color-scheme="dark"] .mantine-Modal-header,
 [data-mantine-color-scheme="dark"] .mantine-Drawer-content,
-[data-mantine-color-scheme="dark"] .mantine-Menu-dropdown {
-  background-color: #14181F !important;
-  color: #FFFFFF !important;
+[data-mantine-color-scheme="dark"] .mantine-Drawer-header,
+[data-mantine-color-scheme="dark"] .mantine-Drawer-body,
+[data-mantine-color-scheme="dark"] .mantine-Menu-dropdown,
+[data-mantine-color-scheme="dark"] .mantine-Popover-dropdown,
+[data-mantine-color-scheme="dark"] .mantine-Select-dropdown,
+[data-mantine-color-scheme="dark"] .mantine-Autocomplete-dropdown {
+  background-color: #111827 !important;
+  color: #F8FAFC !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.6) !important;
 }
 
-.mantine-Menu-item {
+.mantine-Menu-item,
+.mantine-Select-option,
+.mantine-Autocomplete-option {
   color: var(--crm-text-primary) !important;
-  border-radius: 12px !important;
+  border-radius: 10px !important;
 }
 
-.mantine-Menu-item:hover {
+.mantine-Menu-item:hover,
+.mantine-Select-option:hover,
+.mantine-Autocomplete-option:hover {
   background-color: rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Menu-item,
+[data-mantine-color-scheme="dark"] .mantine-Select-option,
+[data-mantine-color-scheme="dark"] .mantine-Autocomplete-option {
+  color: #F8FAFC !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Menu-item:hover,
+[data-mantine-color-scheme="dark"] .mantine-Select-option:hover,
+[data-mantine-color-scheme="dark"] .mantine-Autocomplete-option:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Form inputs styling */
 .mantine-TextInput-input,
+.mantine-PasswordInput-input,
 .mantine-Select-input,
+.mantine-Autocomplete-input,
 .mantine-NumberInput-input,
 .mantine-MultiSelect-input,
 .mantine-Textarea-input {
   background-color: #F8FAFC !important;
-  border-color: rgba(15, 23, 42, 0.1) !important;
-  color: var(--crm-text-primary) !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  color: #0F172A !important;
+  transition: all 0.2s ease !important;
 }
 
 .mantine-TextInput-input:focus,
+.mantine-PasswordInput-input:focus,
 .mantine-Select-input:focus,
+.mantine-Autocomplete-input:focus,
 .mantine-NumberInput-input:focus,
 .mantine-MultiSelect-input:focus,
 .mantine-Textarea-input:focus {
@@ -281,13 +350,55 @@ body {
   background-color: #FFFFFF !important;
 }
 
-/* Override browser autofill blue highlights */
+[data-mantine-color-scheme="dark"] .mantine-TextInput-input,
+[data-mantine-color-scheme="dark"] .mantine-PasswordInput-input,
+[data-mantine-color-scheme="dark"] .mantine-Select-input,
+[data-mantine-color-scheme="dark"] .mantine-Autocomplete-input,
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-input,
+[data-mantine-color-scheme="dark"] .mantine-MultiSelect-input,
+[data-mantine-color-scheme="dark"] .mantine-Textarea-input {
+  background-color: #1E293B !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #F8FAFC !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-TextInput-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-PasswordInput-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-Select-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-Autocomplete-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-MultiSelect-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-Textarea-input:focus {
+  border-color: #3B82F6 !important;
+  background-color: #1E293B !important;
+}
+
+/* Input labels */
+.mantine-TextInput-label,
+.mantine-PasswordInput-label,
+.mantine-Select-label,
+.mantine-Autocomplete-label,
+.mantine-NumberInput-label,
+.mantine-Textarea-label {
+  color: var(--crm-text-primary) !important;
+}
+
+/* Override browser autofill highlights */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
   -webkit-text-fill-color: #0F172A !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+[data-mantine-color-scheme="dark"] input:-webkit-autofill,
+[data-mantine-color-scheme="dark"] input:-webkit-autofill:hover, 
+[data-mantine-color-scheme="dark"] input:-webkit-autofill:focus,
+[data-mantine-color-scheme="dark"] input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1E293B inset !important;
+  -webkit-text-fill-color: #F8FAFC !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -298,6 +409,10 @@ input:-webkit-autofill:active {
 
 .mantine-Table-thead {
   background-color: #F8FAFC !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Table-thead {
+  background-color: #1E293B !important;
 }
 
 .mantine-Table-th {
@@ -362,4 +477,100 @@ input:-webkit-autofill:active {
   cursor: grabbing;
   transform: scale(0.98);
 }
+
+/* =========================================================
+ * ULTRA-SLEEK MODERN NOTIFICATION TOAST DESIGN
+ * ========================================================= */
+.mantine-Notification-root {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 16px !important;
+  box-shadow: 0 16px 36px -6px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.05) !important;
+  padding: 14px 16px !important;
+  min-width: 320px !important;
+  backdrop-filter: blur(16px) !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Notification-root {
+  background-color: #1E293B !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.5), 0 4px 12px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+.mantine-Notification-root::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #3B82F6;
+  border-top-left-radius: 16px;
+  border-bottom-left-radius: 16px;
+}
+
+.mantine-Notification-root[data-color="teal"]::before,
+.mantine-Notification-root[data-color="green"]::before {
+  background: #10B981 !important;
+}
+
+.mantine-Notification-root[data-color="orange"]::before,
+.mantine-Notification-root[data-color="yellow"]::before {
+  background: #F59E0B !important;
+}
+
+.mantine-Notification-root[data-color="red"]::before {
+  background: #EF4444 !important;
+}
+
+.mantine-Notification-icon {
+  border-radius: 10px !important;
+  width: 32px !important;
+  height: 32px !important;
+  margin-right: 12px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
+}
+
+.mantine-Notification-title {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #0F172A !important;
+  letter-spacing: -0.01em !important;
+  margin-bottom: 2px !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Notification-title {
+  color: #F8FAFC !important;
+}
+
+.mantine-Notification-description {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #64748B !important;
+  line-height: 1.4 !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Notification-description {
+  color: #94A3B8 !important;
+}
+
+.mantine-Notification-closeButton {
+  border-radius: 8px !important;
+  color: #94A3B8 !important;
+  transition: all 0.15s ease !important;
+}
+
+.mantine-Notification-closeButton:hover {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Notification-closeButton:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #F8FAFC !important;
+}
+
 
