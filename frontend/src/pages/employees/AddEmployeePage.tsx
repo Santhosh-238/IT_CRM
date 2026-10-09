@@ -70,7 +70,7 @@ const normalInputStyles = {
   },
 };
 
-const DEPARTMENT_OPTIONS = [
+export const DEPARTMENT_OPTIONS = [
   'Engineering',
   'Product',
   'Design',
@@ -82,28 +82,28 @@ const DEPARTMENT_OPTIONS = [
   'Quality Assurance',
 ];
 
-const ROLE_OPTIONS = [
+export const ROLE_OPTIONS = [
   'Developer',
   'Tech Lead',
   'Project Manager',
   'Super Admin',
 ];
 
-const EMPLOYMENT_TYPE_OPTIONS = [
+export const EMPLOYMENT_TYPE_OPTIONS = [
   'Full Time',
   'Contractor',
   'Part Time',
   'Intern',
 ];
 
-const STATUS_OPTIONS = [
+export const STATUS_OPTIONS = [
   'Active',
   'Probation',
   'On Leave',
   'Notice Period',
 ];
 
-const LOCATION_OPTIONS = [
+export const LOCATION_OPTIONS = [
   'Chennai HQ',
   'Bangalore Office',
   'Hyderabad Branch',
@@ -111,11 +111,27 @@ const LOCATION_OPTIONS = [
   'Mumbai Hub',
 ];
 
-const GENDER_OPTIONS = [
+export const GENDER_OPTIONS = [
   'Male',
   'Female',
   'Non-Binary',
   'Prefer not to say',
+];
+
+export const DEFAULT_DESIGNATIONS = [
+  'Senior Software Engineer',
+  'Fullstack Developer',
+  'Frontend Specialist',
+  'Backend Engineer',
+  'Tech Lead',
+  'Engineering Manager',
+  'Product Manager',
+  'UI/UX Designer',
+  'QA Automation Engineer',
+  'Cloud DevOps Architect',
+  'Data Scientist',
+  'HR Executive',
+  'Sales Executive',
 ];
 
 export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
@@ -187,32 +203,17 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   // Dynamic lists computed from database employees + default templates
   const dynamicDepartments = useMemo(() => {
     const existing = employees.map((e) => e.department).filter(Boolean);
-    return Array.from(new Set([...DEPARTMENT_OPTIONS, ...existing]));
+    return Array.from(new Set([...DEPARTMENT_OPTIONS, ...existing])).filter(Boolean);
   }, [employees]);
 
   const dynamicDesignations = useMemo(() => {
-    const defaultDesignations = [
-      'Senior Software Engineer',
-      'Fullstack Developer',
-      'Frontend Specialist',
-      'Backend Engineer',
-      'Tech Lead',
-      'Engineering Manager',
-      'Product Manager',
-      'UI/UX Designer',
-      'QA Automation Engineer',
-      'Cloud DevOps Architect',
-      'Data Scientist',
-      'HR Executive',
-      'Sales Executive',
-    ];
     const existing = employees.map((e) => e.designation).filter(Boolean);
-    return Array.from(new Set([...defaultDesignations, ...existing]));
+    return Array.from(new Set([...DEFAULT_DESIGNATIONS, ...existing])).filter(Boolean);
   }, [employees]);
 
   const dynamicRoles = useMemo(() => {
     const existing = employees.map((e) => e.role).filter(Boolean);
-    return Array.from(new Set([...ROLE_OPTIONS, ...existing]));
+    return Array.from(new Set([...ROLE_OPTIONS, ...existing])).filter(Boolean);
   }, [employees]);
 
   const dynamicManagers = useMemo(() => {
@@ -223,17 +224,22 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
 
   const dynamicEmploymentTypes = useMemo(() => {
     const existing = employees.map((e) => e.employmentType).filter(Boolean);
-    return Array.from(new Set([...EMPLOYMENT_TYPE_OPTIONS, ...existing]));
+    return Array.from(new Set([...EMPLOYMENT_TYPE_OPTIONS, ...existing])).filter(Boolean);
   }, [employees]);
 
   const dynamicLocations = useMemo(() => {
     const existing = employees.map((e) => e.workLocation).filter(Boolean);
-    return Array.from(new Set([...LOCATION_OPTIONS, ...existing]));
+    return Array.from(new Set([...LOCATION_OPTIONS, ...existing])).filter(Boolean);
   }, [employees]);
 
   const dynamicStatuses = useMemo(() => {
     const existing = employees.map((e) => e.status).filter(Boolean);
-    return Array.from(new Set([...STATUS_OPTIONS, ...existing]));
+    return Array.from(new Set([...STATUS_OPTIONS, ...existing])).filter(Boolean);
+  }, [employees]);
+
+  const dynamicGenders = useMemo(() => {
+    const existing = employees.map((e) => e.gender).filter(Boolean);
+    return Array.from(new Set([...GENDER_OPTIONS, ...existing])).filter(Boolean);
   }, [employees]);
 
   const [errors, setErrors] = useState<{ [key: string]: string | undefined }>({});
@@ -658,11 +664,12 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                     <Autocomplete
                       label="Gender (Optional)"
                       placeholder="Type or select gender"
-                      data={GENDER_OPTIONS}
+                      data={dynamicGenders}
                       leftSection={<IconGenderBigender size={16} color="#64748B" />}
                       value={formData.gender}
                       onChange={(val) => setFormData({ ...formData, gender: val })}
                       styles={normalInputStyles}
+                      maxDropdownHeight={220}
                     />
 
                     {/* 8. Address */}
