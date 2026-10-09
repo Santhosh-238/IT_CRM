@@ -9,22 +9,18 @@ import {
   ActionIcon,
   Menu,
   Tooltip,
-  Button,
+  Box,
 } from '@mantine/core';
 import {
   IconDotsVertical,
   IconEye,
   IconEdit,
   IconTrash,
-  IconStar,
-  IconMapPin,
   IconCheck,
   IconClock,
-  IconBeach,
   IconAlertTriangle,
 } from '@tabler/icons-react';
 import { Employee, EmployeeStatus } from '../../../types/employee';
-import { CRM_COLORS } from '../../../theme/colors';
 
 interface EmployeeTableViewProps {
   employees: Employee[];
@@ -41,276 +37,280 @@ export const EmployeeTableView: React.FC<EmployeeTableViewProps> = ({
   onDelete,
   onStatusChange,
 }) => {
-  const getStatusBadge = (status?: string) => {
+  // Format dates cleanly like "08 Oct 2026"
+  const formatJoiningDate = (dateStr?: string) => {
+    if (!dateStr) return '—';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = d.toLocaleString('en-US', { month: 'short' });
+      const year = d.getFullYear();
+      return `${day} ${month} ${year}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'E';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const getStatusDisplay = (status?: string) => {
     const s = (status || '').toUpperCase();
-    if (s.includes('ACT') || s.includes('FULL')) {
+    if (s.includes('ACT') || s.includes('LIVE') || s === '' || !status) {
       return {
-        bg: CRM_COLORS.pastelMint,
-        color: CRM_COLORS.pastelMintText,
-        label: status || 'Active',
-        icon: <IconCheck size={11} />,
+        bg: '#ECFDF5',
+        color: '#059669',
+        border: '#A7F3D0',
+        dot: '#10B981',
+        label: 'LIVE',
       };
     }
-    if (s.includes('PROB') || s.includes('PEND')) {
+    if (s.includes('INACT') || s.includes('RELIEV') || s.includes('TERM') || s.includes('NOTIC')) {
+      return {
+        bg: '#FEF2F2',
+        color: '#DC2626',
+        border: '#FECACA',
+        dot: '#EF4444',
+        label: 'INACTIVE',
+      };
+    }
+    if (s.includes('PROB')) {
       return {
         bg: '#FEF3C7',
-        color: '#B45309',
-        label: status || 'Probation',
-        icon: <IconClock size={11} />,
-      };
-    }
-    if (s.includes('LEAV')) {
-      return {
-        bg: CRM_COLORS.pastelBlue,
-        color: CRM_COLORS.pastelBlueText,
-        label: status || 'On Leave',
-        icon: <IconBeach size={11} />,
-      };
-    }
-    if (s.includes('NOTIC') || s.includes('TERM')) {
-      return {
-        bg: CRM_COLORS.pastelCoral,
-        color: CRM_COLORS.pastelCoralText,
-        label: status || 'Notice Period',
-        icon: <IconAlertTriangle size={11} />,
+        color: '#D97706',
+        border: '#FDE68A',
+        dot: '#F59E0B',
+        label: 'PROBATION',
       };
     }
     return {
-      bg: '#F1F5F9',
+      bg: '#F8FAFC',
       color: '#475569',
-      label: status || '—',
-      icon: null,
+      border: '#E2E8F0',
+      dot: '#94A3B8',
+      label: status || 'ACTIVE',
     };
   };
 
   return (
-    <Paper
-      radius="24px"
-      className="crextio-card"
-      style={{
-        background: CRM_COLORS.cardBg,
-        border: `1px solid ${CRM_COLORS.border}`,
-        overflow: 'hidden',
-      }}
-    >
-      <Table.ScrollContainer minWidth={900}>
-        <Table verticalSpacing="md" horizontalSpacing="md" highlightOnHover>
-          <Table.Thead style={{ background: CRM_COLORS.backgroundLight }}>
-            <Table.Tr>
-              <Table.Th style={{ color: CRM_COLORS.textSecondary, fontWeight: 700 }}>Employee</Table.Th>
-              <Table.Th style={{ color: CRM_COLORS.textSecondary, fontWeight: 700 }}>Designation & Role</Table.Th>
-              <Table.Th style={{ color: CRM_COLORS.textSecondary, fontWeight: 700 }}>Department</Table.Th>
-              <Table.Th style={{ color: CRM_COLORS.textSecondary, fontWeight: 700 }}>Location</Table.Th>
-              <Table.Th style={{ color: CRM_COLORS.textSecondary, fontWeight: 700 }}>Status</Table.Th>
-              <Table.Th style={{ color: CRM_COLORS.textSecondary, fontWeight: 700 }}>Experience</Table.Th>
-              <Table.Th style={{ color: CRM_COLORS.textSecondary, fontWeight: 700 }}>Current Project</Table.Th>
-              <Table.Th style={{ color: CRM_COLORS.textSecondary, fontWeight: 700 }}>Rating</Table.Th>
-              <Table.Th style={{ textAlign: 'right', color: CRM_COLORS.textSecondary, fontWeight: 700 }}>Actions</Table.Th>
-            </Table.Tr>
-          </Table.Thead>
-          <Table.Tbody>
-            {employees.map((emp) => {
-              const statusInfo = getStatusBadge(emp.status);
-              return (
-                <Table.Tr key={emp.id} style={{ transition: 'background-color 0.15s ease' }}>
-                  {/* Employee Name & Code */}
-                  <Table.Td>
-                    <Group gap="sm" wrap="nowrap">
-                      <Avatar
-                        src={emp.avatar}
-                        radius="14px"
-                        size={42}
-                        alt={emp.name}
-                        style={{ border: `1px solid ${CRM_COLORS.borderLight}` }}
-                      />
-                      <div>
-                        <Text fw={700} size="sm" style={{ color: CRM_COLORS.textPrimary }}>
-                          {emp.name}
-                        </Text>
-                        <Group gap={6} mt={2}>
-                          <Badge
-                            size="xs"
-                            variant="outline"
-                            radius="100px"
-                            style={{
-                              borderColor: CRM_COLORS.border,
-                              color: CRM_COLORS.textSecondary,
-                              fontWeight: 700,
-                            }}
-                          >
-                            {emp.empCode}
-                          </Badge>
-                          <Text size="xs" c="dimmed">
-                            {emp.email}
-                          </Text>
-                        </Group>
-                      </div>
-                    </Group>
-                  </Table.Td>
+    <Box style={{ width: '100%', overflowX: 'auto' }}>
+      <Table verticalSpacing="lg" horizontalSpacing="md" style={{ borderCollapse: 'collapse', width: '100%' }}>
+        <Table.Thead>
+          <Table.Tr style={{ borderBottom: '1px solid #F1F5F9' }}>
+            <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', paddingBottom: '14px' }}>
+              NAME
+            </Table.Th>
+            <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', paddingBottom: '14px' }}>
+              OFFICIAL EMAIL
+            </Table.Th>
+            <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', paddingBottom: '14px' }}>
+              CONTACT
+            </Table.Th>
+            <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', paddingBottom: '14px' }}>
+              ROLE
+            </Table.Th>
+            <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', paddingBottom: '14px' }}>
+              EMP ID
+            </Table.Th>
+            <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', paddingBottom: '14px' }}>
+              STATUS
+            </Table.Th>
+            <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase', paddingBottom: '14px' }}>
+              JOINING
+            </Table.Th>
+            <Table.Th style={{ width: 40, paddingBottom: '14px' }} />
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {employees.map((emp) => {
+            const statusConfig = getStatusDisplay(emp.status);
+            const initials = getInitials(emp.name);
 
-                  {/* Designation */}
-                  <Table.Td>
-                    <Text size="sm" fw={600} style={{ color: CRM_COLORS.textPrimary }}>
-                      {emp.designation}
-                    </Text>
-                    <Badge
-                      size="xs"
-                      radius="100px"
-                      variant="subtle"
+            return (
+              <Table.Tr
+                key={emp.id}
+                style={{
+                  borderBottom: '1px solid #F1F5F9',
+                  transition: 'background-color 0.15s ease',
+                  cursor: 'pointer',
+                }}
+                onClick={() => onViewDetails(emp)}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+              >
+                {/* 1. NAME */}
+                <Table.Td style={{ padding: '16px 12px' }}>
+                  <Group gap="md" wrap="nowrap">
+                    <Avatar
+                      src={emp.avatar || undefined}
+                      size={40}
+                      radius="xl"
                       style={{
-                        background: CRM_COLORS.backgroundLight,
-                        color: CRM_COLORS.textSecondary,
+                        backgroundColor: '#0F172A',
+                        color: '#FFFFFF',
+                        fontWeight: 700,
+                        fontSize: '14px',
+                        border: '1px solid #E2E8F0',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {initials}
+                    </Avatar>
+                    <Text fw={700} size="14px" style={{ color: '#0F172A' }}>
+                      {emp.name}
+                    </Text>
+                  </Group>
+                </Table.Td>
+
+                {/* 2. OFFICIAL EMAIL */}
+                <Table.Td style={{ padding: '16px 12px' }}>
+                  <Text
+                    size="13px"
+                    fw={500}
+                    style={{
+                      color: '#4F46E5',
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
+                    {emp.email}
+                  </Text>
+                </Table.Td>
+
+                {/* 3. CONTACT */}
+                <Table.Td style={{ padding: '16px 12px' }}>
+                  <Text size="13px" fw={500} style={{ color: '#334155' }}>
+                    {emp.phone || '—'}
+                  </Text>
+                </Table.Td>
+
+                {/* 4. ROLE */}
+                <Table.Td style={{ padding: '16px 12px' }}>
+                  {emp.role ? (
+                    <Badge
+                      variant="filled"
+                      radius="xl"
+                      size="md"
+                      style={{
+                        backgroundColor: '#EEF2F6',
+                        color: '#475569',
                         fontWeight: 600,
-                        border: `1px solid ${CRM_COLORS.borderLight}`,
-                      }}
-                      mt={3}
-                    >
-                      {emp.employmentType}
-                    </Badge>
-                  </Table.Td>
-
-                  {/* Department */}
-                  <Table.Td>
-                    <Badge
-                      size="xs"
-                      radius="100px"
-                      style={{
-                        background: CRM_COLORS.pastelPurple,
-                        color: CRM_COLORS.pastelPurpleText,
-                        fontWeight: 700,
+                        fontSize: '12px',
+                        textTransform: 'none',
+                        padding: '4px 12px',
+                        boxShadow: 'none',
+                        border: '1px solid #E2E8F0',
                       }}
                     >
-                      {emp.department}
+                      {emp.role}
                     </Badge>
-                  </Table.Td>
-
-                  {/* Location */}
-                  <Table.Td>
-                    <Group gap={4}>
-                      <IconMapPin size={13} color={CRM_COLORS.textMuted} />
-                      <Text size="xs" style={{ color: CRM_COLORS.textPrimary }}>
-                        {emp.workLocation}
-                      </Text>
-                    </Group>
-                  </Table.Td>
-
-                  {/* Status Switcher */}
-                  <Table.Td>
-                    <Badge
-                      size="sm"
-                      radius="100px"
-                      leftSection={statusInfo.icon}
-                      style={{
-                        background: statusInfo.bg,
-                        color: statusInfo.color,
-                        fontWeight: 700,
-                      }}
-                    >
-                      {statusInfo.label}
-                    </Badge>
-                  </Table.Td>
-
-                  {/* Experience */}
-                  <Table.Td>
-                    <Text size="xs" fw={700} style={{ color: CRM_COLORS.textPrimary }}>
-                      {emp.experienceYears} yrs
+                  ) : (
+                    <Text size="13px" c="dimmed">
+                      —
                     </Text>
-                    <Text size="11px" c="dimmed">
-                      Joined: {emp.joiningDate}
-                    </Text>
-                  </Table.Td>
+                  )}
+                </Table.Td>
 
-                  {/* Current Project */}
-                  <Table.Td>
-                    <Text size="xs" fw={600} style={{ color: emp.currentProject ? CRM_COLORS.textPrimary : CRM_COLORS.textMuted }}>
-                      {emp.currentProject || '🛋️ Bench'}
-                    </Text>
-                  </Table.Td>
+                {/* 5. EMP ID */}
+                <Table.Td style={{ padding: '16px 12px' }}>
+                  <Text size="13px" fw={500} style={{ color: '#334155', letterSpacing: '0.02em' }}>
+                    {emp.empCode}
+                  </Text>
+                </Table.Td>
 
-                  {/* Rating */}
-                  <Table.Td>
-                    <Group gap={3}>
-                      <IconStar size={13} color="#F59E0B" fill="#F59E0B" />
-                      <Text size="xs" fw={700} style={{ color: CRM_COLORS.textPrimary }}>
-                        {emp.rating}
-                      </Text>
-                    </Group>
-                  </Table.Td>
+                {/* 6. STATUS */}
+                <Table.Td style={{ padding: '16px 12px' }}>
+                  <Badge
+                    variant="outline"
+                    radius="xl"
+                    size="md"
+                    leftSection={
+                      <Box
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          backgroundColor: statusConfig.dot,
+                          marginRight: 4,
+                        }}
+                      />
+                    }
+                    style={{
+                      backgroundColor: statusConfig.bg,
+                      color: statusConfig.color,
+                      borderColor: statusConfig.border,
+                      fontWeight: 700,
+                      fontSize: '11px',
+                      letterSpacing: '0.04em',
+                      padding: '4px 10px',
+                    }}
+                  >
+                    {statusConfig.label}
+                  </Badge>
+                </Table.Td>
 
-                  {/* Actions */}
-                  <Table.Td style={{ textAlign: 'right' }}>
-                    <Group gap={4} justify="flex-end">
-                      <Button
-                        size="xs"
-                        variant="subtle"
-                        radius="100px"
-                        leftSection={<IconEye size={13} />}
+                {/* 7. JOINING */}
+                <Table.Td style={{ padding: '16px 12px' }}>
+                  <Text size="13px" fw={500} style={{ color: '#475569' }}>
+                    {formatJoiningDate(emp.joiningDate)}
+                  </Text>
+                </Table.Td>
+
+                {/* 8. ACTIONS */}
+                <Table.Td style={{ padding: '16px 12px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                  <Menu shadow="md" position="bottom-end" radius="md">
+                    <Menu.Target>
+                      <ActionIcon variant="subtle" color="gray" size="sm" radius="md">
+                        <IconDotsVertical size={16} color="#94A3B8" />
+                      </ActionIcon>
+                    </Menu.Target>
+                    <Menu.Dropdown p="xs">
+                      <Menu.Item
+                        leftSection={<IconEye size={14} />}
                         onClick={() => onViewDetails(emp)}
-                        style={{ fontWeight: 600 }}
                       >
-                        Profile
-                      </Button>
-                      <Tooltip label="Edit Details">
-                        <ActionIcon
-                          variant="subtle"
-                          color="gray"
-                          size="sm"
-                          radius="100px"
-                          onClick={() => onEdit(emp)}
-                        >
-                          <IconEdit size={15} />
-                        </ActionIcon>
-                      </Tooltip>
-                      <Menu shadow="lg" position="bottom-end" radius="16px">
-                        <Menu.Target>
-                          <ActionIcon variant="subtle" color="gray" size="sm" radius="100px">
-                            <IconDotsVertical size={15} />
-                          </ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown p="xs">
-                          <Menu.Label>Change Status</Menu.Label>
-                          <Menu.Item
-                            leftSection={<IconCheck size={14} color="teal" />}
-                            onClick={() => onStatusChange(emp.id, 'ACTIVE')}
-                          >
-                            Mark Active
-                          </Menu.Item>
-                          <Menu.Item
-                            leftSection={<IconClock size={14} color="orange" />}
-                            onClick={() => onStatusChange(emp.id, 'PROBATION')}
-                          >
-                            Mark Probation
-                          </Menu.Item>
-                          <Menu.Item
-                            leftSection={<IconBeach size={14} color="blue" />}
-                            onClick={() => onStatusChange(emp.id, 'ON_LEAVE')}
-                          >
-                            Mark On Leave
-                          </Menu.Item>
-                          <Menu.Item
-                            leftSection={<IconAlertTriangle size={14} color="red" />}
-                            onClick={() => onStatusChange(emp.id, 'NOTICE_PERIOD')}
-                          >
-                            Mark Notice Period
-                          </Menu.Item>
-                          <Menu.Divider />
-                          <Menu.Item
-                            color="red"
-                            leftSection={<IconTrash size={14} />}
-                            onClick={() => onDelete(emp.id)}
-                          >
-                            Delete
-                          </Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              );
-            })}
-          </Table.Tbody>
-        </Table>
-      </Table.ScrollContainer>
-    </Paper>
+                        View Details
+                      </Menu.Item>
+                      <Menu.Item
+                        leftSection={<IconEdit size={14} />}
+                        onClick={() => onEdit(emp)}
+                      >
+                        Edit Employee
+                      </Menu.Item>
+                      <Menu.Divider />
+                      <Menu.Label>Change Status</Menu.Label>
+                      <Menu.Item
+                        leftSection={<IconCheck size={14} color="teal" />}
+                        onClick={() => onStatusChange(emp.id, 'Active')}
+                      >
+                        Mark Active
+                      </Menu.Item>
+                      <Menu.Item
+                        leftSection={<IconAlertTriangle size={14} color="red" />}
+                        onClick={() => onStatusChange(emp.id, 'Inactive')}
+                      >
+                        Mark Inactive
+                      </Menu.Item>
+                      <Menu.Divider />
+                      <Menu.Item
+                        color="red"
+                        leftSection={<IconTrash size={14} />}
+                        onClick={() => onDelete(emp.id)}
+                      >
+                        Delete
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
+                </Table.Td>
+              </Table.Tr>
+            );
+          })}
+        </Table.Tbody>
+      </Table>
+    </Box>
   );
 };
