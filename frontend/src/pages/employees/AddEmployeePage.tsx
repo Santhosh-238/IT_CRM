@@ -34,7 +34,6 @@ import {
   IconMapPin,
   IconCalendar,
   IconUsers,
-  IconId,
   IconActivity,
   IconClock,
   IconHome,
@@ -496,29 +495,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                       styles={normalInputStyles}
                     />
 
-                    {/* 2. Employee ID (Auto-Generated, Non-Editable) */}
-                    <TextInput
-                      label="Employee ID"
-                      placeholder="EMP-1001"
-                      readOnly
-                      autoComplete="off"
-                      leftSection={<IconId size={16} color="#64748B" />}
-                      value={formData.empCode}
-                      styles={{
-                        ...normalInputStyles,
-                        input: {
-                          ...normalInputStyles.input,
-                          backgroundColor: '#F8FAFC',
-                          color: '#334155',
-                          fontWeight: 700,
-                          letterSpacing: '0.04em',
-                          cursor: 'not-allowed',
-                          border: '1px solid #CBD5E1',
-                        },
-                      }}
-                    />
-
-                    {/* 3. Phone Number */}
+                    {/* 2. Phone Number */}
                     <TextInput
                       label="Phone Number"
                       placeholder="10-digit mobile number"
