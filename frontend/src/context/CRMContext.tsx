@@ -24,6 +24,10 @@ interface CRMContextType {
   globalSearch: string;
   setGlobalSearch: (term: string) => void;
 
+  // Sidebar mobile toggle
+  sidebarMobileOpened: boolean;
+  setSidebarMobileOpened: (opened: boolean) => void;
+
   // Clear Database & Storage
   clearDatabase: () => Promise<void>;
 }
@@ -193,6 +197,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const [sidebarMobileOpened, setSidebarMobileOpened] = useState<boolean>(false);
+
   // User Logout: Clears HttpOnly Cookie & Session
   const logoutUser = async () => {
     try {
@@ -222,9 +228,14 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setCurrentUserRole,
         logoutUser,
         activeNav,
-        setActiveNav,
+        setActiveNav: (nav: string) => {
+          setSidebarMobileOpened(false);
+          setActiveNav(nav);
+        },
         globalSearch,
         setGlobalSearch,
+        sidebarMobileOpened,
+        setSidebarMobileOpened,
         clearDatabase,
       }}
     >

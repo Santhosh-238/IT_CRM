@@ -11,6 +11,7 @@ import {
   Box,
   Tooltip,
   Kbd,
+  Burger,
 } from '@mantine/core';
 import {
   IconSearch,
@@ -21,6 +22,8 @@ import {
   IconUserPlus,
   IconLogin,
   IconChevronDown,
+  IconMenu2,
+  IconX,
 } from '@tabler/icons-react';
 import { useCRM } from '../../context/CRMContext';
 import { CRM_COLORS } from '../../theme/colors';
@@ -32,7 +35,7 @@ export const Header: React.FC<HeaderProps> = () => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
 
-  const { currentUser, setActiveNav, globalSearch, setGlobalSearch, logoutUser } = useCRM();
+  const { currentUser, setActiveNav, globalSearch, setGlobalSearch, logoutUser, sidebarMobileOpened, setSidebarMobileOpened } = useCRM();
 
   const pillBg = isDark ? '#1E293B' : '#F5F8FA';
   const pillBorder = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.08)';
@@ -48,7 +51,7 @@ export const Header: React.FC<HeaderProps> = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '0 24px',
+        padding: '0 20px',
         position: 'sticky',
         top: 0,
         zIndex: 100,
@@ -56,31 +59,41 @@ export const Header: React.FC<HeaderProps> = () => {
         boxSizing: 'border-box',
       }}
     >
-      {/* 1. Left: Search Bar */}
-      <Group gap="md" style={{ flex: 1, maxWidth: 440 }}>
+      {/* 1. Left: Mobile Burger + Search Bar with fixed max-width */}
+      <Group gap="sm" style={{ flex: 1, maxWidth: 380 }} wrap="nowrap" align="center">
+        <Burger
+          opened={sidebarMobileOpened}
+          onClick={() => setSidebarMobileOpened(!sidebarMobileOpened)}
+          hiddenFrom="md"
+          size="sm"
+          color={textColor}
+          aria-label="Toggle navigation"
+        />
         <TextInput
-          placeholder="Search employees, skills, department..."
+          placeholder="Search..."
           leftSection={<IconSearch size={16} stroke={2} color={iconColor} />}
           rightSection={
-            <Group gap={4} pr={4}>
-              <Kbd size="xs" style={{ background: isDark ? '#0F172A' : '#E2ECF2', border: 'none', color: iconColor, fontWeight: 700 }}>
-                ⌘
-              </Kbd>
-              <ActionIcon size="xs" variant="subtle" color="gray">
-                <IconMicrophone size={14} color={iconColor} />
+            globalSearch ? (
+              <ActionIcon
+                size="xs"
+                variant="subtle"
+                color="gray"
+                onClick={() => setGlobalSearch('')}
+              >
+                <IconX size={13} />
               </ActionIcon>
-            </Group>
+            ) : null
           }
           value={globalSearch}
           onChange={(e) => setGlobalSearch(e.currentTarget.value)}
-          style={{ width: '100%' }}
+          style={{ flex: 1, minWidth: 120 }}
           radius="100px"
           variant="unstyled"
           styles={{
             input: {
               background: pillBg,
-              paddingLeft: 38,
-              paddingRight: 60,
+              paddingLeft: 36,
+              paddingRight: 16,
               height: 38,
               borderRadius: 100,
               fontSize: 13,
@@ -93,9 +106,9 @@ export const Header: React.FC<HeaderProps> = () => {
       </Group>
 
       {/* 2. Right: Dark/Light, User Avatar Menu */}
-      <Group gap="sm">
+      <Group gap="xs" wrap="nowrap">
         {/* Dark / Light Toggle */}
-        <Tooltip label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+        <Tooltip label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'} withArrow position="bottom">
           <ActionIcon
             variant="subtle"
             size="md"
@@ -105,7 +118,13 @@ export const Header: React.FC<HeaderProps> = () => {
               color: isDark ? '#F59E0B' : '#0F172A',
               border: `1px solid ${pillBorder}`,
             }}
-            onClick={() => setColorScheme(isDark ? 'light' : 'dark')}
+            onClick={() => {
+              const nextScheme = isDark ? 'light' : 'dark';
+              setColorScheme(nextScheme);
+              try {
+                localStorage.setItem('crm_user_explicit_theme', 'true');
+              } catch (e) {}
+            }}
           >
             {isDark ? <IconSun size={16} stroke={1.8} /> : <IconMoon size={16} stroke={1.8} />}
           </ActionIcon>
@@ -117,7 +136,7 @@ export const Header: React.FC<HeaderProps> = () => {
             <Group
               gap="xs"
               p={3}
-              pr="sm"
+              pr={{ base: 3, sm: 'sm' }}
               style={{
                 background: pillBg,
                 borderRadius: 100,
@@ -130,10 +149,12 @@ export const Header: React.FC<HeaderProps> = () => {
               <Avatar src={currentUser.avatar || undefined} radius="100px" size="sm" color="blue">
                 {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
               </Avatar>
-              <Text size="xs" fw={700} style={{ color: textColor }}>
+              <Text size="xs" fw={700} visibleFrom="sm" style={{ color: textColor }}>
                 {currentUser.name || 'Account'}
               </Text>
-              <IconChevronDown size={14} color={iconColor} />
+              <Box visibleFrom="sm">
+                <IconChevronDown size={14} color={iconColor} />
+              </Box>
             </Group>
           </Menu.Target>
           <Menu.Dropdown p="xs">

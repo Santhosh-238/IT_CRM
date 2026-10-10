@@ -63,10 +63,19 @@ export function buildContactFilterQuery(queryParams = {}) {
           { assignmentStatus: 'Unassigned' },
           { assignmentStatus: null },
           { assignedTo: null },
+          { assignedTo: '' },
+          { assignedTo: 'none' },
         ],
       });
-    } else {
-      andConditions.push({ assignmentStatus });
+    } else if (assignmentStatus === 'Assigned') {
+      andConditions.push({
+        AND: [
+          { assignmentStatus: 'Assigned' },
+          { assignedTo: { not: null } },
+          { assignedTo: { not: '' } },
+          { assignedTo: { not: 'none' } },
+        ],
+      });
     }
   }
 

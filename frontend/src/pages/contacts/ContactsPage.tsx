@@ -12,6 +12,8 @@ import {
   useComputedColorScheme,
   ActionIcon,
   UnstyledButton,
+  ThemeIcon,
+  Badge,
 } from '@mantine/core';
 import {
   IconSearch,
@@ -26,8 +28,10 @@ import { useContact } from '../../context/ContactContext';
 import { Contact } from '../../types/contact';
 import { ContactTableView } from './components/ContactTableView';
 import { ContactModal } from './components/ContactModal';
+import { ContactDrawer } from './components/ContactDrawer';
+import { CRM_COLORS } from '../../theme/colors';
 
-type ActiveTabType = 'NEW' | 'ASSIGNED' | 'ALL';
+type ActiveTabType = 'NEW' | 'ASSIGNED';
 
 export const ContactsPage: React.FC = () => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
@@ -49,11 +53,11 @@ export const ContactsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTabType>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('crm_contacts_tab') as ActiveTabType;
-      if (saved === 'NEW' || saved === 'ASSIGNED' || saved === 'ALL') {
+      if (saved === 'NEW' || saved === 'ASSIGNED') {
         return saved;
       }
     }
-    return 'ALL';
+    return 'NEW';
   });
 
   const [deleteTarget, setDeleteTarget] = useState<Contact | null>(null);
@@ -63,16 +67,18 @@ export const ContactsPage: React.FC = () => {
   const [contactModalOpened, setContactModalOpened] = useState<boolean>(false);
   const [modalContact, setModalContact] = useState<Contact | null>(null);
 
+  // Drawer State for Contact Details View
+  const [drawerContact, setDrawerContact] = useState<Contact | null>(null);
+  const [drawerOpened, setDrawerOpened] = useState<boolean>(false);
+
   const [searchInput, setSearchInput] = useState<string>(filters.search || '');
 
   // Keep filters in sync on initial mount and tab switch
   useEffect(() => {
     if (activeTab === 'NEW') {
-      setFilters({ assignmentStatus: 'Unassigned', assignedTo: 'All' });
+      setFilters({ assignmentStatus: 'Unassigned', status: 'All', assignedTo: 'All' });
     } else if (activeTab === 'ASSIGNED') {
-      setFilters({ assignmentStatus: 'Assigned', assignedTo: 'All' });
-    } else {
-      setFilters({ assignmentStatus: 'All', assignedTo: 'All' });
+      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: 'All' });
     }
   }, [activeTab]);
 
@@ -87,11 +93,9 @@ export const ContactsPage: React.FC = () => {
       localStorage.setItem('crm_contacts_tab', tab);
     }
     if (tab === 'NEW') {
-      setFilters({ assignmentStatus: 'Unassigned', assignedTo: 'All' });
+      setFilters({ assignmentStatus: 'Unassigned', status: 'All', assignedTo: 'All' });
     } else if (tab === 'ASSIGNED') {
-      setFilters({ assignmentStatus: 'Assigned', assignedTo: 'All' });
-    } else {
-      setFilters({ assignmentStatus: 'All', assignedTo: 'All' });
+      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: 'All' });
     }
   };
 
@@ -103,6 +107,11 @@ export const ContactsPage: React.FC = () => {
   const handleOpenEditModal = (contact: Contact) => {
     setModalContact(contact);
     setContactModalOpened(true);
+  };
+
+  const handleOpenViewDrawer = (contact: Contact) => {
+    setDrawerContact(contact);
+    setDrawerOpened(true);
   };
 
   const handleConfirmDelete = async () => {
@@ -157,8 +166,8 @@ export const ContactsPage: React.FC = () => {
   ];
 
   const totalCount = stats?.total ?? contacts.length;
+  const newCount = stats?.unassigned ?? stats?.new ?? 0;
   const assignedCount = stats?.assigned ?? 0;
-  const newCount = stats?.unassigned ?? stats?.new ?? Math.max(0, totalCount - assignedCount);
 
   const startRecord = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
@@ -167,7 +176,7 @@ export const ContactsPage: React.FC = () => {
     <Box p={{ base: 'md', md: 'lg' }} style={{ maxWidth: 1520, margin: '0 auto' }}>
       {/* 1. Header Toolbar */}
       <Paper
-        p="md"
+        p="sm"
         radius="lg"
         style={{
           backgroundColor: isDark ? '#111827' : '#FFFFFF',
@@ -175,75 +184,18 @@ export const ContactsPage: React.FC = () => {
           boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
         }}
       >
-        <Group justify="space-between" align="center" wrap="wrap" gap="md">
-          {/* Left: Tab Pills (All / New / Assigned) */}
-          <Group gap={6}>
-            {/* Tab: All */}
-            <UnstyledButton
-              onClick={() => handleTabChange('ALL')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '7px 14px',
-                borderRadius: '8px',
-                backgroundColor:
-                  activeTab === 'ALL'
-                    ? isDark
-                      ? '#3B82F6'
-                      : '#0F172A'
-                    : isDark
-                    ? '#1E293B'
-                    : '#F1F5F9',
-                border:
-                  activeTab === 'ALL'
-                    ? isDark
-                      ? '1px solid #3B82F6'
-                      : '1px solid #0F172A'
-                    : isDark
-                    ? '1px solid rgba(255, 255, 255, 0.08)'
-                    : '1px solid #E2E8F0',
-                color:
-                  activeTab === 'ALL'
-                    ? '#FFFFFF'
-                    : isDark
-                    ? '#94A3B8'
-                    : '#475569',
-                fontWeight: 600,
-                fontSize: 13,
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span>All</span>
-              <Box
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minWidth: 20,
-                  height: 20,
-                  padding: '0 6px',
-                  borderRadius: '10px',
-                  fontSize: 11,
-                  fontWeight: 700,
-                  backgroundColor:
-                    activeTab === 'ALL'
-                      ? 'rgba(255, 255, 255, 0.22)'
-                      : isDark
-                      ? 'rgba(255, 255, 255, 0.1)'
-                      : '#E2E8F0',
-                  color:
-                    activeTab === 'ALL'
-                      ? '#FFFFFF'
-                      : isDark
-                      ? '#CBD5E1'
-                      : '#475569',
-                }}
-              >
-                {totalCount}
-              </Box>
-            </UnstyledButton>
-
+        <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+          {/* Left: Modern Capsule Segmented Tabs */}
+          <Box
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+              padding: 3,
+              borderRadius: 10,
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #E2E8F0',
+            }}
+          >
             {/* Tab: New */}
             <UnstyledButton
               onClick={() => handleTabChange('NEW')}
@@ -251,31 +203,29 @@ export const ContactsPage: React.FC = () => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                padding: '7px 14px',
-                borderRadius: '8px',
+                padding: '6px 14px',
+                borderRadius: 8,
                 backgroundColor:
                   activeTab === 'NEW'
                     ? isDark
-                      ? '#3B82F6'
-                      : '#0F172A'
-                    : isDark
-                    ? '#1E293B'
-                    : '#F1F5F9',
-                border:
+                      ? '#0F172A'
+                      : '#FFFFFF'
+                    : 'transparent',
+                boxShadow:
                   activeTab === 'NEW'
                     ? isDark
-                      ? '1px solid #3B82F6'
-                      : '1px solid #0F172A'
-                    : isDark
-                    ? '1px solid rgba(255, 255, 255, 0.08)'
-                    : '1px solid #E2E8F0',
+                      ? '0 1px 3px rgba(0, 0, 0, 0.4)'
+                      : '0 1px 3px rgba(0, 0, 0, 0.08)'
+                    : 'none',
                 color:
                   activeTab === 'NEW'
-                    ? '#FFFFFF'
+                    ? isDark
+                      ? '#818CF8'
+                      : '#4F46E5'
                     : isDark
                     ? '#94A3B8'
-                    : '#475569',
-                fontWeight: 600,
+                    : '#64748B',
+                fontWeight: activeTab === 'NEW' ? 700 : 500,
                 fontSize: 13,
                 transition: 'all 0.15s ease',
               }}
@@ -289,12 +239,12 @@ export const ContactsPage: React.FC = () => {
                   minWidth: 20,
                   height: 20,
                   padding: '0 6px',
-                  borderRadius: '10px',
+                  borderRadius: 10,
                   fontSize: 11,
                   fontWeight: 700,
                   backgroundColor:
                     activeTab === 'NEW'
-                      ? 'rgba(255, 255, 255, 0.22)'
+                      ? '#4F46E5'
                       : isDark
                       ? 'rgba(255, 255, 255, 0.1)'
                       : '#E2E8F0',
@@ -303,7 +253,7 @@ export const ContactsPage: React.FC = () => {
                       ? '#FFFFFF'
                       : isDark
                       ? '#CBD5E1'
-                      : '#475569',
+                      : '#64748B',
                 }}
               >
                 {newCount}
@@ -317,31 +267,29 @@ export const ContactsPage: React.FC = () => {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                padding: '7px 14px',
-                borderRadius: '8px',
+                padding: '6px 14px',
+                borderRadius: 8,
                 backgroundColor:
                   activeTab === 'ASSIGNED'
                     ? isDark
-                      ? '#3B82F6'
-                      : '#0F172A'
-                    : isDark
-                    ? '#1E293B'
-                    : '#F1F5F9',
-                border:
+                      ? '#0F172A'
+                      : '#FFFFFF'
+                    : 'transparent',
+                boxShadow:
                   activeTab === 'ASSIGNED'
                     ? isDark
-                      ? '1px solid #3B82F6'
-                      : '1px solid #0F172A'
-                    : isDark
-                    ? '1px solid rgba(255, 255, 255, 0.08)'
-                    : '1px solid #E2E8F0',
+                      ? '0 1px 3px rgba(0, 0, 0, 0.4)'
+                      : '0 1px 3px rgba(0, 0, 0, 0.08)'
+                    : 'none',
                 color:
                   activeTab === 'ASSIGNED'
-                    ? '#FFFFFF'
+                    ? isDark
+                      ? '#60A5FA'
+                      : '#2563EB'
                     : isDark
                     ? '#94A3B8'
-                    : '#475569',
-                fontWeight: 600,
+                    : '#64748B',
+                fontWeight: activeTab === 'ASSIGNED' ? 700 : 500,
                 fontSize: 13,
                 transition: 'all 0.15s ease',
               }}
@@ -355,12 +303,12 @@ export const ContactsPage: React.FC = () => {
                   minWidth: 20,
                   height: 20,
                   padding: '0 6px',
-                  borderRadius: '10px',
+                  borderRadius: 10,
                   fontSize: 11,
                   fontWeight: 700,
                   backgroundColor:
                     activeTab === 'ASSIGNED'
-                      ? 'rgba(255, 255, 255, 0.22)'
+                      ? '#2563EB'
                       : isDark
                       ? 'rgba(255, 255, 255, 0.1)'
                       : '#E2E8F0',
@@ -369,18 +317,18 @@ export const ContactsPage: React.FC = () => {
                       ? '#FFFFFF'
                       : isDark
                       ? '#CBD5E1'
-                      : '#475569',
+                      : '#64748B',
                 }}
               >
                 {assignedCount}
               </Box>
             </UnstyledButton>
-          </Group>
+          </Box>
 
-          {/* Right: Search, Dropdowns, Add Contact */}
-          <Group gap="sm" wrap="wrap" align="center">
+          {/* Right: Search, Filter Selects & Add Button */}
+          <Group gap="xs" align="center" wrap="wrap" style={{ flex: 1, justifyContent: 'flex-end' }}>
             {/* Search contacts... */}
-            <form onSubmit={handleSearchSubmit}>
+            <form onSubmit={handleSearchSubmit} style={{ flex: '1 1 180px', maxWidth: 220, minWidth: 150 }}>
               <TextInput
                 placeholder="Search contacts..."
                 leftSection={<IconSearch size={15} color={isDark ? '#94A3B8' : '#94A3B8'} />}
@@ -403,12 +351,12 @@ export const ContactsPage: React.FC = () => {
                 onBlur={() => setFilters({ search: searchInput })}
                 size="sm"
                 radius="md"
-                style={{ width: 190 }}
                 styles={{
                   input: {
-                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
                     borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
                     fontSize: 13,
+                    height: 36,
                   },
                 }}
               />
@@ -421,12 +369,13 @@ export const ContactsPage: React.FC = () => {
               onChange={(val) => setFilters({ status: val || 'All' })}
               size="sm"
               radius="md"
-              style={{ width: 150 }}
+              style={{ width: 135 }}
               styles={{
                 input: {
-                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
                   borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
                   fontSize: 13,
+                  height: 36,
                 },
               }}
             />
@@ -441,9 +390,10 @@ export const ContactsPage: React.FC = () => {
               style={{ width: 130 }}
               styles={{
                 input: {
-                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
                   borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
                   fontSize: 13,
+                  height: 36,
                 },
               }}
             />
@@ -472,9 +422,10 @@ export const ContactsPage: React.FC = () => {
               style={{ width: 140 }}
               styles={{
                 input: {
-                  backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
                   borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
                   fontSize: 13,
+                  height: 36,
                 },
               }}
             />
@@ -486,11 +437,14 @@ export const ContactsPage: React.FC = () => {
               leftSection={<IconPlus size={15} stroke={2.5} />}
               onClick={handleOpenAddModal}
               style={{
-                backgroundColor: isDark ? '#3B82F6' : '#0F172A',
+                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
                 color: '#FFFFFF',
                 fontWeight: 600,
                 fontSize: 13,
-                boxShadow: isDark ? '0 2px 10px rgba(59, 130, 246, 0.3)' : '0 2px 8px rgba(15, 23, 42, 0.15)',
+                height: 36,
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)',
+                transition: 'all 0.15s ease',
               }}
             >
               Add Contact
@@ -503,7 +457,7 @@ export const ContactsPage: React.FC = () => {
       <ContactTableView
         contacts={contacts}
         loading={loading}
-        onView={(contact) => handleOpenEditModal(contact)}
+        onView={handleOpenViewDrawer}
         onEdit={(contact) => handleOpenEditModal(contact)}
         onDelete={(contact) => setDeleteTarget(contact)}
         onAddNew={handleOpenAddModal}
@@ -584,7 +538,25 @@ export const ContactsPage: React.FC = () => {
         </Group>
       </Paper>
 
-      {/* 4. Modal Popup for Add / Edit Contact */}
+      {/* 4. Drawer for Contact Quick View */}
+      <ContactDrawer
+        opened={drawerOpened}
+        onClose={() => {
+          setDrawerOpened(false);
+          setDrawerContact(null);
+        }}
+        contact={drawerContact}
+        onEdit={(contact) => {
+          setDrawerOpened(false);
+          handleOpenEditModal(contact);
+        }}
+        onDelete={(contact) => {
+          setDrawerOpened(false);
+          setDeleteTarget(contact);
+        }}
+      />
+
+      {/* 5. Modal Popup for Add / Edit Contact */}
       <ContactModal
         opened={contactModalOpened}
         onClose={() => {
@@ -597,54 +569,113 @@ export const ContactsPage: React.FC = () => {
         }}
       />
 
-      {/* 5. Delete Confirmation Dialog */}
+      {/* 5. Modern Delete Confirmation Dialog */}
       <Modal
         opened={Boolean(deleteTarget)}
         onClose={() => setDeleteTarget(null)}
-        title={
-          <Group gap="xs">
-            <IconAlertTriangle color="#EF4444" size={20} />
-            <Text fw={700} size="md" c="red">
-              Delete Contact
-            </Text>
-          </Group>
-        }
         centered
         radius="lg"
         padding="lg"
+        withCloseButton={false}
         styles={{
-          header: {
-            background: isDark ? '#111827' : '#FFFFFF',
+          content: {
+            backgroundColor: isDark ? '#111827' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
+            boxShadow: isDark
+              ? '0 20px 45px -10px rgba(0, 0, 0, 0.6)'
+              : '0 20px 45px -10px rgba(0, 0, 0, 0.12)',
+            borderRadius: 16,
           },
           body: {
-            background: isDark ? '#111827' : '#FFFFFF',
+            padding: 24,
           },
         }}
       >
         <Stack gap="md">
-          <Text size="sm" style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
-            Are you sure you want to delete contact{' '}
-            <Text span fw={700} c="red">
-              {deleteTarget?.name} ({deleteTarget?.contactId})
-            </Text>
-            ? This action cannot be undone.
-          </Text>
+          <Group align="flex-start" wrap="nowrap" gap="md">
+            <ThemeIcon
+              size={44}
+              radius="xl"
+              style={{
+                backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                color: '#EF4444',
+                flexShrink: 0,
+              }}
+            >
+              <IconAlertTriangle size={22} stroke={2} />
+            </ThemeIcon>
 
-          <Group justify="flex-end" gap="sm" mt="sm">
+            <Box style={{ flex: 1 }}>
+              <Text fw={700} size="md" style={{ color: isDark ? '#F8FAFC' : '#0F172A', lineHeight: 1.3 }}>
+                Delete Contact
+              </Text>
+              <Text size="sm" mt={4} style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                Are you sure you want to delete this contact? This action cannot be undone.
+              </Text>
+            </Box>
+          </Group>
+
+          {/* Contact Details Highlight Card */}
+          {deleteTarget && (
+            <Paper
+              p="sm"
+              radius="md"
+              style={{
+                backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              }}
+            >
+              <Group justify="space-between" align="center" wrap="nowrap">
+                <Box style={{ minWidth: 0 }}>
+                  <Text fw={600} size="sm" truncate style={{ color: isDark ? '#F8FAFC' : '#1E293B' }}>
+                    {deleteTarget.name}
+                  </Text>
+                  {deleteTarget.email && (
+                    <Text size="xs" truncate style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                      {deleteTarget.email}
+                    </Text>
+                  )}
+                </Box>
+                <Badge
+                  variant="light"
+                  color="red"
+                  radius="sm"
+                  size="sm"
+                  style={{ fontWeight: 600, flexShrink: 0 }}
+                >
+                  {deleteTarget.contactId}
+                </Badge>
+              </Group>
+            </Paper>
+          )}
+
+          <Group justify="flex-end" gap="sm" mt="xs">
             <Button
               variant="default"
               radius="md"
+              size="sm"
               onClick={() => setDeleteTarget(null)}
               disabled={deleteLoading}
+              style={{
+                borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#CBD5E1',
+                color: isDark ? '#CBD5E1' : '#475569',
+                fontWeight: 600,
+              }}
             >
               Cancel
             </Button>
             <Button
               color="red"
               radius="md"
+              size="sm"
               loading={deleteLoading}
               onClick={handleConfirmDelete}
-              leftSection={<IconTrash size={15} />}
+              leftSection={<IconTrash size={15} stroke={2} />}
+              style={{
+                background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                fontWeight: 600,
+              }}
             >
               Confirm Delete
             </Button>

@@ -54,7 +54,7 @@ export async function getContactsService(queryParams = {}) {
 export async function getContactByIdService(id) {
   const contact = await prisma.contact.findFirst({
     where: {
-      OR: [{ id }, { contactId: id }, { uuid: id }],
+      OR: [{ id }, { contactId: id }],
     },
   });
 
@@ -71,7 +71,7 @@ export async function getContactByIdService(id) {
  * 3. Get Contact KPI Stats
  */
 export async function getContactStatsService() {
-  const [total, assigned, qualified, won, unassigned, active, disqualified, highPriority] = await Promise.all([
+  const [total, assigned, qualified, won, unassigned, active, disqualified, highPriority, newCount] = await Promise.all([
     prisma.contact.count(),
     prisma.contact.count({
       where: {
@@ -87,12 +87,25 @@ export async function getContactStatsService() {
           { assignmentStatus: 'Unassigned' },
           { assignmentStatus: null },
           { assignedTo: null },
+          { assignedTo: '' },
+          { assignedTo: 'none' },
         ],
       },
     }),
     prisma.contact.count({ where: { status: 'Active' } }),
     prisma.contact.count({ where: { qualificationStatus: 'Disqualified' } }),
     prisma.contact.count({ where: { priority: 'High' } }),
+    prisma.contact.count({
+      where: {
+        OR: [
+          { assignmentStatus: 'Unassigned' },
+          { assignmentStatus: null },
+          { assignedTo: null },
+          { assignedTo: '' },
+          { assignedTo: 'none' },
+        ],
+      },
+    }),
   ]);
 
   return {
@@ -114,18 +127,12 @@ export async function getContactStatsService() {
  * 4. Get Contact Dropdown Metadata
  */
 export async function getContactMetadataService() {
-  const [employees, companies] = await Promise.all([
-    prisma.employee.findMany({
-      select: { id: true, name: true, empCode: true, department: true, designation: true },
-    }),
-    prisma.company.findMany({
-      select: { id: true, name: true },
-    }).catch(() => []),
-  ]);
+  const employees = await prisma.employee.findMany({
+    select: { id: true, name: true, empCode: true, department: true, designation: true },
+  });
 
   const metadata = {
     employees,
-    companies,
     stages: CONTACT_MODULE.stages,
     statuses: CONTACT_MODULE.statuses,
     sources: CONTACT_MODULE.sources,
@@ -156,19 +163,15 @@ export async function createContactService(body, user) {
     companyName,
     designation,
     profession,
-    annualRevenue,
     category = 'Product',
     productList = [],
     serviceList = [],
     customProduct,
-    contactMode = 'Call',
-    customContactMode,
-    meetingType = 'Virtual',
     nextFollowDate,
     remarks,
     notes,
     status = 'New',
-    stage = 'New Lead',
+    stage = 'Initialization',
     qualificationStatus = 'In Progress',
     priority = 'Medium',
     assignedTo,
@@ -198,7 +201,7 @@ export async function createContactService(body, user) {
 
   let assignedToName = null;
   let assignmentStatus = 'Unassigned';
-  if (assignedTo && assignedTo !== 'none') {
+  if (assignedTo && assignedTo !== 'none' && assignedTo !== 'Unassigned' && assignedTo !== 'null' && String(assignedTo).trim() !== '') {
     const emp = await prisma.employee.findFirst({
       where: { OR: [{ id: assignedTo }, { empCode: assignedTo }] },
     });
@@ -211,7 +214,6 @@ export async function createContactService(body, user) {
   const newContact = await prisma.contact.create({
     data: {
       contactId,
-      uuid: crypto.randomUUID(),
       name: name.trim(),
       email: email ? email.toLowerCase().trim() : null,
       phone: phoneDigits,
@@ -222,14 +224,10 @@ export async function createContactService(body, user) {
       companyName: companyName ? companyName.trim() : null,
       designation: designation || null,
       profession: profession || null,
-      annualRevenue: annualRevenue || null,
       category,
       productList: Array.isArray(productList) ? productList : [],
       serviceList: Array.isArray(serviceList) ? serviceList : [],
       customProduct: customProduct || null,
-      contactMode,
-      customContactMode: customContactMode || null,
-      meetingType,
       nextFollowDate: nextFollowDate || null,
       remarks: remarks || null,
       notes: notes || null,
@@ -237,11 +235,9 @@ export async function createContactService(body, user) {
       stage: stage || 'Initialization',
       qualificationStatus: qualificationStatus || 'In Progress',
       priority: priority || 'Medium',
-      assignedTo: assignedTo && assignedTo !== 'none' ? assignedTo : null,
+      assignedTo: assignedToName ? assignedTo : null,
       assignedToName,
       assignmentStatus,
-      assignedAt: assignedToName ? new Date() : null,
-      createdBy: user?.name || 'System Admin',
     },
   });
 
@@ -262,7 +258,7 @@ export async function createContactService(body, user) {
  */
 export async function updateContactService(id, body, user) {
   const existing = await prisma.contact.findFirst({
-    where: { OR: [{ id }, { contactId: id }, { uuid: id }] },
+    where: { OR: [{ id }, { contactId: id }] },
   });
 
   if (!existing) {
@@ -294,20 +290,17 @@ export async function updateContactService(id, body, user) {
       ...(body.companyName !== undefined && { companyName: body.companyName }),
       ...(body.profession !== undefined && { profession: body.profession }),
       ...(body.designation !== undefined && { designation: body.designation }),
-      ...(body.annualRevenue !== undefined && { annualRevenue: body.annualRevenue }),
       ...(body.category !== undefined && { category: body.category }),
       ...(body.productList !== undefined && { productList: body.productList }),
       ...(body.serviceList !== undefined && { serviceList: body.serviceList }),
       ...(body.customProduct !== undefined && { customProduct: body.customProduct }),
-      ...(body.contactMode !== undefined && { contactMode: body.contactMode }),
-      ...(body.customContactMode !== undefined && { customContactMode: body.customContactMode }),
-      ...(body.meetingType !== undefined && { meetingType: body.meetingType }),
       ...(body.status !== undefined && { status: body.status }),
       ...(body.stage !== undefined && { stage: body.stage }),
       ...(body.qualificationStatus !== undefined && { qualificationStatus: body.qualificationStatus }),
       ...(body.qualifiedBy !== undefined && { qualifiedBy: body.qualifiedBy }),
       ...(body.qualificationDate !== undefined && { qualificationDate: body.qualificationDate }),
       ...(body.priority !== undefined && { priority: body.priority }),
+      ...(body.disqualificationReason !== undefined && { disqualificationReason: body.disqualificationReason }),
       ...(body.notes !== undefined && { notes: body.notes }),
       ...(body.remarks !== undefined && { remarks: body.remarks }),
       ...(body.nextFollowDate !== undefined && { nextFollowDate: body.nextFollowDate }),
@@ -338,7 +331,7 @@ export async function assignContactService(id, body, user) {
   const targetEmpId = employeeId !== undefined ? employeeId : assignedTo;
 
   const existing = await prisma.contact.findFirst({
-    where: { OR: [{ id }, { contactId: id }, { uuid: id }] },
+    where: { OR: [{ id }, { contactId: id }] },
   });
 
   if (!existing) {
@@ -349,7 +342,6 @@ export async function assignContactService(id, body, user) {
 
   let assignedToName = null;
   let assignmentStatus = 'Unassigned';
-  let assignedAt = null;
 
   if (targetEmpId && targetEmpId !== 'Unassigned' && targetEmpId !== 'none') {
     const emp = await prisma.employee.findFirst({

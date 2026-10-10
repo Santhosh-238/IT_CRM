@@ -1,5 +1,4 @@
-import React from 'react';
-import { Box, Container } from '@mantine/core';
+import { Box, Container, Drawer } from '@mantine/core';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { useCRM } from '../../context/CRMContext';
@@ -12,7 +11,7 @@ import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
 import { useContact } from '../../context/ContactContext';
 
 export const AppLayout: React.FC = () => {
-  const { activeNav, setActiveNav } = useCRM();
+  const { activeNav, setActiveNav, sidebarMobileOpened, setSidebarMobileOpened } = useCRM();
   const { selectedContact, deleteContact } = useContact();
   const { isSuperAdmin } = usePermissions();
 
@@ -139,8 +138,25 @@ export const AppLayout: React.FC = () => {
 
   return (
     <Box style={{ display: 'flex', minHeight: '100vh', width: '100%', background: 'transparent' }}>
-      {/* 1. Left Fixed Sidebar (260px width, sticky 100vh) */}
-      <Sidebar onSelectNav={(nav) => setActiveNav(nav)} />
+      {/* 1. Desktop Left Fixed Sidebar (Hidden on Mobile) */}
+      <Box visibleFrom="md" style={{ flexShrink: 0 }}>
+        <Sidebar onSelectNav={(nav) => setActiveNav(nav)} />
+      </Box>
+
+      {/* Mobile Drawer Navigation (Hidden on Desktop) */}
+      <Drawer
+        opened={sidebarMobileOpened}
+        onClose={() => setSidebarMobileOpened(false)}
+        size={280}
+        padding={0}
+        withCloseButton={false}
+        hiddenFrom="md"
+        styles={{
+          body: { height: '100%', padding: 0 },
+        }}
+      >
+        <Sidebar onSelectNav={(nav) => setActiveNav(nav)} isMobile />
+      </Drawer>
 
       {/* 2. Right Main Area */}
       <Box style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -149,7 +165,7 @@ export const AppLayout: React.FC = () => {
 
         {/* Main Content Workspace */}
         <Box style={{ flex: 1, paddingBottom: 40 }}>
-          <Container fluid px="xl" py="lg" style={{ maxWidth: 1600 }}>
+          <Container fluid px={{ base: 'xs', sm: 'md', md: 'xl' }} py="lg" style={{ maxWidth: 1600 }}>
             {renderActiveScreen()}
           </Container>
         </Box>

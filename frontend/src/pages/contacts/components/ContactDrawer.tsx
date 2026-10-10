@@ -287,15 +287,6 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
 
             <div>
               <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Annual Revenue
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.annualRevenue || '—'}
-              </Text>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
                 Company Name
               </Text>
               <Text size="xs" fw={700} style={{ color: valueColor }} mt={2}>
@@ -303,7 +294,7 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
               </Text>
             </div>
 
-            <div>
+            <div style={{ gridColumn: 'span 2' }}>
               <Text size="11px" fw={600} style={{ color: labelColor }}>
                 Designation / Profession
               </Text>
@@ -374,34 +365,14 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
             </Text>
           </Group>
 
-          <SimpleGrid cols={2} spacing="xs">
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Contact Mode
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.contactMode === 'Other' && contact.customContactMode ? `${contact.contactMode} (${contact.customContactMode})` : contact.contactMode || 'Call'}
-              </Text>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Meeting Type
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.meetingType || 'Virtual'}
-              </Text>
-            </div>
-
-            <div style={{ gridColumn: 'span 2' }}>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Next Follow-up Date
-              </Text>
-              <Badge variant="filled" color="orange" size="sm" mt={2}>
-                {contact.nextFollowDate || 'Not Scheduled'}
-              </Badge>
-            </div>
-          </SimpleGrid>
+          <Box>
+            <Text size="11px" fw={600} style={{ color: labelColor }}>
+              Next Follow-up Date
+            </Text>
+            <Badge variant="filled" color="orange" size="sm" mt={2}>
+              {contact.nextFollowDate || 'Not Scheduled'}
+            </Badge>
+          </Box>
 
           {contact.remarks && (
             <Box mt="xs">
@@ -431,7 +402,7 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
           <Group gap="xs" mb="sm">
             <IconTargetArrow size={16} color={isDark ? '#F472B6' : '#DB2777'} />
             <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#F472B6' : '#DB2777', letterSpacing: '0.05em' }}>
-              5. Qualification & Project Metrics
+              5. Qualification & Priority Details
             </Text>
           </Group>
 
@@ -447,64 +418,33 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
 
             <div>
               <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Qualified By & Date
+                Priority
+              </Text>
+              <Badge
+                variant="light"
+                color={contact.priority === 'High' ? 'red' : contact.priority === 'Medium' ? 'orange' : 'teal'}
+                size="sm"
+                mt={2}
+              >
+                {contact.priority || 'Medium'}
+              </Badge>
+            </div>
+
+            <div>
+              <Text size="11px" fw={600} style={{ color: labelColor }}>
+                Qualified By
               </Text>
               <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.qualifiedBy || '—'} {contact.qualificationDate ? `(${contact.qualificationDate})` : ''}
+                {contact.qualifiedBy || '—'}
               </Text>
             </div>
 
             <div>
               <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Estimated Budget
-              </Text>
-              <Text size="xs" fw={700} style={{ color: isDark ? '#34D399' : '#059669' }} mt={2}>
-                {contact.estimatedBudget ? `₹${Number(contact.estimatedBudget).toLocaleString()}` : '—'}
-              </Text>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Project Type
+                Qualification Date
               </Text>
               <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.projectType || 'New Implementation'}
-              </Text>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Expected Users
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.expectedUsers ? `${contact.expectedUsers} Users` : '—'}
-              </Text>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Target Go-Live Date
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.expectedGoLiveDate || '—'}
-              </Text>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Decision Maker
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.influencer || '—'}
-              </Text>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Competitors
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.otherOptions || '—'}
+                {contact.qualificationDate || '—'}
               </Text>
             </div>
           </SimpleGrid>
@@ -557,24 +497,6 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
               <Badge variant="light" color={contact.assignmentStatus === 'Assigned' ? 'teal' : 'gray'} size="sm" mt={2}>
                 {contact.assignmentStatus || 'Unassigned'}
               </Badge>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Assigned By
-              </Text>
-              <Text size="xs" fw={500} style={{ color: valueColor }} mt={2}>
-                {contact.assignedBy || '—'}
-              </Text>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Created By
-              </Text>
-              <Text size="xs" fw={500} style={{ color: valueColor }} mt={2}>
-                {contact.createdBy || 'System Admin'}
-              </Text>
             </div>
           </SimpleGrid>
 

@@ -95,12 +95,11 @@ model Contact {
   // Primary Keys & Identifiers
   id                     String    @id @default(uuid())
   contactId              String    @unique // e.g. CNT-1001
-  uuid                   String?   @default(uuid())
 
   // 1. Basic Contact Information
   name                   String
   email                  String?
-  phone                  String    // mobile_number / phone (Required)
+  phone                  String    // Mobile Number (Required)
   address                String?
   source                 String?   @default("Website") // Website, Referral, Cold Call, LinkedIn, Other
   customSource           String?
@@ -110,7 +109,6 @@ model Contact {
   companyName            String?
   designation            String?
   profession             String?   // when contactType is Individual
-  annualRevenue          String?
 
   // 3. Requirement Details
   category               String?   @default("Product") // Product / Service
@@ -119,58 +117,25 @@ model Contact {
   customProduct          String?
 
   // 4. Interaction & Follow-up Details
-  contactMode            String?   @default("Call") // Call, Email, Meeting, WhatsApp, Other
-  customContactMode      String?
-  meetingType            String?   @default("Virtual") // Virtual, In-person
   nextFollowDate         String?   // YYYY-MM-DD
   remarks                String?
   notes                  String?
 
-  // 5. Qualification & Project Details
-  status                 String?   @default("New") // New, Active, Inactive, Qualified, Disqualified
-  stage                  String?   @default("New Lead") // New Lead, Qualification, Discovery, Requirement Analysis, Demo / Presentation, Proposal / Quotation, Negotiation, Decision Making, Won, Lost
-  qualificationStatus    String?   @default("In Progress") // Qualified, Disqualified, In Progress
+  // 5. Qualification Details
+  status                 String?   @default("New") // New, Qualified, In Progress, Follow-up Required, Disqualified
+  stage                  String?   @default("Initialization") // Initialization, Qualification, Discovery, etc.
+  qualificationStatus    String?   @default("In Progress") // In Progress, Qualified, Disqualified
   qualifiedBy            String?
   qualificationDate      String?
   priority               String?   @default("Medium") // High, Medium, Low
-  estimatedBudget        Float?
-  projectType            String?
-  expectedUsers          Int?
-  expectedGoLiveDate     String?
-  influencer             String?   // Decision Maker / Influencer
-  otherOptions           String?   // Competitors / Other Options
   disqualificationReason String?
 
-  // 6. Assignment & System Metadata
-  assignedTo             String?   // Employee ID or User ID
+  // 6. Assignment & Metadata
+  assignedTo             String?   // Employee ID
   assignedToName         String?   // Assigned Employee Name
-  assignedBy             String?
-  assignedAt             DateTime?
   assignmentStatus       String?   @default("Unassigned") // Assigned / Unassigned
-  createdBy              String?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
-}
-
-model Company {
-  id             String   @id @default(uuid())
-  name           String   @unique
-  website        String?
-  industry       String?
-  address        String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
-
-model Lead {
-  id             String   @id @default(uuid())
-  leadId         String   @unique
-  title          String
-  companyName    String?
-  contactName    String?
-  status         String   @default("New")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
 }
 
 
