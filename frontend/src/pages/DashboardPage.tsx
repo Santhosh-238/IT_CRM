@@ -25,6 +25,7 @@ import {
 } from '@tabler/icons-react';
 import { useCRM } from '../context/CRMContext';
 import { useEmployee } from '../context/EmployeeContext';
+import { usePermissions } from '../context/AccessControlContext';
 import { CRM_COLORS } from '../theme/colors';
 
 interface DashboardPageProps {
@@ -33,6 +34,7 @@ interface DashboardPageProps {
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const { currentUser } = useCRM();
+  const { isSuperAdmin } = usePermissions();
   const { employees, employeeStats } = useEmployee();
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
@@ -62,24 +64,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             Welcome back{currentUser.name ? `, ${currentUser.name}` : ''}
           </Text>
           <Text size="sm" c="dimmed">
-            Enterprise IT CRM & Engineering Workforce Hub
+            OneAssist Technologies · IT Sales Pipeline & Operations Management Hub
           </Text>
         </div>
-        <Button
-          size="sm"
-          radius="100px"
-          leftSection={<IconUsers size={16} />}
-          rightSection={<IconArrowRight size={14} />}
-          onClick={() => onNavigate('employees')}
-          style={{
-            background: isDark ? '#3B82F6' : CRM_COLORS.primary,
-            color: '#FFFFFF',
-            fontWeight: 700,
-            boxShadow: isDark ? '0 4px 14px rgba(59, 130, 246, 0.35)' : undefined,
-          }}
-        >
-          View Employees Directory
-        </Button>
+        {isSuperAdmin && (
+          <Button
+            size="sm"
+            radius="100px"
+            leftSection={<IconUsers size={16} />}
+            rightSection={<IconArrowRight size={14} />}
+            onClick={() => onNavigate('employees')}
+            style={{
+              background: isDark ? '#3B82F6' : CRM_COLORS.primary,
+              color: '#FFFFFF',
+              fontWeight: 700,
+              boxShadow: isDark ? '0 4px 14px rgba(59, 130, 246, 0.35)' : undefined,
+            }}
+          >
+            View Employees Directory
+          </Button>
+        )}
       </Group>
 
       {/* Main Grid: User Profile & KPI Cards */}

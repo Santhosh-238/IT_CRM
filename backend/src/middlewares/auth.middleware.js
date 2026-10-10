@@ -88,15 +88,17 @@ export function requireRole(allowedRoles) {
     }
 
     const rolesList = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+    const userRole = (req.user.role || '').toUpperCase();
+    const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
 
-    if (!rolesList.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: `Forbidden: User role '${req.user.role}' is not authorized. Required: ${rolesList.join(', ')}`,
-      });
+    if (isSuperOrAdmin || rolesList.map((r) => r.toUpperCase()).includes(userRole)) {
+      return next();
     }
 
-    next();
+    return res.status(403).json({
+      success: false,
+      message: `Forbidden: User role '${req.user.role}' is not authorized. Required: ${rolesList.join(', ')}`,
+    });
   };
 }
 

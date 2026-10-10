@@ -9,6 +9,7 @@ import {
   PermissionAction,
 } from '../types/accessControl';
 import { accessControlService } from '../services/accessControlService';
+import { useCRM } from './CRMContext';
 
 interface AccessControlContextType {
   roles: Role[];
@@ -51,6 +52,7 @@ interface AccessControlContextType {
 const AccessControlContext = createContext<AccessControlContextType | undefined>(undefined);
 
 export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { currentUser } = useCRM();
   const [roles, setRoles] = useState<Role[]>([]);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [systemModules, setSystemModules] = useState<SystemModule[]>([]);
@@ -122,10 +124,17 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [fetchMyPermissions, fetchRoles, fetchUsers, fetchAuditLogs]);
 
   // Permission Checkers
+  const userRoleStr = (currentUser?.role || myPermissions?.user?.role || '').toLowerCase().trim();
+  const roleSlugStr = (myPermissions?.role?.slug || myPermissions?.role?.name || '').toLowerCase().trim();
+
   const isSuperAdmin = Boolean(
     myPermissions?.isSuperAdmin ||
-      myPermissions?.role?.slug === 'super_admin' ||
-      myPermissions?.user?.role === 'SUPER_ADMIN'
+      roleSlugStr === 'super_admin' ||
+      roleSlugStr === 'admin' ||
+      userRoleStr === 'super_admin' ||
+      userRoleStr === 'admin' ||
+      userRoleStr === 'super admin' ||
+      userRoleStr.includes('admin')
   );
 
   const can = useCallback(

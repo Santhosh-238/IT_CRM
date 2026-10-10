@@ -1,8 +1,22 @@
 import { createTheme, MantineColorsTuple } from '@mantine/core';
 import CRM_COLORS from './colors';
 
-// Dynamic Primary Obsidian Swatch
-const obsidian: MantineColorsTuple = [
+// OneAssist Signature Indigo Swatch
+const oneassist: MantineColorsTuple = [
+  '#eef2ff',
+  '#e0e7ff',
+  '#c7d2fe',
+  '#a5b4fc',
+  '#818cf8',
+  '#6366f1',
+  '#4f46e5',
+  '#4338ca',
+  '#3730a3',
+  '#312e81',
+];
+
+// Modern Slate Neutral Swatch
+const slate: MantineColorsTuple = [
   '#f8fafc',
   '#f1f5f9',
   '#e2e8f0',
@@ -11,22 +25,8 @@ const obsidian: MantineColorsTuple = [
   '#64748b',
   '#475569',
   '#334155',
-  CRM_COLORS.primary,
-  CRM_COLORS.primaryDark,
-];
-
-// Dynamic Airy Slate Swatch
-const slate: MantineColorsTuple = [
-  CRM_COLORS.backgroundLight,
-  CRM_COLORS.background,
-  '#e2ecf2',
-  '#d0e0eb',
-  '#bad0df',
-  '#98b8ce',
-  '#749ebd',
-  '#4f80a4',
-  '#3a6686',
-  '#2a4b65',
+  '#1e293b',
+  '#0f172a',
 ];
 
 export const theme = createTheme({
@@ -36,10 +36,10 @@ export const theme = createTheme({
     fontFamily: 'Plus Jakarta Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
     fontWeight: '700',
   },
-  primaryColor: 'obsidian',
-  primaryShade: 8,
+  primaryColor: 'oneassist',
+  primaryShade: 6,
   colors: {
-    obsidian,
+    oneassist,
     slate,
   },
   defaultRadius: 'xl',
@@ -67,7 +67,7 @@ export const theme = createTheme({
           border: `1px solid ${CRM_COLORS.border}`,
           backgroundColor: CRM_COLORS.cardBg,
           backdropFilter: 'blur(16px)',
-          boxShadow: '0 10px 30px -5px rgba(0, 49, 31, 0.04), 0 4px 12px -2px rgba(0, 49, 31, 0.02)',
+          boxShadow: '0 4px 20px -2px rgba(99, 102, 241, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02)',
           transition: 'all 0.25s ease',
         },
       },

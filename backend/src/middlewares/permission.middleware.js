@@ -23,29 +23,41 @@ export async function getUserPermissions(user) {
   });
 
   if (!dbUser?.roleRelation) {
-    const superAdminRole = await prisma.role.findUnique({
-      where: { slug: 'super_admin' },
+    const adminRole = await prisma.role.findFirst({
+      where: {
+        OR: [
+          { slug: 'admin' },
+          { slug: 'super_admin' },
+          { name: { equals: 'Admin', mode: 'insensitive' } },
+        ],
+      },
       include: { permissions: true },
     });
 
-    if (superAdminRole && (dbUser?.role === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN')) {
+    const isUserAdmin =
+      dbUser?.role === 'SUPER_ADMIN' ||
+      dbUser?.role === 'ADMIN' ||
+      user.role === 'SUPER_ADMIN' ||
+      user.role === 'ADMIN';
+
+    if (adminRole && isUserAdmin) {
       const permsMap = {};
-      superAdminRole.permissions.forEach((p) => {
+      adminRole.permissions.forEach((p) => {
         permsMap[p.moduleId] = {
-          view: p.canView,
-          create: p.canCreate,
-          edit: p.canEdit,
-          delete: p.canDelete,
-          export: p.canExport,
-          approve: p.canApprove,
+          view: true,
+          create: true,
+          edit: true,
+          delete: true,
+          export: true,
+          approve: true,
         };
       });
 
       const result = {
         role: {
-          id: superAdminRole.id,
-          name: superAdminRole.name,
-          slug: superAdminRole.slug,
+          id: adminRole.id,
+          name: adminRole.name,
+          slug: adminRole.slug,
           isSystem: true,
         },
         permissions: permsMap,
@@ -59,7 +71,13 @@ export async function getUserPermissions(user) {
 
   const role = dbUser?.roleRelation;
   const permsMap = {};
-  const isSuperAdmin = role?.slug === 'super_admin' || dbUser?.role === 'SUPER_ADMIN';
+  const isSuperAdmin =
+    role?.slug === 'super_admin' ||
+    role?.slug === 'admin' ||
+    dbUser?.role === 'SUPER_ADMIN' ||
+    dbUser?.role === 'ADMIN' ||
+    user?.role === 'SUPER_ADMIN' ||
+    user?.role === 'ADMIN';
 
   if (role?.permissions) {
     role.permissions.forEach((p) => {
