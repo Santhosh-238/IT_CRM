@@ -6,9 +6,7 @@
   "type": "module",
   "scripts": {
     "postinstall": "prisma generate",
-    "predev": "prisma generate",
     "dev": "nodemon server.js",
-    "prestart": "prisma generate",
     "start": "node server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

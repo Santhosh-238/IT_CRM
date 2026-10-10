@@ -6,6 +6,7 @@ import {
   Text,
   Box,
   ScrollArea,
+  Badge,
 } from '@mantine/core';
 import {
   IconDashboard,
@@ -23,7 +24,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
   const { activeNav } = useCRM();
-  const { can } = usePermissions();
+  const { can, isSuperAdmin } = usePermissions();
 
   return (
     <Box
@@ -56,27 +57,38 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
         <Group gap="xs" style={{ cursor: 'pointer' }} onClick={() => onSelectNav('dashboard')}>
           <Box
             style={{
-              width: 34,
-              height: 34,
+              width: 38,
+              height: 38,
               borderRadius: 10,
-              background: 'linear-gradient(135deg, #14181F 0%, #2A3241 100%)',
+              background: '#FFFFFF',
+              border: '1px solid rgba(79, 70, 229, 0.25)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(20, 24, 31, 0.25)',
+              padding: 4,
+              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.15)',
+              flexShrink: 0,
             }}
           >
-            <IconTerminal2 size={19} color="#FFFFFF" stroke={2.2} />
+            <img
+              src="/oneassist-logo.png"
+              alt="OneAssist Technologies"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </Box>
           <div>
-            <Text fw={800} size="15px" style={{ letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-              IT <Text span inherit fw={400} c="dimmed">CRM</Text>
+            <Text fw={800} size="14px" style={{ letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+              OneAssist <Text span inherit fw={700} style={{ color: '#0EA5E9' }}>CRM</Text>
             </Text>
-            <Text size="9px" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.08em' }}>
-              Enterprise Hub
+            <Text size="9px" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.06em' }}>
+              IT Sales & Operations Hub
             </Text>
           </div>
         </Group>
+
+        <Badge size="xs" variant="light" color="indigo" radius="sm" style={{ fontWeight: 700 }}>
+          v2.4
+        </Badge>
       </Box>
 
       {/* 2. Main Navigation Items */}
@@ -94,14 +106,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
               className={activeNav === 'dashboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
               style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
             />
-            <NavLink
-              label="Employees Directory"
-              leftSection={<IconUsersGroup size={18} stroke={2} />}
-              active={activeNav === 'employees' || activeNav === 'add-employee' || activeNav === 'onboard-employee' || activeNav === 'onboard'}
-              onClick={() => onSelectNav('employees')}
-              className={activeNav === 'employees' || activeNav === 'add-employee' || activeNav === 'onboard-employee' || activeNav === 'onboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-              style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-            />
+            {isSuperAdmin && (
+              <NavLink
+                label="Employees Directory"
+                leftSection={<IconUsersGroup size={18} stroke={2} />}
+                active={activeNav === 'employees' || activeNav === 'add-employee' || activeNav === 'onboard-employee' || activeNav === 'onboard'}
+                onClick={() => onSelectNav('employees')}
+                className={activeNav === 'employees' || activeNav === 'add-employee' || activeNav === 'onboard-employee' || activeNav === 'onboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
             <NavLink
               label="Contacts"
               leftSection={<IconAddressBook size={18} stroke={2} />}

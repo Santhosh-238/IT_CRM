@@ -3,6 +3,7 @@ import { Box, Container } from '@mantine/core';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { useCRM } from '../../context/CRMContext';
+import { usePermissions } from '../../context/AccessControlContext';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { EmployeesPage, AddEmployeePage } from '../../pages/employees';
 import { ContactsPage, AddContactPage, ContactDetailsPage, ContactQualificationPage } from '../../pages/contacts';
@@ -13,6 +14,7 @@ import { useContact } from '../../context/ContactContext';
 export const AppLayout: React.FC = () => {
   const { activeNav, setActiveNav } = useCRM();
   const { selectedContact, deleteContact } = useContact();
+  const { isSuperAdmin } = usePermissions();
 
   if (activeNav === 'signup') {
     return (
@@ -41,11 +43,17 @@ export const AppLayout: React.FC = () => {
       case 'dashboard':
         return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
       case 'employees':
+        if (!isSuperAdmin) {
+          return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
+        }
         return <EmployeesPage />;
       case 'add-employee':
       case 'add':
       case 'onboard-employee':
       case 'onboard': {
+        if (!isSuperAdmin) {
+          return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
+        }
         let editData = null;
         try {
           const savedEdit = typeof window !== 'undefined' ? sessionStorage.getItem('crm_editing_employee') : null;

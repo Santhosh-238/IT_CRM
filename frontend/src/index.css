@@ -9,38 +9,43 @@
   --font-mono: 'JetBrains Mono', monospace;
   
   /* =========================================================
-   * DYNAMIC CRM DESIGN TOKENS (Airy Slate & Pastel Candy Theme)
+   * ONEASSIST TECHNOLOGIES CRM TOKENS (Signature Indigo & Cyan)
    * ========================================================= */
-  --crm-primary: #14181F;
-  --crm-primary-hover: #232936;
-  --crm-primary-light: #F1F5F9;
-  --crm-primary-dark: #0A0D12;
+  --crm-primary: #4F46E5;
+  --crm-primary-hover: #4338CA;
+  --crm-primary-light: #EEF2FF;
+  --crm-primary-dark: #312E81;
+  --crm-primary-gradient: linear-gradient(135deg, #4F46E5 0%, #2563EB 50%, #06B6D4 100%);
 
-  --crm-bg: #EDF3F7;
-  --crm-bg-light: #F5F8FA;
-  --crm-bg-dark: #E2ECF2;
+  --crm-brand-cyan: #06B6D4;
+  --crm-brand-sky: #0EA5E9;
+  --crm-brand-blue: #2563EB;
+
+  --crm-bg: #F8FAFC;
+  --crm-bg-light: #FFFFFF;
+  --crm-bg-dark: #F1F5F9;
 
   --crm-card-bg: #FFFFFF;
   --crm-card-surface: #FFFFFF;
-  --crm-card-bg-dark: #14181F;
-  --crm-border: rgba(15, 23, 42, 0.07);
+  --crm-card-bg-dark: #0F172A;
+  --crm-border: #E2E8F0;
 
   --crm-text-primary: #0F172A;
   --crm-text-secondary: #475569;
   --crm-text-muted: #94A3B8;
   --crm-text-on-primary: #FFFFFF;
 
-  /* 🍬 Signature Pastel Accent Colors */
-  --crm-pastel-lime: #D8F4B8;
-  --crm-pastel-lime-text: #244C0E;
-  --crm-pastel-mint: #A4E8D9;
-  --crm-pastel-mint-text: #0B4F42;
-  --crm-pastel-coral: #F9B7B4;
-  --crm-pastel-coral-text: #5C1E1C;
-  --crm-pastel-purple: #E2D6FE;
-  --crm-pastel-purple-text: #3B1C76;
-  --crm-pastel-blue: #C9E4FE;
-  --crm-pastel-blue-text: #173B82;
+  /* 🍬 Sales Pipeline & Status Badges */
+  --crm-pastel-lime: #D1FAE5;
+  --crm-pastel-lime-text: #065F46;
+  --crm-pastel-mint: #CFFAFE;
+  --crm-pastel-mint-text: #0E7490;
+  --crm-pastel-coral: #FFE4E6;
+  --crm-pastel-coral-text: #9F1239;
+  --crm-pastel-purple: #EDE9FE;
+  --crm-pastel-purple-text: #5B21B6;
+  --crm-pastel-blue: #E0F2FE;
+  --crm-pastel-blue-text: #0369A1;
 
   --crm-success: #10B981;
   --crm-warning: #F59E0B;
@@ -48,13 +53,13 @@
 
   /* Mantine Core Overrides (Light Mode Defaults) */
   --mantine-color-white: #FFFFFF !important;
-  --mantine-color-body: #EDF3F7 !important;
+  --mantine-color-body: #F8FAFC !important;
   --mantine-color-default: #FFFFFF !important;
   --mantine-color-default-hover: #F8FAFC !important;
-  --mantine-color-default-border: rgba(15, 23, 42, 0.08) !important;
+  --mantine-color-default-border: #E2E8F0 !important;
   --mantine-color-default-color: #0F172A !important;
-  --mantine-primary-color-filled: #14181F !important;
-  --mantine-primary-color-filled-hover: #232936 !important;
+  --mantine-primary-color-filled: #4F46E5 !important;
+  --mantine-primary-color-filled-hover: #4338CA !important;
 }
 
 [data-mantine-color-scheme="dark"] {
@@ -95,9 +100,9 @@
 
 body {
   font-family: var(--font-family);
-  background: radial-gradient(circle at 90% 10%, rgba(200, 225, 240, 0.45) 0%, var(--crm-bg) 40%, transparent 80%),
-              radial-gradient(circle at 10% 90%, rgba(215, 244, 184, 0.3) 0%, var(--crm-bg) 40%, transparent 80%),
-              linear-gradient(180deg, var(--crm-bg-light) 0%, var(--crm-bg) 50%, var(--crm-bg-dark) 100%);
+  background: radial-gradient(circle at 90% 10%, rgba(99, 102, 241, 0.08) 0%, transparent 45%),
+              radial-gradient(circle at 10% 90%, rgba(6, 182, 212, 0.08) 0%, transparent 45%),
+              #F8FAFC;
   background-attachment: fixed;
   color: var(--crm-text-primary);
   overflow-x: hidden;
@@ -209,13 +214,13 @@ body {
   box-shadow: 0 20px 35px -10px rgba(15, 23, 42, 0.08), 0 8px 16px -4px rgba(15, 23, 42, 0.03);
 }
 
-/* Dynamic Obsidian Nav Buttons */
+/* OneAssist Signature Gradient Active Nav Button */
 .crextio-pill-active {
-  background: #14181F !important;
+  background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%) !important;
   color: #FFFFFF !important;
   border-radius: 10px !important;
   font-weight: 600 !important;
-  box-shadow: 0 4px 12px rgba(20, 24, 31, 0.2) !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28) !important;
   white-space: nowrap !important;
 }
 
@@ -226,10 +231,9 @@ body {
 }
 
 [data-mantine-color-scheme="dark"] .crextio-pill-active {
-  background: #2563EB !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: linear-gradient(135deg, #6366F1 0%, #38BDF8 100%) !important;
+  color: #0F172A !important;
+  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35) !important;
 }
 
 [data-mantine-color-scheme="dark"] .crextio-pill-active .mantine-NavLink-label,

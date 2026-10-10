@@ -30,6 +30,7 @@ import {
   IconSun,
   IconMoon,
   IconTerminal2,
+  IconBuilding,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useCRM } from '../../../context/CRMContext';
@@ -51,6 +52,7 @@ export const SignupPage: React.FC<SignupPageProps> = ({ onSuccess, onSwitchToLog
   const [loading, setLoading] = useState(false);
 
   // Form States (Clean & Empty)
+  const [organisationName, setOrganisationName] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -85,6 +87,10 @@ export const SignupPage: React.FC<SignupPageProps> = ({ onSuccess, onSwitchToLog
     e.preventDefault();
     setErrorMsg('');
 
+    if (!organisationName.trim()) {
+      setErrorMsg('Please enter your Organisation / Company Name');
+      return;
+    }
     if (!name.trim()) {
       setErrorMsg('Please enter your Full Name');
       return;
@@ -117,6 +123,7 @@ export const SignupPage: React.FC<SignupPageProps> = ({ onSuccess, onSwitchToLog
     setLoading(true);
     try {
       const res = await crmApi.register({
+        organisationName: organisationName.trim(),
         name,
         email,
         phone,
@@ -253,12 +260,27 @@ export const SignupPage: React.FC<SignupPageProps> = ({ onSuccess, onSwitchToLog
                 </Box>
 
                 {/* Header Title */}
-                <Box mb="md">
+                <Box mb="sm">
                   <Text fw={800} size="22px" style={{ color: textColor, letterSpacing: '-0.02em' }}>
-                    Create Your Account
+                    Create Super Admin Account
                   </Text>
                   <Text size="xs" style={{ color: subtextColor }}>
-                    Set up your administrator profile to access the CRM platform.
+                    Register your organisation. Employees will be onboarded by the Super Admin in the Employee Directory.
+                  </Text>
+                </Box>
+
+                {/* Employee Notice Banner */}
+                <Box
+                  p="8px 12px"
+                  mb="sm"
+                  style={{
+                    background: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(219, 234, 254, 0.45)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    borderRadius: '10px',
+                  }}
+                >
+                  <Text size="xs" fw={600} style={{ color: isDark ? '#93C5FD' : '#1E40AF', lineHeight: 1.4 }}>
+                    ℹ️ <strong>Super Admin Registration:</strong> Staff & Employees do not register here. Your Employee account is created by your Super Admin in the Employee Directory.
                   </Text>
                 </Box>
 
@@ -282,12 +304,31 @@ export const SignupPage: React.FC<SignupPageProps> = ({ onSuccess, onSwitchToLog
                 {/* Signup Form */}
                 <form onSubmit={handleSignup}>
                   <Stack gap="xs">
+                    {/* Organisation Name */}
+                    <TextInput
+                      label={<Text size="xs" fw={700} style={{ color: textColor }}>Organisation / Company Name</Text>}
+                      placeholder="e.g. OneAssist Technologies"
+                      value={organisationName}
+                      onChange={(e) => setOrganisationName(e.currentTarget.value)}
+                      leftSection={<IconBuilding size={15} color={subtextColor} />}
+                      radius="10px"
+                      size="sm"
+                      styles={{
+                        input: {
+                          background: inputBg,
+                          borderColor: inputBorder,
+                          color: inputTextColor,
+                        },
+                      }}
+                      required
+                    />
+
                     {/* Row 1: Name & Phone (2 Columns on tablet+, 1 Column on small mobile) */}
                     <Grid gutter="xs">
                       <Grid.Col span={{ base: 12, sm: 6 }}>
                         <TextInput
-                          label={<Text size="xs" fw={700} style={{ color: textColor }}>Full Name</Text>}
-                          placeholder="Enter a name"
+                          label={<Text size="xs" fw={700} style={{ color: textColor }}>Super Admin Full Name</Text>}
+                          placeholder="Enter your name"
                           value={name}
                           onChange={(e) => setName(e.currentTarget.value)}
                           leftSection={<IconUser size={15} color={subtextColor} />}

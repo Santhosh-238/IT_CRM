@@ -13,6 +13,7 @@ import {
 
 const router = Router();
 
+<<<<<<< Updated upstream
 // 1. Employee Statistics & KPI Metrics (<1ms Redis Cached)
 router.get(
   '/stats',
@@ -36,12 +37,26 @@ router.get(
   authorizePermission('employees', 'view'),
   getEmployeeById
 );
+=======
+// Employee Statistics & KPI Metrics (<1ms Redis Cached)
+router.get('/stats', requireAuth, requireRole(['SUPER_ADMIN', 'ADMIN']), getEmployeeStats);
+
+// Employee List & Search
+router.get('/', requireAuth, requireRole(['SUPER_ADMIN', 'ADMIN']), getEmployees);
+
+// Single Employee Profile by ID
+router.get('/:id', requireAuth, requireRole(['SUPER_ADMIN', 'ADMIN']), getEmployeeById);
+>>>>>>> Stashed changes
 
 // 4. Onboard / Create New Employee
 router.post(
   '/',
   requireAuth,
+<<<<<<< Updated upstream
   authorizePermission('employees', 'create'),
+=======
+  requireRole(['SUPER_ADMIN', 'ADMIN']),
+>>>>>>> Stashed changes
   createEmployee
 );
 
@@ -49,7 +64,11 @@ router.post(
 router.put(
   '/:id',
   requireAuth,
+<<<<<<< Updated upstream
   authorizePermission('employees', 'edit'),
+=======
+  requireRole(['SUPER_ADMIN', 'ADMIN']),
+>>>>>>> Stashed changes
   updateEmployee
 );
 
@@ -57,7 +76,11 @@ router.put(
 router.patch(
   '/:id/status',
   requireAuth,
+<<<<<<< Updated upstream
   authorizePermission('employees', 'edit'),
+=======
+  requireRole(['SUPER_ADMIN', 'ADMIN']),
+>>>>>>> Stashed changes
   updateEmployeeStatus
 );
 
@@ -65,7 +88,11 @@ router.patch(
 router.delete(
   '/:id',
   requireAuth,
+<<<<<<< Updated upstream
   authorizePermission('employees', 'delete'),
+=======
+  requireRole(['SUPER_ADMIN', 'ADMIN']),
+>>>>>>> Stashed changes
   deleteEmployee
 );
 
