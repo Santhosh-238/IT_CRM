@@ -22,11 +22,16 @@ import {
   IconShieldCheck,
   IconBolt,
   IconDatabase,
+  IconCalendarEvent,
+  IconClock,
+  IconVideo,
 } from '@tabler/icons-react';
 import { useCRM } from '../context/CRMContext';
 import { useEmployee } from '../context/EmployeeContext';
 import { usePermissions } from '../context/AccessControlContext';
 import { CRM_COLORS } from '../theme/colors';
+import { fetchMeetingsApi } from '../services/meetingService';
+import { ScheduledMeeting } from '../types/meeting';
 
 interface DashboardPageProps {
   onNavigate: (nav: string) => void;
@@ -50,6 +55,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
     ? Object.keys(employeeStats.departmentBreakdown).length
     : Array.from(new Set(employees.map((e) => e.department))).length;
 
+  const [upcomingMeetings, setUpcomingMeetings] = React.useState<ScheduledMeeting[]>([]);
+
+  React.useEffect(() => {
+    fetchMeetingsApi()
+      .then((res) => {
+        setUpcomingMeetings(res.meetings.slice(0, 4));
+      })
+      .catch(() => {});
+  }, []);
+
   const cardBg = isDark ? '#111827' : '#FFFFFF';
   const cardBorder = isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(15, 23, 42, 0.07)';
   const headingColor = isDark ? '#F8FAFC' : '#0F172A';
@@ -67,23 +82,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
             OneAssist Technologies · IT Sales Pipeline & Operations Management Hub
           </Text>
         </div>
-        {isSuperAdmin && (
+        <Group gap="xs">
           <Button
             size="sm"
+            variant="default"
             radius="100px"
-            leftSection={<IconUsers size={16} />}
-            rightSection={<IconArrowRight size={14} />}
-            onClick={() => onNavigate('employees')}
-            style={{
-              background: isDark ? '#3B82F6' : CRM_COLORS.primary,
-              color: '#FFFFFF',
-              fontWeight: 700,
-              boxShadow: isDark ? '0 4px 14px rgba(59, 130, 246, 0.35)' : undefined,
-            }}
+            leftSection={<IconCalendarEvent size={16} />}
+            onClick={() => onNavigate('scheduled-meetings')}
+            style={{ fontWeight: 600 }}
           >
-            View Employees Directory
+            Scheduled Meetings
           </Button>
-        )}
+          {isSuperAdmin && (
+            <Button
+              size="sm"
+              radius="100px"
+              leftSection={<IconUsers size={16} />}
+              rightSection={<IconArrowRight size={14} />}
+              onClick={() => onNavigate('employees')}
+              style={{
+                background: isDark ? '#3B82F6' : CRM_COLORS.primary,
+                color: '#FFFFFF',
+                fontWeight: 700,
+                boxShadow: isDark ? '0 4px 14px rgba(59, 130, 246, 0.35)' : undefined,
+              }}
+            >
+              View Employees Directory
+            </Button>
+          )}
+        </Group>
       </Group>
 
       {/* Main Grid: User Profile & KPI Cards */}
@@ -230,6 +257,111 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </SimpleGrid>
         </Grid.Col>
       </Grid>
+
+      {/* Date-Wise Scheduled Meetings Spotlight */}
+      <Paper p="xl" radius="24px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
+        <Group justify="space-between" align="center" mb="lg">
+          <div>
+            <Group gap="xs" align="center">
+              <ThemeIcon size={28} radius="md" color="indigo" variant="light">
+                <IconCalendarEvent size={18} />
+              </ThemeIcon>
+              <Text fw={800} size="18px" style={{ color: headingColor, letterSpacing: '-0.02em' }}>
+                Upcoming & Today's Scheduled Meetings
+              </Text>
+              <Badge color="indigo" variant="light" size="sm" radius="sm">
+                Date-Wise Agenda
+              </Badge>
+            </Group>
+            <Text size="xs" c="dimmed" mt={4}>
+              Client demos, technical reviews, and discussions organized by date, employee creator, and time
+            </Text>
+          </div>
+
+          <Button
+            size="xs"
+            variant="light"
+            color="indigo"
+            radius="100px"
+            rightSection={<IconArrowRight size={14} />}
+            onClick={() => onNavigate('scheduled-meetings')}
+          >
+            Open Meetings Module
+          </Button>
+        </Group>
+
+        {upcomingMeetings.length === 0 ? (
+          <Text size="sm" c="dimmed" ta="center" py="lg">
+            No scheduled meetings right now. Click "Open Meetings Module" to schedule a meeting.
+          </Text>
+        ) : (
+          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+            {upcomingMeetings.map((m) => (
+              <Paper
+                key={m.id}
+                p="md"
+                radius="16px"
+                style={{
+                  background: isDark ? 'rgba(30, 41, 59, 0.4)' : '#F8FAFC',
+                  border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.06)' : '#E2E8F0'}`,
+                }}
+              >
+                <Stack gap="xs">
+                  <Group justify="space-between" align="center">
+                    <Group gap="xs">
+                      <Badge size="xs" color="indigo" variant="filled" radius="sm">
+                        {m.meetingDate}
+                      </Badge>
+                      <Group gap={4} align="center">
+                        <IconClock size={13} color="#94A3B8" />
+                        <Text size="xs" fw={700} style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
+                          {m.startTime} – {m.endTime}
+                        </Text>
+                      </Group>
+                    </Group>
+                    <Badge size="xs" variant="light" color={m.status === 'Completed' ? 'teal' : 'blue'}>
+                      {m.status || 'Scheduled'}
+                    </Badge>
+                  </Group>
+
+                  {/* Purpose */}
+                  <Box>
+                    <Text size="xs" fw={800} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.04em' }}>
+                      Purpose
+                    </Text>
+                    <Text fw={700} size="14px" style={{ color: headingColor }} lineClamp={2}>
+                      {m.purpose}
+                    </Text>
+                  </Box>
+
+                  {/* Creator Employee & Client */}
+                  <Group justify="space-between" align="center" pt={4} style={{ borderTop: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : '#E2E8F0'}` }}>
+                    <Group gap="xs" align="center">
+                      <Avatar size={24} radius="xl" color="indigo">
+                        {m.employeeName ? m.employeeName.charAt(0).toUpperCase() : 'E'}
+                      </Avatar>
+                      <div>
+                        <Text size="11px" fw={700} style={{ color: headingColor }}>
+                          {m.employeeName}
+                        </Text>
+                        <Text size="10px" c="dimmed">
+                          {m.employeeDesignation || 'Host'}
+                        </Text>
+                      </div>
+                    </Group>
+
+                    {m.clientName && (
+                      <Badge size="xs" variant="outline" color="gray">
+                        {m.clientName}
+                      </Badge>
+                    )}
+                  </Group>
+                </Stack>
+              </Paper>
+            ))}
+          </SimpleGrid>
+        )}
+      </Paper>
     </Stack>
   );
 };

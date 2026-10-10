@@ -172,12 +172,18 @@ export async function getCacheStats() {
   };
 }
 
+export const redis = redisClient;
 export const delCacheByPattern = delCache;
+export async function clearAllCache() {
+  await delCache('crm:*');
+}
 
 export default {
+  redis,
   getCache,
   setCache,
   delCache,
   delCacheByPattern,
+  clearAllCache,
   getCacheStats,
 };

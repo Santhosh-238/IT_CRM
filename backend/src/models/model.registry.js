@@ -12,6 +12,7 @@ export const SYSTEM_MODULES = [
   { id: 'daily_working_plan', name: 'Daily Working Plan', category: 'Core', description: 'Daily agenda, target commitments, and schedules.' },
 
   // 2. Administration
+  { id: 'scheduled_meetings', name: 'Scheduled Meetings', category: 'Administration', description: 'Date-wise scheduled client and team meetings, employee creator tracking, purpose and timings.' },
   { id: 'access_control', name: 'Access Control', category: 'Administration', description: 'Role-Based Access Control, permissions matrix, and role hierarchy.' },
   { id: 'settings', name: 'System Settings', category: 'Administration', description: 'Global platform preferences, branding, and integrations.' },
   { id: 'audit_logs', name: 'Audit Trail', category: 'Administration', description: 'Security audit logs, user actions, and change tracking.' },

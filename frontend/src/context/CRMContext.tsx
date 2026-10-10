@@ -24,6 +24,10 @@ interface CRMContextType {
   globalSearch: string;
   setGlobalSearch: (term: string) => void;
 
+  // Sidebar mobile toggle
+  sidebarMobileOpened: boolean;
+  setSidebarMobileOpened: (opened: boolean) => void;
+
   // Clear Database & Storage
   clearDatabase: () => Promise<void>;
 }
@@ -67,6 +71,7 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       if (path === 'contacts') return 'contacts';
       if (path === 'employees') return 'employees';
+      if (path === 'scheduled-meetings' || path === 'meetings') return 'scheduled-meetings';
       if (path === 'access-control' || path === 'rbac') return 'access-control';
       if (path === 'dashboard') return 'dashboard';
       if (path) return path;
@@ -126,6 +131,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveNavState('contacts');
       } else if (path === 'employees') {
         setActiveNavState('employees');
+      } else if (path === 'scheduled-meetings' || path === 'meetings') {
+        setActiveNavState('scheduled-meetings');
       } else if (path === 'access-control' || path === 'rbac') {
         setActiveNavState('access-control');
       } else {
@@ -193,6 +200,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const [sidebarMobileOpened, setSidebarMobileOpened] = useState<boolean>(false);
+
   // User Logout: Clears HttpOnly Cookie & Session
   const logoutUser = async () => {
     try {
@@ -222,9 +231,14 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setCurrentUserRole,
         logoutUser,
         activeNav,
-        setActiveNav,
+        setActiveNav: (nav: string) => {
+          setSidebarMobileOpened(false);
+          setActiveNav(nav);
+        },
         globalSearch,
         setGlobalSearch,
+        sidebarMobileOpened,
+        setSidebarMobileOpened,
         clearDatabase,
       }}
     >

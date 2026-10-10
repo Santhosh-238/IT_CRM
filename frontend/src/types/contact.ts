@@ -65,12 +65,11 @@ export interface LeadOption {
 export interface Contact {
   id: string;
   contactId: string;
-  uuid?: string | null;
 
   // 1. Basic Contact Information
   name: string;
   email?: string | null;
-  phone: string; // mobile_number / phone
+  phone: string; // Mobile Number
   address?: string | null;
   source?: string | null;
   customSource?: string | null;
@@ -80,7 +79,6 @@ export interface Contact {
   companyName?: string | null;
   designation?: string | null;
   profession?: string | null;
-  annualRevenue?: string | null;
 
   // 3. Requirement Details
   category?: RequirementCategory | string | null;
@@ -89,35 +87,23 @@ export interface Contact {
   customProduct?: string | null;
 
   // 4. Interaction & Follow-up Details
-  contactMode?: ContactMode | string | null;
-  customContactMode?: string | null;
-  meetingType?: MeetingType | string | null;
   nextFollowDate?: string | null;
   remarks?: string | null;
   notes?: string | null;
 
-  // 5. Qualification & Project Details
+  // 5. Qualification Details
   status: ContactStatus | string;
   stage?: ContactStage | string | null;
   qualificationStatus?: QualificationStatus | string | null;
   qualifiedBy?: string | null;
   qualificationDate?: string | null;
   priority?: ContactPriority | string | null;
-  estimatedBudget?: number | null;
-  projectType?: string | null;
-  expectedUsers?: number | null;
-  expectedGoLiveDate?: string | null;
-  influencer?: string | null;
-  otherOptions?: string | null;
   disqualificationReason?: string | null;
 
   // 6. Assignment & System Metadata
   assignedTo?: string | null;
   assignedToName?: string | null;
-  assignedBy?: string | null;
-  assignedAt?: string | null;
   assignmentStatus?: AssignmentStatus | string | null;
-  createdBy?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -125,7 +111,6 @@ export interface Contact {
 export interface ContactFormData {
   id?: string;
   contactId?: string;
-  uuid?: string;
 
   // 1. Basic Contact Information
   name: string;
@@ -140,7 +125,6 @@ export interface ContactFormData {
   companyName?: string;
   designation?: string;
   profession?: string;
-  annualRevenue?: string;
 
   // 3. Requirement Details
   category?: RequirementCategory | string;
@@ -149,33 +133,21 @@ export interface ContactFormData {
   customProduct?: string;
 
   // 4. Interaction & Follow-up Details
-  contactMode?: ContactMode | string;
-  customContactMode?: string;
-  meetingType?: MeetingType | string;
   nextFollowDate?: string;
   remarks?: string;
   notes?: string;
 
-  // 5. Qualification & Project Details
+  // 5. Qualification & Status
   status?: ContactStatus | string;
   stage?: ContactStage | string;
   qualificationStatus?: QualificationStatus | string;
   qualifiedBy?: string;
   qualificationDate?: string;
   priority?: ContactPriority | string;
-  estimatedBudget?: number | string;
-  projectType?: string;
-  expectedUsers?: number | string;
-  expectedGoLiveDate?: string;
-  influencer?: string;
-  otherOptions?: string;
   disqualificationReason?: string;
 
-  // 6. Assignment & System Metadata
+  // 6. Assignment
   assignedTo?: string;
-  assignedToName?: string;
-  assignedBy?: string;
-  assignmentStatus?: AssignmentStatus | string;
 }
 
 export interface ContactFilter {

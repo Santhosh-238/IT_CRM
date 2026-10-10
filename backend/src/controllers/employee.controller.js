@@ -1,3 +1,9 @@
+import bcrypt from 'bcryptjs';
+import { prisma } from '../config/prisma.js';
+import { delCache } from '../config/redis.js';
+import { logAuditEvent } from '../services/auditService.js';
+import { io } from '../utils/socket.js';
+import { formatEmployeeResponse } from '../utils/employee.util.js';
 import * as employeeService from '../services/employee.service.js';
 
 /**
@@ -107,31 +113,75 @@ export async function createEmployee(req, res) {
       });
     }
 
-    let finalEmpCode = customEmpCode;
-    if (!finalEmpCode) {
-      const count = await prisma.employee.count();
-      finalEmpCode = `EMP-${String(count + 1).padStart(3, '0')}`;
+    let finalEmpCode = customEmpCode ? String(customEmpCode).trim() : '';
+
+    // Check if the provided empCode already exists in database
+    const codeInUse = finalEmpCode
+      ? await prisma.employee.findUnique({ where: { empCode: finalEmpCode } })
+      : null;
+
+    if (!finalEmpCode || codeInUse) {
+      const allEmployees = await prisma.employee.findMany({
+        select: { empCode: true },
+      });
+      const numericCodes = allEmployees
+        .map((e) => {
+          const match = e.empCode?.match(/EMP-(\d+)/i);
+          return match ? parseInt(match[1], 10) : null;
+        })
+        .filter((n) => n !== null);
+      const maxCode = numericCodes.length > 0 ? Math.max(...numericCodes) : 1000;
+      finalEmpCode = `EMP-${maxCode + 1}`;
     }
 
-    const newEmployee = await prisma.employee.create({
-      data: {
-        empCode: finalEmpCode,
-        name: String(name).trim(),
-        email: cleanEmail,
-        phone: phoneDigits,
-        dob: dob || null,
-        gender: gender || null,
-        address: address || null,
-        department: department || 'Engineering',
-        designation: designation || 'Employee',
-        role: role || 'Developer',
-        employmentType: employmentType || 'Full Time',
-        status: status || 'Active',
-        workLocation: workLocation || 'Chennai HQ',
-        joiningDate: joiningDate || '',
-        reportingManager: reportingManager || null,
-      },
-    });
+    let newEmployee;
+    try {
+      newEmployee = await prisma.employee.create({
+        data: {
+          empCode: finalEmpCode,
+          name: String(name).trim(),
+          email: cleanEmail,
+          phone: phoneDigits,
+          dob: dob || null,
+          gender: gender || null,
+          address: address || null,
+          department: department || 'Engineering',
+          designation: designation || 'Employee',
+          role: role || 'Developer',
+          employmentType: employmentType || 'Full Time',
+          status: status || 'Active',
+          workLocation: workLocation || 'Chennai HQ',
+          joiningDate: joiningDate || '',
+          reportingManager: reportingManager || null,
+        },
+      });
+    } catch (createErr) {
+      if (createErr.code === 'P2002' && createErr.meta?.target?.includes('empCode')) {
+        const total = await prisma.employee.count();
+        const fallbackCode = `EMP-${1000 + total + Math.floor(Math.random() * 800) + 1}`;
+        newEmployee = await prisma.employee.create({
+          data: {
+            empCode: fallbackCode,
+            name: String(name).trim(),
+            email: cleanEmail,
+            phone: phoneDigits,
+            dob: dob || null,
+            gender: gender || null,
+            address: address || null,
+            department: department || 'Engineering',
+            designation: designation || 'Employee',
+            role: role || 'Developer',
+            employmentType: employmentType || 'Full Time',
+            status: status || 'Active',
+            workLocation: workLocation || 'Chennai HQ',
+            joiningDate: joiningDate || '',
+            reportingManager: reportingManager || null,
+          },
+        });
+      } else {
+        throw createErr;
+      }
+    }
 
     // Ensure user account is created/updated for login
     if (password) {
@@ -179,20 +229,23 @@ export async function createEmployee(req, res) {
       io.emit('employee_created', newEmployee);
     }
 
-    await logAuditEvent({
-      userId: req.user?.id,
-      userName: req.user?.name || 'Admin',
-      userRole: req.user?.role || 'SUPER_ADMIN',
-      action: 'CREATE',
-      entity: 'EMPLOYEE',
-      entityId: newEmployee.id,
-      ipAddress: req.ip,
-      details: `Onboarded employee ${newEmployee.name} (${newEmployee.empCode}) into ${newEmployee.department}`,
-    });
+    try {
+      await logAuditEvent({
+        userId: req.user?.id,
+        userName: req.user?.name || 'Admin',
+        userRole: req.user?.role || 'SUPER_ADMIN',
+        action: 'CREATE',
+        entity: 'EMPLOYEE',
+        entityId: newEmployee.id,
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+        details: `Onboarded employee ${newEmployee.name} (${newEmployee.empCode}) into ${newEmployee.department}`,
+      });
+    } catch (_) {}
 
     return res.status(201).json({
       success: true,
-      ...result,
+      message: `Employee ${newEmployee.name} created successfully!`,
+      data: formatEmployeeResponse(newEmployee),
     });
   } catch (error) {
     console.error('Error in createEmployee:', error);
@@ -318,20 +371,23 @@ export async function updateEmployee(req, res) {
       io.emit('employee_updated', updated);
     }
 
-    await logAuditEvent({
-      userId: req.user?.id,
-      userName: req.user?.name || 'Admin',
-      userRole: req.user?.role || 'SUPER_ADMIN',
-      action: 'UPDATE',
-      entity: 'EMPLOYEE',
-      entityId: updated.id,
-      ipAddress: req.ip,
-      details: `Updated employee details for ${updated.name} (${updated.empCode})`,
-    });
+    try {
+      await logAuditEvent({
+        userId: req.user?.id,
+        userName: req.user?.name || 'Admin',
+        userRole: req.user?.role || 'SUPER_ADMIN',
+        action: 'UPDATE',
+        entity: 'EMPLOYEE',
+        entityId: updated.id,
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || '127.0.0.1',
+        details: `Updated employee details for ${updated.name} (${updated.empCode})`,
+      });
+    } catch (_) {}
 
     return res.json({
       success: true,
-      ...result,
+      message: `Employee ${updated.name} updated successfully!`,
+      data: formatEmployeeResponse(updated),
     });
   } catch (error) {
     console.error('Error in updateEmployee:', error);

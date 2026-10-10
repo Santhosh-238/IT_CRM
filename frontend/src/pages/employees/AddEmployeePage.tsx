@@ -88,23 +88,117 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   const isEditing = Boolean(initialData && initialData.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Admin-Added Custom Branches (persisted across sessions via localStorage)
-  const [addBranchModalOpened, setAddBranchModalOpened] = useState(false);
-  const [newBranchInput, setNewBranchInput] = useState('');
-  const [customBranches, setCustomBranches] = useState<string[]>(() => {
+  // Helper to load and save custom items from localStorage
+  const loadCustomItems = (key: string): string[] => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('crm_admin_branches');
+        const saved = localStorage.getItem(key);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed)) return parsed.filter((b) => typeof b === 'string' && b.trim());
         }
-      } catch (err) {
-        console.error('Failed to parse crm_admin_branches:', err);
-      }
+      } catch (_) {}
     }
     return [];
+  };
+
+  const saveCustomItems = (key: string, items: string[]) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(key, JSON.stringify(items));
+      } catch (_) {}
+    }
+  };
+
+  // Admin-Added Custom items (persisted across sessions via localStorage)
+  const [customBranches, setCustomBranches] = useState<string[]>(() => loadCustomItems('crm_admin_branches'));
+  const [customDepartments, setCustomDepartments] = useState<string[]>(() => loadCustomItems('crm_admin_departments'));
+  const [customDesignations, setCustomDesignations] = useState<string[]>(() => loadCustomItems('crm_admin_designations'));
+  const [customRoles, setCustomRoles] = useState<string[]>(() => loadCustomItems('crm_admin_roles'));
+  const [customEmploymentTypes, setCustomEmploymentTypes] = useState<string[]>(() => loadCustomItems('crm_admin_employment_types'));
+  const [customGenders, setCustomGenders] = useState<string[]>(() => loadCustomItems('crm_admin_genders'));
+
+  type CustomFieldKey = 'branch' | 'department' | 'designation' | 'role' | 'employmentType' | 'gender';
+
+  const [customModal, setCustomModal] = useState<{
+    opened: boolean;
+    field: CustomFieldKey;
+    title: string;
+    label: string;
+    placeholder: string;
+  }>({
+    opened: false,
+    field: 'branch',
+    title: '',
+    label: '',
+    placeholder: '',
   });
+  const [customModalInput, setCustomModalInput] = useState('');
+
+  const handleOpenCustomModal = (
+    field: CustomFieldKey,
+    title: string,
+    label: string,
+    placeholder: string
+  ) => {
+    setCustomModal({ opened: true, field, title, label, placeholder });
+    setCustomModalInput('');
+  };
+
+  const handleCloseCustomModal = () => {
+    setCustomModal((prev) => ({ ...prev, opened: false }));
+    setCustomModalInput('');
+  };
+
+  const getCustomListInfo = (field: CustomFieldKey): {
+    list: string[];
+    setter: React.Dispatch<React.SetStateAction<string[]>>;
+    storageKey: string;
+    formProp: 'workLocation' | 'department' | 'designation' | 'role' | 'employmentType' | 'gender';
+  } => {
+    switch (field) {
+      case 'branch':
+        return { list: customBranches, setter: setCustomBranches, storageKey: 'crm_admin_branches', formProp: 'workLocation' };
+      case 'department':
+        return { list: customDepartments, setter: setCustomDepartments, storageKey: 'crm_admin_departments', formProp: 'department' };
+      case 'designation':
+        return { list: customDesignations, setter: setCustomDesignations, storageKey: 'crm_admin_designations', formProp: 'designation' };
+      case 'role':
+        return { list: customRoles, setter: setCustomRoles, storageKey: 'crm_admin_roles', formProp: 'role' };
+      case 'employmentType':
+        return { list: customEmploymentTypes, setter: setCustomEmploymentTypes, storageKey: 'crm_admin_employment_types', formProp: 'employmentType' };
+      case 'gender':
+        return { list: customGenders, setter: setCustomGenders, storageKey: 'crm_admin_genders', formProp: 'gender' };
+    }
+  };
+
+  const handleSaveCustomItem = () => {
+    const val = customModalInput.trim();
+    if (!val) return;
+    const { setter, storageKey, formProp } = getCustomListInfo(customModal.field);
+    setter((prev) => {
+      const updated = prev.includes(val) ? prev : [...prev, val];
+      saveCustomItems(storageKey, updated);
+      return updated;
+    });
+    setFormData((prev) => ({ ...prev, [formProp]: val }));
+    handleCloseCustomModal();
+  };
+
+  const handleRemoveCustomItem = (itemToRemove: string) => {
+    const { setter, storageKey, formProp } = getCustomListInfo(customModal.field);
+    setter((prev) => {
+      const updated = prev.filter((i) => i !== itemToRemove);
+      saveCustomItems(storageKey, updated);
+      return updated;
+    });
+    setFormData((prev) => {
+      if (prev[formProp] === itemToRemove) {
+        return { ...prev, [formProp]: '' };
+      }
+      return prev;
+    });
+  };
 
   const [formData, setFormData] = useState<{
     // 1. Personal & Contact Information
@@ -167,7 +261,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
 
   // Auto-fill Employee ID code (Non-editable, sequential)
   useEffect(() => {
-    if (!isEditing && !formData.empCode) {
+    if (!isEditing) {
       const numericCodes = employees
         .map((e) => {
           const match = e.empCode?.match(/EMP-(\d+)/i);
@@ -177,38 +271,49 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
 
       const maxCode = numericCodes.length > 0 ? Math.max(...numericCodes) : 1000;
       const nextCode = `EMP-${maxCode + 1}`;
-      setFormData((prev) => ({ ...prev, empCode: nextCode }));
+
+      if (!formData.empCode || employees.some((emp) => emp.empCode?.toUpperCase() === formData.empCode?.toUpperCase())) {
+        setFormData((prev) => ({ ...prev, empCode: nextCode }));
+      }
     }
   }, [employees, isEditing, formData.empCode]);
 
-  // 100% Dynamic lists derived from active database records
+  // 100% Dynamic lists derived strictly from active database records, Admin-added custom items, and current form value
   const dynamicDepartments = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.department?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
+    const fromDb = employees.map((e) => e.department?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customDepartments,
+        ...(formData.department ? [formData.department.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return combined;
+  }, [employees, customDepartments, formData.department]);
 
   const dynamicDesignations = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.designation?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
+    const fromDb = employees.map((e) => e.designation?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customDesignations,
+        ...(formData.designation ? [formData.designation.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return combined;
+  }, [employees, customDesignations, formData.designation]);
 
   const dynamicRoles = useMemo(() => {
-    const baseRoles = [
-      'Sales Manager',
-      'Area Sales Manager',
-      'Sales Officer',
-      'Developer',
-      'Senior Developer',
-      'Technical Lead',
-      'Project Manager',
-      'Super Admin',
-      'HR Manager',
-    ];
     const fromDb = employees.map((e) => e.role?.trim()).filter(Boolean) as string[];
-    return Array.from(new Set([...baseRoles, ...fromDb])).sort();
-  }, [employees]);
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customRoles,
+        ...(formData.role ? [formData.role.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return combined;
+  }, [employees, customRoles, formData.role]);
 
   // Only employees who have been added in the role/designation of Sales Manager
   const salesManagerOptions = useMemo(() => {
@@ -232,7 +337,6 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
       label: `${e.name} (${e.empCode})${e.designation ? ` - ${e.designation}` : ' - Sales Manager'}`,
     }));
 
-    // If editing and current value exists, ensure it is in the dropdown
     if (formData.reportingManager && !list.some((item) => item.value === formData.reportingManager)) {
       list.unshift({
         value: formData.reportingManager,
@@ -244,13 +348,17 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   }, [employees, isEditing, initialData, formData.reportingManager]);
 
   const dynamicEmploymentTypes = useMemo(() => {
-    const baseTypes = ['Full Time', 'Part Time', 'Contract', 'Intern', 'Probation'];
     const fromDb = employees.map((e) => e.employmentType?.trim()).filter(Boolean) as string[];
-    const combined = Array.from(new Set([...baseTypes, ...fromDb])).sort();
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customEmploymentTypes,
+        ...(formData.employmentType ? [formData.employmentType.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
     return combined.map((t) => ({ value: t, label: t }));
-  }, [employees]);
+  }, [employees, customEmploymentTypes, formData.employmentType]);
 
-  // 100% Dynamic Branch options derived strictly from active DB records and Admin-added branches
   const branchOptions = useMemo(() => {
     const fromDb = employees.map((e) => e.workLocation?.trim()).filter(Boolean) as string[];
     const combined = Array.from(
@@ -259,42 +367,10 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
         ...customBranches,
         ...(formData.workLocation ? [formData.workLocation.trim()] : []),
       ])
-    )
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
 
     return combined.map((b) => ({ value: b, label: b }));
   }, [employees, customBranches, formData.workLocation]);
-
-  const handleAddCustomBranch = () => {
-    const branchName = newBranchInput.trim();
-    if (!branchName) return;
-
-    setCustomBranches((prev) => {
-      const updated = prev.includes(branchName) ? prev : [...prev, branchName];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('crm_admin_branches', JSON.stringify(updated));
-      }
-      return updated;
-    });
-
-    setFormData((prev) => ({ ...prev, workLocation: branchName }));
-    setNewBranchInput('');
-    setAddBranchModalOpened(false);
-  };
-
-  const handleRemoveCustomBranch = (branchToRemove: string) => {
-    setCustomBranches((prev) => {
-      const updated = prev.filter((b) => b !== branchToRemove);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('crm_admin_branches', JSON.stringify(updated));
-      }
-      return updated;
-    });
-    if (formData.workLocation === branchToRemove) {
-      setFormData((prev) => ({ ...prev, workLocation: '' }));
-    }
-  };
 
   const dynamicStatuses = useMemo(() => {
     return Array.from(
@@ -303,10 +379,16 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   }, [employees]);
 
   const dynamicGenders = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.gender?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
+    const fromDb = employees.map((e) => e.gender?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customGenders,
+        ...(formData.gender ? [formData.gender.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return combined;
+  }, [employees, customGenders, formData.gender]);
 
   const [errors, setErrors] = useState<{ [key: string]: string | undefined }>({});
   const [loading, setLoading] = useState(false);
@@ -708,16 +790,49 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                     />
 
                     {/* 7. Gender */}
-                    <Autocomplete
-                      label="Gender (Optional)"
-                      placeholder="Type or select gender"
-                      data={dynamicGenders}
-                      leftSection={<IconGenderBigender size={16} color="#64748B" />}
-                      value={formData.gender}
-                      onChange={(val) => setFormData({ ...formData, gender: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Gender (Optional)
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('gender', 'Add Gender', 'Gender Option', 'e.g. Male, Female, Other')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Gender
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder="Select gender"
+                        data={dynamicGenders}
+                        leftSection={<IconGenderBigender size={16} color="#64748B" />}
+                        value={formData.gender || null}
+                        onChange={(val) => setFormData({ ...formData, gender: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
                     {/* 8. Address */}
                     <Box style={{ gridColumn: 'span 2' }}>
@@ -762,40 +877,139 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                 <Stack gap="lg">
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                     {/* 1. Department */}
-                    <Autocomplete
-                      label="Department"
-                      placeholder="Type or select department"
-                      data={dynamicDepartments}
-                      leftSection={<IconBuilding size={16} color="#64748B" />}
-                      value={formData.department}
-                      onChange={(val) => setFormData({ ...formData, department: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Department
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('department', 'Add Department', 'Department Name', 'e.g. Engineering, Sales, HR')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Department
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder="Select department"
+                        data={dynamicDepartments}
+                        leftSection={<IconBuilding size={16} color="#64748B" />}
+                        value={formData.department || null}
+                        onChange={(val) => setFormData({ ...formData, department: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
                     {/* 2. Designation */}
-                    <Autocomplete
-                      label="Designation"
-                      placeholder="e.g. Senior Software Engineer"
-                      data={dynamicDesignations}
-                      leftSection={<IconBriefcase size={16} color="#64748B" />}
-                      value={formData.designation}
-                      onChange={(val) => setFormData({ ...formData, designation: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Designation
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('designation', 'Add Designation', 'Designation Name', 'e.g. Sales Executive, Lead Architect')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Designation
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder="Select designation"
+                        data={dynamicDesignations}
+                        leftSection={<IconBriefcase size={16} color="#64748B" />}
+                        value={formData.designation || null}
+                        onChange={(val) => setFormData({ ...formData, designation: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
                     {/* 3. System Role */}
-                    <Autocomplete
-                      label="Role"
-                      placeholder="Type or select role"
-                      data={dynamicRoles}
-                      leftSection={<IconShield size={16} color="#64748B" />}
-                      value={formData.role}
-                      onChange={(val) => setFormData({ ...formData, role: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Role
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('role', 'Add Role', 'Role Name', 'e.g. Sales Officer, Team Lead')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Role
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder="Select role"
+                        data={dynamicRoles}
+                        leftSection={<IconShield size={16} color="#64748B" />}
+                        value={formData.role || null}
+                        onChange={(val) => setFormData({ ...formData, role: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
                     {/* 4. Reporting Manager (Dropdown filtered to Sales Managers) */}
                     <Select
@@ -805,9 +1019,17 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                       leftSection={<IconUsers size={16} color="#64748B" />}
                       value={formData.reportingManager || null}
                       onChange={(val) => setFormData({ ...formData, reportingManager: val || '' })}
-                      styles={normalInputStyles}
-                      searchable
+                      styles={{
+                        ...normalInputStyles,
+                        input: {
+                          ...normalInputStyles.input,
+                          cursor: 'pointer',
+                        },
+                      }}
                       clearable
+                      allowDeselect
+                      checkIconPosition="right"
+                      comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
                       nothingFoundMessage="No employees found with Sales Manager role"
                       maxDropdownHeight={220}
                     />
@@ -824,18 +1046,49 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                     />
 
                     {/* 6. Employment Type (Dropdown) */}
-                    <Select
-                      label="Employment Type"
-                      placeholder="Select employment type"
-                      data={dynamicEmploymentTypes}
-                      leftSection={<IconClock size={16} color="#64748B" />}
-                      value={formData.employmentType || null}
-                      onChange={(val) => setFormData({ ...formData, employmentType: val || '' })}
-                      styles={normalInputStyles}
-                      searchable
-                      clearable
-                      maxDropdownHeight={220}
-                    />
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Employment Type
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('employmentType', 'Add Employment Type', 'Employment Type', 'e.g. Full Time, Contract, Intern')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Employment Type
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder="Select employment type"
+                        data={dynamicEmploymentTypes}
+                        leftSection={<IconClock size={16} color="#64748B" />}
+                        value={formData.employmentType || null}
+                        onChange={(val) => setFormData({ ...formData, employmentType: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
                     {/* 7. Branch (Formerly Work Location with Custom Branch addition) */}
                     <Box>
@@ -845,7 +1098,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                           style={{
                             fontWeight: 600,
                             fontSize: '13px',
-                            color: '#1E293B',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
                           }}
                         >
                           Branch
@@ -855,22 +1108,29 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                           size="compact-xs"
                           color="blue"
                           leftSection={<IconPlus size={12} />}
-                          onClick={() => setAddBranchModalOpened(true)}
+                          onClick={() => handleOpenCustomModal('branch', 'Add Branch', 'Branch Name', 'e.g. Coimbatore, Madurai')}
                           style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
                         >
                           + Add Branch
                         </Button>
                       </Group>
                       <Select
-                        placeholder="Select or search branch"
+                        placeholder="Select branch"
                         data={branchOptions}
                         leftSection={<IconMapPin size={16} color="#64748B" />}
                         value={formData.workLocation || null}
                         onChange={(val) => setFormData({ ...formData, workLocation: val || '' })}
-                        styles={normalInputStyles}
-                        searchable
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
                         clearable
-                        nothingFoundMessage="No branch found. Click '+ Add Branch' to create."
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
                         maxDropdownHeight={220}
                       />
                     </Box>
@@ -1211,43 +1471,40 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
         </SimpleGrid>
       </form>
 
-      {/* Custom Branch Modal */}
+      {/* Unified Custom Option Modal for all dropdowns (Branch, Department, Designation, Role, Employment Type, Gender) */}
       <Modal
-        opened={addBranchModalOpened}
-        onClose={() => {
-          setAddBranchModalOpened(false);
-          setNewBranchInput('');
-        }}
-        title={<Text fw={700} size="md">Add Branch</Text>}
+        opened={customModal.opened}
+        onClose={handleCloseCustomModal}
+        title={<Text fw={700} size="md">{customModal.title}</Text>}
         centered
         radius="md"
         size="sm"
       >
         <Stack gap="md">
           <TextInput
-            label="Branch Name"
-            placeholder="Enter new branch name (e.g. Coimbatore, Madurai)"
-            value={newBranchInput}
-            onChange={(e) => setNewBranchInput(e.target.value)}
+            label={customModal.label}
+            placeholder={customModal.placeholder}
+            value={customModalInput}
+            onChange={(e) => setCustomModalInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
-                handleAddCustomBranch();
+                handleSaveCustomItem();
               }
             }}
             autoFocus
             required
           />
 
-          {customBranches.length > 0 && (
+          {getCustomListInfo(customModal.field).list.length > 0 && (
             <Box>
               <Text size="xs" fw={600} c="dimmed" mb="xs">
-                Admin-Added Branches:
+                Admin-Added {customModal.title.replace('Add ', '')}s:
               </Text>
               <Group gap={6}>
-                {customBranches.map((branch) => (
+                {getCustomListInfo(customModal.field).list.map((item) => (
                   <Badge
-                    key={branch}
+                    key={item}
                     variant="light"
                     color="blue"
                     size="sm"
@@ -1257,14 +1514,14 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                         radius="xl"
                         variant="transparent"
                         color="blue"
-                        onClick={() => handleRemoveCustomBranch(branch)}
+                        onClick={() => handleRemoveCustomItem(item)}
                         style={{ cursor: 'pointer' }}
                       >
                         <IconTrash size={10} />
                       </ActionIcon>
                     }
                   >
-                    {branch}
+                    {item}
                   </Badge>
                 ))}
               </Group>
@@ -1274,19 +1531,16 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
           <Group justify="flex-end" gap="xs">
             <Button
               variant="default"
-              onClick={() => {
-                setAddBranchModalOpened(false);
-                setNewBranchInput('');
-              }}
+              onClick={handleCloseCustomModal}
             >
               Cancel
             </Button>
             <Button
               color="blue"
-              onClick={handleAddCustomBranch}
-              disabled={!newBranchInput.trim()}
+              onClick={handleSaveCustomItem}
+              disabled={!customModalInput.trim()}
             >
-              Add & Select Branch
+              Add & Select
             </Button>
           </Group>
         </Stack>

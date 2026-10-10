@@ -148,10 +148,22 @@ export async function createEmployeeService(body, user, ip = '127.0.0.1') {
     throw error;
   }
 
-  let finalEmpCode = customEmpCode;
-  if (!finalEmpCode) {
-    const count = await prisma.employee.count();
-    finalEmpCode = generateEmpCode(count);
+  let finalEmpCode = customEmpCode ? String(customEmpCode).trim() : '';
+
+  const codeInUse = finalEmpCode
+    ? await prisma.employee.findUnique({ where: { empCode: finalEmpCode } })
+    : null;
+
+  if (!finalEmpCode || codeInUse) {
+    const allEmployees = await prisma.employee.findMany({ select: { empCode: true } });
+    const numericCodes = allEmployees
+      .map((e) => {
+        const match = e.empCode?.match(/EMP-(\d+)/i);
+        return match ? parseInt(match[1], 10) : null;
+      })
+      .filter((n) => n !== null);
+    const maxCode = numericCodes.length > 0 ? Math.max(...numericCodes) : 1000;
+    finalEmpCode = `EMP-${maxCode + 1}`;
   }
 
   const newEmployee = await prisma.employee.create({

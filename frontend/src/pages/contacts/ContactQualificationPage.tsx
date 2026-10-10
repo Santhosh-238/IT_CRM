@@ -3,6 +3,7 @@ import {
   Box,
   Paper,
   Stack,
+  Grid,
   SimpleGrid,
   TextInput,
   Select,
@@ -35,6 +36,7 @@ import {
 import { Contact } from '../../types/contact';
 import { useContact } from '../../context/ContactContext';
 import { useCRM } from '../../context/CRMContext';
+import { CRM_COLORS } from '../../theme/colors';
 
 interface ContactQualificationPageProps {
   contact?: Contact | null;
@@ -209,16 +211,16 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
   ];
 
   return (
-    <Box p={{ base: 'sm', md: 'md' }} style={{ maxWidth: 1560, margin: '0 auto' }}>
+    <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ maxWidth: 1560, margin: '0 auto' }}>
       {/* 2-Column Split View matching Screenshot */}
-      <SimpleGrid cols={{ base: 1, lg: 12 }} spacing="lg" style={{ alignItems: 'flex-start' }}>
+      <Grid gutter="lg" style={{ alignItems: 'flex-start' }}>
         
         {/* ========================================================================= */}
         {/* LEFT COLUMN: Contact Summary Panel (Span 4)                               */}
         {/* ========================================================================= */}
-        <Box style={{ gridColumn: 'span 4' }}>
+        <Grid.Col span={{ base: 12, md: 5, lg: 4 }}>
           <Paper
-            p="xl"
+            p={{ base: 'md', sm: 'xl' }}
             radius="20px"
             style={{
               backgroundColor: isDark ? '#111827' : '#FFFFFF',
@@ -227,7 +229,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
             }}
           >
             {/* Header: Back Button + Contact Summary Title */}
-            <Group gap="xs" mb="xl" align="center">
+            <Group gap="xs" mb={{ base: 'md', sm: 'xl' }} align="center">
               <ActionIcon
                 variant="subtle"
                 color="gray"
@@ -246,20 +248,20 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
             </Group>
 
             {/* Contact Large Avatar */}
-            <Group justify="center" mb="xl">
+            <Group justify="center" mb={{ base: 'md', sm: 'xl' }}>
               <Box
                 style={{
-                  width: 72,
-                  height: 72,
+                  width: 64,
+                  height: 64,
                   borderRadius: '50%',
-                  backgroundColor: isDark ? '#14532D' : '#1E3A2B',
+                  background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
                   color: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: 28,
+                  fontSize: 24,
                   fontWeight: 800,
-                  boxShadow: '0 4px 14px rgba(30, 58, 43, 0.25)',
+                  boxShadow: '0 6px 20px rgba(79, 70, 229, 0.35)',
                 }}
               >
                 {getInitial(contactName)}
@@ -267,36 +269,36 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
             </Group>
 
             {/* Summary Field Rows matching Screenshot */}
-            <Stack gap="lg">
+            <Stack gap="md">
               {/* Contact Person */}
               <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
                   <IconUser size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Contact Person
                   </Text>
                 </Group>
-                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                <Text size="13px" fw={600} truncate style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
                   {contactName}
                 </Text>
               </Group>
 
               {/* Designation */}
               <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
                   <IconBriefcase size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Designation
                   </Text>
                 </Group>
-                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                <Text size="13px" fw={600} truncate style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
                   {designation}
                 </Text>
               </Group>
 
               {/* Email */}
               <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
                   <IconMail size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Email
@@ -305,9 +307,10 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                 <Text
                   size="13px"
                   fw={600}
+                  truncate
                   component="a"
                   href={`mailto:${email}`}
-                  style={{ color: '#2563EB', textDecoration: 'none' }}
+                  style={{ color: '#2563EB', textDecoration: 'none', textAlign: 'right', maxWidth: '60%' }}
                 >
                   {email}
                 </Text>
@@ -315,13 +318,13 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
               {/* Phone */}
               <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
                   <IconPhone size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Phone
                   </Text>
                 </Group>
-                <Group gap={6} align="center">
+                <Group gap={6} align="center" wrap="nowrap">
                   <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
                     {phone}
                   </Text>
@@ -335,6 +338,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: '#FFFFFF',
+                      flexShrink: 0,
                     }}
                   >
                     <IconBrandWhatsapp size={12} stroke={2.5} />
@@ -344,45 +348,46 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
               {/* Contact Type */}
               <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
                   <IconUserCheck size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Contact Type
                   </Text>
                 </Group>
-                <Text size="13px" fw={700} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                <Text size="13px" fw={700} truncate style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
                   {contactType}
                 </Text>
               </Group>
 
               {/* Company Name */}
               <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
                   <IconBuilding size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Company Name
                   </Text>
                 </Group>
-                <Text size="13px" fw={700} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                <Text size="13px" fw={700} truncate style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
                   {companyName}
                 </Text>
               </Group>
 
               {/* Requirement Type */}
               <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
                   <IconBox size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Requirement Type
                   </Text>
                 </Group>
-                <Group gap={6} align="center">
+                <Group gap={6} align="center" wrap="nowrap">
                   <Box
                     style={{
                       width: 6,
                       height: 6,
                       borderRadius: '50%',
                       backgroundColor: '#F97316',
+                      flexShrink: 0,
                     }}
                   />
                   <Text size="13px" fw={600} style={{ color: '#F97316' }}>
@@ -393,13 +398,13 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
               {/* Product */}
               <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
                   <IconLayersSubtract size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Product
                   </Text>
                 </Group>
-                <Text size="13px" fw={700} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                <Text size="13px" fw={700} truncate style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
                   {product}
                 </Text>
               </Group>
@@ -463,20 +468,27 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                         backgroundColor:
                           idx === 0
                             ? isDark
-                              ? 'rgba(34, 197, 94, 0.15)'
-                              : '#DCFCE7'
+                              ? 'rgba(79, 70, 229, 0.18)'
+                              : '#EEF2FF'
                             : isDark
-                            ? 'rgba(217, 70, 239, 0.15)'
-                            : '#F5D0FE',
+                            ? 'rgba(6, 182, 212, 0.18)'
+                            : '#ECFEFF',
                         color:
                           idx === 0
                             ? isDark
-                              ? '#86EFAC'
-                              : '#15803D'
+                              ? '#A5B4FC'
+                              : '#4338CA'
                             : isDark
-                            ? '#F0ABFC'
-                            : '#86198F',
-                        border: 'none',
+                            ? '#67E8F9'
+                            : '#0891B2',
+                        border:
+                          idx === 0
+                            ? isDark
+                              ? '1px solid rgba(99, 102, 241, 0.3)'
+                              : '1px solid #C7D2FE'
+                            : isDark
+                            ? '1px solid rgba(6, 182, 212, 0.3)'
+                            : '1px solid #A5F3FC',
                         textTransform: 'none',
                         fontWeight: 600,
                         fontSize: 12,
@@ -490,34 +502,34 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
               </Group>
             </Box>
           </Paper>
-        </Box>
+        </Grid.Col>
 
         {/* ========================================================================= */}
         {/* RIGHT COLUMN: Qualification Form & Stepper (Span 8)                       */}
         {/* ========================================================================= */}
-        <Box style={{ gridColumn: 'span 8' }}>
+        <Grid.Col span={{ base: 12, md: 7, lg: 8 }}>
           <Paper
-            p="xl"
+            p={{ base: 'md', sm: 'xl' }}
             radius="20px"
             style={{
               backgroundColor: isDark ? '#111827' : '#FFFFFF',
               border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #EAECEF',
-              boxShadow: isDark ? '0 10px 30px rgba(0,0,0,0.4)' : '0 4px 20px rgba(0, 0, 0, 0.03)',
+              boxShadow: isDark ? '0 10px 30px rgba(0,0,0,0.4)' : '0 4px 20px rgba(79, 70, 229, 0.04)',
             }}
           >
             {/* Top Bar: Title + Stepper Badge matching Screenshot */}
-            <Group justify="space-between" align="center" mb="xl">
+            <Group justify="space-between" align="center" mb={{ base: 'md', sm: 'xl' }} wrap="wrap" gap="sm">
               <Group gap="sm" align="center">
                 <Box
                   style={{
                     width: 32,
                     height: 32,
                     borderRadius: '50%',
-                    backgroundColor: isDark ? '#14532D' : '#E8F5E9',
+                    backgroundColor: isDark ? 'rgba(79, 70, 229, 0.2)' : '#EEF2FF',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: isDark ? '#86EFAC' : '#2E7D32',
+                    color: isDark ? '#A5B4FC' : '#4F46E5',
                   }}
                 >
                   <IconClock size={18} stroke={2.2} />
@@ -528,26 +540,27 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
               </Group>
 
               {/* 2-Step Stepper Capsule */}
-              <Group gap={6} align="center">
+              <Group gap={6} align="center" wrap="nowrap">
                 {/* Step 1: Initialization */}
                 <Box
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 5,
-                    padding: '5px 12px',
+                    gap: 4,
+                    padding: '4px 10px',
                     borderRadius: 100,
-                    backgroundColor: isDark ? 'rgba(34, 197, 94, 0.15)' : '#DCFCE7',
-                    color: isDark ? '#86EFAC' : '#166534',
-                    fontSize: 12,
+                    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.18)' : '#ECFDF5',
+                    color: isDark ? '#34D399' : '#047857',
+                    border: isDark ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #BBF7D0',
+                    fontSize: 11.5,
                     fontWeight: 600,
                   }}
                 >
-                  <IconCheck size={13} stroke={2.5} />
+                  <IconCheck size={12} stroke={2.5} />
                   <span>Initialization</span>
                 </Box>
 
-                <Text size="12px" style={{ color: isDark ? '#64748B' : '#94A3B8' }}>
+                <Text size="11px" style={{ color: isDark ? '#64748B' : '#94A3B8' }}>
                   ➔
                 </Text>
 
@@ -556,26 +569,26 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
-                    padding: '5px 14px',
+                    gap: 5,
+                    padding: '4px 12px',
                     borderRadius: 100,
-                    backgroundColor: isDark ? '#14532D' : '#1E3A2B',
+                    background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
                     color: '#FFFFFF',
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: 700,
-                    boxShadow: '0 2px 8px rgba(30, 58, 43, 0.25)',
+                    boxShadow: '0 2px 10px rgba(79, 70, 229, 0.35)',
                   }}
                 >
                   <Box
                     style={{
-                      width: 17,
-                      height: 17,
+                      width: 15,
+                      height: 15,
                       borderRadius: '50%',
                       backgroundColor: 'rgba(255, 255, 255, 0.25)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: 800,
                     }}
                   >
@@ -685,8 +698,8 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                   />
                 )}
 
-                {/* Footer Navigation Bar matching Screenshot */}
-                <Group justify="space-between" align="center" mt="xl" pt="md">
+                {/* Footer Navigation Bar */}
+                <Group justify="space-between" align="center" mt="xl" pt="md" wrap="wrap" gap="sm">
                   <Button
                     variant="default"
                     radius="md"
@@ -710,12 +723,13 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                     loading={saving || loading}
                     rightSection={<IconCheck size={15} stroke={2.5} />}
                     style={{
-                      backgroundColor: isDark ? '#14532D' : '#1E3A2B',
+                      background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
                       color: '#FFFFFF',
                       fontWeight: 700,
                       fontSize: 13,
-                      padding: '0 22px',
-                      boxShadow: '0 2px 10px rgba(30, 58, 43, 0.3)',
+                      padding: '0 20px',
+                      border: 'none',
+                      boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)',
                     }}
                   >
                     {getSubmitButtonLabel()}
@@ -724,8 +738,8 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
               </Stack>
             </form>
           </Paper>
-        </Box>
-      </SimpleGrid>
+        </Grid.Col>
+      </Grid>
     </Box>
   );
 };

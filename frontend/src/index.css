@@ -145,6 +145,37 @@ body {
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* =========================================================
+ * Modern Tooltip Theme (Light & Dark)
+ * ========================================================= */
+.mantine-Tooltip-tooltip {
+  background-color: #0F172A !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 5px 12px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Tooltip-tooltip {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+}
+
+.mantine-Tooltip-arrow {
+  background-color: #0F172A !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Tooltip-arrow {
+  background-color: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
 /* Dynamic Crisp Floating Cards */
 .crextio-card,
 .mantine-Paper-root:not(.crextio-dark-card):not(.pastel-lime-card):not(.pastel-mint-card):not(.pastel-coral-card):not([style*="background: #14181F"]):not([style*="background:#14181F"]) {

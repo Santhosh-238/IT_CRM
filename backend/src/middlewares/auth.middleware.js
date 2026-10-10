@@ -19,10 +19,12 @@ export async function requireAuth(req, res, next) {
   if (!token) {
     if (env.NODE_ENV !== 'production' && !req.headers['x-strict-auth']) {
       try {
-        const firstUser = await prisma.user.findFirst({
+        const firstUser = (await prisma.user.findFirst({
+          where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] } },
           select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
-          orderBy: { createdAt: 'asc' },
-        });
+        })) || (await prisma.user.findFirst({
+          select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
+        }));
         if (firstUser) {
           req.user = firstUser;
           return next();
@@ -36,7 +38,18 @@ export async function requireAuth(req, res, next) {
   try {
     req.sessionToken = token;
 
-    // 1. Redis Session Cache lookup (<1ms response)
+    // 1. JWT verify (stateless, immediate)
+    if (token.includes('.')) {
+      try {
+        const decoded = verifyToken(token);
+        if (decoded && decoded.id) {
+          req.user = decoded;
+          return next();
+        }
+      } catch (_) {}
+    }
+
+    // 2. Redis Session Cache lookup (<1ms response)
     const cachedSession = await getCache(`crm:session:${token}`);
     if (cachedSession && cachedSession.id) {
       req.user = {
@@ -48,7 +61,7 @@ export async function requireAuth(req, res, next) {
       return next();
     }
 
-    // 2. Direct User lookup in Database
+    // 3. Direct User lookup in Database
     const dbUser = await prisma.user.findUnique({
       where: { id: token },
       select: { id: true, email: true, name: true, role: true },
@@ -65,15 +78,39 @@ export async function requireAuth(req, res, next) {
       return next();
     }
 
-    // 3. Fallback: JWT verify
-    if (token.includes('.')) {
-      const decoded = verifyToken(token);
-      req.user = decoded;
-      return next();
+    // 4. Dev mode fallback: auto-restore user session in dev
+    if (env.NODE_ENV !== 'production' && !req.headers['x-strict-auth']) {
+      try {
+        const devUser = (await prisma.user.findFirst({
+          where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] } },
+          select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
+        })) || (await prisma.user.findFirst({
+          select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
+        }));
+        if (devUser) {
+          req.user = devUser;
+          await setCache(`crm:session:${token}`, devUser, 86400 * 7);
+          return next();
+        }
+      } catch (_) {}
     }
 
     return res.status(401).json({ success: false, message: 'Invalid or expired session. Please log in again.' });
   } catch (err) {
+    if (env.NODE_ENV !== 'production' && !req.headers['x-strict-auth']) {
+      try {
+        const devUser = (await prisma.user.findFirst({
+          where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] } },
+          select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
+        })) || (await prisma.user.findFirst({
+          select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
+        }));
+        if (devUser) {
+          req.user = devUser;
+          return next();
+        }
+      } catch (_) {}
+    }
     return res.status(401).json({ success: false, message: 'Invalid or expired session. Please log in again.' });
   }
 }
