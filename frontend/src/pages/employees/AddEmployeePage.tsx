@@ -17,6 +17,11 @@ import {
   ThemeIcon,
   Progress,
   Tooltip,
+  Select,
+  Switch,
+  Modal,
+  ActionIcon,
+  Avatar,
   useComputedColorScheme,
 } from '@mantine/core';
 import {
@@ -38,6 +43,8 @@ import {
   IconClock,
   IconHome,
   IconGenderBigender,
+  IconPlus,
+  IconCamera,
 } from '@tabler/icons-react';
 import { useEmployee } from '../../context/EmployeeContext';
 import { Employee } from '../../types/employee';
@@ -81,6 +88,24 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   const isEditing = Boolean(initialData && initialData.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Admin-Added Custom Branches (persisted across sessions via localStorage)
+  const [addBranchModalOpened, setAddBranchModalOpened] = useState(false);
+  const [newBranchInput, setNewBranchInput] = useState('');
+  const [customBranches, setCustomBranches] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('crm_admin_branches');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed.filter((b) => typeof b === 'string' && b.trim());
+        }
+      } catch (err) {
+        console.error('Failed to parse crm_admin_branches:', err);
+      }
+    }
+    return [];
+  });
+
   const [formData, setFormData] = useState<{
     // 1. Personal & Contact Information
     name: string;
@@ -91,6 +116,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     dob: string;
     gender: string;
     address: string;
+    avatar?: string;
 
     // 2. Job & Organization Details
     department: string;
@@ -110,6 +136,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     dob: initialData?.dob || '',
     gender: initialData?.gender || '',
     address: initialData?.address || '',
+    avatar: initialData?.avatar || '',
 
     department: initialData?.department || '',
     designation: initialData?.designation || '',
@@ -120,6 +147,23 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     workLocation: initialData?.workLocation || '',
     status: initialData?.status || 'Active',
   });
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setFormData((prev) => ({ ...prev, avatar: reader.result as string }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Auto-fill Employee ID code (Non-editable, sequential)
   useEffect(() => {
@@ -151,28 +195,106 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   }, [employees]);
 
   const dynamicRoles = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.role?.trim()).filter(Boolean) as string[])
-    ).sort();
+    const baseRoles = [
+      'Sales Manager',
+      'Area Sales Manager',
+      'Sales Officer',
+      'Developer',
+      'Senior Developer',
+      'Technical Lead',
+      'Project Manager',
+      'Super Admin',
+      'HR Manager',
+    ];
+    const fromDb = employees.map((e) => e.role?.trim()).filter(Boolean) as string[];
+    return Array.from(new Set([...baseRoles, ...fromDb])).sort();
   }, [employees]);
 
-  const dynamicManagers = useMemo(() => {
-    return employees
-      .filter((e) => !isEditing || e.id !== initialData?.id)
-      .map((e) => `${e.name} (${e.empCode})${e.designation ? ` - ${e.designation}` : ''}`);
-  }, [employees, isEditing, initialData]);
+  // Only employees who have been added in the role/designation of Sales Manager
+  const salesManagerOptions = useMemo(() => {
+    const managers = employees.filter((e) => {
+      if (isEditing && initialData?.id && e.id === initialData.id) return false;
+      const r = (e.role || '').toLowerCase().trim();
+      const d = (e.designation || '').toLowerCase().trim();
+      return (
+        r.includes('sales manager') ||
+        r.includes('sales_manager') ||
+        r === 'sales manager' ||
+        r === 'asm' ||
+        r.includes('area sales manager') ||
+        d.includes('sales manager') ||
+        d.includes('area sales manager')
+      );
+    });
+
+    const list = managers.map((e) => ({
+      value: `${e.name} (${e.empCode})`,
+      label: `${e.name} (${e.empCode})${e.designation ? ` - ${e.designation}` : ' - Sales Manager'}`,
+    }));
+
+    // If editing and current value exists, ensure it is in the dropdown
+    if (formData.reportingManager && !list.some((item) => item.value === formData.reportingManager)) {
+      list.unshift({
+        value: formData.reportingManager,
+        label: formData.reportingManager,
+      });
+    }
+
+    return list;
+  }, [employees, isEditing, initialData, formData.reportingManager]);
 
   const dynamicEmploymentTypes = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.employmentType?.trim()).filter(Boolean) as string[])
-    ).sort();
+    const baseTypes = ['Full Time', 'Part Time', 'Contract', 'Intern', 'Probation'];
+    const fromDb = employees.map((e) => e.employmentType?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(new Set([...baseTypes, ...fromDb])).sort();
+    return combined.map((t) => ({ value: t, label: t }));
   }, [employees]);
 
-  const dynamicLocations = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.workLocation?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
+  // 100% Dynamic Branch options derived strictly from active DB records and Admin-added branches
+  const branchOptions = useMemo(() => {
+    const fromDb = employees.map((e) => e.workLocation?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customBranches,
+        ...(formData.workLocation ? [formData.workLocation.trim()] : []),
+      ])
+    )
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+
+    return combined.map((b) => ({ value: b, label: b }));
+  }, [employees, customBranches, formData.workLocation]);
+
+  const handleAddCustomBranch = () => {
+    const branchName = newBranchInput.trim();
+    if (!branchName) return;
+
+    setCustomBranches((prev) => {
+      const updated = prev.includes(branchName) ? prev : [...prev, branchName];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('crm_admin_branches', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    setFormData((prev) => ({ ...prev, workLocation: branchName }));
+    setNewBranchInput('');
+    setAddBranchModalOpened(false);
+  };
+
+  const handleRemoveCustomBranch = (branchToRemove: string) => {
+    setCustomBranches((prev) => {
+      const updated = prev.filter((b) => b !== branchToRemove);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('crm_admin_branches', JSON.stringify(updated));
+      }
+      return updated;
+    });
+    if (formData.workLocation === branchToRemove) {
+      setFormData((prev) => ({ ...prev, workLocation: '' }));
+    }
+  };
 
   const dynamicStatuses = useMemo(() => {
     return Array.from(
@@ -452,8 +574,9 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
 
       {/* 2. Main Form Layout */}
       <form onSubmit={handleSubmit} noValidate autoComplete="off">
-        <Box style={{ maxWidth: 960, margin: '0 auto' }}>
-          <Stack gap="xl">
+        <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="xl">
+          <Box style={{ gridColumn: 'span 2' }}>
+            <Stack gap="xl">
             {/* SECTION 1: Personal & Contact Information */}
             <Paper
               p="xl"
@@ -674,15 +797,18 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                       maxDropdownHeight={220}
                     />
 
-                    {/* 4. Reporting Manager */}
-                    <Autocomplete
+                    {/* 4. Reporting Manager (Dropdown filtered to Sales Managers) */}
+                    <Select
                       label="Reporting Manager (Optional)"
-                      placeholder="Type or select manager / supervisor"
-                      data={dynamicManagers}
+                      placeholder={salesManagerOptions.length > 0 ? 'Select Sales Manager' : 'No Sales Managers registered'}
+                      data={salesManagerOptions}
                       leftSection={<IconUsers size={16} color="#64748B" />}
-                      value={formData.reportingManager}
-                      onChange={(val) => setFormData({ ...formData, reportingManager: val })}
+                      value={formData.reportingManager || null}
+                      onChange={(val) => setFormData({ ...formData, reportingManager: val || '' })}
                       styles={normalInputStyles}
+                      searchable
+                      clearable
+                      nothingFoundMessage="No employees found with Sales Manager role"
                       maxDropdownHeight={220}
                     />
 
@@ -697,41 +823,127 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                       styles={normalInputStyles}
                     />
 
-                    {/* 6. Employment Type */}
-                    <Autocomplete
+                    {/* 6. Employment Type (Dropdown) */}
+                    <Select
                       label="Employment Type"
-                      placeholder="Type or select employment type"
+                      placeholder="Select employment type"
                       data={dynamicEmploymentTypes}
                       leftSection={<IconClock size={16} color="#64748B" />}
-                      value={formData.employmentType}
-                      onChange={(val) => setFormData({ ...formData, employmentType: val })}
+                      value={formData.employmentType || null}
+                      onChange={(val) => setFormData({ ...formData, employmentType: val || '' })}
                       styles={normalInputStyles}
+                      searchable
+                      clearable
                       maxDropdownHeight={220}
                     />
 
-                    {/* 7. Work Location */}
-                    <Autocomplete
-                      label="Work Location"
-                      placeholder="Type or select branch / city"
-                      data={dynamicLocations}
-                      leftSection={<IconMapPin size={16} color="#64748B" />}
-                      value={formData.workLocation}
-                      onChange={(val) => setFormData({ ...formData, workLocation: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    {/* 7. Branch (Formerly Work Location with Custom Branch addition) */}
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: '#1E293B',
+                          }}
+                        >
+                          Branch
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => setAddBranchModalOpened(true)}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Branch
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder="Select or search branch"
+                        data={branchOptions}
+                        leftSection={<IconMapPin size={16} color="#64748B" />}
+                        value={formData.workLocation || null}
+                        onChange={(val) => setFormData({ ...formData, workLocation: val || '' })}
+                        styles={normalInputStyles}
+                        searchable
+                        clearable
+                        nothingFoundMessage="No branch found. Click '+ Add Branch' to create."
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
-                    {/* 8. Employee Status */}
-                    <Autocomplete
-                      label="Employee Status"
-                      placeholder="Type or select employee status"
-                      data={dynamicStatuses}
-                      leftSection={<IconActivity size={16} color="#64748B" />}
-                      value={formData.status}
-                      onChange={(val) => setFormData({ ...formData, status: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    {/* 8. Employee Status (Toggle Button) */}
+                    <Box>
+                      <Text
+                        component="label"
+                        style={{
+                          display: 'block',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          marginBottom: '6px',
+                          color: '#1E293B',
+                        }}
+                      >
+                        Employee Status
+                      </Text>
+                      <Paper
+                        p="xs"
+                        style={{
+                          height: '42px',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingLeft: '14px',
+                          paddingRight: '14px',
+                          backgroundColor: '#FFFFFF',
+                        }}
+                      >
+                        <Group gap="xs">
+                          <IconActivity
+                            size={16}
+                            color={
+                              (formData.status || '').toLowerCase().includes('inact')
+                                ? '#94A3B8'
+                                : '#10B981'
+                            }
+                          />
+                          <Badge
+                            size="sm"
+                            variant="light"
+                            color={
+                              (formData.status || '').toLowerCase().includes('inact')
+                                ? 'gray'
+                                : 'teal'
+                            }
+                          >
+                            {(formData.status || '').toLowerCase().includes('inact')
+                              ? 'Inactive'
+                              : 'Active'}
+                          </Badge>
+                        </Group>
+                        <Switch
+                          checked={!(formData.status || '').toLowerCase().includes('inact')}
+                          onChange={(event) =>
+                            setFormData({
+                              ...formData,
+                              status: event.currentTarget.checked ? 'Active' : 'Inactive',
+                            })
+                          }
+                          color="teal"
+                          size="md"
+                          thumbIcon={
+                            !(formData.status || '').toLowerCase().includes('inact') ? (
+                              <IconCheck size={12} color="#10B981" stroke={3} />
+                            ) : undefined
+                          }
+                        />
+                      </Paper>
+                    </Box>
                   </SimpleGrid>
                 </Stack>
               </Paper>
@@ -772,7 +984,313 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
               </Group>
             </Stack>
           </Box>
-        </form>
+
+          {/* Right 1 Column: Clean, Elegant Live Preview & Actions */}
+          <Box style={{ position: 'sticky', top: 20 }}>
+            <Stack gap="md">
+              <Paper
+                p="xl"
+                radius="lg"
+                style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.05)',
+                }}
+              >
+                {/* Header */}
+                <Group justify="space-between" align="center" mb="lg">
+                  <Text fw={700} size="sm" style={{ color: '#0F172A' }}>
+                    Profile Preview
+                  </Text>
+                  {isEditing ? (
+                    <Badge size="sm" variant="light" color="blue">
+                      Editing
+                    </Badge>
+                  ) : isReady ? (
+                    <Badge size="sm" color="teal" variant="light" leftSection={<IconCheck size={12} />}>
+                      Ready
+                    </Badge>
+                  ) : (
+                    <Badge size="sm" variant="light" color="gray">
+                      {completedCount}/{totalFields} Complete
+                    </Badge>
+                  )}
+                </Group>
+
+                {/* Profile Hero Section */}
+                <Box style={{ textAlign: 'center', marginBottom: '16px' }}>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                    style={{ display: 'none' }}
+                  />
+                  <Tooltip label="Click to upload profile photo" position="top" withArrow>
+                    <Box
+                      onClick={handleAvatarClick}
+                      style={{
+                        position: 'relative',
+                        cursor: 'pointer',
+                        display: 'inline-block',
+                        borderRadius: '50%',
+                        transition: 'transform 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.04)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+                    >
+                      <Avatar
+                        src={formData.avatar || undefined}
+                        size={80}
+                        radius="xl"
+                        mx="auto"
+                        color={formData.name.trim() ? 'dark' : 'gray'}
+                        style={{
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                          border: '2px solid #E2E8F0',
+                          fontWeight: 700,
+                          fontSize: 24,
+                          background: formData.avatar ? '#FFFFFF' : formData.name.trim() ? '#0F172A' : '#F8FAFC',
+                          color: formData.name.trim() ? '#FFFFFF' : '#64748B',
+                        }}
+                      >
+                        {!formData.avatar && (initials || <IconUser size={34} color="#94A3B8" />)}
+                      </Avatar>
+
+                      {/* Camera Icon */}
+                      <Box
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          right: 0,
+                          background: '#0F172A',
+                          color: '#FFFFFF',
+                          borderRadius: '50%',
+                          width: 24,
+                          height: 24,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                          border: '2px solid #FFFFFF',
+                        }}
+                      >
+                        <IconCamera size={12} stroke={2.5} />
+                      </Box>
+                    </Box>
+                  </Tooltip>
+
+                  {formData.avatar && (
+                    <Box mt={4}>
+                      <Button
+                        variant="subtle"
+                        color="red"
+                        size="compact-xs"
+                        leftSection={<IconTrash size={12} />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFormData((prev) => ({ ...prev, avatar: '' }));
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                      >
+                        Remove Photo
+                      </Button>
+                    </Box>
+                  )}
+
+                  <Text fw={700} size="md" mt="xs" style={{ color: formData.name.trim() ? '#0F172A' : '#94A3B8' }}>
+                    {formData.name.trim() || 'New Employee'}
+                  </Text>
+
+                  <Text size="xs" c="dimmed" mt={2}>
+                    {formData.designation.trim() ? `${formData.designation} • ${formData.department}` : formData.department}
+                  </Text>
+
+                  <Group justify="center" gap={6} mt="xs">
+                    <Badge size="xs" variant="outline" color="gray">
+                      {formData.empCode || 'EMP-XXXX'}
+                    </Badge>
+                    <Badge size="xs" variant="light" color="teal">
+                      {formData.status || 'Active'}
+                    </Badge>
+                    <Badge size="xs" variant="light" color="blue">
+                      {formData.employmentType || 'Full Time'}
+                    </Badge>
+                  </Group>
+                </Box>
+
+                <Divider my="sm" />
+
+                {/* Clean Key-Value Attributes */}
+                <Stack gap="xs" my="md">
+                  <Group justify="space-between" wrap="nowrap">
+                    <Text size="xs" c="dimmed">Email:</Text>
+                    <Text size="xs" fw={500} c={formData.email ? '#0F172A' : 'dimmed'} truncate style={{ maxWidth: 170 }}>
+                      {formData.email.trim() || '—'}
+                    </Text>
+                  </Group>
+
+                  <Group justify="space-between" wrap="nowrap">
+                    <Text size="xs" c="dimmed">Phone:</Text>
+                    <Text size="xs" fw={500} c={formData.phone ? '#0F172A' : 'dimmed'}>
+                      {formData.phone.trim() || '—'}
+                    </Text>
+                  </Group>
+
+                  <Group justify="space-between" wrap="nowrap">
+                    <Text size="xs" c="dimmed">Branch:</Text>
+                    <Text size="xs" fw={500} c={formData.workLocation ? '#0F172A' : 'dimmed'}>
+                      {formData.workLocation || '—'}
+                    </Text>
+                  </Group>
+
+                  <Group justify="space-between" wrap="nowrap">
+                    <Text size="xs" c="dimmed">Joining Date:</Text>
+                    <Text size="xs" fw={500} c={formData.joiningDate ? '#0F172A' : 'dimmed'}>
+                      {formData.joiningDate || '—'}
+                    </Text>
+                  </Group>
+
+                  <Group justify="space-between" wrap="nowrap">
+                    <Text size="xs" c="dimmed">System Role:</Text>
+                    <Text size="xs" fw={500} c={formData.role ? '#0F172A' : 'dimmed'}>
+                      {formData.role || '—'}
+                    </Text>
+                  </Group>
+                </Stack>
+
+                {/* Form Progress */}
+                <Box mt="md" pt="xs" style={{ borderTop: '1px solid #F1F5F9' }}>
+                  <Group justify="space-between" mb={6}>
+                    <Text size="xs" c="dimmed" fw={600}>
+                      Form Completion
+                    </Text>
+                    <Text size="xs" fw={700} c={isReady ? 'teal' : 'blue'}>
+                      {completionPercentage}%
+                    </Text>
+                  </Group>
+                  <Progress
+                    value={completionPercentage}
+                    color={isReady ? 'teal' : 'blue'}
+                    size="sm"
+                    radius="xl"
+                  />
+                </Box>
+
+                <Divider my="md" />
+
+                {/* Action Buttons */}
+                <Stack gap="xs">
+                  <Button
+                    type="submit"
+                    size="md"
+                    radius="md"
+                    loading={loading}
+                    leftSection={<IconCheck size={18} />}
+                    style={{
+                      background: '#0F172A',
+                      color: '#FFFFFF',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {isEditing ? 'Save Changes' : 'Add Employee'}
+                  </Button>
+
+                  <Button
+                    variant="subtle"
+                    color="gray"
+                    radius="md"
+                    onClick={onBack}
+                  >
+                    Cancel
+                  </Button>
+                </Stack>
+              </Paper>
+            </Stack>
+          </Box>
+        </SimpleGrid>
+      </form>
+
+      {/* Custom Branch Modal */}
+      <Modal
+        opened={addBranchModalOpened}
+        onClose={() => {
+          setAddBranchModalOpened(false);
+          setNewBranchInput('');
+        }}
+        title={<Text fw={700} size="md">Add Branch</Text>}
+        centered
+        radius="md"
+        size="sm"
+      >
+        <Stack gap="md">
+          <TextInput
+            label="Branch Name"
+            placeholder="Enter new branch name (e.g. Coimbatore, Madurai)"
+            value={newBranchInput}
+            onChange={(e) => setNewBranchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddCustomBranch();
+              }
+            }}
+            autoFocus
+            required
+          />
+
+          {customBranches.length > 0 && (
+            <Box>
+              <Text size="xs" fw={600} c="dimmed" mb="xs">
+                Admin-Added Branches:
+              </Text>
+              <Group gap={6}>
+                {customBranches.map((branch) => (
+                  <Badge
+                    key={branch}
+                    variant="light"
+                    color="blue"
+                    size="sm"
+                    rightSection={
+                      <ActionIcon
+                        size={14}
+                        radius="xl"
+                        variant="transparent"
+                        color="blue"
+                        onClick={() => handleRemoveCustomBranch(branch)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <IconTrash size={10} />
+                      </ActionIcon>
+                    }
+                  >
+                    {branch}
+                  </Badge>
+                ))}
+              </Group>
+            </Box>
+          )}
+
+          <Group justify="flex-end" gap="xs">
+            <Button
+              variant="default"
+              onClick={() => {
+                setAddBranchModalOpened(false);
+                setNewBranchInput('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="blue"
+              onClick={handleAddCustomBranch}
+              disabled={!newBranchInput.trim()}
+            >
+              Add & Select Branch
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 };

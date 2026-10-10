@@ -23,6 +23,7 @@ export interface Employee {
   dob?: string;
   gender?: string;
   address?: string;
+  avatar?: string;
   department: string;
   designation: string;
   role: UserRole;

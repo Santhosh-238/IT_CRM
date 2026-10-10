@@ -1,48 +1,56 @@
 /**
  * ============================================================================
- * CRM GLOBAL DESIGN TOKENS (SINGLE SOURCE OF TRUTH)
+ * ONEASSIST TECHNOLOGIES - CRM GLOBAL DESIGN TOKENS
  * ============================================================================
- * All colors are 100% dynamic. Changing them here updates the entire app!
+ * Corporate Identity & Theme for OneAssist Technologies, Coimbatore
+ * Official Palette: Signature Indigo, Electric Blue, Cyan, Slate & Clean SaaS
+ * ============================================================================
  */
 
 export interface CRMThemeTokens {
-  // Brand Primary & Accents (Obsidian Dark Pill & Accents)
-  primary: string;           // Main Obsidian Black Action Color (#14181F)
-  primaryHover: string;
-  primaryLight: string;
-  primaryDark: string;
+  // Brand Primary & Gradients (OneAssist Signature Palette)
+  primary: string;           // OneAssist Indigo (#4F46E5)
+  primaryHover: string;      // Deep Indigo (#4338CA)
+  primaryLight: string;      // Soft Indigo Tint (#EEF2FF)
+  primaryDark: string;       // Rich Dark Indigo (#312E81)
+  primaryGradient: string;   // Signature OneAssist Multi-stop Gradient
 
-  // Backgrounds & Layout Base (Soft Airy Slate / Ice-Blue Glow)
-  background: string;        // Airy Ice-Blue Base (#EDF3F7)
-  backgroundLight: string;   // Ultra-light Slate (#F4F8FA)
-  backgroundDark: string;    // Soft Powder Blue (#E2ECF2)
-  
-  // Surfaces & Crisp Floating Cards
-  cardBg: string;            // Crisp White Card Surface (#FFFFFF)
-  cardBgHover: string;       // Card Hover Surface (#F8FAFC)
-  cardBgDark: string;        // Dark Obsidian Widget Surface (#14181F)
-  border: string;            // Crisp Subtle Border (rgba(0, 0, 0, 0.06))
-  borderLight: string;       // Ultra subtle divider border
+  // Brand Accent Tones
+  brandCyan: string;         // Radiant Cyan (#06B6D4)
+  brandSky: string;          // Vivid Sky (#0EA5E9)
+  brandBlue: string;         // Electric Enterprise Blue (#2563EB)
 
-  // Typography & Text
-  textPrimary: string;       // Deep Slate Headings (#0F172A)
-  textSecondary: string;     // Subtitles & Labels (#475569)
-  textMuted: string;         // Dimmed text (#94A3B8)
-  textOnPrimary: string;     // Text on top of Primary Color (#FFFFFF)
+  // Canvas & Backgrounds
+  background: string;        // Ultra-Clean SaaS Canvas (#F8FAFC)
+  backgroundLight: string;   // Pure White Surface (#FFFFFF)
+  backgroundDark: string;    // Soft Slate Tint (#F1F5F9)
 
-  // 🍬 Signature Pastel Accent Cards (From Reference UI)
-  pastelLime: string;        // Soft Lime (#D8F4B8)
-  pastelLimeText: string;    // #244C0E
-  pastelMint: string;        // Soft Aqua/Mint (#A4E8D9)
-  pastelMintText: string;    // #0B4F42
-  pastelCoral: string;       // Soft Coral/Rose (#F9B7B4)
-  pastelCoralText: string;   // #5C1E1C
-  pastelPurple: string;      // Soft Lavender (#E2D6FE)
-  pastelPurpleText: string;  // #3B1C76
-  pastelBlue: string;        // Soft Sky (#C9E4FE)
-  pastelBlueText: string;    // #173B82
+  // Floating Cards & Surfaces
+  cardBg: string;            // Pure White Card (#FFFFFF)
+  cardBgHover: string;       // Subtle Hover State (#F8FAFC)
+  cardBgDark: string;        // Deep Executive Slate (#0F172A)
+  border: string;            // Refined Divider Border (#E2E8F0)
+  borderLight: string;       // Subtle Indigo Border (rgba(99, 102, 241, 0.08))
 
-  // Status & Accents
+  // Professional Typography
+  textPrimary: string;       // High-Contrast Slate Navy (#0F172A)
+  textSecondary: string;     // Refined Slate Subtitles (#475569)
+  textMuted: string;         // Dimmed Metadata (#94A3B8)
+  textOnPrimary: string;     // Crisp White (#FFFFFF)
+
+  // Sales Pipeline & Lead Stage Accents (Pastel Pills)
+  pastelLime: string;        // Emerald Mint (Won / Closed / Active) (#D1FAE5)
+  pastelLimeText: string;    // #065F46
+  pastelMint: string;        // Cyan Ice (Meeting Scheduled / Verified) (#CFFAFE)
+  pastelMintText: string;    // #0E7490
+  pastelCoral: string;       // Soft Rose (Lost / Inactive / Overdue) (#FFE4E6)
+  pastelCoralText: string;   // #9F1239
+  pastelPurple: string;      // Lavender Indigo (In Negotiation / Assigned) (#EDE9FE)
+  pastelPurpleText: string;  // #5B21B6
+  pastelBlue: string;        // Sky Blue (New Prospect / In Review) (#E0F2FE)
+  pastelBlueText: string;    // #0369A1
+
+  // Functional Status Colors
   success: string;
   warning: string;
   danger: string;
@@ -51,48 +59,53 @@ export interface CRMThemeTokens {
 }
 
 export const CRM_COLORS: CRMThemeTokens = {
-  // 🖤 OBSIDIAN BRAND PALETTE
-  primary: '#14181F',
-  primaryHover: '#232936',
-  primaryLight: '#F1F5F9',
-  primaryDark: '#0A0D12',
+  // ⚡ ONEASSIST BRAND PALETTE (Coimbatore HQ)
+  primary: '#4F46E5',
+  primaryHover: '#4338CA',
+  primaryLight: '#EEF2FF',
+  primaryDark: '#312E81',
+  primaryGradient: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 50%, #06B6D4 100%)',
 
-  // ❄️ AIRY ICE-BLUE & SOFT SLATE CANVAS
-  background: '#EDF3F7',
-  backgroundLight: '#F5F8FA',
-  backgroundDark: '#E2ECF2',
+  brandCyan: '#06B6D4',
+  brandSky: '#0EA5E9',
+  brandBlue: '#2563EB',
 
-  // 🪟 CRISP WHITE FLOATING CARDS & OBSIDIAN SURFACES
+  // ❄️ CLEAN ENTERPRISE SAAS CANVAS
+  background: '#F8FAFC',
+  backgroundLight: '#FFFFFF',
+  backgroundDark: '#F1F5F9',
+
+  // 🪟 CRISP WHITE FLOATING CARDS & EXECUTIVE SURFACES
   cardBg: '#FFFFFF',
   cardBgHover: '#F8FAFC',
-  cardBgDark: '#14181F',
-  border: 'rgba(15, 23, 42, 0.07)',
-  borderLight: 'rgba(15, 23, 42, 0.05)',
+  cardBgDark: '#0F172A',
+  border: '#E2E8F0',
+  borderLight: 'rgba(99, 102, 241, 0.08)',
 
-  // ✍️ SLEEK TYPOGRAPHY
+  // ✍️ SLEEK HIGH-CONTRAST TYPOGRAPHY
   textPrimary: '#0F172A',
   textSecondary: '#475569',
   textMuted: '#94A3B8',
   textOnPrimary: '#FFFFFF',
 
-  // 🍬 SIGNATURE PASTEL CANDY ACCENTS
-  pastelLime: '#D8F4B8',
-  pastelLimeText: '#244C0E',
-  pastelMint: '#A4E8D9',
-  pastelMintText: '#0B4F42',
-  pastelCoral: '#F9B7B4',
-  pastelCoralText: '#5C1E1C',
-  pastelPurple: '#E2D6FE',
-  pastelPurpleText: '#3B1C76',
-  pastelBlue: '#C9E4FE',
-  pastelBlueText: '#173B82',
+  // 🍬 SALES PIPELINE & STATUS ACCENTS
+  pastelLime: '#D1FAE5',
+  pastelLimeText: '#065F46',
+  pastelMint: '#CFFAFE',
+  pastelMintText: '#0E7490',
+  pastelCoral: '#FFE4E6',
+  pastelCoralText: '#9F1239',
+  pastelPurple: '#EDE9FE',
+  pastelPurpleText: '#5B21B6',
+  pastelBlue: '#E0F2FE',
+  pastelBlueText: '#0369A1',
 
-  // 🟢 STATUS COLORS
+  // 🟢 FUNCTIONAL STATUSES
   success: '#10B981',
   warning: '#F59E0B',
   danger: '#EF4444',
   error: '#EF4444',
-  info: '#0284C7',
+  info: '#0EA5E9',
 };
 
 export default CRM_COLORS;

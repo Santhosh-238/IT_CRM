@@ -28,7 +28,7 @@ export const crmApi = {
   getRedisStatus: () => fetchWithCookies<any>('/redis/status'),
 
   // Auth (HttpOnly Cookie-based & Redis Cached)
-  register: (userData: { name: string; email: string; phone?: string; password: string; confirmPassword?: string }) =>
+  register: (userData: { organisationName: string; name: string; email: string; phone?: string; password: string; confirmPassword?: string }) =>
     fetchWithCookies<any>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
