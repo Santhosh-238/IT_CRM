@@ -6,6 +6,7 @@ import accessControlRouter from './accessControl.routes.js';
 import moduleRouter from './module.routes.js';
 import leadRouter from './lead.routes.js';
 import taskRouter from './task.routes.js';
+import meetingRouter from './meeting.routes.js';
 import crmRouter from './crm.routes.js';
 
 const apiRouter = Router();
@@ -17,6 +18,7 @@ apiRouter.use('/access-control', accessControlRouter);
 apiRouter.use('/modules', moduleRouter);
 apiRouter.use('/leads', leadRouter);
 apiRouter.use('/tasks', taskRouter);
+apiRouter.use('/meetings', meetingRouter);
 apiRouter.use('/', crmRouter);
 
 export default apiRouter;
@@ -28,6 +30,8 @@ export {
   moduleRouter,
   leadRouter,
   taskRouter,
+  meetingRouter,
   crmRouter,
 };
+
 

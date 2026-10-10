@@ -7,6 +7,7 @@ import { DashboardPage } from '../../pages/DashboardPage';
 import { EmployeesPage, AddEmployeePage } from '../../pages/employees';
 import { ContactsPage, AddContactPage, ContactDetailsPage, ContactQualificationPage } from '../../pages/contacts';
 import { AccessControlPage } from '../../pages/access-control/AccessControlPage';
+import { ScheduledMeetingsPage } from '../../pages/meetings';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
 import { useContact } from '../../context/ContactContext';
 
@@ -131,6 +132,9 @@ export const AppLayout: React.FC = () => {
       case 'access-control-matrix':
       case 'rbac':
         return <AccessControlPage />;
+      case 'scheduled-meetings':
+      case 'meetings':
+        return <ScheduledMeetingsPage />;
       default:
         return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
     }

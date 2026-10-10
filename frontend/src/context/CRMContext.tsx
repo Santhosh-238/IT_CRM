@@ -71,6 +71,7 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       if (path === 'contacts') return 'contacts';
       if (path === 'employees') return 'employees';
+      if (path === 'scheduled-meetings' || path === 'meetings') return 'scheduled-meetings';
       if (path === 'access-control' || path === 'rbac') return 'access-control';
       if (path === 'dashboard') return 'dashboard';
       if (path) return path;
@@ -130,6 +131,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveNavState('contacts');
       } else if (path === 'employees') {
         setActiveNavState('employees');
+      } else if (path === 'scheduled-meetings' || path === 'meetings') {
+        setActiveNavState('scheduled-meetings');
       } else if (path === 'access-control' || path === 'rbac') {
         setActiveNavState('access-control');
       } else {

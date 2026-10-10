@@ -138,4 +138,46 @@ model Contact {
   updatedAt              DateTime  @updatedAt
 }
 
+model Company {
+  id             String   @id @default(uuid())
+  name           String   @unique
+  website        String?
+  industry       String?
+  address        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Lead {
+  id             String   @id @default(uuid())
+  leadId         String   @unique
+  title          String
+  companyName    String?
+  contactName    String?
+  status         String   @default("New")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ScheduledMeeting {
+  id                  String   @id @default(uuid())
+  title               String   @default("Client Discussion")
+  purpose             String
+  meetingDate         String
+  startTime           String
+  endTime             String
+  meetingType         String?  @default("Virtual")
+  location            String?
+  employeeId          String?
+  employeeName        String
+  employeeEmail       String?
+  employeeDesignation String?
+  contactId           String?
+  clientName          String?
+  status              String   @default("Scheduled")
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
 

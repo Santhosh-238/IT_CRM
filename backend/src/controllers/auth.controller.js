@@ -1,3 +1,8 @@
+import { prisma } from '../config/prisma.js';
+import { setCache } from '../config/redis.js';
+import { hashPassword, comparePassword } from '../utils/password.js';
+import { generateSessionToken, generateToken, setAuthCookie } from '../utils/jwt.js';
+import { logAuditEvent } from '../services/auditService.js';
 import * as authService from '../services/auth.service.js';
 
 /**
@@ -90,7 +95,12 @@ export async function signup(req, res) {
       },
     });
 
-    const sessionToken = generateSessionToken();
+    const sessionToken = generateToken({
+      id: newUser.id,
+      email: newUser.email,
+      name: newUser.name,
+      role: newUser.role,
+    });
     setAuthCookie(res, sessionToken);
 
     await setCache(`crm:session:${sessionToken}`, newUser, 86400 * 7);
@@ -109,7 +119,9 @@ export async function signup(req, res) {
 
     return res.status(201).json({
       success: true,
-      ...result,
+      message: 'Account created successfully! Session initialized.',
+      user: newUser,
+      token: sessionToken,
     });
   } catch (error) {
     console.error('[Signup Controller Error]', error);
@@ -186,7 +198,12 @@ export async function login(req, res) {
       empCode: matchedEmployee?.empCode || null,
     };
 
-    const sessionToken = generateSessionToken();
+    const sessionToken = generateToken({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
     setAuthCookie(res, sessionToken);
 
     await setCache(`crm:session:${sessionToken}`, userProfile, 86400 * 7);
@@ -205,7 +222,9 @@ export async function login(req, res) {
 
     return res.json({
       success: true,
-      ...result,
+      message: `Welcome back, ${user.name}!`,
+      user: userProfile,
+      token: sessionToken,
     });
   } catch (error) {
     console.error('[Login Controller Error]', error);
