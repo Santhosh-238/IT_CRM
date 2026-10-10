@@ -51,10 +51,10 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     source: 'Website',
     customSource: '',
     category: 'Product',
-    productList: ['IT CRM'],
+    productList: [],
     serviceList: [],
     status: 'Active',
-    stage: 'Initialization',
+    stage: 'New Lead',
     qualificationStatus: 'In Progress',
     assignedTo: '',
   };
@@ -81,7 +81,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         productList: contact.productList || [],
         serviceList: contact.serviceList || [],
         status: contact.status || 'Active',
-        stage: contact.stage || 'Initialization',
+        stage: contact.stage || 'New Lead',
         qualificationStatus: contact.qualificationStatus || 'In Progress',
         assignedTo: contact.assignedTo || '',
       });
@@ -124,14 +124,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
     if (formData.source === 'Other' && !formData.customSource?.trim()) {
       newErrors.customSource = 'Please specify custom source';
-    }
-
-    if (formData.category === 'Product' && (!formData.productList || formData.productList.length === 0)) {
-      newErrors.productList = 'Please select at least one product';
-    }
-
-    if (formData.category === 'Service' && (!formData.serviceList || formData.serviceList.length === 0)) {
-      newErrors.serviceList = 'Please select at least one service';
     }
 
     setErrors(newErrors);
@@ -195,32 +187,22 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     })) || []),
   ];
 
-  const stageOptions = [
-    { value: 'Qualification', label: 'Qualification' },
-    { value: 'Discovery', label: 'Discovery' },
-    { value: 'Requirement Analysis', label: 'Requirement Analysis' },
-    { value: 'Proposal', label: 'Proposal' },
-    { value: 'Negotiation', label: 'Negotiation' },
-    { value: 'Demo / Presentation', label: 'Demo / Presentation' },
-    { value: 'Decision Making', label: 'Decision Making' },
-    { value: 'Contract / Agreement', label: 'Contract / Agreement' },
-    { value: 'Closed Won', label: 'Closed Won' },
-    { value: 'Closed Lost', label: 'Closed Lost' },
-  ];
+  const stageOptions = (metadata?.stages && metadata.stages.length > 0
+    ? metadata.stages
+    : [
+        'New Lead',
+        'Qualification',
+        'Discovery',
+        'Requirement Analysis',
+        'Demo / Presentation',
+        'Proposal / Quotation',
+        'Negotiation',
+        'Decision Making',
+        'Won',
+        'Lost',
+      ]
+  ).map((st) => ({ value: st, label: st }));
 
-  const statusOptions = [
-    { value: 'New', label: 'New' },
-    { value: 'Active', label: 'Active' },
-    { value: 'Qualified', label: 'Qualified' },
-    { value: 'In Progress', label: 'In Progress' },
-    { value: 'On Hold', label: 'On Hold' },
-    { value: 'Pending', label: 'Pending' },
-    { value: 'Follow-up Required', label: 'Follow-up Required' },
-    { value: 'Completed', label: 'Completed' },
-    { value: 'Won', label: 'Won' },
-    { value: 'Lost', label: 'Lost' },
-    { value: 'Cancelled', label: 'Cancelled' },
-  ];
 
   return (
     <Modal
@@ -334,17 +316,27 @@ export const ContactModal: React.FC<ContactModalProps> = ({
             />
           </SimpleGrid>
 
-          {/* Row 3: Profession / Occupation * (when Individual) OR Company Name * & Designation (when Company Rep) */}
+          {/* Row 3: Profession / Occupation * and Optional Company Name (when Individual) OR Company Name * & Designation (when Company Rep) */}
           {formData.contactType === 'Individual' ? (
-            <TextInput
-              label="Profession / Occupation"
-              placeholder="Enter profession (e.g. Software Engineer, Doctor, Consultant)"
-              required
-              value={formData.profession || ''}
-              onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
-              error={errors.profession}
-              radius="md"
-            />
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <TextInput
+                label="Profession / Occupation"
+                placeholder="Enter profession (e.g. Software Engineer, Consultant)"
+                required
+                value={formData.profession || ''}
+                onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
+                error={errors.profession}
+                radius="md"
+              />
+
+              <TextInput
+                label="Company / Org Name (Optional)"
+                placeholder="Enter company name if applicable"
+                value={formData.companyName || ''}
+                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                radius="md"
+              />
+            </SimpleGrid>
           ) : (
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <TextInput
@@ -412,37 +404,33 @@ export const ContactModal: React.FC<ContactModalProps> = ({
             />
           )}
 
-          {/* Row 6: Product List * (if Product) OR Service List * (if Service) */}
+          {/* Row 6: Product List (if Product) OR Service List (if Service) */}
           {formData.category === 'Product' ? (
             <MultiSelect
               label="Product List"
               placeholder="Select Product"
-              required
               data={productOptions}
               searchable
               clearable
               value={formData.productList || []}
               onChange={(val) => setFormData({ ...formData, productList: val })}
-              error={errors.productList}
               radius="md"
             />
           ) : (
             <MultiSelect
               label="Service List"
               placeholder="Select Service"
-              required
               data={serviceOptions}
               searchable
               clearable
               value={formData.serviceList || []}
               onChange={(val) => setFormData({ ...formData, serviceList: val })}
-              error={errors.serviceList}
               radius="md"
             />
           )}
 
-          {/* Row 7: Assignment, Stage & Status Progression */}
-          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+          {/* Row 7: Assignment & Stage Progression */}
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Select
               label="Assign To"
               placeholder="Select employee"
@@ -456,17 +444,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               label="Stage"
               placeholder="Select stage"
               data={stageOptions}
-              value={formData.stage || 'Initialization'}
-              onChange={(val) => setFormData({ ...formData, stage: val || 'Initialization' })}
-              radius="md"
-            />
-
-            <Select
-              label="Status"
-              placeholder="Select status"
-              data={statusOptions}
-              value={formData.status || 'Active'}
-              onChange={(val) => setFormData({ ...formData, status: val || 'Active' })}
+              value={formData.stage || 'New Lead'}
+              onChange={(val) => setFormData({ ...formData, stage: val || 'New Lead' })}
               radius="md"
             />
           </SimpleGrid>

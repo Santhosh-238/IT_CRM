@@ -21,20 +21,13 @@ export async function requireAuth(req, res, next) {
       try {
         const firstUser = await prisma.user.findFirst({
           select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
+          orderBy: { createdAt: 'asc' },
         });
         if (firstUser) {
           req.user = firstUser;
           return next();
         }
       } catch (e) {}
-
-      req.user = {
-        id: 'usr-dev-superadmin',
-        email: 'sandy@gmail.com',
-        name: 'Santhosh C',
-        role: 'SUPER_ADMIN',
-      };
-      return next();
     }
 
     return res.status(401).json({ success: false, message: 'Authentication required. Please login.' });

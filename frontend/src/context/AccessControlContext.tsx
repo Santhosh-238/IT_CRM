@@ -46,7 +46,6 @@ interface AccessControlContextType {
   ) => Promise<{ success: boolean; message?: string; requiresReassignment?: boolean; assignedUserCount?: number }>;
   assignUserRole: (userId: string, roleId: string) => Promise<{ success: boolean; message?: string }>;
   bulkAssignUserRoles: (userIds: string[], roleId: string) => Promise<{ success: boolean; message?: string }>;
-  seedDefaults: () => Promise<{ success: boolean; message?: string }>;
 }
 
 const AccessControlContext = createContext<AccessControlContextType | undefined>(undefined);
@@ -215,17 +214,6 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
     return res;
   };
 
-  const seedDefaults = async () => {
-    setSaving(true);
-    const res = await accessControlService.seedDefaults();
-    setSaving(false);
-    if (res.success) {
-      await fetchRoles();
-      await fetchMyPermissions();
-    }
-    return res;
-  };
-
   return (
     <AccessControlContext.Provider
       value={{
@@ -257,7 +245,6 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
         deleteRole,
         assignUserRole,
         bulkAssignUserRoles,
-        seedDefaults,
       }}
     >
       {children}

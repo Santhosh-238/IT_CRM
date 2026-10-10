@@ -17,38 +17,34 @@ const app = express();
 app.use(
   cors({
     origin: env.CORS_ORIGIN,
-    credentials: true, // Allows HttpOnly cookies to be sent across origins
+    credentials: true, // Enables HttpOnly cookies across origins
   })
 );
 app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// 2. Static File Uploads directory
+// 2. Static File Uploads Directory
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// 3. Health Check Endpoint
+// 3. Health Check & Cache Status Endpoint
 app.get('/api/health', async (_req, res) => {
   const cacheStats = await getCacheStats();
   res.json({
     status: 'online',
     timestamp: new Date().toISOString(),
-    service: 'OmniTech Crextio CRM Enterprise API',
-    security: 'JWT HttpOnly Secure Cookies + RBAC Enabled',
+    service: 'ITech CRM API',
     cacheEngine: cacheStats,
-    database: 'PostgreSQL + Prisma ORM (Synchronized)',
-    webSockets: 'Socket.IO Real-time Gateway Active',
-    version: '1.0.0',
   });
 });
 
-// 4. API Routes (Mount all routers)
+// 4. Mount API Routes
 app.use('/api', apiRouter);
 
-// 5. 404 Handler
+// 5. 404 Route Not Found Handler
 app.use(notFoundHandler);
 
-// 6. Global Error Handler
+// 6. Global Exception & Error Handler
 app.use(errorHandler);
 
 export default app;

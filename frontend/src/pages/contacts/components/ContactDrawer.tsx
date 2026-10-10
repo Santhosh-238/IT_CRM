@@ -163,14 +163,11 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
                   {contact.designation || contact.profession || 'Representative'} {contact.companyName ? `• ${contact.companyName}` : ''}
                 </Text>
                 <Group gap="xs" mt="xs">
-                  <Badge size="sm" variant="dot" color={getStatusBadgeColor(contact.status)}>
-                    {contact.status}
-                  </Badge>
                   <Badge size="sm" variant="outline" color={getPriorityBadgeColor(contact.priority || 'Medium')}>
                     {contact.priority || 'Medium'} Priority
                   </Badge>
                   <Badge size="sm" variant="light" color="indigo">
-                    Stage: {contact.stage || 'Initialization'}
+                    Stage: {contact.stage || 'New Lead'}
                   </Badge>
                 </Group>
               </div>

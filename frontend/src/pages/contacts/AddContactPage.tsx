@@ -50,10 +50,10 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
     source: 'Website',
     customSource: '',
     category: 'Product',
-    productList: ['IT CRM'],
+    productList: [],
     serviceList: [],
     status: 'Active',
-    stage: 'Initialization',
+    stage: 'New Lead',
     qualificationStatus: 'In Progress',
   };
 
@@ -79,7 +79,7 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
         productList: initialData.productList || [],
         serviceList: initialData.serviceList || [],
         status: initialData.status || 'Active',
-        stage: initialData.stage || 'Initialization',
+        stage: initialData.stage || 'New Lead',
         qualificationStatus: initialData.qualificationStatus || 'In Progress',
       });
     } else {
@@ -120,14 +120,6 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
 
     if (formData.source === 'Other' && !formData.customSource?.trim()) {
       newErrors.customSource = 'Please specify custom source';
-    }
-
-    if (formData.category === 'Product' && (!formData.productList || formData.productList.length === 0)) {
-      newErrors.productList = 'Please select at least one product';
-    }
-
-    if (formData.category === 'Service' && (!formData.serviceList || formData.serviceList.length === 0)) {
-      newErrors.serviceList = 'Please select at least one service';
     }
 
     setErrors(newErrors);
@@ -306,17 +298,27 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
               />
             </SimpleGrid>
 
-            {/* Row 3: Profession / Occupation * (Individual) OR Company Name * & Designation (Company Rep) */}
+            {/* Row 3: Profession / Occupation * and Optional Company Name (when Individual) OR Company Name * & Designation (when Company Rep) */}
             {formData.contactType === 'Individual' ? (
-              <TextInput
-                label="Profession / Occupation"
-                placeholder="Enter profession (e.g. Software Engineer, Doctor, Consultant)"
-                required
-                value={formData.profession || ''}
-                onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
-                error={errors.profession}
-                radius="md"
-              />
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <TextInput
+                  label="Profession / Occupation"
+                  placeholder="Enter profession (e.g. Software Engineer, Consultant)"
+                  required
+                  value={formData.profession || ''}
+                  onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
+                  error={errors.profession}
+                  radius="md"
+                />
+
+                <TextInput
+                  label="Company / Org Name (Optional)"
+                  placeholder="Enter company name if applicable"
+                  value={formData.companyName || ''}
+                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                  radius="md"
+                />
+              </SimpleGrid>
             ) : (
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                 <TextInput
@@ -384,31 +386,27 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
               />
             )}
 
-            {/* Row 6: Product List * (if Product) OR Service List * (if Service) */}
+            {/* Row 6: Product List (if Product) OR Service List (if Service) */}
             {formData.category === 'Product' ? (
               <MultiSelect
                 label="Product List"
                 placeholder="Select Product"
-                required
                 data={productOptions}
                 searchable
                 clearable
                 value={formData.productList || []}
                 onChange={(val) => setFormData({ ...formData, productList: val })}
-                error={errors.productList}
                 radius="md"
               />
             ) : (
               <MultiSelect
                 label="Service List"
                 placeholder="Select Service"
-                required
                 data={serviceOptions}
                 searchable
                 clearable
                 value={formData.serviceList || []}
                 onChange={(val) => setFormData({ ...formData, serviceList: val })}
-                error={errors.serviceList}
                 radius="md"
               />
             )}

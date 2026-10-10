@@ -276,21 +276,4 @@ export const accessControlService = {
       return { success: false, message: err.message };
     }
   },
-
-  /**
-   * Re-seed / sync default roles and permissions
-   */
-  async seedDefaults(): Promise<{ success: boolean; message?: string }> {
-    try {
-      const res = await fetch(`${API_BASE}/seed-defaults`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to reseed default roles');
-      return { success: true, message: data.message };
-    } catch (err: any) {
-      return { success: false, message: err.message };
-    }
-  },
 };

@@ -18,13 +18,17 @@ export type ContactStatus =
   | 'Disqualified';
 
 export type ContactStage =
+  | 'New Lead'
   | 'Qualification'
   | 'Discovery'
   | 'Requirement Analysis'
-  | 'Proposal'
-  | 'Negotiation'
   | 'Demo / Presentation'
+  | 'Proposal / Quotation'
+  | 'Negotiation'
   | 'Decision Making'
+  | 'Won'
+  | 'Lost'
+  | 'Proposal'
   | 'Contract / Agreement'
   | 'Closed Won'
   | 'Closed Lost'

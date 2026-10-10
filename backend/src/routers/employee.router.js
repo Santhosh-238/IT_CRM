@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { requireAuth } from '../middlewares/auth.middleware.js';
+import { authorizePermission } from '../middlewares/permission.middleware.js';
 import {
   getEmployees,
   getEmployeeById,
@@ -8,48 +10,62 @@ import {
   updateEmployeeStatus,
   deleteEmployee,
 } from '../controllers/employee.controller.js';
-import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
-// Employee Statistics & KPI Metrics (<1ms Redis Cached)
-router.get('/stats', requireAuth, getEmployeeStats);
+// 1. Employee Statistics & KPI Metrics (<1ms Redis Cached)
+router.get(
+  '/stats',
+  requireAuth,
+  authorizePermission('employees', 'view'),
+  getEmployeeStats
+);
 
-// Employee List & Search
-router.get('/', requireAuth, getEmployees);
+// 2. Employee List & Search
+router.get(
+  '/',
+  requireAuth,
+  authorizePermission('employees', 'view'),
+  getEmployees
+);
 
-// Single Employee Profile by ID
-router.get('/:id', requireAuth, getEmployeeById);
+// 3. Single Employee Profile by ID
+router.get(
+  '/:id',
+  requireAuth,
+  authorizePermission('employees', 'view'),
+  getEmployeeById
+);
 
-// Onboard / Create New Employee
+// 4. Onboard / Create New Employee
 router.post(
   '/',
   requireAuth,
-  requireRole(['SUPER_ADMIN', 'PROJECT_MANAGER', 'TECH_LEAD']),
+  authorizePermission('employees', 'create'),
   createEmployee
 );
 
-// Update Employee Details
+// 5. Update Employee Details
 router.put(
   '/:id',
   requireAuth,
-  requireRole(['SUPER_ADMIN', 'PROJECT_MANAGER', 'TECH_LEAD']),
+  authorizePermission('employees', 'edit'),
   updateEmployee
 );
 
-// Update Employee Status
+// 6. Update Employee Status
 router.patch(
   '/:id/status',
   requireAuth,
-  requireRole(['SUPER_ADMIN', 'PROJECT_MANAGER']),
+  authorizePermission('employees', 'edit'),
   updateEmployeeStatus
 );
 
-// Delete Employee Record
+// 7. Delete Employee Record
 router.delete(
   '/:id',
   requireAuth,
-  requireRole(['SUPER_ADMIN']),
+  authorizePermission('employees', 'delete'),
   deleteEmployee
 );
 

@@ -15,7 +15,6 @@ import {
   getAuditLogs,
   getMyPermissions,
 } from '../controllers/accessControl.controller.js';
-import { seedRBAC } from '../services/seedRBAC.js';
 
 const router = Router();
 
@@ -97,11 +96,5 @@ router.get(
   authorizePermission('access_control', 'view'),
   getAuditLogs
 );
-
-// 6. Manual seed/sync trigger
-router.post('/seed-defaults', requireAuth, async (_req, res) => {
-  const result = await seedRBAC();
-  res.json(result);
-});
 
 export default router;

@@ -66,34 +66,55 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
   useEffect(() => {
     if (propContact) {
       setActiveContact(propContact);
+    } else {
+      try {
+        const saved = sessionStorage.getItem('crm_qualifying_contact');
+        if (saved) setActiveContact(JSON.parse(saved));
+      } catch (e) {}
     }
   }, [propContact]);
 
-  // Form State initialized from contact
-  const [goLiveDate, setGoLiveDate] = useState<string>(activeContact?.expectedGoLiveDate || '2026-12-14');
-  const [budget, setBudget] = useState<string>(activeContact?.estimatedBudget ? String(activeContact.estimatedBudget) : '10,00,000');
-  const [priority, setPriority] = useState<string>(activeContact?.priority || 'Medium');
-  const [expectedUsers, setExpectedUsers] = useState<string>(activeContact?.expectedUsers ? String(activeContact.expectedUsers) : '50');
-  const [annualRevenue, setAnnualRevenue] = useState<string>(activeContact?.annualRevenue || '$1M');
-  const [noOfEmployees, setNoOfEmployees] = useState<string>('200');
-  const [status, setStatus] = useState<string>(activeContact?.status === 'Disqualified' ? 'Disqualified' : 'Qualified');
-  const [qualifiedBy, setQualifiedBy] = useState<string>(activeContact?.qualifiedBy || activeContact?.assignedToName || currentUser?.name || 'Nalin');
+  const [status, setStatus] = useState<string>(activeContact?.status === 'Disqualified' ? 'Disqualified' : activeContact?.status || 'Qualified');
+  const [qualifiedBy, setQualifiedBy] = useState<string>(activeContact?.qualifiedBy || activeContact?.assignedToName || currentUser?.name || 'Admin');
   const [qualificationDate, setQualificationDate] = useState<string>(activeContact?.qualificationDate || new Date().toISOString().split('T')[0]);
+  const [nextFollowDate, setNextFollowDate] = useState<string>(activeContact?.nextFollowDate || '');
+  const [followUpNotes, setFollowUpNotes] = useState<string>(activeContact?.remarks || activeContact?.notes || '');
   const [disqualificationReason, setDisqualificationReason] = useState<string>(activeContact?.disqualificationReason || '');
 
   // Tags
   const [tags, setTags] = useState<string[]>(() => {
     const initialTags: string[] = [];
-    if (activeContact?.contactType) initialTags.push(activeContact.contactType);
     if (activeContact?.productList && activeContact.productList.length > 0) {
       initialTags.push(...activeContact.productList);
-    } else {
-      initialTags.push('HRMS');
+    }
+    if (activeContact?.serviceList && activeContact.serviceList.length > 0) {
+      initialTags.push(...activeContact.serviceList);
     }
     return initialTags;
   });
   const [newTagInput, setNewTagInput] = useState<string>('');
   const [showTagInput, setShowTagInput] = useState<boolean>(false);
+
+  // Sync state whenever activeContact changes
+  useEffect(() => {
+    if (activeContact) {
+      setStatus(activeContact.status === 'Disqualified' ? 'Disqualified' : activeContact.status || 'Qualified');
+      setQualifiedBy(activeContact.qualifiedBy || activeContact.assignedToName || currentUser?.name || 'Admin');
+      setQualificationDate(activeContact.qualificationDate || new Date().toISOString().split('T')[0]);
+      setNextFollowDate(activeContact.nextFollowDate || '');
+      setFollowUpNotes(activeContact.remarks || activeContact.notes || '');
+      setDisqualificationReason(activeContact.disqualificationReason || '');
+
+      const initialTags: string[] = [];
+      if (activeContact.productList && activeContact.productList.length > 0) {
+        initialTags.push(...activeContact.productList);
+      }
+      if (activeContact.serviceList && activeContact.serviceList.length > 0) {
+        initialTags.push(...activeContact.serviceList);
+      }
+      setTags(initialTags);
+    }
+  }, [activeContact, currentUser]);
 
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -110,21 +131,17 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
     if (!activeContact?.id) return;
 
     setSaving(true);
-    const parsedBudget = parseFloat(budget.replace(/,/g, '')) || null;
-    const parsedUsers = parseInt(expectedUsers, 10) || null;
 
     const res = await updateContact(activeContact.id, {
-      stage: 'Qualification',
+      stage: status === 'Qualified' ? 'Qualification' : 'Initialization',
       status: status,
-      qualificationStatus: status === 'Disqualified' ? 'Disqualified' : 'Qualified',
-      priority: priority,
-      expectedGoLiveDate: goLiveDate,
-      estimatedBudget: parsedBudget,
-      expectedUsers: parsedUsers,
-      annualRevenue: annualRevenue,
+      qualificationStatus: status === 'Disqualified' ? 'Disqualified' : status === 'Follow-up Required' ? 'Follow-up Required' : 'Qualified',
       qualifiedBy: qualifiedBy,
       qualificationDate: qualificationDate,
-      disqualificationReason: status === 'Disqualified' ? disqualificationReason : null,
+      nextFollowDate: status === 'Follow-up Required' ? nextFollowDate : undefined,
+      remarks: status === 'Follow-up Required' ? followUpNotes : (status === 'Disqualified' ? disqualificationReason : undefined),
+      notes: status === 'Follow-up Required' ? followUpNotes : undefined,
+      disqualificationReason: status === 'Disqualified' ? disqualificationReason : undefined,
     });
 
     setSaving(false);
@@ -135,28 +152,58 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
   };
 
   const getInitial = (name?: string) => {
-    if (!name) return 'R';
+    if (!name) return 'C';
     return name.trim().charAt(0).toUpperCase();
   };
 
-  const contactName = activeContact?.name || 'ravi';
-  const designation = activeContact?.designation || activeContact?.profession || 'CTO';
-  const email = activeContact?.email || 'ravi@gmail.com';
-  const phone = activeContact?.phone || '8973427182';
-  const contactType = activeContact?.contactType || 'Company Representative';
-  const companyName = activeContact?.companyName || 'CRT';
-  const requirementType = activeContact?.category || 'Product';
+  const getDateLabel = () => {
+    switch (status) {
+      case 'Qualified':
+        return 'Qualification Date';
+      case 'In Progress':
+        return 'In Progress Date';
+      case 'Follow-up Required':
+        return 'Follow-up Date';
+      case 'Disqualified':
+        return 'Disqualification Date';
+      default:
+        return 'Status Date';
+    }
+  };
+
+  const getSubmitButtonLabel = () => {
+    switch (status) {
+      case 'Qualified':
+        return 'Complete Qualification';
+      case 'In Progress':
+        return 'Save In Progress';
+      case 'Follow-up Required':
+        return 'Schedule Follow-up';
+      case 'Disqualified':
+        return 'Disqualify Contact';
+      default:
+        return 'Save Status';
+    }
+  };
+
+  const contactName = activeContact?.name || '—';
+  const designation = activeContact?.designation || activeContact?.profession || '—';
+  const email = activeContact?.email || '—';
+  const phone = activeContact?.phone || '—';
+  const contactType = activeContact?.contactType || '—';
+  const companyName = activeContact?.companyName || activeContact?.profession || '—';
+  const requirementType = activeContact?.category || '—';
   const product = activeContact?.productList && activeContact.productList.length > 0
     ? activeContact.productList.join(', ')
-    : 'HRMS';
+    : activeContact?.serviceList && activeContact.serviceList.length > 0
+    ? activeContact.serviceList.join(', ')
+    : '—';
 
   const employeeOptions = metadata?.employees?.map((emp) => ({
     value: emp.name,
     label: emp.name,
   })) || [
-    { value: 'Nalin', label: 'Nalin' },
-    { value: 'Santhosh C', label: 'Santhosh C' },
-    { value: 'Priya Sharma', label: 'Priya Sharma' },
+    { value: 'Admin', label: 'Admin' },
   ];
 
   return (
@@ -540,100 +587,8 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
             {/* Form Fields matching Screenshot */}
             <form onSubmit={handleSubmit}>
               <Stack gap="lg">
-                {/* Row 1: Expected Go-Live Date *, Budget, Priority * */}
-                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-                  <TextInput
-                    label="Expected Go-Live Date"
-                    required
-                    placeholder="DD-MM-YYYY"
-                    type="date"
-                    value={goLiveDate}
-                    onChange={(e) => setGoLiveDate(e.target.value)}
-                    radius="md"
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-
-                  <TextInput
-                    label="Budget"
-                    placeholder="e.g. 10,00,000"
-                    value={budget}
-                    onChange={(e) => setBudget(e.target.value)}
-                    radius="md"
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-
-                  <Select
-                    label="Priority"
-                    required
-                    placeholder="Select Priority"
-                    data={[
-                      { value: 'High', label: 'High' },
-                      { value: 'Medium', label: 'Medium' },
-                      { value: 'Low', label: 'Low' },
-                    ]}
-                    value={priority}
-                    onChange={(val) => setPriority(val || 'Medium')}
-                    radius="md"
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-                </SimpleGrid>
-
-                {/* Row 2: Expected Users, Annual Revenue, No. of Employees */}
-                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-                  <TextInput
-                    label="Expected Users"
-                    placeholder="e.g. 50"
-                    value={expectedUsers}
-                    onChange={(e) => setExpectedUsers(e.target.value)}
-                    radius="md"
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-
-                  <TextInput
-                    label="Annual Revenue"
-                    placeholder="e.g. $1M"
-                    value={annualRevenue}
-                    onChange={(e) => setAnnualRevenue(e.target.value)}
-                    radius="md"
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-
-                  <TextInput
-                    label="No. of Employees"
-                    placeholder="e.g. 200"
-                    value={noOfEmployees}
-                    onChange={(e) => setNoOfEmployees(e.target.value)}
-                    radius="md"
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-                </SimpleGrid>
-
-                {/* Row 3: Status *, Qualified By *, Qualification Date * */}
-                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                {/* Clean 2-Field Form: Status & Qualification Date */}
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
                   <Select
                     label="Status"
                     required
@@ -641,20 +596,13 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                     data={[
                       { value: 'Qualified', label: 'Qualified' },
                       { value: 'In Progress', label: 'In Progress' },
-                      { value: 'New', label: 'New' },
-                      { value: 'Active', label: 'Active' },
                       { value: 'Follow-up Required', label: 'Follow-up Required' },
-                      { value: 'On Hold', label: 'On Hold' },
-                      { value: 'Pending', label: 'Pending' },
-                      { value: 'Completed', label: 'Completed' },
-                      { value: 'Won', label: 'Won' },
-                      { value: 'Lost', label: 'Lost' },
-                      { value: 'Cancelled', label: 'Cancelled' },
                       { value: 'Disqualified', label: 'Disqualified' },
                     ]}
                     value={status}
                     onChange={(val) => setStatus(val || 'Qualified')}
                     radius="md"
+                    size="md"
                     styles={{
                       input: {
                         backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
@@ -662,36 +610,59 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                     }}
                   />
 
-                  <Select
-                    label="Qualified By"
-                    required
-                    placeholder="Select Employee"
-                    data={employeeOptions}
-                    value={qualifiedBy}
-                    onChange={(val) => setQualifiedBy(val || 'Nalin')}
-                    radius="md"
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-
-                  <TextInput
-                    label="Qualification Date"
-                    required
-                    placeholder="DD-MM-YYYY"
-                    type="date"
-                    value={qualificationDate}
-                    onChange={(e) => setQualificationDate(e.target.value)}
-                    radius="md"
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
+                  {status === 'Follow-up Required' ? (
+                    <TextInput
+                      label="Next Follow-up Date"
+                      required
+                      placeholder="YYYY-MM-DD"
+                      type="date"
+                      value={nextFollowDate}
+                      onChange={(e) => setNextFollowDate(e.target.value)}
+                      radius="md"
+                      size="md"
+                      styles={{
+                        input: {
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        },
+                      }}
+                    />
+                  ) : (
+                    <TextInput
+                      label={getDateLabel()}
+                      required
+                      placeholder="YYYY-MM-DD"
+                      type="date"
+                      value={qualificationDate}
+                      onChange={(e) => setQualificationDate(e.target.value)}
+                      radius="md"
+                      size="md"
+                      styles={{
+                        input: {
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        },
+                      }}
+                    />
+                  )}
                 </SimpleGrid>
+
+                {/* If Follow-up Required, prompt Follow-up Note / Agenda */}
+                {status === 'Follow-up Required' && (
+                  <Textarea
+                    label="Follow-up Note / Agenda (Enna follow pannanum)"
+                    placeholder="Specify what to follow up on (e.g. Client requested callback on Friday to discuss product demo and pricing)..."
+                    required
+                    value={followUpNotes}
+                    onChange={(e) => setFollowUpNotes(e.target.value)}
+                    radius="md"
+                    size="md"
+                    minRows={3}
+                    styles={{
+                      input: {
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      },
+                    }}
+                  />
+                )}
 
                 {/* If Disqualified, prompt reason */}
                 {status === 'Disqualified' && (
@@ -702,7 +673,13 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                     value={disqualificationReason}
                     onChange={(e) => setDisqualificationReason(e.target.value)}
                     radius="md"
+                    size="md"
                     minRows={2}
+                    styles={{
+                      input: {
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      },
+                    }}
                   />
                 )}
 
@@ -739,7 +716,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                       boxShadow: '0 2px 10px rgba(30, 58, 43, 0.3)',
                     }}
                   >
-                    Submit Qualification
+                    {getSubmitButtonLabel()}
                   </Button>
                 </Group>
               </Stack>

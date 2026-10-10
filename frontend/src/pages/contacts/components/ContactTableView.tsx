@@ -5,7 +5,6 @@ import {
   Text,
   Badge,
   ActionIcon,
-  Menu,
   Paper,
   Stack,
   Center,
@@ -19,21 +18,16 @@ import {
   IconEdit,
   IconTrash,
   IconUserPlus,
-  IconChevronDown,
-  IconCheck,
-  IconUserX,
   IconUserCheck,
   IconBrandLinkedin,
   IconWorld,
   IconShare,
   IconPhoneCall,
   IconUsers,
-  IconLayersSubtract,
 } from '@tabler/icons-react';
 import { Contact } from '../../../types/contact';
 import { useContact } from '../../../context/ContactContext';
 import { useCRM } from '../../../context/CRMContext';
-import { IconTarget } from '@tabler/icons-react';
 
 interface ContactTableViewProps {
   contacts: Contact[];
@@ -54,14 +48,7 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
   const { setActiveNav } = useCRM();
-  const { metadata, assignContact, updateContact, setSelectedContact } = useContact();
-
-  const getInitials = (name?: string) => {
-    if (!name) return 'CT';
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    return name.slice(0, 2).toUpperCase();
-  };
+  const { setSelectedContact } = useContact();
 
   const formatLastUpdate = (dateString?: string) => {
     if (!dateString) return '—';
@@ -73,63 +60,48 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
     }
   };
 
-  const handleAssign = async (contactId: string, employeeId: string | null) => {
-    await assignContact(contactId, employeeId);
-  };
-
   const handleOpenQualification = (contact: Contact) => {
+    setSelectedContact(contact);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(contact));
     }
-    setSelectedContact(contact);
     setActiveNav('contact-qualification');
   };
 
-  const handleUpdateStage = async (contact: Contact, stage: string) => {
-    if (stage === 'Qualification') {
-      handleOpenQualification(contact);
-      return;
-    }
-    await updateContact(contact.id, { stage });
-  };
-
-  const handleUpdateStatus = async (contactId: string, status: string) => {
-    await updateContact(contactId, { status });
-  };
-
-  // 1. Sleek Modern SOURCE Badge
+  // 1. Sleek Modern SOURCE Badge (Ultra Clean Pill Design)
   const renderSourceBadge = (source?: string | null) => {
     const s = (source || 'Direct').trim();
-    let bg = isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC';
+    let bg = isDark ? 'rgba(148, 163, 184, 0.12)' : '#F1F5F9';
     let color = isDark ? '#CBD5E1' : '#475569';
-    let border = isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0';
-    let icon = <IconWorld size={12} />;
+    let border = isDark ? 'rgba(148, 163, 184, 0.2)' : '#E2E8F0';
+    let icon = <IconWorld size={13} stroke={2} />;
 
-    if (s.toLowerCase().includes('linkedin')) {
-      bg = isDark ? 'rgba(10, 102, 194, 0.18)' : '#EFF6FF';
+    const sLow = s.toLowerCase();
+    if (sLow.includes('linkedin')) {
+      bg = isDark ? 'rgba(10, 102, 194, 0.16)' : '#EFF6FF';
       color = isDark ? '#93C5FD' : '#0A66C2';
-      border = isDark ? 'rgba(10, 102, 194, 0.35)' : '#BFDBFE';
+      border = isDark ? 'rgba(10, 102, 194, 0.28)' : '#BFDBFE';
       icon = <IconBrandLinkedin size={13} stroke={2.2} />;
-    } else if (s.toLowerCase().includes('social')) {
-      bg = isDark ? 'rgba(147, 51, 234, 0.18)' : '#FAF5FF';
+    } else if (sLow.includes('social')) {
+      bg = isDark ? 'rgba(147, 51, 234, 0.14)' : '#FAF5FF';
       color = isDark ? '#D8B4FE' : '#7E22CE';
-      border = isDark ? 'rgba(147, 51, 234, 0.35)' : '#E9D5FF';
-      icon = <IconShare size={12} />;
-    } else if (s.toLowerCase().includes('referral')) {
-      bg = isDark ? 'rgba(16, 185, 129, 0.18)' : '#ECFDF5';
-      color = isDark ? '#6EE7B7' : '#059669';
-      border = isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0';
-      icon = <IconUsers size={12} />;
-    } else if (s.toLowerCase().includes('call')) {
-      bg = isDark ? 'rgba(245, 158, 11, 0.18)' : '#FFFBEB';
-      color = isDark ? '#FCD34D' : '#D97706';
-      border = isDark ? 'rgba(245, 158, 11, 0.35)' : '#FDE68A';
-      icon = <IconPhoneCall size={12} />;
-    } else if (s.toLowerCase().includes('web')) {
-      bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#F0F9FF';
-      color = isDark ? '#93C5FD' : '#0284C7';
-      border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BAE6FD';
-      icon = <IconWorld size={12} />;
+      border = isDark ? 'rgba(147, 51, 234, 0.25)' : '#E9D5FF';
+      icon = <IconShare size={12} stroke={2} />;
+    } else if (sLow.includes('referral')) {
+      bg = isDark ? 'rgba(16, 185, 129, 0.14)' : '#ECFDF5';
+      color = isDark ? '#6EE7B7' : '#047857';
+      border = isDark ? 'rgba(16, 185, 129, 0.25)' : '#A7F3D0';
+      icon = <IconUsers size={12} stroke={2} />;
+    } else if (sLow.includes('call')) {
+      bg = isDark ? 'rgba(245, 158, 11, 0.14)' : '#FFFBEB';
+      color = isDark ? '#FCD34D' : '#B45309';
+      border = isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A';
+      icon = <IconPhoneCall size={12} stroke={2} />;
+    } else if (sLow.includes('web')) {
+      bg = isDark ? 'rgba(14, 165, 233, 0.14)' : '#F0F9FF';
+      color = isDark ? '#7DD3FC' : '#0369A1';
+      border = isDark ? 'rgba(14, 165, 233, 0.25)' : '#BAE6FD';
+      icon = <IconWorld size={13} stroke={2} />;
     }
 
     return (
@@ -138,13 +110,14 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
           display: 'inline-flex',
           alignItems: 'center',
           gap: 5,
-          padding: '4px 9px',
-          borderRadius: 6,
+          padding: '3px 10px',
+          borderRadius: 100,
           backgroundColor: bg,
           color: color,
           border: `1px solid ${border}`,
-          fontSize: 12,
+          fontSize: 11.5,
           fontWeight: 600,
+          letterSpacing: '0.01em',
           whiteSpace: 'nowrap',
         }}
       >
@@ -154,9 +127,9 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
     );
   };
 
-  // 2. Sleek Modern STAGE Badge
-  const renderStageBadge = (stage?: string | null) => {
-    const st = (stage || 'Qualification').trim();
+  // 2. Sleek Modern STATUS Badge
+  const renderStatusBadge = (statusVal?: string | null, stageVal?: string | null) => {
+    const st = (statusVal || stageVal || 'New').trim();
     const sLow = st.toLowerCase();
     let bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
     let color = isDark ? '#93C5FD' : '#1D4ED8';
@@ -166,42 +139,30 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
       bg = isDark ? 'rgba(16, 185, 129, 0.16)' : '#ECFDF5';
       color = isDark ? '#6EE7B7' : '#047857';
       border = isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0';
-    } else if (sLow.includes('disco')) {
+    } else if (sLow.includes('follow') || sLow.includes('follow-up')) {
+      bg = isDark ? 'rgba(249, 115, 22, 0.16)' : '#FFF7ED';
+      color = isDark ? '#FB923C' : '#C2410C';
+      border = isDark ? 'rgba(249, 115, 22, 0.35)' : '#FFEDD5';
+    } else if (sLow.includes('progress')) {
       bg = isDark ? 'rgba(14, 165, 233, 0.16)' : '#F0F9FF';
       color = isDark ? '#7DD3FC' : '#0284C7';
       border = isDark ? 'rgba(14, 165, 233, 0.35)' : '#BAE6FD';
-    } else if (sLow.includes('requir')) {
-      bg = isDark ? 'rgba(99, 102, 241, 0.16)' : '#EEF2FF';
-      color = isDark ? '#A5B4FC' : '#4338CA';
-      border = isDark ? 'rgba(99, 102, 241, 0.35)' : '#C7D2FE';
-    } else if (sLow.includes('propos')) {
-      bg = isDark ? 'rgba(217, 119, 6, 0.16)' : '#FFFBEB';
-      color = isDark ? '#FCD34D' : '#B45309';
-      border = isDark ? 'rgba(217, 119, 6, 0.35)' : '#FDE68A';
-    } else if (sLow.includes('negot')) {
-      bg = isDark ? 'rgba(234, 88, 12, 0.16)' : '#FFF7ED';
-      color = isDark ? '#FDBA74' : '#C2410C';
-      border = isDark ? 'rgba(234, 88, 12, 0.35)' : '#FFEDD5';
-    } else if (sLow.includes('demo') || sLow.includes('present')) {
-      bg = isDark ? 'rgba(168, 85, 247, 0.16)' : '#FAF5FF';
-      color = isDark ? '#D8B4FE' : '#7E22CE';
-      border = isDark ? 'rgba(168, 85, 247, 0.35)' : '#E9D5FF';
-    } else if (sLow.includes('decis')) {
-      bg = isDark ? 'rgba(236, 72, 153, 0.16)' : '#FDF2F8';
-      color = isDark ? '#F472B6' : '#BE185D';
-      border = isDark ? 'rgba(236, 72, 153, 0.35)' : '#FCE7F3';
-    } else if (sLow.includes('contra') || sLow.includes('agree')) {
-      bg = isDark ? 'rgba(20, 184, 166, 0.16)' : '#F0FDFA';
-      color = isDark ? '#5EEAD4' : '#0F766E';
-      border = isDark ? 'rgba(20, 184, 166, 0.35)' : '#CCFBF1';
-    } else if (sLow.includes('won')) {
-      bg = isDark ? 'rgba(34, 197, 94, 0.18)' : '#DCFCE7';
-      color = isDark ? '#86EFAC' : '#15803D';
-      border = isDark ? 'rgba(34, 197, 94, 0.4)' : '#86EFAC';
-    } else if (sLow.includes('lost')) {
+    } else if (sLow.includes('disqual') || sLow.includes('lost') || sLow.includes('cancel')) {
       bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
       color = isDark ? '#FCA5A5' : '#B91C1C';
       border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
+    } else if (sLow.includes('won') || sLow.includes('complete')) {
+      bg = isDark ? 'rgba(34, 197, 94, 0.18)' : '#DCFCE7';
+      color = isDark ? '#86EFAC' : '#15803D';
+      border = isDark ? 'rgba(34, 197, 94, 0.4)' : '#86EFAC';
+    } else if (sLow.includes('hold') || sLow.includes('pend')) {
+      bg = isDark ? 'rgba(234, 179, 8, 0.16)' : '#FEFCE8';
+      color = isDark ? '#FACC15' : '#A16207';
+      border = isDark ? 'rgba(234, 179, 8, 0.35)' : '#FEF08A';
+    } else if (sLow.includes('new') || sLow.includes('init') || sLow.includes('active')) {
+      bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
+      color = isDark ? '#93C5FD' : '#1D4ED8';
+      border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
     }
 
     return (
@@ -226,91 +187,7 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
     );
   };
 
-  // 3. Sleek Modern STATUS Badge with Indicator Dot
-  const renderStatusBadge = (status?: string | null) => {
-    const s = (status || 'New').trim();
-    const sLow = s.toLowerCase();
-    let bg = isDark ? 'rgba(255, 255, 255, 0.05)' : '#F8FAFC';
-    let color = isDark ? '#CBD5E1' : '#334155';
-    let border = isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0';
-    let dotColor = '#94A3B8';
 
-    if (sLow === 'new') {
-      bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
-      color = isDark ? '#93C5FD' : '#1D4ED8';
-      border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
-      dotColor = '#2563EB';
-    } else if (sLow === 'active') {
-      bg = isDark ? 'rgba(22, 163, 74, 0.15)' : '#F0FDF4';
-      color = isDark ? '#86EFAC' : '#15803D';
-      border = isDark ? 'rgba(22, 163, 74, 0.3)' : '#BBF7D0';
-      dotColor = '#16A34A';
-    } else if (sLow === 'qualified') {
-      bg = isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5';
-      color = isDark ? '#6EE7B7' : '#047857';
-      border = isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0';
-      dotColor = '#059669';
-    } else if (sLow === 'in progress') {
-      bg = isDark ? 'rgba(14, 165, 233, 0.15)' : '#F0F9FF';
-      color = isDark ? '#7DD3FC' : '#0284C7';
-      border = isDark ? 'rgba(14, 165, 233, 0.3)' : '#BAE6FD';
-      dotColor = '#0284C7';
-    } else if (sLow === 'on hold') {
-      bg = isDark ? 'rgba(245, 158, 11, 0.15)' : '#FFFBEB';
-      color = isDark ? '#FCD34D' : '#B45309';
-      border = isDark ? 'rgba(245, 158, 11, 0.3)' : '#FDE68A';
-      dotColor = '#D97706';
-    } else if (sLow === 'pending') {
-      bg = isDark ? 'rgba(168, 85, 247, 0.15)' : '#FAF5FF';
-      color = isDark ? '#D8B4FE' : '#7E22CE';
-      border = isDark ? 'rgba(168, 85, 247, 0.3)' : '#E9D5FF';
-      dotColor = '#9333EA';
-    } else if (sLow.includes('follow')) {
-      bg = isDark ? 'rgba(249, 115, 22, 0.15)' : '#FFF7ED';
-      color = isDark ? '#FDBA74' : '#C2410C';
-      border = isDark ? 'rgba(249, 115, 22, 0.3)' : '#FFEDD5';
-      dotColor = '#EA580C';
-    } else if (sLow === 'completed' || sLow === 'won') {
-      bg = isDark ? 'rgba(34, 197, 94, 0.18)' : '#DCFCE7';
-      color = isDark ? '#86EFAC' : '#15803D';
-      border = isDark ? 'rgba(34, 197, 94, 0.35)' : '#86EFAC';
-      dotColor = '#16A34A';
-    } else if (sLow === 'lost' || sLow === 'cancelled' || sLow.includes('disqualif')) {
-      bg = isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2';
-      color = isDark ? '#FCA5A5' : '#B91C1C';
-      border = isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA';
-      dotColor = '#DC2626';
-    }
-
-    return (
-      <Box
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 6,
-          padding: '4px 11px',
-          borderRadius: 100,
-          backgroundColor: bg,
-          color: color,
-          border: `1px solid ${border}`,
-          fontSize: 12,
-          fontWeight: 600,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        <Box
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            backgroundColor: dotColor,
-            flexShrink: 0,
-          }}
-        />
-        <span>{s}</span>
-      </Box>
-    );
-  };
 
   if (!loading && contacts.length === 0) {
     return (
@@ -396,8 +273,8 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
               <Table.Th style={{ minWidth: 200, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 CONTACT
               </Table.Th>
-              <Table.Th style={{ minWidth: 140, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                COMPANY
+              <Table.Th style={{ minWidth: 160, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                COMPANY / PROFESSION
               </Table.Th>
               <Table.Th style={{ minWidth: 190, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 EMAIL
@@ -408,17 +285,14 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
               <Table.Th style={{ minWidth: 130, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 SOURCE
               </Table.Th>
-              <Table.Th style={{ minWidth: 140, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                STAGE
-              </Table.Th>
-              <Table.Th style={{ minWidth: 130, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                STATUS
-              </Table.Th>
               <Table.Th style={{ minWidth: 110, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 LAST UPDATE
               </Table.Th>
               <Table.Th style={{ minWidth: 160, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 ASSIGNED TO
+              </Table.Th>
+              <Table.Th style={{ minWidth: 140, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                STATUS
               </Table.Th>
               <Table.Th style={{ width: 90, minWidth: 90, textAlign: 'center', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 ACTIONS
@@ -429,14 +303,16 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
             {contacts.map((contact) => (
               <Table.Tr
                 key={contact.id}
+                onClick={() => handleOpenQualification(contact)}
                 style={{
+                  cursor: 'pointer',
                   transition: 'background 0.12s ease',
                   borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
                 }}
               >
-                {/* 1. CONTACT: Name + Designation */}
+                {/* 1. CONTACT: Name + Designation / Type */}
                 <Table.Td style={{ minWidth: 200 }}>
-                  <Box>
+                  <Box style={{ display: 'inline-block' }}>
                     <Text
                       fw={700}
                       size="sm"
@@ -444,6 +320,13 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                         color: isDark ? '#F8FAFC' : '#0F172A',
                         lineHeight: 1.2,
                         whiteSpace: 'nowrap',
+                        transition: 'color 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = '#3B82F6';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = isDark ? '#F8FAFC' : '#0F172A';
                       }}
                     >
                       {contact.name}
@@ -456,15 +339,15 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {contact.designation || contact.profession || contact.contactType || 'Contact'}
+                      {contact.designation || (contact.contactType === 'Individual' ? 'Individual' : 'Company Representative')}
                     </Text>
                   </Box>
                 </Table.Td>
 
-                {/* 2. COMPANY */}
-                <Table.Td style={{ minWidth: 140, whiteSpace: 'nowrap' }}>
+                {/* 2. COMPANY / PROFESSION: Displays company name or profession entered by user */}
+                <Table.Td style={{ minWidth: 160, whiteSpace: 'nowrap' }}>
                   <Text size="13px" fw={600} style={{ color: isDark ? '#E2E8F0' : '#1E293B', whiteSpace: 'nowrap' }}>
-                    {contact.companyName || '—'}
+                    {contact.companyName || contact.profession || contact.contactType || '—'}
                   </Text>
                 </Table.Td>
 
@@ -487,271 +370,114 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                   {renderSourceBadge(contact.source)}
                 </Table.Td>
 
-                {/* 6. STAGE: 1-Click Dropdown to advance pipeline stage */}
-                <Table.Td style={{ minWidth: 140, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
-                  <Menu position="bottom-start" shadow="lg" radius="md" width={200} withinPortal>
-                    <Menu.Target>
-                      <UnstyledButton style={{ cursor: 'pointer' }}>
-                        <Group gap={4} align="center" wrap="nowrap">
-                          {renderStageBadge(contact.stage)}
-                          <IconChevronDown size={11} style={{ opacity: 0.6 }} />
-                        </Group>
-                      </UnstyledButton>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Label>Move Pipeline Stage</Menu.Label>
-                      {[
-                        { value: 'Qualification', label: 'Qualification' },
-                        { value: 'Discovery', label: 'Discovery' },
-                        { value: 'Requirement Analysis', label: 'Requirement Analysis' },
-                        { value: 'Proposal', label: 'Proposal' },
-                        { value: 'Negotiation', label: 'Negotiation' },
-                        { value: 'Demo / Presentation', label: 'Demo / Presentation' },
-                        { value: 'Decision Making', label: 'Decision Making' },
-                        { value: 'Contract / Agreement', label: 'Contract / Agreement' },
-                        { value: 'Closed Won', label: 'Closed Won' },
-                        { value: 'Closed Lost', label: 'Closed Lost' },
-                      ].map((st) => (
-                        <Menu.Item
-                          key={st.value}
-                          rightSection={
-                            (contact.stage || 'Qualification').toLowerCase() === st.value.toLowerCase() ? (
-                              <IconCheck size={14} color="#2563EB" />
-                            ) : undefined
-                          }
-                          onClick={() => handleUpdateStage(contact, st.value)}
-                        >
-                          <Text
-                            size="xs"
-                            fw={
-                              (contact.stage || 'Qualification').toLowerCase() === st.value.toLowerCase()
-                                ? 700
-                                : 500
-                            }
-                          >
-                            {st.label}
-                          </Text>
-                        </Menu.Item>
-                      ))}
-                    </Menu.Dropdown>
-                  </Menu>
-                </Table.Td>
-
-                {/* 7. STATUS: 1-Click Dropdown to update contact status */}
-                <Table.Td style={{ minWidth: 130, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
-                  <Menu position="bottom-start" shadow="lg" radius="md" width={190} withinPortal>
-                    <Menu.Target>
-                      <UnstyledButton style={{ cursor: 'pointer' }}>
-                        <Group gap={4} align="center" wrap="nowrap">
-                          {renderStatusBadge(contact.status)}
-                          <IconChevronDown size={11} style={{ opacity: 0.6 }} />
-                        </Group>
-                      </UnstyledButton>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Label>Update Status</Menu.Label>
-                      {[
-                        { value: 'New', label: 'New', dotColor: '#2563EB' },
-                        { value: 'Active', label: 'Active', dotColor: '#16A34A' },
-                        { value: 'Qualified', label: 'Qualified', dotColor: '#059669' },
-                        { value: 'In Progress', label: 'In Progress', dotColor: '#0284C7' },
-                        { value: 'On Hold', label: 'On Hold', dotColor: '#D97706' },
-                        { value: 'Pending', label: 'Pending', dotColor: '#9333EA' },
-                        { value: 'Follow-up Required', label: 'Follow-up Required', dotColor: '#EA580C' },
-                        { value: 'Completed', label: 'Completed', dotColor: '#16A34A' },
-                        { value: 'Won', label: 'Won', dotColor: '#16A34A' },
-                        { value: 'Lost', label: 'Lost', dotColor: '#DC2626' },
-                        { value: 'Cancelled', label: 'Cancelled', dotColor: '#DC2626' },
-                      ].map((st) => (
-                        <Menu.Item
-                          key={st.value}
-                          leftSection={
-                            <Box
-                              style={{
-                                width: 7,
-                                height: 7,
-                                borderRadius: '50%',
-                                backgroundColor: st.dotColor,
-                              }}
-                            />
-                          }
-                          rightSection={
-                            (contact.status || 'New').toLowerCase() === st.value.toLowerCase() ? (
-                              <IconCheck size={14} color="#2563EB" />
-                            ) : undefined
-                          }
-                          onClick={() => handleUpdateStatus(contact.id, st.value)}
-                        >
-                          <Text
-                            size="xs"
-                            fw={
-                              (contact.status || 'New').toLowerCase() === st.value.toLowerCase()
-                                ? 700
-                                : 500
-                            }
-                          >
-                            {st.label}
-                          </Text>
-                        </Menu.Item>
-                      ))}
-                    </Menu.Dropdown>
-                  </Menu>
-                </Table.Td>
-
-                {/* 8. LAST UPDATE */}
+                {/* 6. LAST UPDATE */}
                 <Table.Td style={{ minWidth: 110, whiteSpace: 'nowrap' }}>
                   <Text size="12px" fw={500} style={{ color: isDark ? '#94A3B8' : '#64748B', whiteSpace: 'nowrap' }}>
                     {formatLastUpdate(contact.updatedAt || contact.createdAt)}
                   </Text>
                 </Table.Td>
 
-                {/* 9. ASSIGNED TO: 1-Click interactive assignment dropdown */}
-                <Table.Td style={{ minWidth: 160, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
-                  <Menu position="bottom-start" shadow="lg" radius="md" width={220} withinPortal>
-                    <Menu.Target>
-                      <UnstyledButton>
-                        {contact.assignedToName ? (
-                          <Tooltip label="Click to reassign employee" withArrow>
-                            <Badge
-                              radius="xl"
-                              styles={{
-                                root: {
-                                  backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
-                                  color: isDark ? '#93C5FD' : '#1D4ED8',
-                                  border: isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #BFDBFE',
-                                  fontWeight: 600,
-                                  fontSize: 11,
-                                  textTransform: 'none',
-                                  cursor: 'pointer',
-                                  padding: '5px 12px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                },
-                              }}
-                            >
-                              <IconUserCheck size={12} stroke={2.2} />
-                              {contact.assignedToName}
-                              <IconChevronDown size={11} style={{ opacity: 0.7 }} />
-                            </Badge>
-                          </Tooltip>
-                        ) : (
-                          <Tooltip label="Click to assign to an employee" withArrow>
-                            <Badge
-                              variant="outline"
-                              radius="xl"
-                              styles={{
-                                root: {
-                                  borderStyle: 'dashed',
-                                  borderColor: isDark ? '#475569' : '#CBD5E1',
-                                  color: isDark ? '#94A3B8' : '#64748B',
-                                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC',
-                                  fontWeight: 500,
-                                  fontSize: 11,
-                                  textTransform: 'none',
-                                  cursor: 'pointer',
-                                  padding: '5px 10px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                },
-                              }}
-                            >
-                              <IconUserPlus size={12} />
-                              Assign
-                              <IconChevronDown size={11} style={{ opacity: 0.7 }} />
-                            </Badge>
-                          </Tooltip>
-                        )}
-                      </UnstyledButton>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Label>Assign Contact to Employee</Menu.Label>
-                      {metadata?.employees && metadata.employees.length > 0 ? (
-                        metadata.employees.map((emp) => {
-                          const isAssigned =
-                            contact.assignedTo === emp.id || contact.assignedToName === emp.name;
-                          return (
-                            <Menu.Item
-                              key={emp.id}
-                              leftSection={
-                                <Box
-                                  style={{
-                                    width: 22,
-                                    height: 22,
-                                    borderRadius: '50%',
-                                    backgroundColor: '#2563EB',
-                                    color: '#FFFFFF',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                  }}
-                                >
-                                  {getInitials(emp.name)}
-                                </Box>
-                              }
-                              rightSection={
-                                isAssigned ? <IconCheck size={14} color="#2563EB" /> : undefined
-                              }
-                              onClick={() => handleAssign(contact.id, emp.id)}
-                            >
-                              <Box>
-                                <Text size="xs" fw={isAssigned ? 700 : 500}>
-                                  {emp.name}
-                                </Text>
-                                {emp.designation && (
-                                  <Text size="10px" c="dimmed">
-                                    {emp.designation}
-                                  </Text>
-                                )}
-                              </Box>
-                            </Menu.Item>
-                          );
-                        })
+                {/* 8. ASSIGNED TO: 1-Click to open Qualification Page */}
+                <Table.Td style={{ minWidth: 160, whiteSpace: 'nowrap' }}>
+                  <Tooltip label="Click to open Qualification Page" withArrow position="top">
+                    <Box
+                      style={{
+                        display: 'inline-block',
+                        transition: 'transform 0.12s ease, opacity 0.12s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.04)';
+                        e.currentTarget.style.opacity = '0.9';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                    >
+                      {contact.assignedToName ? (
+                        <Badge
+                          radius="xl"
+                          styles={{
+                            root: {
+                              backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+                              color: isDark ? '#93C5FD' : '#1D4ED8',
+                              border: isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #BFDBFE',
+                              fontWeight: 600,
+                              fontSize: 11,
+                              textTransform: 'none',
+                              padding: '5px 12px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                            },
+                          }}
+                        >
+                          <IconUserCheck size={12} stroke={2.2} />
+                          {contact.assignedToName}
+                        </Badge>
                       ) : (
-                        <Menu.Item disabled>No employees available</Menu.Item>
+                        <Badge
+                          variant="outline"
+                          radius="xl"
+                          styles={{
+                            root: {
+                              borderStyle: 'dashed',
+                              borderColor: isDark ? '#475569' : '#CBD5E1',
+                              color: isDark ? '#94A3B8' : '#64748B',
+                              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC',
+                              fontWeight: 500,
+                              fontSize: 11,
+                              textTransform: 'none',
+                              padding: '5px 10px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                            },
+                          }}
+                        >
+                          <IconUserPlus size={12} />
+                          Assign
+                        </Badge>
                       )}
-
-                      {contact.assignedToName && (
-                        <>
-                          <Menu.Divider />
-                          <Menu.Item
-                            color="red"
-                            leftSection={<IconUserX size={14} />}
-                            onClick={() => handleAssign(contact.id, null)}
-                          >
-                            Unassign Contact
-                          </Menu.Item>
-                        </>
-                      )}
-                    </Menu.Dropdown>
-                  </Menu>
+                    </Box>
+                  </Tooltip>
                 </Table.Td>
 
-                {/* 10. ACTIONS (Direct Action Icons) */}
-                <Table.Td style={{ width: 110, textAlign: 'center' }}>
-                  <Group gap={6} justify="center" wrap="nowrap">
-                    <Tooltip label="Qualify Contact (2-Step Flow)" withArrow>
-                      <ActionIcon
-                        variant="subtle"
-                        size="sm"
-                        radius="md"
-                        color="teal"
-                        onClick={() => handleOpenQualification(contact)}
-                      >
-                        <IconTarget size={16} />
-                      </ActionIcon>
-                    </Tooltip>
+                {/* 9. STATUS: 1-Click to open Qualification Page */}
+                <Table.Td style={{ minWidth: 140, whiteSpace: 'nowrap' }}>
+                  <Tooltip label="Click to open Qualification Page" withArrow position="top">
+                    <Box
+                      style={{
+                        display: 'inline-block',
+                        transition: 'transform 0.12s ease, opacity 0.12s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'scale(1.04)';
+                        e.currentTarget.style.opacity = '0.9';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'scale(1)';
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                    >
+                      {renderStatusBadge(contact.status || contact.qualificationStatus, contact.stage)}
+                    </Box>
+                  </Tooltip>
+                </Table.Td>
 
+                {/* 10. ACTIONS (Direct Action Icons: Edit & Delete) */}
+                <Table.Td style={{ width: 80, minWidth: 80, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                  <Group gap={6} justify="center" wrap="nowrap">
                     <Tooltip label="Edit Contact" withArrow>
                       <ActionIcon
                         variant="subtle"
                         size="sm"
                         radius="md"
                         color="indigo"
-                        onClick={() => onEdit(contact)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(contact);
+                        }}
                       >
                         <IconEdit size={16} />
                       </ActionIcon>
@@ -763,7 +489,10 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                         size="sm"
                         radius="md"
                         color="red"
-                        onClick={() => onDelete(contact)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDelete(contact);
+                        }}
                       >
                         <IconTrash size={16} />
                       </ActionIcon>

@@ -112,8 +112,9 @@ export const ContactProvider: React.FC<{ children: ReactNode }> = ({ children })
   const fetchMetadata = useCallback(async () => {
     try {
       const res = await contactService.getContactMetadata();
-      if (res.success && res.metadata) {
-        setMetadata(res.metadata);
+      const meta = res.metadata || (res as any).data;
+      if (res.success && meta) {
+        setMetadata(meta);
       }
     } catch (err: any) {
       console.error('Error fetching contact metadata:', err);
@@ -185,9 +186,14 @@ export const ContactProvider: React.FC<{ children: ReactNode }> = ({ children })
       if (res.success) {
         notifications.show({
           title: 'Contact Updated',
-          message: res.message || `${res.data.name} updated successfully!`,
+          message: res.message || `${res.data?.name || 'Contact'} updated successfully!`,
           color: 'teal',
         });
+        if (res.data) {
+          setContacts((prev) =>
+            prev.map((c) => (c.id === id || c.contactId === id ? { ...c, ...res.data } : c))
+          );
+        }
         await Promise.all([fetchContacts(), fetchStats(), fetchMetadata()]);
         return { success: true, data: res.data };
       }
@@ -217,6 +223,7 @@ export const ContactProvider: React.FC<{ children: ReactNode }> = ({ children })
         if (selectedContact && (selectedContact.id === id || selectedContact.contactId === id)) {
           setSelectedContact(null);
         }
+        setContacts((prev) => prev.filter((c) => c.id !== id && c.contactId !== id));
         await Promise.all([fetchContacts(), fetchStats(), fetchMetadata()]);
         return { success: true };
       }
@@ -243,6 +250,11 @@ export const ContactProvider: React.FC<{ children: ReactNode }> = ({ children })
           message: res.message || 'Assignment updated successfully.',
           color: 'teal',
         });
+        if (res.data) {
+          setContacts((prev) =>
+            prev.map((c) => (c.id === id || c.contactId === id ? { ...c, ...res.data } : c))
+          );
+        }
         await Promise.all([fetchContacts(), fetchStats(), fetchMetadata()]);
         return { success: true, data: res.data };
       }

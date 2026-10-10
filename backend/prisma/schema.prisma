@@ -128,7 +128,7 @@ model Contact {
 
   // 5. Qualification & Project Details
   status                 String?   @default("New") // New, Active, Inactive, Qualified, Disqualified
-  stage                  String?   @default("Initialization") // Initialization, Qualification, Meeting, Proposal, Closed
+  stage                  String?   @default("New Lead") // New Lead, Qualification, Discovery, Requirement Analysis, Demo / Presentation, Proposal / Quotation, Negotiation, Decision Making, Won, Lost
   qualificationStatus    String?   @default("In Progress") // Qualified, Disqualified, In Progress
   qualifiedBy            String?
   qualificationDate      String?

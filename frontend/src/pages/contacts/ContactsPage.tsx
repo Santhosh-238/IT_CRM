@@ -117,17 +117,20 @@ export const ContactsPage: React.FC = () => {
 
   const statusOptions = [
     { value: 'All', label: 'All Statuses' },
-    { value: 'New', label: 'New' },
-    { value: 'Active', label: 'Active' },
     { value: 'Qualified', label: 'Qualified' },
     { value: 'In Progress', label: 'In Progress' },
-    { value: 'On Hold', label: 'On Hold' },
-    { value: 'Pending', label: 'Pending' },
     { value: 'Follow-up Required', label: 'Follow-up Required' },
-    { value: 'Completed', label: 'Completed' },
-    { value: 'Won', label: 'Won' },
-    { value: 'Lost', label: 'Lost' },
-    { value: 'Cancelled', label: 'Cancelled' },
+    { value: 'Disqualified', label: 'Disqualified' },
+    ...(metadata?.statuses && metadata.statuses.length > 0
+      ? metadata.statuses
+          .filter((s) => !['Qualified', 'In Progress', 'Follow-up Required', 'Disqualified'].includes(s))
+          .map((s) => ({ value: s, label: s }))
+      : [
+          { value: 'New', label: 'New' },
+          { value: 'Active', label: 'Active' },
+          { value: 'Won', label: 'Won' },
+          { value: 'Lost', label: 'Lost' },
+        ]),
   ];
 
   const sourceOptions = [
@@ -153,13 +156,12 @@ export const ContactsPage: React.FC = () => {
     ...(metadata?.employees?.map((emp) => ({ value: emp.id, label: emp.name })) || []),
   ];
 
-  const newCount = stats?.unassigned ?? stats?.new ?? 0;
+  const totalCount = stats?.total ?? contacts.length;
   const assignedCount = stats?.assigned ?? 0;
+  const newCount = stats?.unassigned ?? stats?.new ?? Math.max(0, totalCount - assignedCount);
 
   const startRecord = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
-
-  const totalCount = stats?.total ?? (newCount + assignedCount);
 
   return (
     <Box p={{ base: 'md', md: 'lg' }} style={{ maxWidth: 1520, margin: '0 auto' }}>
@@ -419,7 +421,7 @@ export const ContactsPage: React.FC = () => {
               onChange={(val) => setFilters({ status: val || 'All' })}
               size="sm"
               radius="md"
-              style={{ width: 130 }}
+              style={{ width: 150 }}
               styles={{
                 input: {
                   backgroundColor: isDark ? '#1E293B' : '#FFFFFF',

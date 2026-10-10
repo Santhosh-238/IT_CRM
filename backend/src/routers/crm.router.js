@@ -1,21 +1,43 @@
 import { Router } from 'express';
+import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
+import { authorizePermission } from '../middlewares/permission.middleware.js';
 import {
   getDashboardStats,
   getRedisStatus,
   clearAllDatabaseData,
 } from '../controllers/crm.controller.js';
-import { requireAuth } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
-// Redis Status & Space Monitor
-router.get('/redis/status', getRedisStatus);
+// 1. Dashboard Metrics & Analytics (Cached in Redis <1ms)
+router.get(
+  '/dashboard/stats',
+  requireAuth,
+  authorizePermission('dashboard', 'view'),
+  getDashboardStats
+);
 
-// Database Wipe / Reset
-router.post('/database/clear', requireAuth, clearAllDatabaseData);
-router.delete('/database/clear', requireAuth, clearAllDatabaseData);
+// 2. Redis Status & In-Memory Space Monitor
+router.get(
+  '/redis/status',
+  requireAuth,
+  authorizePermission('dashboard', 'view'),
+  getRedisStatus
+);
 
-// Dashboard Metrics (Cached in Redis <1ms)
-router.get('/dashboard/stats', requireAuth, getDashboardStats);
+// 3. Database Wipe / Reset (Super Admin Only)
+router.post(
+  '/database/clear',
+  requireAuth,
+  requireRole(['SUPER_ADMIN']),
+  clearAllDatabaseData
+);
+
+router.delete(
+  '/database/clear',
+  requireAuth,
+  requireRole(['SUPER_ADMIN']),
+  clearAllDatabaseData
+);
 
 export default router;

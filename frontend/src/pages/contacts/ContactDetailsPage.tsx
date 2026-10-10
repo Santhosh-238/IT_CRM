@@ -203,8 +203,8 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
                   <Badge variant="light" color={contact.contactType === 'Individual' ? 'violet' : 'blue'} size="md">
                     {contact.contactType || 'Company Representative'}
                   </Badge>
-                  <Badge variant="dot" color={getStatusBadgeColor(contact.status)} size="md">
-                    {contact.status}
+                  <Badge variant="light" color="indigo" size="md">
+                    Stage: {contact.stage || 'New Lead'}
                   </Badge>
                 </Group>
               </Stack>
@@ -253,7 +253,7 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
                     Stage
                   </Text>
                   <Badge variant="light" color="indigo" size="sm">
-                    {contact.stage || 'Initialization'}
+                    {contact.stage || 'New Lead'}
                   </Badge>
                 </Group>
               </Stack>

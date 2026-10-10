@@ -1,4 +1,4 @@
-import { prisma } from '../config/prisma.js';
+import * as taskService from '../services/task.service.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 /**
@@ -7,32 +7,11 @@ import { sendSuccess, sendError } from '../utils/response.js';
  */
 export async function getTasks(req, res) {
   try {
-    const { status, priority, assignedTo, search } = req.query;
-
-    const where = {};
-    if (status) where.status = status;
-    if (priority) where.priority = priority;
-    if (assignedTo) where.assignedTo = assignedTo;
-
-    // Check if Task model exists in Prisma schema, otherwise provide fallback or return empty/simulated
-    let tasks = [];
-    if (prisma.task) {
-      if (search) {
-        where.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-        ];
-      }
-      tasks = await prisma.task.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-      });
-    }
-
+    const tasks = await taskService.getTasksService(req.query);
     return sendSuccess(res, tasks, 'Tasks retrieved successfully');
   } catch (error) {
     console.error('getTasks error:', error);
-    return sendError(res, error.message || 'Failed to fetch tasks', 500);
+    return sendError(res, error.message || 'Failed to fetch tasks', error.status || 500);
   }
 }
 
@@ -42,17 +21,10 @@ export async function getTasks(req, res) {
  */
 export async function getTaskById(req, res) {
   try {
-    const { id } = req.params;
-    if (!prisma.task) {
-      return sendError(res, 'Task model not configured', 404);
-    }
-    const task = await prisma.task.findUnique({ where: { id } });
-    if (!task) {
-      return sendError(res, 'Task not found', 404);
-    }
+    const task = await taskService.getTaskByIdService(req.params.id);
     return sendSuccess(res, task, 'Task retrieved');
   } catch (error) {
-    return sendError(res, error.message, 500);
+    return sendError(res, error.message, error.status || 500);
   }
 }
 
@@ -62,41 +34,11 @@ export async function getTaskById(req, res) {
  */
 export async function createTask(req, res) {
   try {
-    const { title, description, priority, dueDate, assignedTo, contactId, leadId } = req.body;
-    if (!title || !title.trim()) {
-      return sendError(res, 'Task title is required', 400);
-    }
-
-    if (!prisma.task) {
-      return sendSuccess(res, {
-        id: `tsk-${Date.now()}`,
-        title: title.trim(),
-        description: description || '',
-        priority: priority || 'Medium',
-        status: 'Todo',
-        dueDate: dueDate || null,
-        assignedTo: assignedTo || null,
-        createdAt: new Date(),
-      }, 'Task created successfully', 201);
-    }
-
-    const task = await prisma.task.create({
-      data: {
-        title: title.trim(),
-        description: description || '',
-        priority: priority || 'Medium',
-        status: 'Todo',
-        dueDate: dueDate || null,
-        assignedTo: assignedTo || null,
-        contactId: contactId || null,
-        leadId: leadId || null,
-      },
-    });
-
+    const task = await taskService.createTaskService(req.body);
     return sendSuccess(res, task, 'Task created successfully', 201);
   } catch (error) {
     console.error('createTask error:', error);
-    return sendError(res, error.message || 'Failed to create task', 500);
+    return sendError(res, error.message || 'Failed to create task', error.status || 500);
   }
 }
 
@@ -106,21 +48,10 @@ export async function createTask(req, res) {
  */
 export async function updateTask(req, res) {
   try {
-    const { id } = req.params;
-    const data = req.body;
-
-    if (!prisma.task) {
-      return sendSuccess(res, { id, ...data }, 'Task updated successfully');
-    }
-
-    const task = await prisma.task.update({
-      where: { id },
-      data,
-    });
-
+    const task = await taskService.updateTaskService(req.params.id, req.body);
     return sendSuccess(res, task, 'Task updated successfully');
   } catch (error) {
-    return sendError(res, error.message || 'Failed to update task', 500);
+    return sendError(res, error.message || 'Failed to update task', error.status || 500);
   }
 }
 
@@ -130,15 +61,10 @@ export async function updateTask(req, res) {
  */
 export async function deleteTask(req, res) {
   try {
-    const { id } = req.params;
-
-    if (prisma.task) {
-      await prisma.task.delete({ where: { id } });
-    }
-
-    return sendSuccess(res, { id }, 'Task deleted successfully');
+    const result = await taskService.deleteTaskService(req.params.id);
+    return sendSuccess(res, result, 'Task deleted successfully');
   } catch (error) {
-    return sendError(res, error.message || 'Failed to delete task', 500);
+    return sendError(res, error.message || 'Failed to delete task', error.status || 500);
   }
 }
 
