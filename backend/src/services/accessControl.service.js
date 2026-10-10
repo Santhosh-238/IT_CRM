@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { delCacheByPattern } from '../config/redis.js';
-import { SYSTEM_MODULES } from '../modules/module.registry.js';
+import { SYSTEM_MODULES } from '../models/model.registry.js';
 import { getUserPermissions } from '../middlewares/permission.middleware.js';
 import {
   generateRoleSlug,

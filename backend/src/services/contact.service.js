@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma.js';
 import { delCache } from '../config/redis.js';
 import { io } from '../utils/socket.js';
 import { logAuditEvent } from './auditService.js';
-import { CONTACT_MODULE } from '../modules/contact.module.js';
+import { CONTACT_MODULE } from '../models/contact.model.js';
 import { generateContactId, buildContactFilterQuery, formatContactResponse } from '../utils/contact.util.js';
 
 /**
@@ -181,8 +181,14 @@ export async function createContactService(body, user) {
   }
 
   const finalPhone = phone || mobile_number;
-  if (!finalPhone || !String(finalPhone).trim()) {
+  const phoneDigits = String(finalPhone || '').replace(/\D/g, '');
+  if (!phoneDigits) {
     const error = new Error('Phone number is required.');
+    error.status = 400;
+    throw error;
+  }
+  if (phoneDigits.length !== 10) {
+    const error = new Error('Mobile number must be exactly 10 digits.');
     error.status = 400;
     throw error;
   }
@@ -208,7 +214,7 @@ export async function createContactService(body, user) {
       uuid: crypto.randomUUID(),
       name: name.trim(),
       email: email ? email.toLowerCase().trim() : null,
-      phone: String(finalPhone).trim(),
+      phone: phoneDigits,
       address: address || null,
       source: source || 'Website',
       customSource: customSource || null,
@@ -270,7 +276,17 @@ export async function updateContactService(id, body, user) {
     data: {
       ...(body.name && { name: body.name.trim() }),
       ...(body.email !== undefined && { email: body.email ? body.email.toLowerCase().trim() : null }),
-      ...(body.phone && { phone: String(body.phone).trim() }),
+      ...(body.phone !== undefined && {
+        phone: (() => {
+          const digits = String(body.phone || '').replace(/\D/g, '');
+          if (digits && digits.length !== 10) {
+            const error = new Error('Mobile number must be exactly 10 digits.');
+            error.status = 400;
+            throw error;
+          }
+          return digits || String(body.phone).trim();
+        })(),
+      }),
       ...(body.address !== undefined && { address: body.address }),
       ...(body.source !== undefined && { source: body.source }),
       ...(body.customSource !== undefined && { customSource: body.customSource }),

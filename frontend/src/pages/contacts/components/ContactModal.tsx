@@ -43,18 +43,18 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     name: '',
     email: '',
     phone: '',
-    contactType: 'Individual',
+    contactType: '',
     profession: '',
     companyName: '',
     designation: '',
     address: '',
-    source: 'Website',
+    source: '',
     customSource: '',
-    category: 'Product',
+    category: '',
     productList: [],
     serviceList: [],
-    status: 'Active',
-    stage: 'New Lead',
+    status: 'New',
+    stage: 'Initialization',
     qualificationStatus: 'In Progress',
     assignedTo: '',
   };
@@ -70,18 +70,18 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         name: contact.name || '',
         email: contact.email || '',
         phone: contact.phone || '',
-        contactType: contact.contactType || 'Individual',
+        contactType: contact.contactType || '',
         profession: contact.profession || '',
         companyName: contact.companyName || '',
         designation: contact.designation || '',
         address: contact.address || '',
-        source: contact.source || 'Website',
+        source: contact.source || '',
         customSource: contact.customSource || '',
-        category: contact.category || 'Product',
+        category: contact.category || '',
         productList: contact.productList || [],
         serviceList: contact.serviceList || [],
-        status: contact.status || 'Active',
-        stage: contact.stage || 'New Lead',
+        status: contact.status || 'New',
+        stage: contact.stage || 'Initialization',
         qualificationStatus: contact.qualificationStatus || 'In Progress',
         assignedTo: contact.assignedTo || '',
       });
@@ -91,39 +91,83 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     setErrors({});
   }, [contact, opened]);
 
+  const handleFieldChange = (field: keyof ContactFormData, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim() || formData.name.trim().length < 2) {
-      newErrors.name = 'Contact Name is required (minimum 2 characters)';
+    // 1. Name validation
+    if (!formData.name?.trim()) {
+      newErrors.name = 'Contact Name is required';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Contact Name must be at least 2 characters';
     }
 
+    // 2. Email validation
     if (!formData.email?.trim()) {
       newErrors.email = 'Email Address is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    if (!formData.phone.trim()) {
+    // 3. Mobile Number validation (Fixed 10 digits)
+    const cleanPhone = (formData.phone || '').replace(/\D/g, '');
+    if (!cleanPhone) {
       newErrors.phone = 'Mobile Number is required';
-    } else if (formData.phone.replace(/\D/g, '').length < 10) {
-      newErrors.phone = 'Mobile number must be at least 10 digits';
+    } else if (cleanPhone.length !== 10) {
+      newErrors.phone = 'Mobile number must be exactly 10 digits';
     }
 
+    // 4. Contact Type validation
     if (!formData.contactType) {
       newErrors.contactType = 'Contact Type is required';
     }
 
-    if (formData.contactType === 'Individual' && !formData.profession?.trim()) {
-      newErrors.profession = 'Profession / Occupation is required';
+    // 5. Profession / Company validation based on Contact Type
+    if (formData.contactType === 'Individual') {
+      if (!formData.profession?.trim()) {
+        newErrors.profession = 'Profession / Occupation is required';
+      } else if (formData.profession.trim().length < 2) {
+        newErrors.profession = 'Profession must be at least 2 characters';
+      }
+    } else if (formData.contactType === 'Company Representative') {
+      if (!formData.companyName?.trim()) {
+        newErrors.companyName = 'Company Name is required';
+      } else if (formData.companyName.trim().length < 2) {
+        newErrors.companyName = 'Company Name must be at least 2 characters';
+      }
     }
 
-    if (formData.contactType === 'Company Representative' && !formData.companyName?.trim()) {
-      newErrors.companyName = 'Company Name is required';
+    // 6. Address validation
+    if (!formData.address?.trim()) {
+      newErrors.address = 'Address is required';
+    } else if (formData.address.trim().length < 3) {
+      newErrors.address = 'Address must be at least 3 characters';
     }
 
-    if (formData.source === 'Other' && !formData.customSource?.trim()) {
+    // 7. Source validation
+    if (!formData.source) {
+      newErrors.source = 'Source is required';
+    } else if (formData.source === 'Other' && !formData.customSource?.trim()) {
       newErrors.customSource = 'Please specify custom source';
+    }
+
+    // 8. Category validation & Product/Service selection
+    if (!formData.category) {
+      newErrors.category = 'Category is required';
+    } else if (formData.category === 'Product' && (!formData.productList || formData.productList.length === 0)) {
+      newErrors.productList = 'Please select at least one product';
+    } else if (formData.category === 'Service' && (!formData.serviceList || formData.serviceList.length === 0)) {
+      newErrors.serviceList = 'Please select at least one service';
     }
 
     setErrors(newErrors);
@@ -190,7 +234,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   const stageOptions = (metadata?.stages && metadata.stages.length > 0
     ? metadata.stages
     : [
-        'New Lead',
+        'Initialization',
         'Qualification',
         'Discovery',
         'Requirement Analysis',
@@ -275,7 +319,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               placeholder="Enter contact name"
               required
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => handleFieldChange('name', e.target.value)}
               error={errors.name}
               radius="md"
             />
@@ -286,7 +330,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               required
               type="email"
               value={formData.email || ''}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(e) => handleFieldChange('email', e.target.value)}
               error={errors.email}
               radius="md"
             />
@@ -298,8 +342,12 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               label="Mobile Number"
               placeholder="Enter 10-digit mobile number"
               required
+              maxLength={10}
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                handleFieldChange('phone', val);
+              }}
               error={errors.phone}
               radius="md"
             />
@@ -309,42 +357,37 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               placeholder="Select contact type"
               required
               data={contactTypeOptions}
-              value={formData.contactType || 'Individual'}
-              onChange={(val) => setFormData({ ...formData, contactType: val || 'Individual' })}
+              value={formData.contactType || null}
+              onChange={(val) => {
+                const nextType = val || '';
+                setFormData((prev) => ({
+                  ...prev,
+                  contactType: nextType,
+                  ...(nextType === 'Individual' ? { companyName: '', designation: '' } : {}),
+                  ...(nextType === 'Company Representative' ? { profession: '' } : {}),
+                }));
+                setErrors((prev) => {
+                  const copy = { ...prev };
+                  delete copy.contactType;
+                  delete copy.profession;
+                  delete copy.companyName;
+                  return copy;
+                });
+              }}
               error={errors.contactType}
               radius="md"
             />
           </SimpleGrid>
 
           {/* Row 3: Profession / Occupation * and Optional Company Name (when Individual) OR Company Name * & Designation (when Company Rep) */}
-          {formData.contactType === 'Individual' ? (
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <TextInput
-                label="Profession / Occupation"
-                placeholder="Enter profession (e.g. Software Engineer, Consultant)"
-                required
-                value={formData.profession || ''}
-                onChange={(e) => setFormData({ ...formData, profession: e.target.value })}
-                error={errors.profession}
-                radius="md"
-              />
-
-              <TextInput
-                label="Company / Org Name (Optional)"
-                placeholder="Enter company name if applicable"
-                value={formData.companyName || ''}
-                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                radius="md"
-              />
-            </SimpleGrid>
-          ) : (
+          {formData.contactType === 'Company Representative' ? (
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
               <TextInput
                 label="Company Name"
                 placeholder="Enter company name"
                 required
                 value={formData.companyName || ''}
-                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                onChange={(e) => handleFieldChange('companyName', e.target.value)}
                 error={errors.companyName}
                 radius="md"
               />
@@ -353,18 +396,59 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                 label="Designation"
                 placeholder="Enter designation (e.g. CTO, Manager)"
                 value={formData.designation || ''}
-                onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                onChange={(e) => handleFieldChange('designation', e.target.value)}
+                radius="md"
+              />
+            </SimpleGrid>
+          ) : formData.contactType === 'Individual' ? (
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <TextInput
+                label="Profession / Occupation"
+                placeholder="Enter profession (e.g. Software Engineer, Consultant)"
+                required
+                value={formData.profession || ''}
+                onChange={(e) => handleFieldChange('profession', e.target.value)}
+                error={errors.profession}
+                radius="md"
+              />
+
+              <TextInput
+                label="Company / Org Name (Optional)"
+                placeholder="Enter company name if applicable"
+                value={formData.companyName || ''}
+                onChange={(e) => handleFieldChange('companyName', e.target.value)}
+                radius="md"
+              />
+            </SimpleGrid>
+          ) : (
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <TextInput
+                label="Profession / Occupation"
+                placeholder="Enter profession or select Contact Type"
+                value={formData.profession || ''}
+                onChange={(e) => handleFieldChange('profession', e.target.value)}
+                error={errors.profession}
+                radius="md"
+              />
+
+              <TextInput
+                label="Company / Org Name (Optional)"
+                placeholder="Enter company name if applicable"
+                value={formData.companyName || ''}
+                onChange={(e) => handleFieldChange('companyName', e.target.value)}
                 radius="md"
               />
             </SimpleGrid>
           )}
 
-          {/* Row 4: Address */}
+          {/* Row 4: Address (MANDATORY) */}
           <TextInput
             label="Address"
             placeholder="Enter address"
+            required
             value={formData.address || ''}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            onChange={(e) => handleFieldChange('address', e.target.value)}
+            error={errors.address}
             radius="md"
           />
 
@@ -375,8 +459,18 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               placeholder="Select Source"
               required
               data={sourceOptions}
-              value={formData.source || 'Website'}
-              onChange={(val) => setFormData({ ...formData, source: val || 'Website' })}
+              value={formData.source || null}
+              onChange={(val) => {
+                const nextSource = val || '';
+                setFormData((prev) => ({ ...prev, source: nextSource }));
+                setErrors((prev) => {
+                  const copy = { ...prev };
+                  delete copy.source;
+                  if (nextSource !== 'Other') delete copy.customSource;
+                  return copy;
+                });
+              }}
+              error={errors.source}
               radius="md"
             />
 
@@ -385,8 +479,24 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               placeholder="Select Category"
               required
               data={categoryOptions}
-              value={formData.category || 'Product'}
-              onChange={(val) => setFormData({ ...formData, category: val || 'Product' })}
+              value={formData.category || null}
+              onChange={(val) => {
+                const nextCat = val || '';
+                setFormData((prev) => ({
+                  ...prev,
+                  category: nextCat,
+                  ...(nextCat === 'Product' ? { serviceList: [] } : {}),
+                  ...(nextCat === 'Service' ? { productList: [] } : {}),
+                }));
+                setErrors((prev) => {
+                  const copy = { ...prev };
+                  delete copy.category;
+                  delete copy.productList;
+                  delete copy.serviceList;
+                  return copy;
+                });
+              }}
+              error={errors.category}
               radius="md"
             />
           </SimpleGrid>
@@ -398,33 +508,48 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               placeholder="Enter custom source details"
               required
               value={formData.customSource || ''}
-              onChange={(e) => setFormData({ ...formData, customSource: e.target.value })}
+              onChange={(e) => handleFieldChange('customSource', e.target.value)}
               error={errors.customSource}
               radius="md"
             />
           )}
 
           {/* Row 6: Product List (if Product) OR Service List (if Service) */}
-          {formData.category === 'Product' ? (
+          {formData.category === 'Service' ? (
+            <MultiSelect
+              label="Service List"
+              placeholder="Select Service"
+              required
+              data={serviceOptions}
+              searchable
+              clearable
+              value={formData.serviceList || []}
+              onChange={(val) => handleFieldChange('serviceList', val)}
+              error={errors.serviceList}
+              radius="md"
+            />
+          ) : formData.category === 'Product' ? (
+            <MultiSelect
+              label="Product List"
+              placeholder="Select Product"
+              required
+              data={productOptions}
+              searchable
+              clearable
+              value={formData.productList || []}
+              onChange={(val) => handleFieldChange('productList', val)}
+              error={errors.productList}
+              radius="md"
+            />
+          ) : (
             <MultiSelect
               label="Product List"
               placeholder="Select Product"
               data={productOptions}
               searchable
               clearable
-              value={formData.productList || []}
-              onChange={(val) => setFormData({ ...formData, productList: val })}
-              radius="md"
-            />
-          ) : (
-            <MultiSelect
-              label="Service List"
-              placeholder="Select Service"
-              data={serviceOptions}
-              searchable
-              clearable
-              value={formData.serviceList || []}
-              onChange={(val) => setFormData({ ...formData, serviceList: val })}
+              value={[]}
+              onChange={(val) => handleFieldChange('productList', val)}
               radius="md"
             />
           )}
@@ -435,7 +560,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               label="Assign To"
               placeholder="Select employee"
               data={employeeOptions}
-              value={formData.assignedTo || ''}
+              value={formData.assignedTo || null}
               onChange={(val) => setFormData({ ...formData, assignedTo: val || '' })}
               radius="md"
             />
@@ -444,8 +569,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               label="Stage"
               placeholder="Select stage"
               data={stageOptions}
-              value={formData.stage || 'New Lead'}
-              onChange={(val) => setFormData({ ...formData, stage: val || 'New Lead' })}
+              value={formData.stage || null}
+              onChange={(val) => setFormData({ ...formData, stage: val || '' })}
               radius="md"
             />
           </SimpleGrid>

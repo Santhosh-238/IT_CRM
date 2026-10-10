@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import authRouter from './auth.router.js';
-import employeeRouter from './employee.router.js';
-import contactRouter from './contact.router.js';
-import accessControlRouter from './accessControl.router.js';
-import moduleRouter from './module.router.js';
-import leadRouter from './lead.router.js';
-import taskRouter from './task.router.js';
-import crmRouter from './crm.router.js';
+import authRouter from './auth.routes.js';
+import employeeRouter from './employee.routes.js';
+import contactRouter from './contact.routes.js';
+import accessControlRouter from './accessControl.routes.js';
+import moduleRouter from './module.routes.js';
+import leadRouter from './lead.routes.js';
+import taskRouter from './task.routes.js';
+import crmRouter from './crm.routes.js';
 
 const apiRouter = Router();
 
@@ -30,3 +30,4 @@ export {
   taskRouter,
   crmRouter,
 };
+

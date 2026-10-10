@@ -1,5 +1,7 @@
+import { prisma } from '../config/prisma.js';
+
 /**
- * Static System Modules Catalogue & Categories
+ * System Base Modules Registry with Dynamic Database Synchronization
  */
 export const SYSTEM_MODULES = [
   // 1. Core
@@ -45,10 +47,54 @@ export const MODULE_CATEGORIES = [
   'Analytics',
 ];
 
+/**
+ * Dynamically fetch all modules (System + DB Custom Modules)
+ */
+export async function getDynamicModules() {
+  const dbPermissions = await prisma.rolePermission.findMany({
+    select: {
+      moduleId: true,
+      moduleName: true,
+      category: true,
+    },
+    distinct: ['moduleId'],
+  });
+
+  const modulesMap = new Map();
+  SYSTEM_MODULES.forEach(m => modulesMap.set(m.id, { ...m, isSystem: true }));
+
+  dbPermissions.forEach(p => {
+    if (!modulesMap.has(p.moduleId)) {
+      modulesMap.set(p.moduleId, {
+        id: p.moduleId,
+        name: p.moduleName || p.moduleId,
+        category: p.category || 'Custom',
+        description: `Custom module: ${p.moduleName || p.moduleId}`,
+        isSystem: false,
+      });
+    }
+  });
+
+  return Array.from(modulesMap.values());
+}
+
+/**
+ * Dynamically fetch all distinct categories
+ */
+export async function getDynamicCategories() {
+  const dbCats = await prisma.rolePermission.findMany({
+    select: { category: true },
+    distinct: ['category'],
+  });
+  return Array.from(new Set([...MODULE_CATEGORIES, ...dbCats.map(c => c.category).filter(Boolean)])).sort();
+}
+
 export const getSystemModules = () => SYSTEM_MODULES;
 
 export default {
   SYSTEM_MODULES,
   MODULE_CATEGORIES,
   getSystemModules,
+  getDynamicModules,
+  getDynamicCategories,
 };

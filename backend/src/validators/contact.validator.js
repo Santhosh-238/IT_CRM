@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const createContactSchema = z.object({
   name: z.string().min(1, 'Contact name is required'),
-  phone: z.string().min(3, 'Phone number is required'),
+  phone: z.string().regex(/^\d{10}$/, 'Mobile number must be exactly 10 digits'),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   address: z.string().optional(),
   source: z.string().optional(),

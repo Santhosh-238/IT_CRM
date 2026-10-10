@@ -142,6 +142,8 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
       remarks: status === 'Follow-up Required' ? followUpNotes : (status === 'Disqualified' ? disqualificationReason : undefined),
       notes: status === 'Follow-up Required' ? followUpNotes : undefined,
       disqualificationReason: status === 'Disqualified' ? disqualificationReason : undefined,
+      productList: activeContact.category === 'Product' ? tags : activeContact.productList,
+      serviceList: activeContact.category === 'Service' ? tags : activeContact.serviceList,
     });
 
     setSaving(false);

@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma.js';
-import { SYSTEM_MODULES } from '../modules/module.registry.js';
+import { SYSTEM_MODULES } from '../models/model.registry.js';
 import { delCache } from '../config/redis.js';
 import { logAuditEvent } from './auditService.js';
 import { generateModuleId, mergeSystemAndDbModules } from '../utils/module.util.js';

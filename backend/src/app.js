@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { getCacheStats } from './config/redis.js';
-import apiRouter from './routers/index.js';
+import apiRouter from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middlewares/error.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
