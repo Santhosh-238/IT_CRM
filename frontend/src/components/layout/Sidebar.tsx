@@ -20,22 +20,23 @@ import { usePermissions } from '../../context/AccessControlContext';
 
 interface SidebarProps {
   onSelectNav: (nav: string) => void;
+  isMobile?: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false }) => {
   const { activeNav } = useCRM();
   const { can, isSuperAdmin } = usePermissions();
 
   return (
     <Box
       style={{
-        width: 260,
-        height: '100vh',
+        width: isMobile ? '100%' : 260,
+        height: isMobile ? '100%' : '100vh',
         background: 'var(--mantine-color-default)',
-        borderRight: '1px solid var(--mantine-color-default-border)',
+        borderRight: isMobile ? 'none' : '1px solid var(--mantine-color-default-border)',
         display: 'flex',
         flexDirection: 'column',
-        position: 'sticky',
+        position: isMobile ? 'relative' : 'sticky',
         top: 0,
         flexShrink: 0,
         userSelect: 'none',
@@ -44,28 +45,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
     >
       {/* 1. Top 64px Brand Logo Header (Aligned with Right Header) */}
       <Box
-        px="md"
+        px="sm"
         style={{
           height: 64,
+          minHeight: 64,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           borderBottom: '1px solid var(--mantine-color-default-border)',
           flexShrink: 0,
+          boxSizing: 'border-box',
+          overflow: 'hidden',
+          gap: 6,
         }}
       >
-        <Group gap="xs" style={{ cursor: 'pointer' }} onClick={() => onSelectNav('dashboard')}>
+        <Group gap={8} wrap="nowrap" align="center" style={{ cursor: 'pointer', minWidth: 0, flex: 1 }} onClick={() => onSelectNav('dashboard')}>
           <Box
             style={{
-              width: 38,
-              height: 38,
+              width: 36,
+              height: 36,
               borderRadius: 10,
               background: '#FFFFFF',
               border: '1px solid rgba(79, 70, 229, 0.25)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: 4,
+              padding: 3,
               boxShadow: '0 4px 12px rgba(79, 70, 229, 0.15)',
               flexShrink: 0,
             }}
@@ -76,19 +81,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
               style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
           </Box>
-          <div>
-            <Text fw={800} size="14px" style={{ letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+          <Box style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+            <Text fw={800} size="14px" truncate style={{ letterSpacing: '-0.02em', lineHeight: 1.2 }}>
               OneAssist <Text span inherit fw={700} style={{ color: '#0EA5E9' }}>CRM</Text>
             </Text>
-            <Text size="9px" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.06em' }}>
+            <Text size="9px" fw={700} c="dimmed" tt="uppercase" truncate style={{ letterSpacing: '0.04em', lineHeight: 1.1 }}>
               IT Sales & Operations Hub
             </Text>
-          </div>
+          </Box>
         </Group>
-
-        <Badge size="xs" variant="light" color="indigo" radius="sm" style={{ fontWeight: 700 }}>
-          v2.4
-        </Badge>
       </Box>
 
       {/* 2. Main Navigation Items */}
@@ -119,9 +120,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
             <NavLink
               label="Contacts"
               leftSection={<IconAddressBook size={18} stroke={2} />}
-              active={activeNav === 'contacts' || activeNav === 'add-contact' || activeNav === 'contact-details'}
+              active={
+                activeNav === 'contacts' ||
+                activeNav === 'add-contact' ||
+                activeNav === 'contact-details' ||
+                activeNav === 'contact-qualification' ||
+                activeNav === 'qualification'
+              }
               onClick={() => onSelectNav('contacts')}
-              className={activeNav === 'contacts' || activeNav === 'add-contact' || activeNav === 'contact-details' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+              className={
+                activeNav === 'contacts' ||
+                activeNav === 'add-contact' ||
+                activeNav === 'contact-details' ||
+                activeNav === 'contact-qualification' ||
+                activeNav === 'qualification'
+                  ? 'crextio-pill-active'
+                  : 'crextio-pill-inactive'
+              }
               style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
             />
           </Stack>

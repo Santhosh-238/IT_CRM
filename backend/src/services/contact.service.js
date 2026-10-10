@@ -71,7 +71,7 @@ export async function getContactByIdService(id) {
  * 3. Get Contact KPI Stats
  */
 export async function getContactStatsService() {
-  const [total, assigned, qualified, won, unassigned, active, disqualified, highPriority] = await Promise.all([
+  const [total, assigned, qualified, won, unassigned, active, disqualified, highPriority, newCount] = await Promise.all([
     prisma.contact.count(),
     prisma.contact.count({
       where: {
@@ -87,12 +87,25 @@ export async function getContactStatsService() {
           { assignmentStatus: 'Unassigned' },
           { assignmentStatus: null },
           { assignedTo: null },
+          { assignedTo: '' },
+          { assignedTo: 'none' },
         ],
       },
     }),
     prisma.contact.count({ where: { status: 'Active' } }),
     prisma.contact.count({ where: { qualificationStatus: 'Disqualified' } }),
     prisma.contact.count({ where: { priority: 'High' } }),
+    prisma.contact.count({
+      where: {
+        OR: [
+          { assignmentStatus: 'Unassigned' },
+          { assignmentStatus: null },
+          { assignedTo: null },
+          { assignedTo: '' },
+          { assignedTo: 'none' },
+        ],
+      },
+    }),
   ]);
 
   return {
@@ -198,7 +211,7 @@ export async function createContactService(body, user) {
 
   let assignedToName = null;
   let assignmentStatus = 'Unassigned';
-  if (assignedTo && assignedTo !== 'none') {
+  if (assignedTo && assignedTo !== 'none' && assignedTo !== 'Unassigned' && assignedTo !== 'null' && String(assignedTo).trim() !== '') {
     const emp = await prisma.employee.findFirst({
       where: { OR: [{ id: assignedTo }, { empCode: assignedTo }] },
     });
@@ -237,7 +250,7 @@ export async function createContactService(body, user) {
       stage: stage || 'Initialization',
       qualificationStatus: qualificationStatus || 'In Progress',
       priority: priority || 'Medium',
-      assignedTo: assignedTo && assignedTo !== 'none' ? assignedTo : null,
+      assignedTo: assignedToName ? assignedTo : null,
       assignedToName,
       assignmentStatus,
       assignedAt: assignedToName ? new Date() : null,

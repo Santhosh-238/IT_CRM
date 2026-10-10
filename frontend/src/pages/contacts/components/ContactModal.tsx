@@ -558,7 +558,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Select
               label="Assign To"
-              placeholder="Select employee"
+              placeholder="Unassigned (Assign later)"
+              clearable
               data={employeeOptions}
               value={formData.assignedTo || null}
               onChange={(val) => setFormData({ ...formData, assignedTo: val || '' })}
@@ -594,10 +595,12 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               radius="md"
               loading={loading}
               style={{
-                background: isDark ? '#3B82F6' : '#0F172A',
+                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
                 color: '#FFFFFF',
                 fontWeight: 600,
                 minWidth: 120,
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
               }}
             >
               {isEditing ? 'Update Contact' : 'Save Contact'}

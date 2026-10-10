@@ -109,6 +109,12 @@ export const theme = createTheme({
         },
       },
     },
+    Tooltip: {
+      defaultProps: {
+        radius: 'md',
+        withArrow: true,
+      },
+    },
   },
 });
 
