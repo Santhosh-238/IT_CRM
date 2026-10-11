@@ -7,14 +7,17 @@ import { usePermissions } from '../../context/AccessControlContext';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { EmployeesPage, AddEmployeePage } from '../../pages/employees';
 import { ContactsPage, AddContactPage, ContactDetailsPage, ContactQualificationPage } from '../../pages/contacts';
+import { LeadsPage, LeadSchedulePage } from '../../pages/leads';
 import { AccessControlPage } from '../../pages/access-control/AccessControlPage';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
 import { useContact } from '../../context/ContactContext';
+import { useLead } from '../../context/LeadContext';
 
 export const AppLayout: React.FC = () => {
   const { activeNav, setActiveNav } = useCRM();
   const { selectedContact, deleteContact } = useContact();
   const { isSuperAdmin } = usePermissions();
+  const { selectedLead } = useLead();
 
   if (activeNav === 'signup') {
     return (
@@ -72,6 +75,28 @@ export const AppLayout: React.FC = () => {
       }
       case 'contacts':
         return <ContactsPage />;
+      case 'leads':
+      case 'lead':
+        return <LeadsPage />;
+      case 'lead-schedule':
+      case 'lead-details':
+      case 'leads/schedule':
+      case 'schedule-meeting': {
+        let activeLead = selectedLead;
+        if (!activeLead && typeof window !== 'undefined') {
+          try {
+            const saved = sessionStorage.getItem('crm_selected_lead');
+            if (saved) activeLead = JSON.parse(saved);
+          } catch (e) {}
+        }
+        return (
+          <LeadSchedulePage
+            lead={activeLead}
+            onBack={() => setActiveNav('leads')}
+            onSuccess={() => setActiveNav('leads')}
+          />
+        );
+      }
       case 'add-contact':
       case 'contacts/add': {
         let editData = null;
@@ -124,7 +149,16 @@ export const AppLayout: React.FC = () => {
           <ContactQualificationPage
             contact={qualifyContact}
             onBack={() => setActiveNav('contacts')}
-            onSuccess={() => setActiveNav('contacts')}
+            onSuccess={(resultStatus) => {
+              if (resultStatus === 'Qualified') {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('crm_leads_tab', 'NEW');
+                }
+                setActiveNav('leads');
+              } else {
+                setActiveNav('contacts');
+              }
+            }}
           />
         );
       }

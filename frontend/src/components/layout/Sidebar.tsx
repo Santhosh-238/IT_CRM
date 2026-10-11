@@ -12,6 +12,7 @@ import {
   IconDashboard,
   IconUsersGroup,
   IconAddressBook,
+  IconTarget,
   IconTerminal2,
   IconShieldLock,
 } from '@tabler/icons-react';
@@ -122,6 +123,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav }) => {
               active={activeNav === 'contacts' || activeNav === 'add-contact' || activeNav === 'contact-details'}
               onClick={() => onSelectNav('contacts')}
               className={activeNav === 'contacts' || activeNav === 'add-contact' || activeNav === 'contact-details' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+              style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+            />
+            <NavLink
+              label="Leads"
+              leftSection={<IconTarget size={18} stroke={2} />}
+              active={activeNav === 'leads' || activeNav === 'add-lead' || activeNav === 'lead-schedule' || activeNav === 'lead-details'}
+              onClick={() => onSelectNav('leads')}
+              className={activeNav === 'leads' || activeNav === 'add-lead' || activeNav === 'lead-schedule' || activeNav === 'lead-details' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
               style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
             />
           </Stack>

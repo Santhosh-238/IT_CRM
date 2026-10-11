@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../middlewares/auth.middleware.js';
+import { requireAuth, requireRole } from '../middlewares/auth.middleware.js';
 import { authorizePermission } from '../middlewares/permission.middleware.js';
 import {
   getEmployees,

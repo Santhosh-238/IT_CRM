@@ -1,0 +1,499 @@
+import React from 'react';
+import {
+  Table,
+  Group,
+  Text,
+  Badge,
+  ActionIcon,
+  Paper,
+  Stack,
+  Center,
+  Button,
+  Tooltip,
+  useComputedColorScheme,
+  Box,
+} from '@mantine/core';
+import {
+  IconEdit,
+  IconTrash,
+  IconTarget,
+  IconPhoneCall,
+  IconMail,
+  IconBuilding,
+  IconUser,
+  IconCalendarEvent,
+} from '@tabler/icons-react';
+import { Lead } from '../../../types/lead';
+import { useCRM } from '../../../context/CRMContext';
+import { useLead } from '../../../context/LeadContext';
+
+interface LeadTableViewProps {
+  leads: Lead[];
+  onEdit: (lead: Lead) => void;
+  onDelete: (lead: Lead) => void;
+  onAddNew: () => void;
+  loading?: boolean;
+}
+
+export const LeadTableView: React.FC<LeadTableViewProps> = ({
+  leads,
+  onEdit,
+  onDelete,
+  onAddNew,
+  loading = false,
+}) => {
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
+  const isDark = computedColorScheme === 'dark';
+
+  const { setActiveNav } = useCRM();
+  const { setSelectedLead } = useLead();
+
+  const handleOpenLeadSchedule = (lead: Lead, forceTab?: 'schedule' | 'pipeline') => {
+    setSelectedLead(lead);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('crm_selected_lead', JSON.stringify(lead));
+      const isNew = !lead.status || lead.status.toLowerCase() === 'new';
+      const targetTab = forceTab || (isNew ? 'schedule' : 'pipeline');
+      sessionStorage.setItem('crm_schedule_tab', targetTab);
+    }
+    setActiveNav('lead-schedule');
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'new':
+        return 'blue';
+      case 'contacted':
+      case 'in progress':
+        return 'yellow';
+      case 'qualified':
+        return 'teal';
+      case 'proposal sent':
+      case 'in negotiation':
+        return 'violet';
+      case 'won':
+      case 'closed won':
+        return 'green';
+      case 'lost':
+      case 'disqualified':
+        return 'red';
+      default:
+        return 'gray';
+    }
+  };
+
+  const formatLastUpdate = (dateString?: string) => {
+    if (!dateString) return '—';
+    try {
+      const d = new Date(dateString);
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return dateString;
+    }
+  };
+
+  if (!loading && leads.length === 0) {
+    return (
+      <Paper
+        p="3.5rem"
+        radius="lg"
+        style={{
+          background: isDark ? '#111827' : '#FFFFFF',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          textAlign: 'center',
+          marginTop: 16,
+        }}
+      >
+        <Center>
+          <Stack align="center" gap="sm">
+            <Box
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(15, 23, 42, 0.06)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isDark ? '#4ade80' : '#0F172A',
+              }}
+            >
+              <IconTarget size={32} stroke={1.8} />
+            </Box>
+            <Text fw={700} size="lg" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+              No Leads Found
+            </Text>
+            <Text size="sm" c="dimmed" style={{ maxWidth: 420 }}>
+              No lead records match your current view or filter criteria. Click below to add a new lead opportunity.
+            </Text>
+            <Button
+              mt="xs"
+              radius="md"
+              leftSection={<IconTarget size={16} />}
+              onClick={onAddNew}
+              style={{
+                background: isDark ? '#22c55e' : '#0F172A',
+                color: '#FFFFFF',
+                fontWeight: 600,
+              }}
+            >
+              + Add Lead
+            </Button>
+          </Stack>
+        </Center>
+      </Paper>
+    );
+  }
+
+  return (
+    <>
+      {/* DESKTOP / TABLET VIEW: Full Table Container */}
+      <Paper
+        visibleFrom="sm"
+        radius="lg"
+        style={{
+          background: isDark ? '#111827' : '#FFFFFF',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          overflow: 'hidden',
+          marginTop: 16,
+        }}
+      >
+        <Table.ScrollContainer minWidth={750}>
+          <Table verticalSpacing="md" horizontalSpacing="lg" highlightOnHover>
+            <Table.Thead
+              style={{
+                background: isDark ? '#1F2937' : '#F8FAFC',
+                borderBottom: isDark ? '1px solid #374151' : '1px solid #E2E8F0',
+              }}
+            >
+              <Table.Tr>
+                <Table.Th style={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 600, fontSize: 12 }}>
+                  LEAD NAME
+                </Table.Th>
+                <Table.Th style={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 600, fontSize: 12 }}>
+                  COMPANY / PROFESSION
+                </Table.Th>
+                <Table.Th style={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 600, fontSize: 12 }}>
+                  CONTACT INFO
+                </Table.Th>
+                <Table.Th style={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 600, fontSize: 12 }}>
+                  STATUS & STAGE
+                </Table.Th>
+                <Table.Th style={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 600, fontSize: 12, textAlign: 'right' }}>
+                  ACTIONS
+                </Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {leads.map((lead) => (
+                <Table.Tr
+                  key={lead.id}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => handleOpenLeadSchedule(lead)}
+                >
+                  {/* 1. Lead Name */}
+                  <Table.Td>
+                    <Group gap="sm" wrap="nowrap">
+                      <Box
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 8,
+                          background: isDark ? '#14532D' : '#DCFCE7',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: isDark ? '#86EFAC' : '#15803D',
+                          fontWeight: 700,
+                          fontSize: 14,
+                        }}
+                      >
+                        {lead.name ? lead.name.charAt(0).toUpperCase() : 'L'}
+                      </Box>
+                      <div>
+                        <Text
+                          fw={700}
+                          size="sm"
+                          style={{
+                            color: isDark ? '#F9FAFB' : '#0F172A',
+                            transition: 'color 0.15s ease',
+                          }}
+                        >
+                          {lead.name}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          Added: {formatLastUpdate(lead.createdAt)}
+                        </Text>
+                      </div>
+                    </Group>
+                  </Table.Td>
+
+                  {/* 2. Company / Profession */}
+                  <Table.Td>
+                    <Stack gap={2}>
+                      <Group gap={6} wrap="nowrap">
+                        {lead.companyName ? (
+                          <IconBuilding size={14} color="#64748B" />
+                        ) : (
+                          <IconUser size={14} color="#64748B" />
+                        )}
+                        <Text size="sm" fw={500}>
+                          {lead.companyName || lead.profession || 'Individual'}
+                        </Text>
+                      </Group>
+                      {lead.designation && (
+                        <Text size="xs" c="dimmed">
+                          {lead.designation}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Table.Td>
+
+                  {/* 3. Contact Info */}
+                  <Table.Td>
+                    <Stack gap={2}>
+                      {lead.phone && (
+                        <Group gap={6} wrap="nowrap">
+                          <IconPhoneCall size={14} color="#10B981" />
+                          <Text size="xs" fw={500}>
+                            {lead.phone}
+                          </Text>
+                        </Group>
+                      )}
+                      {lead.email && (
+                        <Group gap={6} wrap="nowrap">
+                          <IconMail size={14} color="#3B82F6" />
+                          <Text size="xs" c="dimmed">
+                            {lead.email}
+                          </Text>
+                        </Group>
+                      )}
+                      {!lead.phone && !lead.email && (
+                        <Text size="xs" c="dimmed">
+                          No contact details
+                        </Text>
+                      )}
+                    </Stack>
+                  </Table.Td>
+
+                  {/* 4. Status & Stage */}
+                  <Table.Td>
+                    <Stack gap={4} align="flex-start">
+                      <Badge
+                        variant="filled"
+                        size="sm"
+                        color={getStatusColor(lead.status)}
+                        radius="sm"
+                      >
+                        {lead.status || 'New'}
+                      </Badge>
+                      {lead.stage && (
+                        <Text size="11px" c="dimmed">
+                          {lead.stage}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Table.Td>
+
+                  {/* 5. Actions */}
+                  <Table.Td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                    <Group gap={8} justify="flex-end">
+                      <Tooltip label="Schedule Meeting" withArrow>
+                        <ActionIcon
+                          variant="light"
+                          color="teal"
+                          radius="md"
+                          onClick={() => handleOpenLeadSchedule(lead, 'schedule')}
+                        >
+                          <IconCalendarEvent size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Tooltip label="Edit Lead" withArrow>
+                        <ActionIcon
+                          variant="subtle"
+                          color="blue"
+                          radius="md"
+                          onClick={() => onEdit(lead)}
+                        >
+                          <IconEdit size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                      <Tooltip label="Delete Lead" withArrow>
+                        <ActionIcon
+                          variant="subtle"
+                          color="red"
+                          radius="md"
+                          onClick={() => onDelete(lead)}
+                        >
+                          <IconTrash size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Table.ScrollContainer>
+      </Paper>
+
+      {/* MOBILE VIEW: Responsive Touch Cards List */}
+      <Stack hiddenFrom="sm" gap="sm" mt="md">
+        {leads.map((lead) => (
+          <Paper
+            key={lead.id}
+            p="md"
+            radius="14px"
+            style={{
+              background: isDark ? '#111827' : '#FFFFFF',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              boxShadow: isDark ? '0 4px 12px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.03)',
+            }}
+          >
+            {/* Header: Avatar, Name & Status */}
+            <Group justify="space-between" align="flex-start" wrap="nowrap" mb="xs">
+              <Group
+                gap="sm"
+                wrap="nowrap"
+                style={{ cursor: 'pointer', flex: 1 }}
+                onClick={() => handleOpenLeadSchedule(lead)}
+              >
+                <Box
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: isDark ? '#14532D' : '#DCFCE7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: isDark ? '#86EFAC' : '#15803D',
+                    fontWeight: 700,
+                    fontSize: 15,
+                    flexShrink: 0,
+                  }}
+                >
+                  {lead.name ? lead.name.charAt(0).toUpperCase() : 'L'}
+                </Box>
+                <Box style={{ overflow: 'hidden' }}>
+                  <Text fw={700} size="14px" truncate style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}>
+                    {lead.name}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {formatLastUpdate(lead.createdAt)}
+                  </Text>
+                </Box>
+              </Group>
+
+              <Badge
+                variant="filled"
+                size="sm"
+                color={getStatusColor(lead.status)}
+                radius="sm"
+                style={{ flexShrink: 0 }}
+              >
+                {lead.status || 'New'}
+              </Badge>
+            </Group>
+
+            {/* Company / Profession & Stage */}
+            <Group justify="space-between" align="center" wrap="wrap" gap="xs" mb="xs">
+              <Group gap={6} wrap="nowrap">
+                {lead.companyName ? (
+                  <IconBuilding size={14} color="#64748B" />
+                ) : (
+                  <IconUser size={14} color="#64748B" />
+                )}
+                <Text size="xs" fw={500} style={{ color: isDark ? '#CBD5E1' : '#475569' }}>
+                  {lead.companyName || lead.profession || 'Individual'}
+                  {lead.designation ? ` • ${lead.designation}` : ''}
+                </Text>
+              </Group>
+
+              {lead.stage && (
+                <Badge variant="outline" size="xs" color="gray" style={{ textTransform: 'none' }}>
+                  {lead.stage}
+                </Badge>
+              )}
+            </Group>
+
+            {/* Contact Chips */}
+            <Group gap="xs" wrap="wrap" mb="sm">
+              {lead.phone && (
+                <Button
+                  component="a"
+                  href={`tel:${lead.phone}`}
+                  size="compact-xs"
+                  variant="light"
+                  color="teal"
+                  leftSection={<IconPhoneCall size={12} />}
+                  style={{ borderRadius: 6, fontWeight: 500 }}
+                >
+                  {lead.phone}
+                </Button>
+              )}
+              {lead.email && (
+                <Button
+                  component="a"
+                  href={`mailto:${lead.email}`}
+                  size="compact-xs"
+                  variant="light"
+                  color="blue"
+                  leftSection={<IconMail size={12} />}
+                  style={{ borderRadius: 6, fontWeight: 500 }}
+                >
+                  {lead.email}
+                </Button>
+              )}
+            </Group>
+
+            {/* Action Bar */}
+            <Group
+              justify="space-between"
+              pt="xs"
+              style={{
+                borderTop: isDark ? '1px solid #1F2937' : '1px solid #F1F5F9',
+              }}
+            >
+              <Button
+                size="xs"
+                variant="light"
+                color="teal"
+                leftSection={<IconCalendarEvent size={14} />}
+                onClick={() => handleOpenLeadSchedule(lead, 'schedule')}
+                style={{ borderRadius: 8, fontWeight: 600 }}
+              >
+                Schedule Meeting
+              </Button>
+
+              <Group gap={6}>
+                <ActionIcon
+                  variant="subtle"
+                  color="blue"
+                  size="md"
+                  radius="md"
+                  onClick={() => onEdit(lead)}
+                  title="Edit Lead"
+                >
+                  <IconEdit size={16} />
+                </ActionIcon>
+                <ActionIcon
+                  variant="subtle"
+                  color="red"
+                  size="md"
+                  radius="md"
+                  onClick={() => onDelete(lead)}
+                  title="Delete Lead"
+                >
+                  <IconTrash size={16} />
+                </ActionIcon>
+              </Group>
+            </Group>
+          </Paper>
+        ))}
+      </Stack>
+    </>
+  );
+};
+
+export default LeadTableView;

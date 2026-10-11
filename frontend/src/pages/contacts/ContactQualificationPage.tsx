@@ -34,12 +34,13 @@ import {
 } from '@tabler/icons-react';
 import { Contact } from '../../types/contact';
 import { useContact } from '../../context/ContactContext';
+import { useLead } from '../../context/LeadContext';
 import { useCRM } from '../../context/CRMContext';
 
 interface ContactQualificationPageProps {
   contact?: Contact | null;
   onBack: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (status?: string) => void;
 }
 
 export const ContactQualificationPage: React.FC<ContactQualificationPageProps> = ({
@@ -52,6 +53,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
   const { currentUser } = useCRM();
   const { contacts, updateContact, metadata, loading } = useContact();
+  const { fetchLeads, fetchStats } = useLead();
 
   // If no contact passed via props, check sessionStorage or default to the first contact
   const [activeContact, setActiveContact] = useState<Contact | null>(() => {
@@ -148,7 +150,10 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
     setSaving(false);
     if (res.success) {
-      if (onSuccess) onSuccess();
+      if (status === 'Qualified') {
+        await Promise.all([fetchLeads(), fetchStats()]);
+      }
+      if (onSuccess) onSuccess(status);
       else onBack();
     }
   };

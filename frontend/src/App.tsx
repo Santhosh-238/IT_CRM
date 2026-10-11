@@ -6,6 +6,7 @@ import { theme } from './theme';
 import { CRMProvider } from './context/CRMContext';
 import { EmployeeProvider } from './context/EmployeeContext';
 import { ContactProvider } from './context/ContactContext';
+import { LeadProvider } from './context/LeadContext';
 import { AccessControlProvider } from './context/AccessControlContext';
 import { AppLayout } from './components/layout/AppLayout';
 
@@ -18,7 +19,9 @@ export const App: React.FC = () => {
           <AccessControlProvider>
             <EmployeeProvider>
               <ContactProvider>
-                <AppLayout />
+                <LeadProvider>
+                  <AppLayout />
+                </LeadProvider>
               </ContactProvider>
             </EmployeeProvider>
           </AccessControlProvider>

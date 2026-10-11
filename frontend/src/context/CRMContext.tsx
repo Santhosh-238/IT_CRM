@@ -66,6 +66,7 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return 'contact-qualification';
       }
       if (path === 'contacts') return 'contacts';
+      if (path === 'leads' || path === 'lead') return 'leads';
       if (path === 'employees') return 'employees';
       if (path === 'access-control' || path === 'rbac') return 'access-control';
       if (path === 'dashboard') return 'dashboard';
@@ -89,6 +90,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       else if (normalizedNav === 'employees') targetPath = '/employees';
       else if (normalizedNav === 'add-employee') targetPath = '/employees/add';
       else if (normalizedNav === 'contacts') targetPath = '/contacts';
+      else if (normalizedNav === 'leads' || normalizedNav === 'lead') targetPath = '/leads';
+      else if (normalizedNav === 'lead-schedule' || normalizedNav === 'lead-details' || normalizedNav === 'schedule-meeting') targetPath = '/leads/schedule';
       else if (normalizedNav === 'add-contact') targetPath = '/contacts/add';
       else if (normalizedNav === 'contact-qualification' || normalizedNav === 'qualification') targetPath = '/contacts/qualification';
       else if (normalizedNav === 'access-control' || normalizedNav === 'rbac') targetPath = '/access-control';
@@ -124,6 +127,10 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveNavState('contact-qualification');
       } else if (path === 'contacts') {
         setActiveNavState('contacts');
+      } else if (path === 'leads' || path === 'lead') {
+        setActiveNavState('leads');
+      } else if (path === 'leads/schedule' || path === 'lead-schedule' || path === 'schedule-meeting') {
+        setActiveNavState('lead-schedule');
       } else if (path === 'employees') {
         setActiveNavState('employees');
       } else if (path === 'access-control' || path === 'rbac') {

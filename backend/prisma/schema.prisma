@@ -163,14 +163,25 @@ model Company {
 }
 
 model Lead {
-  id             String   @id @default(uuid())
-  leadId         String   @unique
-  title          String
+  id             String    @id @default(uuid())
+  leadId         String    @unique
+  name           String
+  email          String?
+  phone          String?
+  contactType    String?   @default("Individual")
+  profession     String?
   companyName    String?
-  contactName    String?
-  status         String   @default("New")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  designation    String?
+  address        String?
+  source         String?   @default("Website")
+  customSource   String?
+  category       String?   @default("Service")
+  productList    String[]  @default([])
+  serviceList    String[]  @default([])
+  status         String?   @default("New")
+  stage          String?   @default("Initialization")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 
