@@ -3,6 +3,8 @@ import { requireAuth } from '../middlewares/auth.middleware.js';
 import { authorizePermission } from '../middlewares/permission.middleware.js';
 import {
   getLeads,
+  getLeadStats,
+  getLeadMetadata,
   getLeadById,
   createLead,
   updateLead,
@@ -11,7 +13,23 @@ import {
 
 const router = Router();
 
-// 1. Get all leads
+// 1. KPI Statistics
+router.get(
+  '/stats',
+  requireAuth,
+  authorizePermission('leads', 'view'),
+  getLeadStats
+);
+
+// 2. Dropdown metadata
+router.get(
+  '/metadata',
+  requireAuth,
+  authorizePermission('leads', 'view'),
+  getLeadMetadata
+);
+
+// 3. List leads with filters, pagination, search
 router.get(
   '/',
   requireAuth,
@@ -19,7 +37,7 @@ router.get(
   getLeads
 );
 
-// 2. Get lead by ID
+// 4. Single lead by ID
 router.get(
   '/:id',
   requireAuth,
@@ -27,7 +45,7 @@ router.get(
   getLeadById
 );
 
-// 3. Create lead
+// 5. Create lead
 router.post(
   '/',
   requireAuth,
@@ -35,7 +53,7 @@ router.post(
   createLead
 );
 
-// 4. Update lead
+// 6. Update lead
 router.put(
   '/:id',
   requireAuth,
@@ -43,7 +61,7 @@ router.put(
   updateLead
 );
 
-// 5. Delete lead
+// 7. Delete lead
 router.delete(
   '/:id',
   requireAuth,

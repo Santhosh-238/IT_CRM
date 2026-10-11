@@ -247,10 +247,144 @@ export async function createContactService(body, user) {
     io.emit('contact_created', newContact);
   }
 
+  // Automatically sync to Lead if contact is Qualified
+  await syncContactToLead(newContact);
+
   return {
     message: `Contact '${newContact.name}' created successfully!`,
     data: formatContactResponse(newContact),
   };
+}
+
+/**
+ * Safely generate the next Lead ID without collision
+ */
+async function getNextLeadId() {
+  const allLeads = await prisma.lead.findMany({
+    select: { leadId: true },
+  });
+  let maxNum = 1000;
+  for (const l of allLeads) {
+    if (l.leadId && l.leadId.startsWith('LED-')) {
+      const num = parseInt(l.leadId.replace('LED-', ''), 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+  return `LED-${maxNum + 1}`;
+}
+
+/**
+ * Automatically sync/create a Lead when a Contact is qualified
+ */
+export async function syncContactToLead(contact) {
+  if (!contact) return null;
+
+  const isQualified =
+    (contact.status && contact.status.toLowerCase() === 'qualified') ||
+    (contact.qualificationStatus && contact.qualificationStatus.toLowerCase() === 'qualified');
+
+  if (!isQualified) return null;
+
+  try {
+    let existingLead = null;
+
+    // 1. Check by email
+    if (contact.email && contact.email.trim()) {
+      existingLead = await prisma.lead.findFirst({
+        where: { email: { equals: contact.email.trim(), mode: 'insensitive' } },
+      });
+    }
+
+    // 2. Check by phone
+    if (!existingLead && contact.phone && contact.phone.trim()) {
+      const cleanPhone = contact.phone.replace(/\D/g, '');
+      if (cleanPhone) {
+        const leadsWithPhone = await prisma.lead.findMany({
+          where: { phone: { not: null } },
+        });
+        existingLead = leadsWithPhone.find(
+          (l) => l.phone && l.phone.replace(/\D/g, '') === cleanPhone
+        );
+      }
+    }
+
+    // 3. Check by name & companyName
+    if (!existingLead && contact.name) {
+      existingLead = await prisma.lead.findFirst({
+        where: {
+          name: { equals: contact.name.trim(), mode: 'insensitive' },
+          ...(contact.companyName ? { companyName: { equals: contact.companyName.trim(), mode: 'insensitive' } } : {}),
+        },
+      });
+    }
+
+    const category = contact.category || 'Product';
+    const productList = Array.isArray(contact.productList) ? contact.productList : [];
+    const serviceList = Array.isArray(contact.serviceList) ? contact.serviceList : [];
+
+    if (existingLead) {
+      const updatedLead = await prisma.lead.update({
+        where: { id: existingLead.id },
+        data: {
+          name: contact.name ? contact.name.trim() : existingLead.name,
+          email: contact.email ? contact.email.trim() : existingLead.email,
+          phone: contact.phone ? contact.phone.trim() : existingLead.phone,
+          contactType: contact.contactType || existingLead.contactType || 'Company Representative',
+          profession: contact.profession || existingLead.profession,
+          companyName: contact.companyName || existingLead.companyName,
+          designation: contact.designation || existingLead.designation,
+          address: contact.address || existingLead.address,
+          source: contact.source || existingLead.source || 'Website',
+          customSource: contact.customSource || existingLead.customSource,
+          category,
+          productList: productList.length > 0 ? productList : existingLead.productList,
+          serviceList: serviceList.length > 0 ? serviceList : existingLead.serviceList,
+          status: 'New',
+          stage: 'Initialization',
+          createdAt: new Date(),
+        },
+      });
+
+      await delCache('crm:leads:*').catch(() => {});
+      if (io) {
+        io.emit('lead_updated', updatedLead);
+      }
+      return updatedLead;
+    } else {
+      const leadId = await getNextLeadId();
+      const newLead = await prisma.lead.create({
+        data: {
+          leadId,
+          name: contact.name.trim(),
+          email: contact.email ? contact.email.trim() : null,
+          phone: contact.phone ? contact.phone.trim() : null,
+          contactType: contact.contactType || 'Company Representative',
+          profession: contact.profession || null,
+          companyName: contact.companyName || null,
+          designation: contact.designation || null,
+          address: contact.address || null,
+          source: contact.source || 'Website',
+          customSource: contact.customSource || null,
+          category,
+          productList,
+          serviceList,
+          status: 'New',
+          stage: 'Initialization',
+        },
+      });
+
+      await delCache('crm:leads:*').catch(() => {});
+      if (io) {
+        io.emit('lead_created', newLead);
+      }
+      return newLead;
+    }
+  } catch (err) {
+    console.error('[syncContactToLead Error]:', err);
+    return null;
+  }
 }
 
 /**
@@ -316,6 +450,9 @@ export async function updateContactService(id, body, user) {
   if (io) {
     io.emit('contact_updated', updated);
   }
+
+  // Automatically sync to Lead if contact is Qualified
+  await syncContactToLead(updated);
 
   return {
     message: 'Contact updated successfully',
