@@ -7531,6 +7531,10 @@ export namespace Prisma {
     assignedTo: string | null
     assignedToName: string | null
     assignmentStatus: string | null
+    contactMode: string | null
+    createdBy: string | null
+    meetingType: string | null
+    uuid: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -7572,6 +7576,10 @@ export namespace Prisma {
     assignedTo: string | null
     assignedToName: string | null
     assignmentStatus: string | null
+    contactMode: string | null
+    createdBy: string | null
+    meetingType: string | null
+    uuid: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -7615,6 +7623,10 @@ export namespace Prisma {
     assignedTo: number
     assignedToName: number
     assignmentStatus: number
+    contactMode: number
+    createdBy: number
+    meetingType: number
+    uuid: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -7658,6 +7670,10 @@ export namespace Prisma {
     assignedTo?: true
     assignedToName?: true
     assignmentStatus?: true
+    contactMode?: true
+    createdBy?: true
+    meetingType?: true
+    uuid?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -7699,6 +7715,10 @@ export namespace Prisma {
     assignedTo?: true
     assignedToName?: true
     assignmentStatus?: true
+    contactMode?: true
+    createdBy?: true
+    meetingType?: true
+    uuid?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -7742,6 +7762,10 @@ export namespace Prisma {
     assignedTo?: true
     assignedToName?: true
     assignmentStatus?: true
+    contactMode?: true
+    createdBy?: true
+    meetingType?: true
+    uuid?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -7858,6 +7882,10 @@ export namespace Prisma {
     assignedTo: string | null
     assignedToName: string | null
     assignmentStatus: string | null
+    contactMode: string | null
+    createdBy: string | null
+    meetingType: string | null
+    uuid: string | null
     createdAt: Date
     updatedAt: Date
     _count: ContactCountAggregateOutputType | null
@@ -7918,6 +7946,10 @@ export namespace Prisma {
     assignedTo?: boolean
     assignedToName?: boolean
     assignmentStatus?: boolean
+    contactMode?: boolean
+    createdBy?: boolean
+    meetingType?: boolean
+    uuid?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["contact"]>
@@ -7961,6 +7993,10 @@ export namespace Prisma {
     assignedTo?: boolean
     assignedToName?: boolean
     assignmentStatus?: boolean
+    contactMode?: boolean
+    createdBy?: boolean
+    meetingType?: boolean
+    uuid?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["contact"]>
@@ -8004,6 +8040,10 @@ export namespace Prisma {
     assignedTo?: boolean
     assignedToName?: boolean
     assignmentStatus?: boolean
+    contactMode?: boolean
+    createdBy?: boolean
+    meetingType?: boolean
+    uuid?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["contact"]>
@@ -8047,11 +8087,15 @@ export namespace Prisma {
     assignedTo?: boolean
     assignedToName?: boolean
     assignmentStatus?: boolean
+    contactMode?: boolean
+    createdBy?: boolean
+    meetingType?: boolean
+    uuid?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "contactId" | "name" | "email" | "phone" | "address" | "source" | "customSource" | "contactType" | "companyName" | "designation" | "profession" | "gstNumber" | "employeeCount" | "companyPan" | "cinNumber" | "companyWebsite" | "linkedinUrl" | "annualTurnover" | "verificationStatus" | "registeredState" | "category" | "productList" | "serviceList" | "customProduct" | "nextFollowDate" | "remarks" | "notes" | "status" | "stage" | "qualificationStatus" | "qualifiedBy" | "qualificationDate" | "priority" | "disqualificationReason" | "assignedTo" | "assignedToName" | "assignmentStatus" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
+  export type ContactOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "contactId" | "name" | "email" | "phone" | "address" | "source" | "customSource" | "contactType" | "companyName" | "designation" | "profession" | "gstNumber" | "employeeCount" | "companyPan" | "cinNumber" | "companyWebsite" | "linkedinUrl" | "annualTurnover" | "verificationStatus" | "registeredState" | "category" | "productList" | "serviceList" | "customProduct" | "nextFollowDate" | "remarks" | "notes" | "status" | "stage" | "qualificationStatus" | "qualifiedBy" | "qualificationDate" | "priority" | "disqualificationReason" | "assignedTo" | "assignedToName" | "assignmentStatus" | "contactMode" | "createdBy" | "meetingType" | "uuid" | "createdAt" | "updatedAt", ExtArgs["result"]["contact"]>
 
   export type $ContactPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Contact"
@@ -8095,6 +8139,10 @@ export namespace Prisma {
       assignedTo: string | null
       assignedToName: string | null
       assignmentStatus: string | null
+      contactMode: string | null
+      createdBy: string | null
+      meetingType: string | null
+      uuid: string | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["contact"]>
@@ -8558,6 +8606,10 @@ export namespace Prisma {
     readonly assignedTo: FieldRef<"Contact", 'String'>
     readonly assignedToName: FieldRef<"Contact", 'String'>
     readonly assignmentStatus: FieldRef<"Contact", 'String'>
+    readonly contactMode: FieldRef<"Contact", 'String'>
+    readonly createdBy: FieldRef<"Contact", 'String'>
+    readonly meetingType: FieldRef<"Contact", 'String'>
+    readonly uuid: FieldRef<"Contact", 'String'>
     readonly createdAt: FieldRef<"Contact", 'DateTime'>
     readonly updatedAt: FieldRef<"Contact", 'DateTime'>
   }
@@ -11140,9 +11192,14 @@ export namespace Prisma {
     employeeEmail: string | null
     employeeDesignation: string | null
     contactId: string | null
+    leadId: string | null
     clientName: string | null
     status: string | null
     notes: string | null
+    requirements: string | null
+    requirementFileName: string | null
+    requirementFileUrl: string | null
+    requirementFileSize: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -11161,9 +11218,14 @@ export namespace Prisma {
     employeeEmail: string | null
     employeeDesignation: string | null
     contactId: string | null
+    leadId: string | null
     clientName: string | null
     status: string | null
     notes: string | null
+    requirements: string | null
+    requirementFileName: string | null
+    requirementFileUrl: string | null
+    requirementFileSize: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -11182,9 +11244,14 @@ export namespace Prisma {
     employeeEmail: number
     employeeDesignation: number
     contactId: number
+    leadId: number
     clientName: number
     status: number
     notes: number
+    requirements: number
+    requirementFileName: number
+    requirementFileUrl: number
+    requirementFileSize: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -11205,9 +11272,14 @@ export namespace Prisma {
     employeeEmail?: true
     employeeDesignation?: true
     contactId?: true
+    leadId?: true
     clientName?: true
     status?: true
     notes?: true
+    requirements?: true
+    requirementFileName?: true
+    requirementFileUrl?: true
+    requirementFileSize?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -11226,9 +11298,14 @@ export namespace Prisma {
     employeeEmail?: true
     employeeDesignation?: true
     contactId?: true
+    leadId?: true
     clientName?: true
     status?: true
     notes?: true
+    requirements?: true
+    requirementFileName?: true
+    requirementFileUrl?: true
+    requirementFileSize?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -11247,9 +11324,14 @@ export namespace Prisma {
     employeeEmail?: true
     employeeDesignation?: true
     contactId?: true
+    leadId?: true
     clientName?: true
     status?: true
     notes?: true
+    requirements?: true
+    requirementFileName?: true
+    requirementFileUrl?: true
+    requirementFileSize?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -11341,9 +11423,14 @@ export namespace Prisma {
     employeeEmail: string | null
     employeeDesignation: string | null
     contactId: string | null
+    leadId: string | null
     clientName: string | null
     status: string
     notes: string | null
+    requirements: string | null
+    requirementFileName: string | null
+    requirementFileUrl: string | null
+    requirementFileSize: string | null
     createdAt: Date
     updatedAt: Date
     _count: ScheduledMeetingCountAggregateOutputType | null
@@ -11379,9 +11466,14 @@ export namespace Prisma {
     employeeEmail?: boolean
     employeeDesignation?: boolean
     contactId?: boolean
+    leadId?: boolean
     clientName?: boolean
     status?: boolean
     notes?: boolean
+    requirements?: boolean
+    requirementFileName?: boolean
+    requirementFileUrl?: boolean
+    requirementFileSize?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["scheduledMeeting"]>
@@ -11400,9 +11492,14 @@ export namespace Prisma {
     employeeEmail?: boolean
     employeeDesignation?: boolean
     contactId?: boolean
+    leadId?: boolean
     clientName?: boolean
     status?: boolean
     notes?: boolean
+    requirements?: boolean
+    requirementFileName?: boolean
+    requirementFileUrl?: boolean
+    requirementFileSize?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["scheduledMeeting"]>
@@ -11421,9 +11518,14 @@ export namespace Prisma {
     employeeEmail?: boolean
     employeeDesignation?: boolean
     contactId?: boolean
+    leadId?: boolean
     clientName?: boolean
     status?: boolean
     notes?: boolean
+    requirements?: boolean
+    requirementFileName?: boolean
+    requirementFileUrl?: boolean
+    requirementFileSize?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }, ExtArgs["result"]["scheduledMeeting"]>
@@ -11442,14 +11544,19 @@ export namespace Prisma {
     employeeEmail?: boolean
     employeeDesignation?: boolean
     contactId?: boolean
+    leadId?: boolean
     clientName?: boolean
     status?: boolean
     notes?: boolean
+    requirements?: boolean
+    requirementFileName?: boolean
+    requirementFileUrl?: boolean
+    requirementFileSize?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type ScheduledMeetingOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "purpose" | "meetingDate" | "startTime" | "endTime" | "meetingType" | "location" | "employeeId" | "employeeName" | "employeeEmail" | "employeeDesignation" | "contactId" | "clientName" | "status" | "notes" | "createdAt" | "updatedAt", ExtArgs["result"]["scheduledMeeting"]>
+  export type ScheduledMeetingOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "title" | "purpose" | "meetingDate" | "startTime" | "endTime" | "meetingType" | "location" | "employeeId" | "employeeName" | "employeeEmail" | "employeeDesignation" | "contactId" | "leadId" | "clientName" | "status" | "notes" | "requirements" | "requirementFileName" | "requirementFileUrl" | "requirementFileSize" | "createdAt" | "updatedAt", ExtArgs["result"]["scheduledMeeting"]>
 
   export type $ScheduledMeetingPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "ScheduledMeeting"
@@ -11468,9 +11575,14 @@ export namespace Prisma {
       employeeEmail: string | null
       employeeDesignation: string | null
       contactId: string | null
+      leadId: string | null
       clientName: string | null
       status: string
       notes: string | null
+      requirements: string | null
+      requirementFileName: string | null
+      requirementFileUrl: string | null
+      requirementFileSize: string | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["scheduledMeeting"]>
@@ -11909,9 +12021,14 @@ export namespace Prisma {
     readonly employeeEmail: FieldRef<"ScheduledMeeting", 'String'>
     readonly employeeDesignation: FieldRef<"ScheduledMeeting", 'String'>
     readonly contactId: FieldRef<"ScheduledMeeting", 'String'>
+    readonly leadId: FieldRef<"ScheduledMeeting", 'String'>
     readonly clientName: FieldRef<"ScheduledMeeting", 'String'>
     readonly status: FieldRef<"ScheduledMeeting", 'String'>
     readonly notes: FieldRef<"ScheduledMeeting", 'String'>
+    readonly requirements: FieldRef<"ScheduledMeeting", 'String'>
+    readonly requirementFileName: FieldRef<"ScheduledMeeting", 'String'>
+    readonly requirementFileUrl: FieldRef<"ScheduledMeeting", 'String'>
+    readonly requirementFileSize: FieldRef<"ScheduledMeeting", 'String'>
     readonly createdAt: FieldRef<"ScheduledMeeting", 'DateTime'>
     readonly updatedAt: FieldRef<"ScheduledMeeting", 'DateTime'>
   }
@@ -12379,6 +12496,7 @@ export namespace Prisma {
     status: number
     priority: number
     progress: number
+    modules: number
     estimatedBudget: number
     actualCost: number
     startDate: number
@@ -12481,6 +12599,7 @@ export namespace Prisma {
     status?: true
     priority?: true
     progress?: true
+    modules?: true
     estimatedBudget?: true
     actualCost?: true
     startDate?: true
@@ -12598,6 +12717,7 @@ export namespace Prisma {
     status: string
     priority: string
     progress: number
+    modules: JsonValue | null
     estimatedBudget: number | null
     actualCost: number | null
     startDate: string | null
@@ -12647,6 +12767,7 @@ export namespace Prisma {
     status?: boolean
     priority?: boolean
     progress?: boolean
+    modules?: boolean
     estimatedBudget?: boolean
     actualCost?: boolean
     startDate?: boolean
@@ -12677,6 +12798,7 @@ export namespace Prisma {
     status?: boolean
     priority?: boolean
     progress?: boolean
+    modules?: boolean
     estimatedBudget?: boolean
     actualCost?: boolean
     startDate?: boolean
@@ -12707,6 +12829,7 @@ export namespace Prisma {
     status?: boolean
     priority?: boolean
     progress?: boolean
+    modules?: boolean
     estimatedBudget?: boolean
     actualCost?: boolean
     startDate?: boolean
@@ -12737,6 +12860,7 @@ export namespace Prisma {
     status?: boolean
     priority?: boolean
     progress?: boolean
+    modules?: boolean
     estimatedBudget?: boolean
     actualCost?: boolean
     startDate?: boolean
@@ -12750,7 +12874,7 @@ export namespace Prisma {
     updatedAt?: boolean
   }
 
-  export type ProjectOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "projectId" | "name" | "description" | "contactId" | "clientName" | "clientEmail" | "clientPhone" | "projectType" | "category" | "projectManagerId" | "projectManagerName" | "teamMembers" | "status" | "priority" | "progress" | "estimatedBudget" | "actualCost" | "startDate" | "targetEndDate" | "actualEndDate" | "figmaUrl" | "githubUrl" | "liveUrl" | "createdBy" | "createdAt" | "updatedAt", ExtArgs["result"]["project"]>
+  export type ProjectOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "projectId" | "name" | "description" | "contactId" | "clientName" | "clientEmail" | "clientPhone" | "projectType" | "category" | "projectManagerId" | "projectManagerName" | "teamMembers" | "status" | "priority" | "progress" | "modules" | "estimatedBudget" | "actualCost" | "startDate" | "targetEndDate" | "actualEndDate" | "figmaUrl" | "githubUrl" | "liveUrl" | "createdBy" | "createdAt" | "updatedAt", ExtArgs["result"]["project"]>
 
   export type $ProjectPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Project"
@@ -12772,6 +12896,7 @@ export namespace Prisma {
       status: string
       priority: string
       progress: number
+      modules: Prisma.JsonValue | null
       estimatedBudget: number | null
       actualCost: number | null
       startDate: string | null
@@ -13222,6 +13347,7 @@ export namespace Prisma {
     readonly status: FieldRef<"Project", 'String'>
     readonly priority: FieldRef<"Project", 'String'>
     readonly progress: FieldRef<"Project", 'Int'>
+    readonly modules: FieldRef<"Project", 'Json'>
     readonly estimatedBudget: FieldRef<"Project", 'Float'>
     readonly actualCost: FieldRef<"Project", 'Float'>
     readonly startDate: FieldRef<"Project", 'String'>
@@ -13743,6 +13869,10 @@ export namespace Prisma {
     assignedTo: 'assignedTo',
     assignedToName: 'assignedToName',
     assignmentStatus: 'assignmentStatus',
+    contactMode: 'contactMode',
+    createdBy: 'createdBy',
+    meetingType: 'meetingType',
+    uuid: 'uuid',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -13802,9 +13932,14 @@ export namespace Prisma {
     employeeEmail: 'employeeEmail',
     employeeDesignation: 'employeeDesignation',
     contactId: 'contactId',
+    leadId: 'leadId',
     clientName: 'clientName',
     status: 'status',
     notes: 'notes',
+    requirements: 'requirements',
+    requirementFileName: 'requirementFileName',
+    requirementFileUrl: 'requirementFileUrl',
+    requirementFileSize: 'requirementFileSize',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -13829,6 +13964,7 @@ export namespace Prisma {
     status: 'status',
     priority: 'priority',
     progress: 'progress',
+    modules: 'modules',
     estimatedBudget: 'estimatedBudget',
     actualCost: 'actualCost',
     startDate: 'startDate',
@@ -13853,6 +13989,14 @@ export namespace Prisma {
   export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
+  export const NullableJsonNullValueInput: {
+    DbNull: typeof DbNull,
+    JsonNull: typeof JsonNull
+  };
+
+  export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
   export const QueryMode: {
     default: 'default',
     insensitive: 'insensitive'
@@ -13867,6 +14011,15 @@ export namespace Prisma {
   };
 
   export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+  export const JsonNullValueFilter: {
+    DbNull: typeof DbNull,
+    JsonNull: typeof JsonNull,
+    AnyNull: typeof AnyNull
+  };
+
+  export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 
 
   /**
@@ -13920,6 +14073,20 @@ export namespace Prisma {
    * Reference to a field of type 'Int[]'
    */
   export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'Json'
+   */
+  export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+  /**
+   * Reference to a field of type 'QueryMode'
+   */
+  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -14441,6 +14608,10 @@ export namespace Prisma {
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     assignedToName?: StringNullableFilter<"Contact"> | string | null
     assignmentStatus?: StringNullableFilter<"Contact"> | string | null
+    contactMode?: StringNullableFilter<"Contact"> | string | null
+    createdBy?: StringNullableFilter<"Contact"> | string | null
+    meetingType?: StringNullableFilter<"Contact"> | string | null
+    uuid?: StringNullableFilter<"Contact"> | string | null
     createdAt?: DateTimeFilter<"Contact"> | Date | string
     updatedAt?: DateTimeFilter<"Contact"> | Date | string
   }
@@ -14484,6 +14655,10 @@ export namespace Prisma {
     assignedTo?: SortOrderInput | SortOrder
     assignedToName?: SortOrderInput | SortOrder
     assignmentStatus?: SortOrderInput | SortOrder
+    contactMode?: SortOrderInput | SortOrder
+    createdBy?: SortOrderInput | SortOrder
+    meetingType?: SortOrderInput | SortOrder
+    uuid?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -14530,6 +14705,10 @@ export namespace Prisma {
     assignedTo?: StringNullableFilter<"Contact"> | string | null
     assignedToName?: StringNullableFilter<"Contact"> | string | null
     assignmentStatus?: StringNullableFilter<"Contact"> | string | null
+    contactMode?: StringNullableFilter<"Contact"> | string | null
+    createdBy?: StringNullableFilter<"Contact"> | string | null
+    meetingType?: StringNullableFilter<"Contact"> | string | null
+    uuid?: StringNullableFilter<"Contact"> | string | null
     createdAt?: DateTimeFilter<"Contact"> | Date | string
     updatedAt?: DateTimeFilter<"Contact"> | Date | string
   }, "id" | "contactId">
@@ -14573,6 +14752,10 @@ export namespace Prisma {
     assignedTo?: SortOrderInput | SortOrder
     assignedToName?: SortOrderInput | SortOrder
     assignmentStatus?: SortOrderInput | SortOrder
+    contactMode?: SortOrderInput | SortOrder
+    createdBy?: SortOrderInput | SortOrder
+    meetingType?: SortOrderInput | SortOrder
+    uuid?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: ContactCountOrderByAggregateInput
@@ -14622,6 +14805,10 @@ export namespace Prisma {
     assignedTo?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     assignedToName?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     assignmentStatus?: StringNullableWithAggregatesFilter<"Contact"> | string | null
+    contactMode?: StringNullableWithAggregatesFilter<"Contact"> | string | null
+    createdBy?: StringNullableWithAggregatesFilter<"Contact"> | string | null
+    meetingType?: StringNullableWithAggregatesFilter<"Contact"> | string | null
+    uuid?: StringNullableWithAggregatesFilter<"Contact"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Contact"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Contact"> | Date | string
   }
@@ -14827,9 +15014,14 @@ export namespace Prisma {
     employeeEmail?: StringNullableFilter<"ScheduledMeeting"> | string | null
     employeeDesignation?: StringNullableFilter<"ScheduledMeeting"> | string | null
     contactId?: StringNullableFilter<"ScheduledMeeting"> | string | null
+    leadId?: StringNullableFilter<"ScheduledMeeting"> | string | null
     clientName?: StringNullableFilter<"ScheduledMeeting"> | string | null
     status?: StringFilter<"ScheduledMeeting"> | string
     notes?: StringNullableFilter<"ScheduledMeeting"> | string | null
+    requirements?: StringNullableFilter<"ScheduledMeeting"> | string | null
+    requirementFileName?: StringNullableFilter<"ScheduledMeeting"> | string | null
+    requirementFileUrl?: StringNullableFilter<"ScheduledMeeting"> | string | null
+    requirementFileSize?: StringNullableFilter<"ScheduledMeeting"> | string | null
     createdAt?: DateTimeFilter<"ScheduledMeeting"> | Date | string
     updatedAt?: DateTimeFilter<"ScheduledMeeting"> | Date | string
   }
@@ -14848,9 +15040,14 @@ export namespace Prisma {
     employeeEmail?: SortOrderInput | SortOrder
     employeeDesignation?: SortOrderInput | SortOrder
     contactId?: SortOrderInput | SortOrder
+    leadId?: SortOrderInput | SortOrder
     clientName?: SortOrderInput | SortOrder
     status?: SortOrder
     notes?: SortOrderInput | SortOrder
+    requirements?: SortOrderInput | SortOrder
+    requirementFileName?: SortOrderInput | SortOrder
+    requirementFileUrl?: SortOrderInput | SortOrder
+    requirementFileSize?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -14872,9 +15069,14 @@ export namespace Prisma {
     employeeEmail?: StringNullableFilter<"ScheduledMeeting"> | string | null
     employeeDesignation?: StringNullableFilter<"ScheduledMeeting"> | string | null
     contactId?: StringNullableFilter<"ScheduledMeeting"> | string | null
+    leadId?: StringNullableFilter<"ScheduledMeeting"> | string | null
     clientName?: StringNullableFilter<"ScheduledMeeting"> | string | null
     status?: StringFilter<"ScheduledMeeting"> | string
     notes?: StringNullableFilter<"ScheduledMeeting"> | string | null
+    requirements?: StringNullableFilter<"ScheduledMeeting"> | string | null
+    requirementFileName?: StringNullableFilter<"ScheduledMeeting"> | string | null
+    requirementFileUrl?: StringNullableFilter<"ScheduledMeeting"> | string | null
+    requirementFileSize?: StringNullableFilter<"ScheduledMeeting"> | string | null
     createdAt?: DateTimeFilter<"ScheduledMeeting"> | Date | string
     updatedAt?: DateTimeFilter<"ScheduledMeeting"> | Date | string
   }, "id">
@@ -14893,9 +15095,14 @@ export namespace Prisma {
     employeeEmail?: SortOrderInput | SortOrder
     employeeDesignation?: SortOrderInput | SortOrder
     contactId?: SortOrderInput | SortOrder
+    leadId?: SortOrderInput | SortOrder
     clientName?: SortOrderInput | SortOrder
     status?: SortOrder
     notes?: SortOrderInput | SortOrder
+    requirements?: SortOrderInput | SortOrder
+    requirementFileName?: SortOrderInput | SortOrder
+    requirementFileUrl?: SortOrderInput | SortOrder
+    requirementFileSize?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: ScheduledMeetingCountOrderByAggregateInput
@@ -14920,9 +15127,14 @@ export namespace Prisma {
     employeeEmail?: StringNullableWithAggregatesFilter<"ScheduledMeeting"> | string | null
     employeeDesignation?: StringNullableWithAggregatesFilter<"ScheduledMeeting"> | string | null
     contactId?: StringNullableWithAggregatesFilter<"ScheduledMeeting"> | string | null
+    leadId?: StringNullableWithAggregatesFilter<"ScheduledMeeting"> | string | null
     clientName?: StringNullableWithAggregatesFilter<"ScheduledMeeting"> | string | null
     status?: StringWithAggregatesFilter<"ScheduledMeeting"> | string
     notes?: StringNullableWithAggregatesFilter<"ScheduledMeeting"> | string | null
+    requirements?: StringNullableWithAggregatesFilter<"ScheduledMeeting"> | string | null
+    requirementFileName?: StringNullableWithAggregatesFilter<"ScheduledMeeting"> | string | null
+    requirementFileUrl?: StringNullableWithAggregatesFilter<"ScheduledMeeting"> | string | null
+    requirementFileSize?: StringNullableWithAggregatesFilter<"ScheduledMeeting"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"ScheduledMeeting"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"ScheduledMeeting"> | Date | string
   }
@@ -14947,6 +15159,7 @@ export namespace Prisma {
     status?: StringFilter<"Project"> | string
     priority?: StringFilter<"Project"> | string
     progress?: IntFilter<"Project"> | number
+    modules?: JsonNullableFilter<"Project">
     estimatedBudget?: FloatNullableFilter<"Project"> | number | null
     actualCost?: FloatNullableFilter<"Project"> | number | null
     startDate?: StringNullableFilter<"Project"> | string | null
@@ -14977,6 +15190,7 @@ export namespace Prisma {
     status?: SortOrder
     priority?: SortOrder
     progress?: SortOrder
+    modules?: SortOrderInput | SortOrder
     estimatedBudget?: SortOrderInput | SortOrder
     actualCost?: SortOrderInput | SortOrder
     startDate?: SortOrderInput | SortOrder
@@ -15010,6 +15224,7 @@ export namespace Prisma {
     status?: StringFilter<"Project"> | string
     priority?: StringFilter<"Project"> | string
     progress?: IntFilter<"Project"> | number
+    modules?: JsonNullableFilter<"Project">
     estimatedBudget?: FloatNullableFilter<"Project"> | number | null
     actualCost?: FloatNullableFilter<"Project"> | number | null
     startDate?: StringNullableFilter<"Project"> | string | null
@@ -15040,6 +15255,7 @@ export namespace Prisma {
     status?: SortOrder
     priority?: SortOrder
     progress?: SortOrder
+    modules?: SortOrderInput | SortOrder
     estimatedBudget?: SortOrderInput | SortOrder
     actualCost?: SortOrderInput | SortOrder
     startDate?: SortOrderInput | SortOrder
@@ -15078,6 +15294,7 @@ export namespace Prisma {
     status?: StringWithAggregatesFilter<"Project"> | string
     priority?: StringWithAggregatesFilter<"Project"> | string
     progress?: IntWithAggregatesFilter<"Project"> | number
+    modules?: JsonNullableWithAggregatesFilter<"Project">
     estimatedBudget?: FloatNullableWithAggregatesFilter<"Project"> | number | null
     actualCost?: FloatNullableWithAggregatesFilter<"Project"> | number | null
     startDate?: StringNullableWithAggregatesFilter<"Project"> | string | null
@@ -15671,6 +15888,10 @@ export namespace Prisma {
     assignedTo?: string | null
     assignedToName?: string | null
     assignmentStatus?: string | null
+    contactMode?: string | null
+    createdBy?: string | null
+    meetingType?: string | null
+    uuid?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -15714,6 +15935,10 @@ export namespace Prisma {
     assignedTo?: string | null
     assignedToName?: string | null
     assignmentStatus?: string | null
+    contactMode?: string | null
+    createdBy?: string | null
+    meetingType?: string | null
+    uuid?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -15757,6 +15982,10 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     assignedToName?: NullableStringFieldUpdateOperationsInput | string | null
     assignmentStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    contactMode?: NullableStringFieldUpdateOperationsInput | string | null
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    meetingType?: NullableStringFieldUpdateOperationsInput | string | null
+    uuid?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -15800,6 +16029,10 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     assignedToName?: NullableStringFieldUpdateOperationsInput | string | null
     assignmentStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    contactMode?: NullableStringFieldUpdateOperationsInput | string | null
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    meetingType?: NullableStringFieldUpdateOperationsInput | string | null
+    uuid?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -15843,6 +16076,10 @@ export namespace Prisma {
     assignedTo?: string | null
     assignedToName?: string | null
     assignmentStatus?: string | null
+    contactMode?: string | null
+    createdBy?: string | null
+    meetingType?: string | null
+    uuid?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -15886,6 +16123,10 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     assignedToName?: NullableStringFieldUpdateOperationsInput | string | null
     assignmentStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    contactMode?: NullableStringFieldUpdateOperationsInput | string | null
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    meetingType?: NullableStringFieldUpdateOperationsInput | string | null
+    uuid?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -15929,6 +16170,10 @@ export namespace Prisma {
     assignedTo?: NullableStringFieldUpdateOperationsInput | string | null
     assignedToName?: NullableStringFieldUpdateOperationsInput | string | null
     assignmentStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    contactMode?: NullableStringFieldUpdateOperationsInput | string | null
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    meetingType?: NullableStringFieldUpdateOperationsInput | string | null
+    uuid?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -16171,9 +16416,14 @@ export namespace Prisma {
     employeeEmail?: string | null
     employeeDesignation?: string | null
     contactId?: string | null
+    leadId?: string | null
     clientName?: string | null
     status?: string
     notes?: string | null
+    requirements?: string | null
+    requirementFileName?: string | null
+    requirementFileUrl?: string | null
+    requirementFileSize?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -16192,9 +16442,14 @@ export namespace Prisma {
     employeeEmail?: string | null
     employeeDesignation?: string | null
     contactId?: string | null
+    leadId?: string | null
     clientName?: string | null
     status?: string
     notes?: string | null
+    requirements?: string | null
+    requirementFileName?: string | null
+    requirementFileUrl?: string | null
+    requirementFileSize?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -16213,9 +16468,14 @@ export namespace Prisma {
     employeeEmail?: NullableStringFieldUpdateOperationsInput | string | null
     employeeDesignation?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
     clientName?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
     notes?: NullableStringFieldUpdateOperationsInput | string | null
+    requirements?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileName?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileSize?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -16234,9 +16494,14 @@ export namespace Prisma {
     employeeEmail?: NullableStringFieldUpdateOperationsInput | string | null
     employeeDesignation?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
     clientName?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
     notes?: NullableStringFieldUpdateOperationsInput | string | null
+    requirements?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileName?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileSize?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -16255,9 +16520,14 @@ export namespace Prisma {
     employeeEmail?: string | null
     employeeDesignation?: string | null
     contactId?: string | null
+    leadId?: string | null
     clientName?: string | null
     status?: string
     notes?: string | null
+    requirements?: string | null
+    requirementFileName?: string | null
+    requirementFileUrl?: string | null
+    requirementFileSize?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -16276,9 +16546,14 @@ export namespace Prisma {
     employeeEmail?: NullableStringFieldUpdateOperationsInput | string | null
     employeeDesignation?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
     clientName?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
     notes?: NullableStringFieldUpdateOperationsInput | string | null
+    requirements?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileName?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileSize?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -16297,9 +16572,14 @@ export namespace Prisma {
     employeeEmail?: NullableStringFieldUpdateOperationsInput | string | null
     employeeDesignation?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
     clientName?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
     notes?: NullableStringFieldUpdateOperationsInput | string | null
+    requirements?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileName?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    requirementFileSize?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -16321,6 +16601,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     progress?: number
+    modules?: NullableJsonNullValueInput | InputJsonValue
     estimatedBudget?: number | null
     actualCost?: number | null
     startDate?: string | null
@@ -16351,6 +16632,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     progress?: number
+    modules?: NullableJsonNullValueInput | InputJsonValue
     estimatedBudget?: number | null
     actualCost?: number | null
     startDate?: string | null
@@ -16381,6 +16663,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     progress?: IntFieldUpdateOperationsInput | number
+    modules?: NullableJsonNullValueInput | InputJsonValue
     estimatedBudget?: NullableFloatFieldUpdateOperationsInput | number | null
     actualCost?: NullableFloatFieldUpdateOperationsInput | number | null
     startDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -16411,6 +16694,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     progress?: IntFieldUpdateOperationsInput | number
+    modules?: NullableJsonNullValueInput | InputJsonValue
     estimatedBudget?: NullableFloatFieldUpdateOperationsInput | number | null
     actualCost?: NullableFloatFieldUpdateOperationsInput | number | null
     startDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -16441,6 +16725,7 @@ export namespace Prisma {
     status?: string
     priority?: string
     progress?: number
+    modules?: NullableJsonNullValueInput | InputJsonValue
     estimatedBudget?: number | null
     actualCost?: number | null
     startDate?: string | null
@@ -16471,6 +16756,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     progress?: IntFieldUpdateOperationsInput | number
+    modules?: NullableJsonNullValueInput | InputJsonValue
     estimatedBudget?: NullableFloatFieldUpdateOperationsInput | number | null
     actualCost?: NullableFloatFieldUpdateOperationsInput | number | null
     startDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -16501,6 +16787,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     priority?: StringFieldUpdateOperationsInput | string
     progress?: IntFieldUpdateOperationsInput | number
+    modules?: NullableJsonNullValueInput | InputJsonValue
     estimatedBudget?: NullableFloatFieldUpdateOperationsInput | number | null
     actualCost?: NullableFloatFieldUpdateOperationsInput | number | null
     startDate?: NullableStringFieldUpdateOperationsInput | string | null
@@ -16943,6 +17230,10 @@ export namespace Prisma {
     assignedTo?: SortOrder
     assignedToName?: SortOrder
     assignmentStatus?: SortOrder
+    contactMode?: SortOrder
+    createdBy?: SortOrder
+    meetingType?: SortOrder
+    uuid?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -16984,6 +17275,10 @@ export namespace Prisma {
     assignedTo?: SortOrder
     assignedToName?: SortOrder
     assignmentStatus?: SortOrder
+    contactMode?: SortOrder
+    createdBy?: SortOrder
+    meetingType?: SortOrder
+    uuid?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -17025,6 +17320,10 @@ export namespace Prisma {
     assignedTo?: SortOrder
     assignedToName?: SortOrder
     assignmentStatus?: SortOrder
+    contactMode?: SortOrder
+    createdBy?: SortOrder
+    meetingType?: SortOrder
+    uuid?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -17135,9 +17434,14 @@ export namespace Prisma {
     employeeEmail?: SortOrder
     employeeDesignation?: SortOrder
     contactId?: SortOrder
+    leadId?: SortOrder
     clientName?: SortOrder
     status?: SortOrder
     notes?: SortOrder
+    requirements?: SortOrder
+    requirementFileName?: SortOrder
+    requirementFileUrl?: SortOrder
+    requirementFileSize?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -17156,9 +17460,14 @@ export namespace Prisma {
     employeeEmail?: SortOrder
     employeeDesignation?: SortOrder
     contactId?: SortOrder
+    leadId?: SortOrder
     clientName?: SortOrder
     status?: SortOrder
     notes?: SortOrder
+    requirements?: SortOrder
+    requirementFileName?: SortOrder
+    requirementFileUrl?: SortOrder
+    requirementFileSize?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -17177,9 +17486,14 @@ export namespace Prisma {
     employeeEmail?: SortOrder
     employeeDesignation?: SortOrder
     contactId?: SortOrder
+    leadId?: SortOrder
     clientName?: SortOrder
     status?: SortOrder
     notes?: SortOrder
+    requirements?: SortOrder
+    requirementFileName?: SortOrder
+    requirementFileUrl?: SortOrder
+    requirementFileSize?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -17193,6 +17507,29 @@ export namespace Prisma {
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
     not?: NestedIntFilter<$PrismaModel> | number
+  }
+  export type JsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
   export type FloatNullableFilter<$PrismaModel = never> = {
@@ -17223,6 +17560,7 @@ export namespace Prisma {
     status?: SortOrder
     priority?: SortOrder
     progress?: SortOrder
+    modules?: SortOrder
     estimatedBudget?: SortOrder
     actualCost?: SortOrder
     startDate?: SortOrder
@@ -17320,6 +17658,32 @@ export namespace Prisma {
     _sum?: NestedIntFilter<$PrismaModel>
     _min?: NestedIntFilter<$PrismaModel>
     _max?: NestedIntFilter<$PrismaModel>
+  }
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedJsonNullableFilter<$PrismaModel>
+    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type FloatNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -17745,6 +18109,29 @@ export namespace Prisma {
     gt?: number | FloatFieldRefInput<$PrismaModel>
     gte?: number | FloatFieldRefInput<$PrismaModel>
     not?: NestedFloatFilter<$PrismaModel> | number
+  }
+  export type NestedJsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<NestedJsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
   export type NestedFloatNullableWithAggregatesFilter<$PrismaModel = never> = {

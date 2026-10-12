@@ -146,6 +146,10 @@ model Contact {
   assignedTo       String? // Employee ID
   assignedToName   String? // Assigned Employee Name
   assignmentStatus String?  @default("Unassigned") // Assigned / Unassigned
+  contactMode      String?
+  createdBy        String?
+  meetingType      String?
+  uuid             String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
@@ -196,9 +200,14 @@ model ScheduledMeeting {
   employeeEmail       String?
   employeeDesignation String?
   contactId           String?
+  leadId              String?  @map("lead_id")
   clientName          String?
   status              String   @default("Scheduled")
   notes               String?
+  requirements        String?
+  requirementFileName String?
+  requirementFileUrl  String?
+  requirementFileSize String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }
@@ -228,6 +237,7 @@ model Project {
   status   String @default("Planning") // "Planning", "In Progress", "In Review", "On Hold", "Completed", "Cancelled"
   priority String @default("Medium") // "Low", "Medium", "High", "Critical"
   progress Int    @default(0) // 0 to 100 percentage
+  modules  Json?  @default("[]")
 
   // Budget & Timeline
   estimatedBudget Float? // e.g. 500000

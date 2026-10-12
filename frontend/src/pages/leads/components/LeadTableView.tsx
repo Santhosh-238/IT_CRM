@@ -31,7 +31,7 @@ interface LeadTableViewProps {
   leads: Lead[];
   onEdit: (lead: Lead) => void;
   onDelete: (lead: Lead) => void;
-  onAddNew: () => void;
+  onAddNew?: () => void;
   loading?: boolean;
 }
 
@@ -159,21 +159,23 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
               No Leads Found
             </Text>
             <Text size="sm" c="dimmed" style={{ maxWidth: 420 }}>
-              No lead records match your current view or filter criteria. Click below to add a new lead opportunity.
+              No lead records match your current view or filter criteria.
             </Text>
-            <Button
-              mt="xs"
-              radius="md"
-              leftSection={<IconTarget size={16} />}
-              onClick={onAddNew}
-              style={{
-                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-                color: '#FFFFFF',
-                fontWeight: 600,
-              }}
-            >
-              + Add Lead
-            </Button>
+            {onAddNew && (
+              <Button
+                mt="xs"
+                radius="md"
+                leftSection={<IconTarget size={16} />}
+                onClick={onAddNew}
+                style={{
+                  background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                  color: '#FFFFFF',
+                  fontWeight: 600,
+                }}
+              >
+                + Add Lead
+              </Button>
+            )}
           </Stack>
         </Center>
       </Paper>

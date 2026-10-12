@@ -31,6 +31,7 @@ import {
   IconCheck,
   IconExternalLink,
   IconTarget,
+  IconEye,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { ScheduledMeeting } from '../../../types/meeting';
@@ -60,8 +61,62 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
   const [fileUrl, setFileUrl] = useState<string>('');
   const [fileSize, setFileSize] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Convert Base64 data URL to Blob URL to safely view or open in a new tab without browser security blocks
+  const getSafeBlobUrl = (dataUrlOrUrl: string): string => {
+    if (!dataUrlOrUrl || !dataUrlOrUrl.startsWith('data:')) return dataUrlOrUrl;
+    try {
+      const arr = dataUrlOrUrl.split(',');
+      const mime = arr[0].match(/:(.*?);/)?.[1] || 'application/octet-stream';
+      const bstr = atob(arr[1]);
+      let n = bstr.length;
+      const u8arr = new Uint8Array(n);
+      while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+      }
+      const blob = new Blob([u8arr], { type: mime });
+      return URL.createObjectURL(blob);
+    } catch (err) {
+      return dataUrlOrUrl;
+    }
+  };
+
+  const handleOpenInNewWindow = () => {
+    if (!fileUrl) return;
+    const safeUrl = getSafeBlobUrl(fileUrl);
+    window.open(safeUrl, '_blank');
+  };
+
+  const isImageFile = (name: string, url: string) => {
+    const n = (name || '').toLowerCase();
+    return (
+      n.endsWith('.png') ||
+      n.endsWith('.jpg') ||
+      n.endsWith('.jpeg') ||
+      n.endsWith('.webp') ||
+      n.endsWith('.gif') ||
+      n.endsWith('.svg') ||
+      url.startsWith('data:image/')
+    );
+  };
+
+  const isPdfFile = (name: string, url: string) => {
+    const n = (name || '').toLowerCase();
+    return n.endsWith('.pdf') || url.startsWith('data:application/pdf');
+  };
+
+  const isTextFile = (name: string, url: string) => {
+    const n = (name || '').toLowerCase();
+    return (
+      n.endsWith('.txt') ||
+      n.endsWith('.csv') ||
+      n.endsWith('.json') ||
+      url.startsWith('data:text/')
+    );
+  };
 
   const getStatusColor = (val?: string) => {
     switch (val?.toLowerCase()) {
@@ -181,7 +236,8 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
   const companyName = meeting.companyName || 'Company / Organization';
 
   return (
-    <Modal
+    <>
+      <Modal
       opened={opened}
       onClose={onClose}
       size="860px"
@@ -465,8 +521,32 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
                 </Group>
 
                 <Group gap="xs" wrap="nowrap">
-                  {/* Download / Open File */}
-                  <Tooltip label="Download / Open File" withArrow>
+                  {/* View Document Button */}
+                  <Button
+                    size="xs"
+                    variant="filled"
+                    color="teal"
+                    radius="md"
+                    leftSection={<IconEye size={14} />}
+                    onClick={() => setPreviewModalOpen(true)}
+                  >
+                    View Document
+                  </Button>
+
+                  {/* Open in New Window */}
+                  <Tooltip label="Open in New Tab" withArrow>
+                    <ActionIcon
+                      variant="light"
+                      color="teal"
+                      radius="md"
+                      onClick={handleOpenInNewWindow}
+                    >
+                      <IconExternalLink size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+
+                  {/* Download / Save File */}
+                  <Tooltip label="Download File" withArrow>
                     <ActionIcon
                       variant="light"
                       color="teal"
@@ -474,7 +554,6 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
                       component="a"
                       href={fileUrl}
                       download={fileName}
-                      target="_blank"
                     >
                       <IconDownload size={16} />
                     </ActionIcon>
@@ -566,5 +645,155 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
         </Group>
       </Stack>
     </Modal>
+
+    {/* ========================================================= */}
+    {/* DOCUMENT PREVIEW MODAL                                   */}
+    {/* ========================================================= */}
+    <Modal
+      opened={previewModalOpen}
+      onClose={() => setPreviewModalOpen(false)}
+      size="85%"
+      radius="lg"
+      centered
+      zIndex={1200}
+      title={
+        <Group justify="space-between" align="center" style={{ width: '100%' }} pr="md">
+          <Group gap="xs" align="center" style={{ overflow: 'hidden' }}>
+            <ThemeIcon color="teal" variant="light" size="md" radius="md">
+              <IconFileDescription size={18} />
+            </ThemeIcon>
+            <div>
+              <Text fw={700} size="sm" truncate style={{ maxWidth: 450 }}>
+                {fileName || 'Document Preview'}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {fileSize || 'Requirement Document'}
+              </Text>
+            </div>
+          </Group>
+
+          <Group gap="xs">
+            <Button
+              size="xs"
+              variant="light"
+              color="blue"
+              leftSection={<IconExternalLink size={14} />}
+              onClick={handleOpenInNewWindow}
+            >
+              Open in New Tab
+            </Button>
+            <Button
+              size="xs"
+              variant="light"
+              color="teal"
+              component="a"
+              href={fileUrl}
+              download={fileName}
+              leftSection={<IconDownload size={14} />}
+            >
+              Download
+            </Button>
+          </Group>
+        </Group>
+      }
+      styles={{
+        content: {
+          maxHeight: '92vh',
+        },
+        body: {
+          padding: 16,
+          maxHeight: 'calc(92vh - 80px)',
+          overflowY: 'auto',
+        },
+      }}
+    >
+      {isImageFile(fileName, fileUrl) ? (
+        <Box
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+            borderRadius: 8,
+            padding: 16,
+            minHeight: '400px',
+          }}
+        >
+          <img
+            src={fileUrl}
+            alt={fileName}
+            style={{
+              maxWidth: '100%',
+              maxHeight: '70vh',
+              borderRadius: 8,
+              boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+              objectFit: 'contain',
+            }}
+          />
+        </Box>
+      ) : isPdfFile(fileName, fileUrl) || isTextFile(fileName, fileUrl) ? (
+        <Box
+          style={{
+            width: '100%',
+            height: '75vh',
+            borderRadius: 8,
+            overflow: 'hidden',
+            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
+            backgroundColor: '#FFFFFF',
+          }}
+        >
+          <iframe
+            src={getSafeBlobUrl(fileUrl)}
+            title={fileName}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+            }}
+          />
+        </Box>
+      ) : (
+        <Paper
+          p="xl"
+          radius="md"
+          style={{
+            textAlign: 'center',
+            background: isDark ? '#1E293B' : '#F8FAFC',
+            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
+          }}
+        >
+          <ThemeIcon size={56} radius="xl" color="blue" variant="light" mx="auto" mb="md">
+            <IconFileDescription size={32} />
+          </ThemeIcon>
+          <Text fw={700} size="md">
+            {fileName}
+          </Text>
+          <Text size="sm" c="dimmed" mt={4} mb="lg">
+            {fileSize || 'Attached'} • Direct in-browser preview is not supported for Word/Excel files. You can open in a new tab or download to view with your local application.
+          </Text>
+          <Group justify="center" gap="sm">
+            <Button
+              component="a"
+              href={fileUrl}
+              download={fileName}
+              leftSection={<IconDownload size={16} />}
+              color="teal"
+              radius="md"
+            >
+              Download Document
+            </Button>
+            <Button
+              variant="default"
+              leftSection={<IconExternalLink size={16} />}
+              onClick={handleOpenInNewWindow}
+              radius="md"
+            >
+              Open in New Tab
+            </Button>
+          </Group>
+        </Paper>
+      )}
+    </Modal>
+  </>
   );
 };
