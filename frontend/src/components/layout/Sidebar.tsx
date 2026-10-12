@@ -112,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
             />
             {isSuperAdmin && (
               <NavLink
-                label="Employees Directory"
+                label="Employee Management"
                 leftSection={<IconUsersGroup size={18} stroke={2} />}
                 active={activeNav === 'employees' || activeNav === 'add-employee' || activeNav === 'onboard-employee' || activeNav === 'onboard'}
                 onClick={() => onSelectNav('employees')}

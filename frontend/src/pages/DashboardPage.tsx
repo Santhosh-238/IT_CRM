@@ -107,7 +107,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
                 boxShadow: isDark ? '0 4px 14px rgba(59, 130, 246, 0.35)' : undefined,
               }}
             >
-              View Employees Directory
+              View Employee Management
             </Button>
           )}
         </Group>

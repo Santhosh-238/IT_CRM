@@ -24,7 +24,6 @@ import {
   IconActivity,
   IconFlag,
   IconBuilding,
-  IconUserCheck,
   IconRefresh,
 } from '@tabler/icons-react';
 import { useProject } from '../../context/ProjectContext';
@@ -65,7 +64,6 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = () => {
   const [statusFilter, setStatusFilter] = useState<string>(filters.status || 'All');
   const [priorityFilter, setPriorityFilter] = useState<string>(filters.priority || 'All');
   const [clientFilter, setClientFilter] = useState<string>(filters.client || 'All');
-  const [managerFilter, setManagerFilter] = useState<string>(filters.manager || 'All');
 
   // Handle Search Debounce / Direct
   const handleSearchChange = (val: string) => {
@@ -92,24 +90,16 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = () => {
     setFilters({ client: c, page: 1 });
   };
 
-  const handleManagerChange = (val: string | null) => {
-    const m = val || 'All';
-    setManagerFilter(m);
-    setFilters({ manager: m, page: 1 });
-  };
-
   const handleResetFilters = () => {
     setSearchInput('');
     setStatusFilter('All');
     setPriorityFilter('All');
     setClientFilter('All');
-    setManagerFilter('All');
     setFilters({
       search: '',
       status: 'All',
       priority: 'All',
       client: 'All',
-      manager: 'All',
       page: 1,
     });
   };
@@ -118,8 +108,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = () => {
     Boolean(searchInput.trim()) ||
     statusFilter !== 'All' ||
     priorityFilter !== 'All' ||
-    clientFilter !== 'All' ||
-    managerFilter !== 'All';
+    clientFilter !== 'All';
 
   // Status Filter Options
   const statusOptions = [
@@ -145,15 +134,6 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = () => {
     ...(metadata?.contacts || []).map((c: any) => ({
       value: c.companyName || c.name,
       label: c.companyName ? `${c.companyName} (${c.name})` : c.name,
-    })),
-  ];
-
-  // Dynamic Manager Options from Metadata
-  const managerOptions = [
-    { value: 'All', label: 'All Managers' },
-    ...(metadata?.employees || []).map((e: any) => ({
-      value: e.name,
-      label: e.name,
     })),
   ];
 
@@ -329,25 +309,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = () => {
               searchable
             />
 
-            {/* Manager Filter Dropdown */}
-            <Select
-              size="sm"
-              radius="md"
-              data={managerOptions}
-              value={managerFilter}
-              onChange={handleManagerChange}
-              leftSection={<IconUserCheck size={14} color="#10B981" />}
-              styles={{
-                input: {
-                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
-                  fontSize: 13,
-                  height: 36,
-                },
-              }}
-              style={{ flex: '1 1 140px', minWidth: 120 }}
-              searchable
-            />
+
 
             {/* Clear Filters Button (Visible only when filters active) */}
             {isFiltered && (

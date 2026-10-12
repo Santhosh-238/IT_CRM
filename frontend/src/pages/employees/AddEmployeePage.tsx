@@ -649,7 +649,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
         >
           <IconArrowLeft size={18} stroke={2.2} />
           <Text fw={600} size="14px" style={{ color: 'inherit' }}>
-            Back to Employee Directory
+            Back to Employee Management
           </Text>
         </UnstyledButton>
       </Group>
