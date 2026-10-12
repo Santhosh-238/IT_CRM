@@ -66,6 +66,9 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (path === 'contacts/add' || path === 'add-contact') {
         return 'add-contact';
       }
+      if (path === 'projects/add' || path === 'add-project' || path === 'projects/create' || path === 'create-project') {
+        return 'add-project';
+      }
       if (path === 'contacts/qualification' || path === 'contacts/qualify' || path === 'qualification') {
         return 'contact-qualification';
       }
@@ -73,6 +76,7 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (path === 'leads' || path === 'lead') return 'leads';
       if (path === 'employees') return 'employees';
       if (path === 'scheduled-meetings' || path === 'meetings') return 'scheduled-meetings';
+      if (path === 'projects' || path === 'projects-management') return 'projects';
       if (path === 'access-control' || path === 'rbac') return 'access-control';
       if (path === 'dashboard') return 'dashboard';
       if (path) return path;
@@ -99,6 +103,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       else if (normalizedNav === 'lead-schedule' || normalizedNav === 'lead-details' || normalizedNav === 'schedule-meeting') targetPath = '/leads/schedule';
       else if (normalizedNav === 'add-contact') targetPath = '/contacts/add';
       else if (normalizedNav === 'contact-qualification' || normalizedNav === 'qualification') targetPath = '/contacts/qualification';
+      else if (normalizedNav === 'projects' || normalizedNav === 'projects-management') targetPath = '/projects';
+      else if (normalizedNav === 'add-project' || normalizedNav === 'create-project' || normalizedNav === 'projects/add') targetPath = '/projects/add';
       else if (normalizedNav === 'access-control' || normalizedNav === 'rbac') targetPath = '/access-control';
       else if (normalizedNav === 'login') targetPath = '/login';
       else if (normalizedNav === 'signup') targetPath = '/signup';
@@ -128,6 +134,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveNavState('add-employee');
       } else if (path === 'contacts/add' || path === 'add-contact') {
         setActiveNavState('add-contact');
+      } else if (path === 'projects/add' || path === 'add-project' || path === 'projects/create' || path === 'create-project') {
+        setActiveNavState('add-project');
       } else if (path === 'contacts/qualification' || path === 'contacts/qualify' || path === 'qualification') {
         setActiveNavState('contact-qualification');
       } else if (path === 'contacts') {
@@ -140,6 +148,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setActiveNavState('employees');
       } else if (path === 'scheduled-meetings' || path === 'meetings') {
         setActiveNavState('scheduled-meetings');
+      } else if (path === 'projects' || path === 'projects-management') {
+        setActiveNavState('projects');
       } else if (path === 'access-control' || path === 'rbac') {
         setActiveNavState('access-control');
       } else {

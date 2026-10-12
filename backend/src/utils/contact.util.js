@@ -88,6 +88,8 @@ export function buildContactFilterQuery(queryParams = {}) {
         { phone: { contains: q, mode: 'insensitive' } },
         { companyName: { contains: q, mode: 'insensitive' } },
         { contactId: { contains: q, mode: 'insensitive' } },
+        { gstNumber: { contains: q, mode: 'insensitive' } },
+        { cinNumber: { contains: q, mode: 'insensitive' } },
       ],
     });
   }

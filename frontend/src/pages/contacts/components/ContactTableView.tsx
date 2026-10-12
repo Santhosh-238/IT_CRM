@@ -33,6 +33,7 @@ import {
   IconPhone,
   IconMail,
   IconBrandWhatsapp,
+  IconShieldCheck,
 } from '@tabler/icons-react';
 import { Contact } from '../../../types/contact';
 import { useContact } from '../../../context/ContactContext';
@@ -40,6 +41,7 @@ import { useCRM } from '../../../context/CRMContext';
 
 interface ContactTableViewProps {
   contacts: Contact[];
+  activeTab?: 'NEW' | 'ASSIGNED';
   onView: (contact: Contact) => void;
   onEdit: (contact: Contact) => void;
   onDelete: (contact: Contact) => void;
@@ -49,6 +51,7 @@ interface ContactTableViewProps {
 
 export const ContactTableView: React.FC<ContactTableViewProps> = ({
   contacts,
+  activeTab,
   onView,
   onEdit,
   onDelete,
@@ -300,6 +303,11 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                   <Text size="xs" truncate style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
                     {contact.companyName}
                   </Text>
+                  {contact.verificationStatus === 'Verified' && (
+                    <Badge size="xs" variant="filled" color="green" radius="sm" style={{ padding: '0 3px', height: 14, fontSize: 8.5 }}>
+                      ✓
+                    </Badge>
+                  )}
                 </Group>
               )}
               {contact.category && (
@@ -405,8 +413,8 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
               <Table.Th style={{ minWidth: 200, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 CONTACT
               </Table.Th>
-              <Table.Th style={{ minWidth: 160, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                COMPANY / PROFESSION
+              <Table.Th style={{ minWidth: 260, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                COMPANY
               </Table.Th>
               <Table.Th style={{ minWidth: 190, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 EMAIL
@@ -432,16 +440,23 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {contacts.map((contact) => (
-              <Table.Tr
-                key={contact.id}
-                onClick={() => handleOpenQualification(contact)}
-                style={{
-                  cursor: 'pointer',
-                  transition: 'background 0.12s ease',
-                  borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
-                }}
-              >
+            {contacts.map((contact) => {
+              const isAssigned =
+                contact.assignmentStatus === 'Assigned' ||
+                (contact.assignedTo && contact.assignedTo !== 'Unassigned') ||
+                Boolean(contact.assignedToName);
+              const isClickable = activeTab !== 'NEW' && isAssigned;
+
+              return (
+                <Table.Tr
+                  key={contact.id}
+                  onClick={isClickable ? () => handleOpenQualification(contact) : undefined}
+                  style={{
+                    cursor: isClickable ? 'pointer' : 'default',
+                    transition: 'background 0.12s ease',
+                    borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
+                  }}
+                >
                 {/* 1. CONTACT: Name + Designation / Type */}
                 <Table.Td style={{ minWidth: 200 }}>
                   <Box style={{ display: 'inline-block' }}>
@@ -476,11 +491,90 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                   </Box>
                 </Table.Td>
 
-                {/* 2. COMPANY / PROFESSION: Displays company name or profession entered by user */}
-                <Table.Td style={{ minWidth: 160, whiteSpace: 'nowrap' }}>
-                  <Text size="13px" fw={600} style={{ color: isDark ? '#E2E8F0' : '#1E293B', whiteSpace: 'nowrap' }}>
-                    {contact.companyName || contact.profession || contact.contactType || '—'}
-                  </Text>
+                {/* 2. COMPANY: Displays company name, GST, Employee count & verification badge */}
+                <Table.Td style={{ minWidth: 260 }}>
+                  <Box>
+                    <Group gap={6} align="center" wrap="nowrap">
+                      <Text
+                        size="13px"
+                        fw={700}
+                        style={{
+                          color: isDark ? '#F8FAFC' : '#1E293B',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {contact.companyName || contact.profession || '—'}
+                      </Text>
+                      {contact.verificationStatus === 'Verified' ? (
+                        <Tooltip label="Verified Company (GST & MCA Validated)" withArrow position="top">
+                          <Badge
+                            size="xs"
+                            variant="light"
+                            color="teal"
+                            radius="sm"
+                            leftSection={<IconShieldCheck size={11} stroke={2.5} />}
+                            style={{
+                              textTransform: 'none',
+                              fontWeight: 700,
+                              height: 18,
+                              flexShrink: 0,
+                            }}
+                          >
+                            Verified
+                          </Badge>
+                        </Tooltip>
+                      ) : null}
+                    </Group>
+
+                    {/* Subtitle: GST Number, Employee Count, or Profession */}
+                    <Group gap={6} mt={3} align="center" wrap="nowrap">
+                      {contact.gstNumber ? (
+                        <Box
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '1px 6px',
+                            borderRadius: 4,
+                            backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EFF6FF',
+                            border: isDark ? '1px solid rgba(37, 99, 235, 0.25)' : '1px solid #DBEAFE',
+                            fontSize: 10.5,
+                            fontWeight: 600,
+                            fontFamily: 'monospace',
+                            color: isDark ? '#93C5FD' : '#1D4ED8',
+                            flexShrink: 0,
+                            letterSpacing: '0.03em',
+                          }}
+                        >
+                          <span style={{ fontSize: 9, opacity: 0.75, fontWeight: 700, fontFamily: 'sans-serif' }}>GST</span>
+                          <span>{contact.gstNumber}</span>
+                        </Box>
+                      ) : null}
+
+                      {contact.employeeCount ? (
+                        <Badge
+                          size="xs"
+                          variant="light"
+                          color="indigo"
+                          radius="sm"
+                          style={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            height: 18,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {contact.employeeCount}
+                        </Badge>
+                      ) : null}
+
+                      {!contact.gstNumber && !contact.employeeCount && (
+                        <Text size="11px" style={{ color: isDark ? '#64748B' : '#94A3B8', whiteSpace: 'nowrap' }}>
+                          {contact.profession || (contact.contactType === 'Individual' ? 'Individual' : '—')}
+                        </Text>
+                      )}
+                    </Group>
+                  </Box>
                 </Table.Td>
 
                 {/* 3. EMAIL */}
@@ -683,29 +777,40 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                 {/* 9. STATUS: 1-Click to open Qualification Page */}
                 <Table.Td
                   style={{ minWidth: 140, whiteSpace: 'nowrap' }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenQualification(contact);
-                  }}
+                  onClick={
+                    isClickable
+                      ? (e) => {
+                          e.stopPropagation();
+                          handleOpenQualification(contact);
+                        }
+                      : (e) => e.stopPropagation()
+                  }
                 >
-                  <Tooltip label="Click to open Qualification Page" withArrow position="top">
-                    <Box
-                      style={{
-                        display: 'inline-block',
-                        transition: 'transform 0.12s ease, opacity 0.12s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.04)';
-                        e.currentTarget.style.opacity = '0.9';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                        e.currentTarget.style.opacity = '1';
-                      }}
-                    >
+                  {isClickable ? (
+                    <Tooltip label="Click to open Qualification Page" withArrow position="top">
+                      <Box
+                        style={{
+                          display: 'inline-block',
+                          cursor: 'pointer',
+                          transition: 'transform 0.12s ease, opacity 0.12s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = 'scale(1.04)';
+                          e.currentTarget.style.opacity = '0.9';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = 'scale(1)';
+                          e.currentTarget.style.opacity = '1';
+                        }}
+                      >
+                        {renderStatusBadge(contact.status || contact.qualificationStatus, contact.stage)}
+                      </Box>
+                    </Tooltip>
+                  ) : (
+                    <Box style={{ display: 'inline-block' }}>
                       {renderStatusBadge(contact.status || contact.qualificationStatus, contact.stage)}
                     </Box>
-                  </Tooltip>
+                  )}
                 </Table.Td>
 
                 {/* 10. ACTIONS (Direct Action Icons: Edit & Delete) */}
@@ -743,7 +848,8 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                   </Group>
                 </Table.Td>
               </Table.Tr>
-            ))}
+            );
+          })}
           </Table.Tbody>
         </Table>
       </Box>

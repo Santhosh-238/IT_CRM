@@ -32,9 +32,17 @@ import {
   IconBox,
   IconTargetArrow,
   IconIdBadge,
+  IconFolders,
+  IconShieldCheck,
+  IconReceiptTax,
+  IconUsers,
+  IconWorld,
+  IconBrandLinkedin,
+  IconExternalLink,
 } from '@tabler/icons-react';
 import { Contact } from '../../../types/contact';
 import { useContact } from '../../../context/ContactContext';
+import { useCRM } from '../../../context/CRMContext';
 
 interface ContactDrawerProps {
   contact: Contact | null;
@@ -54,6 +62,8 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
   const { metadata, assignContact } = useContact();
+
+  const { setActiveNav } = useCRM();
 
   if (!contact) return null;
 
@@ -176,24 +186,47 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
         </Paper>
 
         {/* Action Buttons */}
-        <Group grow gap="sm">
+        <Group grow gap="xs">
           <Button
             radius="100px"
             variant="filled"
+            color="indigo"
+            leftSection={<IconFolders size={15} />}
+            onClick={() => {
+              onClose();
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem(
+                  'crm_editing_project',
+                  JSON.stringify({
+                    contactId: contact.id,
+                    clientName: contact.companyName || contact.name,
+                    clientEmail: contact.email,
+                    clientPhone: contact.phone,
+                  })
+                );
+              }
+              setActiveNav('add-project');
+            }}
+          >
+            Create Project
+          </Button>
+          <Button
+            radius="100px"
+            variant="light"
             color="blue"
-            leftSection={<IconEdit size={16} />}
+            leftSection={<IconEdit size={15} />}
             onClick={() => onEdit(contact)}
           >
-            Edit Contact
+            Edit
           </Button>
           <Button
             radius="100px"
             variant="light"
             color="red"
-            leftSection={<IconTrash size={16} />}
+            leftSection={<IconTrash size={15} />}
             onClick={() => onDelete(contact)}
           >
-            Delete Contact
+            Delete
           </Button>
         </Group>
 
@@ -268,11 +301,26 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
 
         {/* 2. Professional & Company Information */}
         <Paper p="lg" radius="20px" style={{ background: cardBg, border: cardBorder }}>
-          <Group gap="xs" mb="sm">
-            <IconBuildingSkyscraper size={16} color={isDark ? '#34D399' : '#059669'} />
-            <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#34D399' : '#059669', letterSpacing: '0.05em' }}>
-              2. Professional & Company Details
-            </Text>
+          <Group justify="space-between" align="center" mb="sm">
+            <Group gap="xs">
+              <IconBuildingSkyscraper size={16} color={isDark ? '#34D399' : '#059669'} />
+              <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#34D399' : '#059669', letterSpacing: '0.05em' }}>
+                2. Professional & Company Details
+              </Text>
+            </Group>
+            <Badge
+              size="xs"
+              variant="light"
+              color={
+                contact.verificationStatus === 'Verified'
+                  ? 'green'
+                  : contact.verificationStatus === 'Pending'
+                  ? 'orange'
+                  : 'gray'
+              }
+            >
+              {contact.verificationStatus === 'Verified' ? '✓ Verified' : contact.verificationStatus === 'Pending' ? '⏳ Pending' : '⚠️ Unverified'}
+            </Badge>
           </Group>
 
           <SimpleGrid cols={2} spacing="xs">
@@ -302,6 +350,144 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
                 {contact.designation || contact.profession || '—'}
               </Text>
             </div>
+
+            {/* GST Number */}
+            <div>
+              <Text size="11px" fw={600} style={{ color: labelColor }}>
+                GST Number (GSTIN)
+              </Text>
+              {contact.gstNumber ? (
+                <Group gap={4} mt={2}>
+                  <Text size="xs" fw={700} style={{ color: isDark ? '#93C5FD' : '#2563EB', fontFamily: 'monospace' }}>
+                    {contact.gstNumber}
+                  </Text>
+                  <CopyButton value={contact.gstNumber} timeout={2000}>
+                    {({ copied, copy }) => (
+                      <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                        {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+                      </ActionIcon>
+                    )}
+                  </CopyButton>
+                </Group>
+              ) : (
+                <Text size="xs" c="dimmed" mt={2}>—</Text>
+              )}
+            </div>
+
+            {/* Employee Count */}
+            <div>
+              <Text size="11px" fw={600} style={{ color: labelColor }}>
+                Employees / Size
+              </Text>
+              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
+                {contact.employeeCount || '—'}
+              </Text>
+            </div>
+
+            {/* Company PAN */}
+            <div>
+              <Text size="11px" fw={600} style={{ color: labelColor }}>
+                Company PAN
+              </Text>
+              {contact.companyPan ? (
+                <Group gap={4} mt={2}>
+                  <Text size="xs" fw={600} style={{ color: valueColor, fontFamily: 'monospace' }}>
+                    {contact.companyPan}
+                  </Text>
+                  <CopyButton value={contact.companyPan} timeout={2000}>
+                    {({ copied, copy }) => (
+                      <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                        {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+                      </ActionIcon>
+                    )}
+                  </CopyButton>
+                </Group>
+              ) : (
+                <Text size="xs" c="dimmed" mt={2}>—</Text>
+              )}
+            </div>
+
+            {/* CIN Number */}
+            <div>
+              <Text size="11px" fw={600} style={{ color: labelColor }}>
+                CIN (MCA)
+              </Text>
+              {contact.cinNumber ? (
+                <Group gap={4} mt={2}>
+                  <Text size="xs" fw={600} truncate style={{ color: valueColor, fontFamily: 'monospace', maxWidth: 100 }}>
+                    {contact.cinNumber}
+                  </Text>
+                  <CopyButton value={contact.cinNumber} timeout={2000}>
+                    {({ copied, copy }) => (
+                      <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                        {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+                      </ActionIcon>
+                    )}
+                  </CopyButton>
+                </Group>
+              ) : (
+                <Text size="xs" c="dimmed" mt={2}>—</Text>
+              )}
+            </div>
+
+            {/* Registered State */}
+            <div>
+              <Text size="11px" fw={600} style={{ color: labelColor }}>
+                Registered State
+              </Text>
+              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
+                {contact.registeredState || '—'}
+              </Text>
+            </div>
+
+            {/* Annual Turnover */}
+            <div>
+              <Text size="11px" fw={600} style={{ color: labelColor }}>
+                Annual Turnover
+              </Text>
+              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
+                {contact.annualTurnover || '—'}
+              </Text>
+            </div>
+
+            {/* Website & LinkedIn */}
+            {(contact.companyWebsite || contact.linkedinUrl) && (
+              <div style={{ gridColumn: 'span 2' }}>
+                <Divider my={6} color={isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9'} />
+                <Group gap="xs">
+                  {contact.companyWebsite && (
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      color="blue"
+                      component="a"
+                      href={contact.companyWebsite.startsWith('http') ? contact.companyWebsite : `https://${contact.companyWebsite}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      leftSection={<IconWorld size={12} />}
+                      rightSection={<IconExternalLink size={10} />}
+                    >
+                      Website
+                    </Button>
+                  )}
+                  {contact.linkedinUrl && (
+                    <Button
+                      size="xs"
+                      variant="subtle"
+                      color="indigo"
+                      component="a"
+                      href={contact.linkedinUrl.startsWith('http') ? contact.linkedinUrl : `https://${contact.linkedinUrl}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      leftSection={<IconBrandLinkedin size={12} />}
+                      rightSection={<IconExternalLink size={10} />}
+                    >
+                      LinkedIn
+                    </Button>
+                  )}
+                </Group>
+              </div>
+            )}
           </SimpleGrid>
         </Paper>
 

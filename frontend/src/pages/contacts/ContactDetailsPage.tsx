@@ -15,6 +15,8 @@ import {
   Anchor,
   useComputedColorScheme,
   Grid,
+  CopyButton,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconArrowLeft,
@@ -29,6 +31,16 @@ import {
   IconTargetArrow,
   IconIdBadge,
   IconUser,
+  IconShieldCheck,
+  IconReceiptTax,
+  IconUsers,
+  IconCreditCard,
+  IconFileCertificate,
+  IconWorld,
+  IconBrandLinkedin,
+  IconExternalLink,
+  IconCheck,
+  IconCopy,
 } from '@tabler/icons-react';
 import { Contact } from '../../types/contact';
 import { useCRM } from '../../context/CRMContext';
@@ -325,11 +337,26 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
 
             {/* 2. Professional & Company Details */}
             <Paper p="xl" radius="24px" style={{ background: cardBg, border: cardBorder }}>
-              <Group gap="xs" mb="md">
-                <IconBuildingSkyscraper size={18} color={isDark ? '#34D399' : '#059669'} />
-                <Text fw={800} size="md" style={{ color: headingColor }}>
-                  2. Professional & Company Information
-                </Text>
+              <Group justify="space-between" align="center" mb="md">
+                <Group gap="xs">
+                  <IconBuildingSkyscraper size={18} color={isDark ? '#34D399' : '#059669'} />
+                  <Text fw={800} size="md" style={{ color: headingColor }}>
+                    2. Professional & Company Information
+                  </Text>
+                </Group>
+                <Badge
+                  size="sm"
+                  variant="light"
+                  color={
+                    contact.verificationStatus === 'Verified'
+                      ? 'green'
+                      : contact.verificationStatus === 'Pending'
+                      ? 'orange'
+                      : 'gray'
+                  }
+                >
+                  {contact.verificationStatus === 'Verified' ? '✓ Verified Company' : contact.verificationStatus === 'Pending' ? '⏳ Pending Verification' : '⚠️ Unverified'}
+                </Badge>
               </Group>
 
               <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
@@ -360,14 +387,146 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
                   </Text>
                 </div>
 
+                {/* GST Number */}
                 <div>
                   <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Annual Revenue
+                    GST Number (GSTIN)
+                  </Text>
+                  {contact.gstNumber ? (
+                    <Group gap="xs" mt={4}>
+                      <Badge variant="outline" color="blue" size="md" style={{ fontFamily: 'monospace' }}>
+                        {contact.gstNumber}
+                      </Badge>
+                      <CopyButton value={contact.gstNumber} timeout={2000}>
+                        {({ copied, copy }) => (
+                          <ActionIcon size="sm" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                            {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                          </ActionIcon>
+                        )}
+                      </CopyButton>
+                    </Group>
+                  ) : (
+                    <Text size="sm" c="dimmed" mt={4}>—</Text>
+                  )}
+                </div>
+
+                {/* Employee Count */}
+                <div>
+                  <Text size="xs" fw={600} style={{ color: labelColor }}>
+                    Employees / Company Size
+                  </Text>
+                  <Group gap="xs" mt={4}>
+                    <IconUsers size={16} color={isDark ? '#818CF8' : '#4F46E5'} />
+                    <Text size="sm" fw={600} style={{ color: headingColor }}>
+                      {contact.employeeCount || '—'}
+                    </Text>
+                  </Group>
+                </div>
+
+                {/* Company PAN */}
+                <div>
+                  <Text size="xs" fw={600} style={{ color: labelColor }}>
+                    Company PAN
+                  </Text>
+                  {contact.companyPan ? (
+                    <Group gap="xs" mt={4}>
+                      <Text size="sm" fw={700} style={{ color: headingColor, fontFamily: 'monospace' }}>
+                        {contact.companyPan}
+                      </Text>
+                      <CopyButton value={contact.companyPan} timeout={2000}>
+                        {({ copied, copy }) => (
+                          <ActionIcon size="sm" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                            {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                          </ActionIcon>
+                        )}
+                      </CopyButton>
+                    </Group>
+                  ) : (
+                    <Text size="sm" c="dimmed" mt={4}>—</Text>
+                  )}
+                </div>
+
+                {/* CIN Number */}
+                <div>
+                  <Text size="xs" fw={600} style={{ color: labelColor }}>
+                    CIN (MCA Registration)
+                  </Text>
+                  {contact.cinNumber ? (
+                    <Group gap="xs" mt={4}>
+                      <Text size="sm" fw={700} style={{ color: headingColor, fontFamily: 'monospace' }}>
+                        {contact.cinNumber}
+                      </Text>
+                      <CopyButton value={contact.cinNumber} timeout={2000}>
+                        {({ copied, copy }) => (
+                          <ActionIcon size="sm" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                            {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                          </ActionIcon>
+                        )}
+                      </CopyButton>
+                    </Group>
+                  ) : (
+                    <Text size="sm" c="dimmed" mt={4}>—</Text>
+                  )}
+                </div>
+
+                {/* Registered State */}
+                <div>
+                  <Text size="xs" fw={600} style={{ color: labelColor }}>
+                    Registered State
                   </Text>
                   <Text size="sm" fw={600} style={{ color: headingColor }} mt={4}>
-                    {contact.annualRevenue || '—'}
+                    {contact.registeredState || '—'}
                   </Text>
                 </div>
+
+                {/* Annual Turnover */}
+                <div>
+                  <Text size="xs" fw={600} style={{ color: labelColor }}>
+                    Annual Turnover
+                  </Text>
+                  <Text size="sm" fw={600} style={{ color: headingColor }} mt={4}>
+                    {contact.annualTurnover || contact.annualRevenue || '—'}
+                  </Text>
+                </div>
+
+                {/* Website & LinkedIn */}
+                {(contact.companyWebsite || contact.linkedinUrl) && (
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <Divider my="xs" color={isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9'} />
+                    <Group gap="sm">
+                      {contact.companyWebsite && (
+                        <Button
+                          size="xs"
+                          variant="light"
+                          color="blue"
+                          component="a"
+                          href={contact.companyWebsite.startsWith('http') ? contact.companyWebsite : `https://${contact.companyWebsite}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          leftSection={<IconWorld size={14} />}
+                          rightSection={<IconExternalLink size={12} />}
+                        >
+                          Official Website
+                        </Button>
+                      )}
+                      {contact.linkedinUrl && (
+                        <Button
+                          size="xs"
+                          variant="light"
+                          color="indigo"
+                          component="a"
+                          href={contact.linkedinUrl.startsWith('http') ? contact.linkedinUrl : `https://${contact.linkedinUrl}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          leftSection={<IconBrandLinkedin size={14} />}
+                          rightSection={<IconExternalLink size={12} />}
+                        >
+                          Company LinkedIn
+                        </Button>
+                      )}
+                    </Group>
+                  </div>
+                )}
               </SimpleGrid>
             </Paper>
 

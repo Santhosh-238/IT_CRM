@@ -58,9 +58,8 @@ export const LeadsPage: React.FC = () => {
     if (activeTab === 'NEW') {
       setFilters({ status: 'New' });
     }
-    fetchLeads();
-    fetchStats();
-  }, [fetchLeads, fetchStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [modalOpened, setModalOpened] = useState<boolean>(false);
   const [selectedLeadForEdit, setSelectedLeadForEdit] = useState<Lead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);

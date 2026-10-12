@@ -167,6 +167,15 @@ export async function createContactService(body, user) {
     productList = [],
     serviceList = [],
     customProduct,
+    gstNumber,
+    employeeCount,
+    companyPan,
+    cinNumber,
+    companyWebsite,
+    linkedinUrl,
+    annualTurnover,
+    verificationStatus = 'Unverified',
+    registeredState,
     nextFollowDate,
     remarks,
     notes,
@@ -196,8 +205,7 @@ export async function createContactService(body, user) {
     throw error;
   }
 
-  const count = await prisma.contact.count();
-  const contactId = generateContactId(count);
+  const contactId = await getNextContactId();
 
   let assignedToName = null;
   let assignmentStatus = 'Unassigned';
@@ -224,6 +232,15 @@ export async function createContactService(body, user) {
       companyName: companyName ? companyName.trim() : null,
       designation: designation || null,
       profession: profession || null,
+      gstNumber: gstNumber ? gstNumber.trim().toUpperCase() : null,
+      employeeCount: employeeCount || null,
+      companyPan: companyPan ? companyPan.trim().toUpperCase() : null,
+      cinNumber: cinNumber ? cinNumber.trim().toUpperCase() : null,
+      companyWebsite: companyWebsite ? companyWebsite.trim() : null,
+      linkedinUrl: linkedinUrl ? linkedinUrl.trim() : null,
+      annualTurnover: annualTurnover || null,
+      verificationStatus: verificationStatus || 'Unverified',
+      registeredState: registeredState || null,
       category,
       productList: Array.isArray(productList) ? productList : [],
       serviceList: Array.isArray(serviceList) ? serviceList : [],
@@ -254,6 +271,33 @@ export async function createContactService(body, user) {
     message: `Contact '${newContact.name}' created successfully!`,
     data: formatContactResponse(newContact),
   };
+}
+
+/**
+ * Safely generate the next Contact ID without collision
+ */
+export async function getNextContactId() {
+  const allContacts = await prisma.contact.findMany({
+    select: { contactId: true },
+  });
+  let maxNum = 1000;
+  for (const c of allContacts) {
+    if (c.contactId) {
+      const match = c.contactId.match(/\d+/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  let candidateId = `CNT-${maxNum + 1}`;
+  while (await prisma.contact.findUnique({ where: { contactId: candidateId } })) {
+    maxNum++;
+    candidateId = `CNT-${maxNum + 1}`;
+  }
+  return candidateId;
 }
 
 /**
@@ -424,13 +468,35 @@ export async function updateContactService(id, body, user) {
       ...(body.companyName !== undefined && { companyName: body.companyName }),
       ...(body.profession !== undefined && { profession: body.profession }),
       ...(body.designation !== undefined && { designation: body.designation }),
+      ...(body.gstNumber !== undefined && { gstNumber: body.gstNumber ? body.gstNumber.trim().toUpperCase() : null }),
+      ...(body.employeeCount !== undefined && { employeeCount: body.employeeCount }),
+      ...(body.companyPan !== undefined && { companyPan: body.companyPan ? body.companyPan.trim().toUpperCase() : null }),
+      ...(body.cinNumber !== undefined && { cinNumber: body.cinNumber ? body.cinNumber.trim().toUpperCase() : null }),
+      ...(body.companyWebsite !== undefined && { companyWebsite: body.companyWebsite ? body.companyWebsite.trim() : null }),
+      ...(body.linkedinUrl !== undefined && { linkedinUrl: body.linkedinUrl ? body.linkedinUrl.trim() : null }),
+      ...(body.annualTurnover !== undefined && { annualTurnover: body.annualTurnover }),
+      ...(body.verificationStatus !== undefined && { verificationStatus: body.verificationStatus }),
+      ...(body.registeredState !== undefined && { registeredState: body.registeredState }),
       ...(body.category !== undefined && { category: body.category }),
       ...(body.productList !== undefined && { productList: body.productList }),
       ...(body.serviceList !== undefined && { serviceList: body.serviceList }),
       ...(body.customProduct !== undefined && { customProduct: body.customProduct }),
       ...(body.status !== undefined && { status: body.status }),
       ...(body.stage !== undefined && { stage: body.stage }),
-      ...(body.qualificationStatus !== undefined && { qualificationStatus: body.qualificationStatus }),
+      ...(body.qualificationStatus !== undefined
+        ? { qualificationStatus: body.qualificationStatus }
+        : body.status !== undefined
+        ? {
+            qualificationStatus:
+              body.status === 'Qualified'
+                ? 'Qualified'
+                : body.status === 'Disqualified'
+                ? 'Disqualified'
+                : body.status === 'Follow-up Required'
+                ? 'Follow-up Required'
+                : 'In Progress',
+          }
+        : {}),
       ...(body.qualifiedBy !== undefined && { qualifiedBy: body.qualifiedBy }),
       ...(body.qualificationDate !== undefined && { qualificationDate: body.qualificationDate }),
       ...(body.priority !== undefined && { priority: body.priority }),
@@ -480,25 +546,31 @@ export async function assignContactService(id, body, user) {
   let assignedToName = null;
   let assignmentStatus = 'Unassigned';
 
-  if (targetEmpId && targetEmpId !== 'Unassigned' && targetEmpId !== 'none') {
+  if (targetEmpId && targetEmpId !== 'Unassigned' && targetEmpId !== 'none' && targetEmpId !== 'null' && String(targetEmpId).trim() !== '') {
     const emp = await prisma.employee.findFirst({
-      where: { OR: [{ id: targetEmpId }, { empCode: targetEmpId }] },
+      where: {
+        OR: [
+          { id: targetEmpId },
+          { empCode: targetEmpId },
+          { name: { equals: targetEmpId, mode: 'insensitive' } },
+        ],
+      },
     });
     if (emp) {
       assignedToName = emp.name;
       assignmentStatus = 'Assigned';
-      assignedAt = new Date();
+    } else {
+      assignedToName = targetEmpId;
+      assignmentStatus = 'Assigned';
     }
   }
 
   const updated = await prisma.contact.update({
     where: { id: existing.id },
     data: {
-      assignedTo: targetEmpId && targetEmpId !== 'Unassigned' && targetEmpId !== 'none' ? targetEmpId : null,
+      assignedTo: assignedToName ? targetEmpId : null,
       assignedToName,
       assignmentStatus,
-      assignedAt,
-      assignedBy: user?.name || 'System Admin',
     },
   });
 

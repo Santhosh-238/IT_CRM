@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { notifications } from '@mantine/notifications';
 import {
   Lead,
@@ -144,30 +144,38 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     fetchMetadata();
   }, [fetchStats, fetchMetadata]);
 
-  const setFilters = (newFilters: Partial<LeadFilter>) => {
-    setFiltersState((prev) => ({ ...prev, ...newFilters }));
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
+  const setFilters = useCallback((newFilters: Partial<LeadFilter>) => {
+    setFiltersState((prev) => {
+      const isDifferent = Object.keys(newFilters).some(
+        (key) => (prev as any)[key] !== (newFilters as any)[key]
+      );
+      return isDifferent ? { ...prev, ...newFilters } : prev;
+    });
+    setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
+  }, []);
 
-  const resetFilters = () => {
+  const resetFilters = useCallback(() => {
     setFiltersState(defaultFilters);
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
+    setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
+  }, []);
 
-  const setPage = (page: number) => {
-    setPagination((prev) => ({ ...prev, page }));
-  };
+  const setPage = useCallback((page: number) => {
+    setPagination((prev) => (prev.page === page ? prev : { ...prev, page }));
+  }, []);
 
-  const setLimit = (limit: number) => {
-    setPagination((prev) => ({ ...prev, limit, page: 1 }));
-  };
+  const setLimit = useCallback((limit: number) => {
+    setPagination((prev) => (prev.limit === limit && prev.page === 1 ? prev : { ...prev, limit, page: 1 }));
+  }, []);
 
-  const setSort = (sortBy: string, sortOrder: 'asc' | 'desc') => {
-    setFiltersState((prev) => ({ ...prev, sortBy, sortOrder }));
-    setPagination((prev) => ({ ...prev, page: 1 }));
-  };
+  const setSort = useCallback((sortBy: string, sortOrder: 'asc' | 'desc') => {
+    setFiltersState((prev) => {
+      if (prev.sortBy === sortBy && prev.sortOrder === sortOrder) return prev;
+      return { ...prev, sortBy, sortOrder };
+    });
+    setPagination((prev) => (prev.page === 1 ? prev : { ...prev, page: 1 }));
+  }, []);
 
-  const createLead = async (data: LeadFormData) => {
+  const createLead = useCallback(async (data: LeadFormData) => {
     try {
       setLoading(true);
       const res = await leadService.createLead(data);
@@ -191,9 +199,9 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchLeads, fetchStats]);
 
-  const updateLead = async (id: string, data: Partial<LeadFormData>) => {
+  const updateLead = useCallback(async (id: string, data: Partial<LeadFormData>) => {
     try {
       setLoading(true);
       const res = await leadService.updateLead(id, data);
@@ -217,9 +225,9 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchLeads, fetchStats]);
 
-  const deleteLead = async (id: string) => {
+  const deleteLead = useCallback(async (id: string) => {
     try {
       setLoading(true);
       const res = await leadService.deleteLead(id);
@@ -243,32 +251,54 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchLeads, fetchStats]);
+
+  const contextValue = useMemo(
+    () => ({
+      leads,
+      stats,
+      metadata,
+      selectedLead,
+      loading,
+      filters,
+      pagination,
+      fetchLeads,
+      fetchStats,
+      fetchMetadata,
+      setSelectedLead,
+      setFilters,
+      resetFilters,
+      setPage,
+      setLimit,
+      setSort,
+      createLead,
+      updateLead,
+      deleteLead,
+    }),
+    [
+      leads,
+      stats,
+      metadata,
+      selectedLead,
+      loading,
+      filters,
+      pagination,
+      fetchLeads,
+      fetchStats,
+      fetchMetadata,
+      setFilters,
+      resetFilters,
+      setPage,
+      setLimit,
+      setSort,
+      createLead,
+      updateLead,
+      deleteLead,
+    ]
+  );
 
   return (
-    <LeadContext.Provider
-      value={{
-        leads,
-        stats,
-        metadata,
-        selectedLead,
-        loading,
-        filters,
-        pagination,
-        fetchLeads,
-        fetchStats,
-        fetchMetadata,
-        setSelectedLead,
-        setFilters,
-        resetFilters,
-        setPage,
-        setLimit,
-        setSort,
-        createLead,
-        updateLead,
-        deleteLead,
-      }}
-    >
+    <LeadContext.Provider value={contextValue}>
       {children}
     </LeadContext.Provider>
   );
