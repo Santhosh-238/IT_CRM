@@ -3,10 +3,13 @@ export type LeadRequirementCategory = 'Product' | 'Service';
 
 export type LeadStatus =
   | 'New'
+  | 'In Progress'
   | 'Contacted'
   | 'Qualified'
   | 'Proposal Sent'
   | 'In Negotiation'
+  | 'Completed'
+  | 'Complete'
   | 'Won'
   | 'Lost';
 
@@ -94,6 +97,8 @@ export interface LeadStats {
   new: number;
   inProgress: number;
   won: number;
+  completed?: number;
+  complete?: number;
   lost: number;
 }
 
@@ -118,8 +123,14 @@ export interface ScheduledMeeting {
   hostName: string;
   meetingLink?: string;
   agenda?: string;
+  purpose?: string;
   stageAfterMeeting?: string;
-  status: 'Scheduled' | 'Completed' | 'Cancelled';
+  status: 'Scheduled' | 'Completed' | 'Cancelled' | 'In Progress' | 'Rescheduled' | string;
+  meetingStatus?: string;
+  requirements?: string;
+  requirementFileName?: string;
+  requirementFileUrl?: string;
+  requirementFileSize?: string;
   createdAt: string;
 }
 

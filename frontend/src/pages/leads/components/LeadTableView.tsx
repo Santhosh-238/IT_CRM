@@ -59,27 +59,62 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
     setActiveNav('lead-schedule');
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'new':
-        return 'blue';
-      case 'contacted':
-      case 'in progress':
-        return 'yellow';
-      case 'qualified':
-        return 'teal';
-      case 'proposal sent':
-      case 'in negotiation':
-        return 'violet';
-      case 'won':
-      case 'closed won':
-        return 'green';
-      case 'lost':
-      case 'disqualified':
-        return 'red';
-      default:
-        return 'gray';
+  // Sleek Modern STATUS Badge matching Contacts design
+  const renderStatusBadge = (statusVal?: string | null, stageVal?: string | null) => {
+    let raw = (statusVal || stageVal || 'New').trim();
+    if (raw.toLowerCase() === 'contacted') {
+      raw = 'In Progress';
+    } else if (raw.toLowerCase() === 'won' || raw.toLowerCase() === 'closed won' || raw.toLowerCase() === 'completed') {
+      raw = 'Complete';
     }
+    const st = raw;
+    const sLow = st.toLowerCase();
+    let bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
+    let color = isDark ? '#93C5FD' : '#1D4ED8';
+    let border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
+
+    if (sLow.includes('qualif') || sLow.includes('won') || sLow.includes('complete')) {
+      bg = isDark ? 'rgba(16, 185, 129, 0.16)' : '#ECFDF5';
+      color = isDark ? '#6EE7B7' : '#047857';
+      border = isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0';
+    } else if (sLow.includes('progress') || sLow.includes('contact')) {
+      bg = isDark ? 'rgba(14, 165, 233, 0.16)' : '#F0F9FF';
+      color = isDark ? '#7DD3FC' : '#0284C7';
+      border = isDark ? 'rgba(14, 165, 233, 0.35)' : '#BAE6FD';
+    } else if (sLow.includes('proposal') || sLow.includes('negotiat')) {
+      bg = isDark ? 'rgba(147, 51, 234, 0.14)' : '#FAF5FF';
+      color = isDark ? '#D8B4FE' : '#7E22CE';
+      border = isDark ? 'rgba(147, 51, 234, 0.25)' : '#E9D5FF';
+    } else if (sLow.includes('lost') || sLow.includes('disqual') || sLow.includes('cancel')) {
+      bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
+      color = isDark ? '#FCA5A5' : '#B91C1C';
+      border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
+    } else if (sLow.includes('new') || sLow.includes('init')) {
+      bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
+      color = isDark ? '#93C5FD' : '#1D4ED8';
+      border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
+    }
+
+    return (
+      <Box
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '4px 12px',
+          borderRadius: 100,
+          backgroundColor: bg,
+          color: color,
+          border: `1px solid ${border}`,
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.02em',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {st}
+      </Box>
+    );
   };
 
   const formatLastUpdate = (dateString?: string) => {
@@ -111,11 +146,11 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                 width: 64,
                 height: 64,
                 borderRadius: '50%',
-                background: isDark ? 'rgba(34, 197, 94, 0.2)' : 'rgba(15, 23, 42, 0.06)',
+                background: isDark ? 'rgba(79, 70, 229, 0.2)' : 'rgba(79, 70, 229, 0.06)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: isDark ? '#4ade80' : '#0F172A',
+                color: isDark ? '#818CF8' : '#4F46E5',
               }}
             >
               <IconTarget size={32} stroke={1.8} />
@@ -132,7 +167,7 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
               leftSection={<IconTarget size={16} />}
               onClick={onAddNew}
               style={{
-                background: isDark ? '#22c55e' : '#0F172A',
+                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
                 color: '#FFFFFF',
                 fontWeight: 600,
               }}
@@ -147,7 +182,7 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
 
   return (
     <>
-      {/* DESKTOP / TABLET VIEW: Full Table Container */}
+      {/* DESKTOP / TABLET VIEW: Full Table Container matching Contacts Design */}
       <Paper
         visibleFrom="sm"
         radius="lg"
@@ -155,6 +190,7 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
           background: isDark ? '#111827' : '#FFFFFF',
           border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
           overflow: 'hidden',
+          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 4px rgba(0,0,0,0.03)',
           marginTop: 16,
         }}
       >
@@ -162,24 +198,24 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
           <Table verticalSpacing="md" horizontalSpacing="lg" highlightOnHover>
             <Table.Thead
               style={{
-                background: isDark ? '#1F2937' : '#F8FAFC',
-                borderBottom: isDark ? '1px solid #374151' : '1px solid #E2E8F0',
+                background: isDark ? '#0F172A' : '#FBFBFC',
+                borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #F1F5F9',
               }}
             >
               <Table.Tr>
-                <Table.Th style={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 600, fontSize: 12 }}>
+                <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                   LEAD NAME
                 </Table.Th>
-                <Table.Th style={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 600, fontSize: 12 }}>
+                <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                   COMPANY / PROFESSION
                 </Table.Th>
-                <Table.Th style={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 600, fontSize: 12 }}>
+                <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                   CONTACT INFO
                 </Table.Th>
-                <Table.Th style={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 600, fontSize: 12 }}>
-                  STATUS & STAGE
+                <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                  STATUS
                 </Table.Th>
-                <Table.Th style={{ color: isDark ? '#9CA3AF' : '#64748B', fontWeight: 600, fontSize: 12, textAlign: 'right' }}>
+                <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textAlign: 'right' }}>
                   ACTIONS
                 </Table.Th>
               </Table.Tr>
@@ -188,7 +224,11 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
               {leads.map((lead) => (
                 <Table.Tr
                   key={lead.id}
-                  style={{ cursor: 'pointer' }}
+                  style={{
+                    cursor: 'pointer',
+                    transition: 'background 0.12s ease',
+                    borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
+                  }}
                   onClick={() => handleOpenLeadSchedule(lead)}
                 >
                   {/* 1. Lead Name */}
@@ -199,11 +239,11 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                           width: 36,
                           height: 36,
                           borderRadius: 8,
-                          background: isDark ? '#14532D' : '#DCFCE7',
+                          background: isDark ? '#1E3A8A' : '#EFF6FF',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: isDark ? '#86EFAC' : '#15803D',
+                          color: isDark ? '#93C5FD' : '#2563EB',
                           fontWeight: 700,
                           fontSize: 14,
                         }}
@@ -263,7 +303,7 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                       {lead.email && (
                         <Group gap={6} wrap="nowrap">
                           <IconMail size={14} color="#3B82F6" />
-                          <Text size="xs" c="dimmed">
+                          <Text size="xs" style={{ color: '#2563EB' }}>
                             {lead.email}
                           </Text>
                         </Group>
@@ -276,19 +316,12 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                     </Stack>
                   </Table.Td>
 
-                  {/* 4. Status & Stage */}
+                  {/* 4. Status */}
                   <Table.Td>
                     <Stack gap={4} align="flex-start">
-                      <Badge
-                        variant="filled"
-                        size="sm"
-                        color={getStatusColor(lead.status)}
-                        radius="sm"
-                      >
-                        {lead.status || 'New'}
-                      </Badge>
+                      {renderStatusBadge(lead.status, lead.stage)}
                       {lead.stage && (
-                        <Text size="11px" c="dimmed">
+                        <Text size="11px" c="dimmed" style={{ paddingLeft: 4 }}>
                           {lead.stage}
                         </Text>
                       )}
@@ -297,11 +330,12 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
 
                   {/* 5. Actions */}
                   <Table.Td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                    <Group gap={8} justify="flex-end">
+                    <Group gap={6} justify="flex-end">
                       <Tooltip label="Schedule Meeting" withArrow>
                         <ActionIcon
-                          variant="light"
+                          variant="subtle"
                           color="teal"
+                          size="md"
                           radius="md"
                           onClick={() => handleOpenLeadSchedule(lead, 'schedule')}
                         >
@@ -311,7 +345,8 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                       <Tooltip label="Edit Lead" withArrow>
                         <ActionIcon
                           variant="subtle"
-                          color="blue"
+                          color="indigo"
+                          size="md"
                           radius="md"
                           onClick={() => onEdit(lead)}
                         >
@@ -322,6 +357,7 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                         <ActionIcon
                           variant="subtle"
                           color="red"
+                          size="md"
                           radius="md"
                           onClick={() => onDelete(lead)}
                         >
@@ -385,15 +421,7 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                 </Box>
               </Group>
 
-              <Badge
-                variant="filled"
-                size="sm"
-                color={getStatusColor(lead.status)}
-                radius="sm"
-                style={{ flexShrink: 0 }}
-              >
-                {lead.status || 'New'}
-              </Badge>
+              {renderStatusBadge(lead.status)}
             </Group>
 
             {/* Company / Profession & Stage */}

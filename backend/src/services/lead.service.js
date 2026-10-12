@@ -72,7 +72,7 @@ export async function getLeadStatsService() {
     prisma.lead.count(),
     prisma.lead.count({ where: { status: 'New' } }),
     prisma.lead.count({ where: { status: { in: ['In Progress', 'Contacted', 'Qualified'] } } }),
-    prisma.lead.count({ where: { status: { in: ['Won', 'Closed Won'] } } }),
+    prisma.lead.count({ where: { status: { in: ['Won', 'Closed Won', 'Completed', 'Complete'] } } }),
     prisma.lead.count({ where: { status: { in: ['Lost', 'Disqualified'] } } }),
   ]);
 
@@ -82,6 +82,8 @@ export async function getLeadStatsService() {
       new: newCount,
       inProgress,
       won,
+      completed: won,
+      complete: won,
       lost,
     },
   };

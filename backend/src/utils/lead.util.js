@@ -43,6 +43,14 @@ export function buildLeadFilterQuery(queryParams = {}) {
       andConditions.push({
         status: { in: ['In Progress', 'Contacted', 'Qualified'] },
       });
+    } else if (
+      s.toLowerCase() === 'completed' ||
+      s.toLowerCase() === 'complete' ||
+      s.toLowerCase() === 'won'
+    ) {
+      andConditions.push({
+        status: { in: ['Completed', 'Complete', 'Won', 'Closed Won'] },
+      });
     } else {
       andConditions.push({ status: { equals: s, mode: 'insensitive' } });
     }

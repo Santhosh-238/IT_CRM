@@ -50,8 +50,8 @@ export class LeadModel {
       select: { status: true },
       distinct: ['status'],
     });
-    const fallbackStatuses = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'In Negotiation', 'Won', 'Lost'];
-    return Array.from(new Set([...dbStatuses.map(s => s.status).filter(Boolean), ...fallbackStatuses]));
+    const fallbackStatuses = ['New', 'In Progress', 'Qualified', 'Proposal Sent', 'In Negotiation', 'Complete', 'Lost'];
+    return Array.from(new Set([...dbStatuses.map(s => s.status === 'Contacted' ? 'In Progress' : ((s.status === 'Won' || s.status === 'Completed') ? 'Complete' : s.status)).filter(Boolean), ...fallbackStatuses]));
   }
 
   static async getDynamicMetadata() {
@@ -70,13 +70,13 @@ export class LeadModel {
     ]);
 
     const fallbackSources = ['Website', 'Referral', 'Cold Call', 'LinkedIn', 'Social Media', 'Other'];
-    const fallbackStatuses = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'In Negotiation', 'Won', 'Lost'];
+    const fallbackStatuses = ['New', 'In Progress', 'Qualified', 'Proposal Sent', 'In Negotiation', 'Complete', 'Lost'];
     const fallbackStages = ['Initialization', 'Qualification', 'Discovery', 'Requirement Analysis', 'Demo / Presentation', 'Proposal / Quotation', 'Negotiation', 'Decision Making', 'Won', 'Lost'];
     const fallbackCategories = ['Product', 'Service'];
     const fallbackContactTypes = ['Individual', 'Company Representative'];
 
     const sources = Array.from(new Set([...dbSources.map(s => s.source).filter(Boolean), ...fallbackSources]));
-    const statuses = Array.from(new Set([...dbStatuses.map(s => s.status).filter(Boolean), ...fallbackStatuses]));
+    const statuses = Array.from(new Set([...dbStatuses.map(s => s.status === 'Contacted' ? 'In Progress' : ((s.status === 'Won' || s.status === 'Completed') ? 'Complete' : s.status)).filter(Boolean), ...fallbackStatuses]));
     const stages = Array.from(new Set([...dbStages.map(s => s.stage).filter(Boolean), ...fallbackStages]));
     const categories = Array.from(new Set([...dbCategories.map(c => c.category).filter(Boolean), ...fallbackCategories]));
     const contactTypes = Array.from(new Set([...dbContactTypes.map(c => c.contactType).filter(Boolean), ...fallbackContactTypes]));

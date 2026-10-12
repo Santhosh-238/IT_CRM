@@ -1,0 +1,408 @@
+import React from 'react';
+import {
+  Table,
+  Group,
+  Text,
+  Badge,
+  ActionIcon,
+  Paper,
+  Stack,
+  Center,
+  Tooltip,
+  useComputedColorScheme,
+  Box,
+} from '@mantine/core';
+import {
+  IconBuilding,
+  IconUser,
+  IconCalendarEvent,
+  IconCalendar,
+  IconClock,
+  IconPlus,
+  IconChevronRight,
+  IconTarget,
+} from '@tabler/icons-react';
+import { Lead } from '../../../types/lead';
+import { ScheduledMeeting } from '../../../types/meeting';
+
+interface LeadMeetingsTableViewProps {
+  leads: Lead[];
+  meetings: ScheduledMeeting[];
+  onSelectLead: (lead: Lead) => void;
+  onScheduleMeetingForLead: (lead: Lead) => void;
+  loading?: boolean;
+}
+
+export const LeadMeetingsTableView: React.FC<LeadMeetingsTableViewProps> = ({
+  leads,
+  meetings,
+  onSelectLead,
+  onScheduleMeetingForLead,
+  loading = false,
+}) => {
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
+  const isDark = computedColorScheme === 'dark';
+
+  const getLeadMeetings = (lead: Lead) => {
+    return meetings.filter(
+      (m) =>
+        (m.leadId && m.leadId === lead.id) ||
+        (m.leadDbId && m.leadDbId === lead.id) ||
+        (m.leadCode && m.leadCode === lead.leadId) ||
+        (m.contactId && m.contactId === lead.id) ||
+        (m.clientName && m.clientName.toLowerCase().includes(lead.name.toLowerCase()))
+    );
+  };
+
+  const formatDisplayDate = (dateString?: string) => {
+    if (!dateString) return '—';
+    try {
+      const parts = dateString.split('T')[0].split('-');
+      if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+      const d = new Date(dateString);
+      return isNaN(d.getTime()) ? dateString : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const renderStatusBadge = (status?: string) => {
+    const s = (status || 'SCHEDULED').toUpperCase();
+    let bg = isDark ? 'rgba(234, 179, 8, 0.15)' : '#FEF9C3';
+    let color = isDark ? '#FDE047' : '#854D0E';
+    let border = isDark ? 'rgba(234, 179, 8, 0.3)' : '#FEF08A';
+    let label = 'Scheduled';
+
+    if (s.includes('COMPLET')) {
+      bg = isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5';
+      color = isDark ? '#34D399' : '#047857';
+      border = isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0';
+      label = 'Completed';
+    } else if (s.includes('PROGRESS')) {
+      bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
+      color = isDark ? '#60A5FA' : '#1D4ED8';
+      border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
+      label = 'In Progress';
+    } else if (s.includes('CANCEL')) {
+      bg = isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2';
+      color = isDark ? '#F87171' : '#B91C1C';
+      border = isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA';
+      label = 'Cancelled';
+    } else if (s.includes('RESCHEDUL')) {
+      bg = isDark ? 'rgba(249, 115, 22, 0.15)' : '#FFF7ED';
+      color = isDark ? '#FB923C' : '#C2410C';
+      border = isDark ? 'rgba(249, 115, 22, 0.3)' : '#FED7AA';
+      label = 'Rescheduled';
+    }
+
+    return (
+      <Box
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '4px 12px',
+          borderRadius: 100,
+          backgroundColor: bg,
+          color: color,
+          border: `1px solid ${border}`,
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.02em',
+          textTransform: 'capitalize',
+        }}
+      >
+        {label}
+      </Box>
+    );
+  };
+
+  if (!loading && leads.length === 0) {
+    return (
+      <Paper
+        p="3.5rem"
+        radius="lg"
+        style={{
+          backgroundColor: isDark ? '#111827' : '#FFFFFF',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
+          textAlign: 'center',
+          marginTop: 16,
+        }}
+      >
+        <Center>
+          <Stack align="center" gap="sm">
+            <Box
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: isDark ? 'rgba(79, 70, 229, 0.2)' : 'rgba(79, 70, 229, 0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isDark ? '#818CF8' : '#4F46E5',
+              }}
+            >
+              <IconTarget size={32} stroke={1.8} />
+            </Box>
+            <Text fw={700} size="lg" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+              No Scheduled Meetings Found
+            </Text>
+            <Text size="sm" c="dimmed" style={{ maxWidth: 420 }}>
+              No leads currently have scheduled meetings matching your search or filters. Click &quot;Schedule Meeting&quot; above to schedule one.
+            </Text>
+          </Stack>
+        </Center>
+      </Paper>
+    );
+  }
+
+  return (
+    <Paper
+      radius="lg"
+      style={{
+        backgroundColor: isDark ? '#111827' : '#FFFFFF',
+        border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+        boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
+        overflow: 'hidden',
+        marginTop: 16,
+      }}
+    >
+      <Table.ScrollContainer minWidth={850}>
+        <Table verticalSpacing="md" horizontalSpacing="lg" highlightOnHover>
+          <Table.Thead
+            style={{
+              backgroundColor: isDark ? '#0F172A' : '#FBFBFC',
+              borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #F1F5F9',
+            }}
+          >
+            <Table.Tr>
+              {/* 1. LEAD NAME */}
+              <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em' }}>
+                LEAD NAME
+              </Table.Th>
+
+              {/* 2. COMPANY / PROFESSION */}
+              <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em' }}>
+                COMPANY / PROFESSION
+              </Table.Th>
+
+              {/* 3. MEETINGS COUNT */}
+              <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em' }}>
+                MEETINGS COUNT
+              </Table.Th>
+
+              {/* 4. LAST MEETING DATE */}
+              <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em' }}>
+                LAST MEETING DATE
+              </Table.Th>
+
+              {/* 5. STATUS */}
+              <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em' }}>
+                STATUS
+              </Table.Th>
+
+              {/* 6. ACTIONS */}
+              <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em', textAlign: 'right' }}>
+                ACTIONS
+              </Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+
+          <Table.Tbody>
+            {leads.map((lead) => {
+              const leadMeetings = getLeadMeetings(lead);
+              const meetingsCount = leadMeetings.length;
+              const initialLetter = (lead.name || 'L').charAt(0).toUpperCase();
+
+              // Sort meetings: latest meeting date first
+              const sortedMeetings = [...leadMeetings].sort((a, b) => {
+                const dateA = a.meetingDate || '';
+                const dateB = b.meetingDate || '';
+                if (dateA !== dateB) return dateB.localeCompare(dateA);
+                return (b.startTime || '').localeCompare(a.startTime || '');
+              });
+
+              const lastMeeting = sortedMeetings[0];
+              const lastMeetingDate = lastMeeting?.meetingDate;
+              const lastMeetingTime = lastMeeting?.startTime;
+              const meetingStatus = lastMeeting?.status || lastMeeting?.meetingStatus || 'Scheduled';
+
+              return (
+                <Table.Tr
+                  key={lead.id}
+                  style={{
+                    cursor: 'pointer',
+                    transition: 'background-color 0.15s ease',
+                  }}
+                  onClick={() => onSelectLead(lead)}
+                >
+                  {/* 1. LEAD NAME */}
+                  <Table.Td>
+                    <Group gap="sm" wrap="nowrap">
+                      <Box
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 8,
+                          background: isDark ? '#14532D' : '#DCFCE7',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: isDark ? '#86EFAC' : '#15803D',
+                          fontWeight: 700,
+                          fontSize: 14,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {initialLetter}
+                      </Box>
+                      <div>
+                        <Text
+                          fw={700}
+                          size="sm"
+                          style={{
+                            color: isDark ? '#F9FAFB' : '#0F172A',
+                          }}
+                        >
+                          {lead.name}
+                        </Text>
+                        <Text size="xs" c="dimmed">
+                          {lead.email || lead.phone || `Lead ID: ${lead.leadId || lead.id.slice(0, 8)}`}
+                        </Text>
+                      </div>
+                    </Group>
+                  </Table.Td>
+
+                  {/* 2. COMPANY NAME */}
+                  <Table.Td>
+                    <Stack gap={2}>
+                      <Group gap={6} wrap="nowrap">
+                        {lead.companyName ? (
+                          <>
+                            <IconBuilding size={15} color="#64748B" />
+                            <Text size="sm" fw={600} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                              {lead.companyName}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <IconUser size={15} color="#64748B" />
+                            <Text size="sm" fw={500} style={{ color: isDark ? '#CBD5E1' : '#334155' }}>
+                              {lead.profession || 'Individual'}
+                            </Text>
+                          </>
+                        )}
+                      </Group>
+                      {lead.designation && lead.companyName && (
+                        <Text size="xs" c="dimmed">
+                          {lead.designation}
+                        </Text>
+                      )}
+                    </Stack>
+                  </Table.Td>
+
+                  {/* 3. MEETINGS COUNT */}
+                  <Table.Td>
+                    <Box
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '4px 10px',
+                        borderRadius: 100,
+                        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
+                        color: isDark ? '#A5B4FC' : '#4F46E5',
+                        border: isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #E0E7FF',
+                        fontSize: 12,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {meetingsCount} {meetingsCount === 1 ? 'Meeting' : 'Meetings'}
+                    </Box>
+                  </Table.Td>
+
+                  {/* 4. LAST MEETING DATE */}
+                  <Table.Td>
+                    {lastMeeting ? (
+                      <Stack gap={2}>
+                        <Group gap={6} wrap="nowrap">
+                          <IconCalendar size={14} color="#64748B" />
+                          <Text size="sm" fw={600} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                            {formatDisplayDate(lastMeetingDate)}
+                          </Text>
+                        </Group>
+                        {lastMeetingTime && (
+                          <Group gap={6} wrap="nowrap">
+                            <IconClock size={12} color="#94A3B8" />
+                            <Text size="xs" c="dimmed">
+                              {lastMeetingTime}
+                            </Text>
+                          </Group>
+                        )}
+                      </Stack>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        —
+                      </Text>
+                    )}
+                  </Table.Td>
+
+                  {/* 5. STATUS */}
+                  <Table.Td>
+                    {renderStatusBadge(meetingStatus)}
+                  </Table.Td>
+
+                  {/* 6. ACTIONS */}
+                  <Table.Td style={{ textAlign: 'right' }}>
+                    <Group gap="xs" justify="flex-end" wrap="nowrap" onClick={(e) => e.stopPropagation()}>
+                      <Tooltip label={`View Meetings (${meetingsCount})`} withArrow>
+                        <ActionIcon
+                          variant="subtle"
+                          color="indigo"
+                          size="md"
+                          radius="md"
+                          onClick={() => onSelectLead(lead)}
+                        >
+                          <IconCalendarEvent size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+
+                      <Tooltip label="Schedule Another Meeting" withArrow>
+                        <ActionIcon
+                          variant="subtle"
+                          color="teal"
+                          size="md"
+                          radius="md"
+                          onClick={() => onScheduleMeetingForLead(lead)}
+                        >
+                          <IconPlus size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+
+                      <Tooltip label="Open Meetings" withArrow>
+                        <ActionIcon
+                          variant="subtle"
+                          color="gray"
+                          size="md"
+                          radius="md"
+                          onClick={() => onSelectLead(lead)}
+                        >
+                          <IconChevronRight size={16} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  </Table.Td>
+                </Table.Tr>
+              );
+            })}
+          </Table.Tbody>
+        </Table>
+      </Table.ScrollContainer>
+    </Paper>
+  );
+};

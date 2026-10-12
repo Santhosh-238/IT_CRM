@@ -326,8 +326,14 @@ export const LeadModal: React.FC<LeadModalProps> = ({
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <Select
               label="Status"
-              data={metadata?.statuses || ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost']}
-              value={formData.status || 'New'}
+              data={Array.from(
+                new Set(
+                  (metadata?.statuses || ['New', 'In Progress', 'Qualified', 'Proposal Sent', 'Complete', 'Lost']).map(
+                    (s) => (s === 'Contacted' ? 'In Progress' : (s === 'Won' || s === 'Completed' ? 'Complete' : s))
+                  )
+                )
+              )}
+              value={formData.status === 'Won' ? 'Complete' : (formData.status || 'New')}
               onChange={(val) => handleFieldChange('status', val || 'New')}
             />
             <Select

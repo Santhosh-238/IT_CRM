@@ -47,7 +47,10 @@ export async function getMeetingById(req, res) {
  */
 export async function createMeeting(req, res) {
   try {
-    const meeting = await meetingService.createMeetingService(req.body);
+    const meeting = await meetingService.createMeetingService({
+      ...req.body,
+      createdBy: req.body.createdBy || req.body.created_by || req.user?.name || req.user?.email || 'Host',
+    });
     return sendSuccess(res, meeting, 'Meeting scheduled successfully.', 201);
   } catch (error) {
     console.error('createMeeting error:', error);

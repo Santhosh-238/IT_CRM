@@ -55,7 +55,7 @@ const defaultFilters: LeadFilter = {
 
 const defaultMetadata: LeadMetadata = {
   sources: ['Website', 'Referral', 'Cold Call', 'LinkedIn', 'Social Media', 'Other'],
-  statuses: ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'In Negotiation', 'Won', 'Lost'],
+  statuses: ['New', 'In Progress', 'Qualified', 'Proposal Sent', 'In Negotiation', 'Complete', 'Lost'],
   stages: ['Initialization', 'Qualification', 'Discovery', 'Requirement Analysis', 'Demo / Presentation', 'Proposal / Quotation', 'Negotiation', 'Decision Making', 'Won', 'Lost'],
   categories: ['Product', 'Service'],
   contactTypes: ['Individual', 'Company Representative'],
