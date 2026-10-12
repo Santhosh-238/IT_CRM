@@ -142,7 +142,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = () => {
   // Dynamic Client Options from Metadata
   const clientOptions = [
     { value: 'All', label: 'All Clients' },
-    ...(metadata?.contacts || []).map((c) => ({
+    ...(metadata?.contacts || []).map((c: any) => ({
       value: c.companyName || c.name,
       label: c.companyName ? `${c.companyName} (${c.name})` : c.name,
     })),
@@ -151,7 +151,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = () => {
   // Dynamic Manager Options from Metadata
   const managerOptions = [
     { value: 'All', label: 'All Managers' },
-    ...(metadata?.employees || []).map((e) => ({
+    ...(metadata?.employees || []).map((e: any) => ({
       value: e.name,
       label: e.name,
     })),
@@ -401,14 +401,14 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = () => {
         loading={loading}
         currentPage={pagination.page}
         totalPages={Math.max(1, pagination.totalPages)}
-        onPageChange={(page) => setPage(page)}
+        onPageChange={(page: number) => setPage(page)}
         onView={handleOpenView}
         onEdit={handleOpenEditModal}
-        onDelete={(proj) => setDeleteTarget(proj)}
+        onDelete={(proj: Project) => setDeleteTarget(proj)}
         onAddNew={handleOpenAddModal}
         sortBy={filters.sortBy}
         sortOrder={filters.sortOrder}
-        onSortChange={(field) => {
+        onSortChange={(field: any) => {
           const newOrder = filters.sortBy === field && filters.sortOrder === 'asc' ? 'desc' : 'asc';
           setSort(field, newOrder);
         }}

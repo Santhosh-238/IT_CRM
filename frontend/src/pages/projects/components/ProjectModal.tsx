@@ -184,7 +184,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const employeeOptions = [
     { value: '', label: '— Select or Enter Manager —' },
     ...defaultTeamList.map((name) => ({ value: name, label: `${name} (Engineering)` })),
-    ...(metadata?.employees?.map((emp) => ({
+    ...(metadata?.employees?.map((emp: any) => ({
       value: emp.id,
       label: `${emp.name} (${emp.empCode})`,
     })) || []),
@@ -193,13 +193,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
   const teamMemberOptions = Array.from(
     new Set([
       ...defaultTeamList,
-      ...(metadata?.employees?.map((e) => e.name) || []),
+      ...(metadata?.employees?.map((e: any) => e.name) || []),
     ])
   ).map((name) => ({ value: name, label: name }));
 
   const contactOptions = [
     { value: '', label: '— Select from CRM Contacts (Optional) —' },
-    ...(metadata?.contacts?.map((c) => ({
+    ...(metadata?.contacts?.map((c: any) => ({
       value: c.id,
       label: `${c.companyName ? `${c.companyName} (${c.name})` : c.name} - ${c.contactId}`,
     })) || []),
@@ -319,7 +319,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {/* 1. Project Code */}
                 <TextInput
                   label="Project Code"
-                  placeholder="e.g. P007"
+                  placeholder="Enter project code"
                   value={formData.projectId}
                   onChange={(e) => handleFieldChange('projectId', e.target.value.toUpperCase())}
                   radius="md"
@@ -332,7 +332,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 <Box style={{ gridColumn: 'span 2' }}>
                   <TextInput
                     label="Project Name *"
-                    placeholder="e.g. E-commerce Website, Mobile App..."
+                    placeholder="Enter project name"
                     required
                     value={formData.name}
                     onChange={(e) => handleFieldChange('name', e.target.value)}
@@ -346,13 +346,13 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {/* 3. Link Contact from CRM */}
                 <Select
                   label="Link from CRM Contact (Optional)"
-                  placeholder="Pick qualified client"
+                  placeholder="Select qualified client"
                   data={contactOptions}
                   value={formData.contactId || ''}
                   onChange={(val) => {
                     handleFieldChange('contactId', val || '');
                     if (val) {
-                      const selected = metadata?.contacts?.find((c) => c.id === val);
+                      const selected = metadata?.contacts?.find((c: any) => c.id === val);
                       if (selected) {
                         setFormData((prev) => ({
                           ...prev,
@@ -372,7 +372,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {/* 4. Client / Company Name */}
                 <TextInput
                   label="Client / Company Name *"
-                  placeholder="e.g. ABC Technologies, XYZ Solutions..."
+                  placeholder="Enter client or company name"
                   required
                   value={formData.clientName}
                   onChange={(e) => handleFieldChange('clientName', e.target.value)}
@@ -394,7 +394,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {/* 5. Project Manager */}
                 <Select
                   label="Project Manager (Lead)"
-                  placeholder="Select Tech Lead"
+                  placeholder="Select Project Tech Lead"
                   data={employeeOptions}
                   value={formData.projectManagerName || formData.projectManagerId || ''}
                   onChange={(val) => {
@@ -409,7 +409,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {/* 6. Team Members Stack */}
                 <MultiSelect
                   label="Team Members (Avatar Stack)"
-                  placeholder="Select or type team members"
+                  placeholder="Select team members"
                   data={teamMemberOptions}
                   value={formData.teamMembers || []}
                   onChange={(val) => handleFieldChange('teamMembers', val)}
@@ -432,7 +432,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {/* 7. Start Date */}
                 <TextInput
                   label="Start Date (DD-MM-YYYY)"
-                  placeholder="e.g. 10-09-2025"
+                  placeholder="Select start date (DD-MM-YYYY)"
                   value={formData.startDate || ''}
                   onChange={(e) => handleFieldChange('startDate', e.target.value)}
                   radius="md"
@@ -442,7 +442,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
                 {/* 8. Deadline */}
                 <TextInput
                   label="Deadline (DD-MM-YYYY)"
-                  placeholder="e.g. 15-10-2025"
+                  placeholder="Select end date (DD-MM-YYYY)"
                   value={formData.targetEndDate || ''}
                   onChange={(e) => handleFieldChange('targetEndDate', e.target.value)}
                   radius="md"
@@ -531,7 +531,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
                 <TextInput
                   label="Estimated Budget (₹)"
-                  placeholder="e.g. 450000"
+                  placeholder="Enter estimated budget"
                   type="number"
                   value={formData.estimatedBudget || ''}
                   onChange={(e) => handleFieldChange('estimatedBudget', e.target.value)}
@@ -541,7 +541,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
                 <TextInput
                   label="Actual Cost (₹)"
-                  placeholder="e.g. 320000"
+                  placeholder="Enter actual cost"
                   type="number"
                   value={formData.actualCost || ''}
                   onChange={(e) => handleFieldChange('actualCost', e.target.value)}
@@ -562,7 +562,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
               <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm" mb="md">
                 <TextInput
                   label="GitHub Repository"
-                  placeholder="https://github.com/..."
+                  placeholder="Enter GitHub repository URL"
                   leftSection={<IconBrandGithub size={15} />}
                   value={formData.githubUrl || ''}
                   onChange={(e) => handleFieldChange('githubUrl', e.target.value)}
@@ -572,7 +572,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
                 <TextInput
                   label="Figma UI Design"
-                  placeholder="https://figma.com/..."
+                  placeholder="Enter Figma design URL"
                   leftSection={<IconBrandFigma size={15} color="#EA580C" />}
                   value={formData.figmaUrl || ''}
                   onChange={(e) => handleFieldChange('figmaUrl', e.target.value)}
@@ -582,7 +582,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
                 <TextInput
                   label="Live Deployment URL"
-                  placeholder="https://app.client.com"
+                  placeholder="Enter live deployment URL"
                   leftSection={<IconWorld size={15} color="#0284C7" />}
                   value={formData.liveUrl || ''}
                   onChange={(e) => handleFieldChange('liveUrl', e.target.value)}
@@ -593,7 +593,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
               <Textarea
                 label="Scope of Work & Requirements"
-                placeholder="High level project scope, technical specifications, and milestones..."
+                placeholder="Enter project scope, technical specifications, and milestones..."
                 rows={3}
                 value={formData.description || ''}
                 onChange={(e) => handleFieldChange('description', e.target.value)}

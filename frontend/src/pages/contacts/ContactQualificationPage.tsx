@@ -19,6 +19,7 @@ import {
   Tooltip,
   Divider,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import {
   IconArrowLeft,
   IconUser,
@@ -48,12 +49,65 @@ import {
   IconExternalLink,
   IconCopy,
   IconIdBadge,
+  IconAlertCircle,
 } from '@tabler/icons-react';
 import { Contact } from '../../types/contact';
 import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
 import { useCRM } from '../../context/CRMContext';
-import { CRM_COLORS } from '../../theme/colors';
+// Business Identification Validation Regex Patterns
+const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+const CIN_REGEX = /^[LU][0-9]{5}[A-Z]{2}[0-9]{4}[A-Z]{3}[0-9]{6}$/;
+const URL_REGEX = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(\/.*)?$/i;
+const LINKEDIN_REGEX = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)*linkedin\.com(\/.*)?$/i;
+
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Delhi', 'Puducherry', 'Chandigarh', 'Jammu and Kashmir', 'Ladakh'
+];
+
+const GST_STATE_MAP: Record<string, string> = {
+  '01': 'Jammu and Kashmir',
+  '02': 'Himachal Pradesh',
+  '03': 'Punjab',
+  '04': 'Chandigarh',
+  '05': 'Uttarakhand',
+  '06': 'Haryana',
+  '07': 'Delhi',
+  '08': 'Rajasthan',
+  '09': 'Uttar Pradesh',
+  '10': 'Bihar',
+  '11': 'Sikkim',
+  '12': 'Arunachal Pradesh',
+  '13': 'Nagaland',
+  '14': 'Manipur',
+  '15': 'Mizoram',
+  '16': 'Tripura',
+  '17': 'Meghalaya',
+  '18': 'Assam',
+  '19': 'West Bengal',
+  '20': 'Jharkhand',
+  '21': 'Odisha',
+  '22': 'Chhattisgarh',
+  '23': 'Madhya Pradesh',
+  '24': 'Gujarat',
+  '27': 'Maharashtra',
+  '29': 'Karnataka',
+  '30': 'Goa',
+  '32': 'Kerala',
+  '33': 'Tamil Nadu',
+  '34': 'Puducherry',
+  '36': 'Telangana',
+  '37': 'Andhra Pradesh',
+  '38': 'Ladakh',
+};
+
+
 
 interface ContactQualificationPageProps {
   contact?: Contact | null;
@@ -160,6 +214,203 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
   }, [activeContact, currentUser]);
 
   const [saving, setSaving] = useState<boolean>(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const clearError = (field: string) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[field];
+        return copy;
+      });
+    }
+  };
+
+  const handleGstChange = (val: string) => {
+    const upper = val.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15);
+    setGstNumber(upper);
+    clearError('gstNumber');
+    clearError('verificationStatus');
+
+    // Smart auto-fill PAN and State from GST if 15 chars and valid
+    if (upper.length === 15 && GST_REGEX.test(upper)) {
+      const extractedPan = upper.slice(2, 12);
+      if (!companyPan || companyPan !== extractedPan) {
+        setCompanyPan(extractedPan);
+        clearError('companyPan');
+      }
+      const stateCode = upper.slice(0, 2);
+      if (GST_STATE_MAP[stateCode] && !registeredState) {
+        setRegisteredState(GST_STATE_MAP[stateCode]);
+        clearError('registeredState');
+      }
+    }
+  };
+
+  const handlePanChange = (val: string) => {
+    const upper = val.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 10);
+    setCompanyPan(upper);
+    clearError('companyPan');
+    clearError('verificationStatus');
+  };
+
+  const handleCinChange = (val: string) => {
+    const upper = val.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 21);
+    setCinNumber(upper);
+    clearError('cinNumber');
+  };
+
+  const handleWebsiteChange = (val: string) => {
+    setCompanyWebsite(val);
+    clearError('companyWebsite');
+  };
+
+  const handleLinkedinChange = (val: string) => {
+    setLinkedinUrl(val);
+    clearError('linkedinUrl');
+  };
+
+  const handleVerificationStatusChange = (val: string | null) => {
+    const nextStatus = val || 'Unverified';
+    setVerificationStatus(nextStatus);
+    if (nextStatus === 'Verified') {
+      const cleanGst = (gstNumber || '').trim().toUpperCase();
+      const cleanPan = (companyPan || '').trim().toUpperCase();
+      if (!cleanGst && !cleanPan) {
+        setErrors((prev) => ({
+          ...prev,
+          verificationStatus: 'GST or PAN is required to mark company as Verified',
+        }));
+      } else {
+        clearError('verificationStatus');
+      }
+    } else {
+      clearError('verificationStatus');
+    }
+  };
+
+  const handleBlurField = (field: string) => {
+    const newErr = { ...errors };
+
+    if (field === 'gstNumber' && gstNumber) {
+      if (!GST_REGEX.test(gstNumber)) {
+        newErr.gstNumber = 'Invalid GST format (15 characters, e.g. 33AAAAA0000A1Z5)';
+      } else {
+        delete newErr.gstNumber;
+      }
+    }
+
+    if (field === 'companyPan' && companyPan) {
+      if (!PAN_REGEX.test(companyPan)) {
+        newErr.companyPan = 'Invalid PAN format (5 letters, 4 digits, 1 letter, e.g. ABCDE1234F)';
+      } else if (gstNumber && GST_REGEX.test(gstNumber) && companyPan !== gstNumber.slice(2, 12)) {
+        newErr.companyPan = `PAN must match GST (${gstNumber.slice(2, 12)})`;
+      } else {
+        delete newErr.companyPan;
+      }
+    }
+
+    if (field === 'cinNumber' && cinNumber) {
+      if (!CIN_REGEX.test(cinNumber)) {
+        newErr.cinNumber = 'Invalid CIN format (21 characters, e.g. U72900TN2020PTC123456)';
+      } else {
+        delete newErr.cinNumber;
+      }
+    }
+
+    if (field === 'companyWebsite' && companyWebsite) {
+      if (!URL_REGEX.test(companyWebsite)) {
+        newErr.companyWebsite = 'Invalid website URL (e.g. https://company.com)';
+      } else {
+        delete newErr.companyWebsite;
+      }
+    }
+
+    if (field === 'linkedinUrl' && linkedinUrl) {
+      if (!LINKEDIN_REGEX.test(linkedinUrl)) {
+        newErr.linkedinUrl = 'Invalid LinkedIn URL (e.g. https://linkedin.com/company/xyz)';
+      } else {
+        delete newErr.linkedinUrl;
+      }
+    }
+
+    if (field === 'verificationStatus' && verificationStatus === 'Verified') {
+      const cleanGst = (gstNumber || '').trim().toUpperCase();
+      const cleanPan = (companyPan || '').trim().toUpperCase();
+      if (!cleanGst && !cleanPan) {
+        newErr.verificationStatus = 'GST or PAN is required to mark company as Verified';
+      } else {
+        delete newErr.verificationStatus;
+      }
+    }
+
+    setErrors(newErr);
+  };
+
+  const validateForm = (): boolean => {
+    const errs: Record<string, string> = {};
+
+    if (!qualificationDate) {
+      errs.qualificationDate = 'Date is required';
+    }
+
+    if (status === 'Follow-up Required') {
+      if (!nextFollowDate) {
+        errs.nextFollowDate = 'Next Follow-up Date is required';
+      }
+      if (!followUpNotes?.trim()) {
+        errs.followUpNotes = 'Follow-up Note / Agenda is required';
+      }
+    }
+
+    if (status === 'Disqualified') {
+      if (!disqualificationReason?.trim()) {
+        errs.disqualificationReason = 'Disqualification Reason is required';
+      }
+    }
+
+    // Company Verification Validation
+    const cleanGst = (gstNumber || '').trim().toUpperCase();
+    const cleanPan = (companyPan || '').trim().toUpperCase();
+    const cleanCin = (cinNumber || '').trim().toUpperCase();
+    const cleanWeb = (companyWebsite || '').trim();
+    const cleanLinkedIn = (linkedinUrl || '').trim();
+
+    // If marked Verified, at least GST or PAN must be provided and valid
+    if (verificationStatus === 'Verified') {
+      if (!cleanGst && !cleanPan) {
+        errs.verificationStatus = 'GST or PAN is required to mark company as Verified';
+        errs.gstNumber = 'Provide GST or PAN for verification';
+      }
+    }
+
+    if (cleanGst && !GST_REGEX.test(cleanGst)) {
+      errs.gstNumber = 'Invalid GST format (15 characters, e.g. 33AAAAA0000A1Z5)';
+    }
+
+    if (cleanPan) {
+      if (!PAN_REGEX.test(cleanPan)) {
+        errs.companyPan = 'Invalid PAN format (5 letters, 4 digits, 1 letter, e.g. ABCDE1234F)';
+      } else if (cleanGst && GST_REGEX.test(cleanGst) && cleanPan !== cleanGst.slice(2, 12)) {
+        errs.companyPan = `PAN must match GST (${cleanGst.slice(2, 12)})`;
+      }
+    }
+
+    if (cleanCin && !CIN_REGEX.test(cleanCin)) {
+      errs.cinNumber = 'Invalid CIN format (21 characters, e.g. U72900TN2020PTC123456)';
+    }
+
+    if (cleanWeb && !URL_REGEX.test(cleanWeb)) {
+      errs.companyWebsite = 'Invalid website URL (e.g. https://company.com)';
+    }
+
+    if (cleanLinkedIn && !LINKEDIN_REGEX.test(cleanLinkedIn)) {
+      errs.linkedinUrl = 'Invalid LinkedIn URL (e.g. https://linkedin.com/company/xyz)';
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   const handleAddTag = () => {
     if (newTagInput.trim() && !tags.includes(newTagInput.trim())) {
@@ -172,6 +423,16 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeContact?.id) return;
+
+    if (!validateForm()) {
+      notifications.show({
+        title: 'Validation Error',
+        message: 'Please resolve the highlighted errors in Company Verification.',
+        color: 'red',
+        icon: <IconAlertCircle size={16} />,
+      });
+      return;
+    }
 
     setSaving(true);
 
@@ -684,7 +945,10 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                       { value: 'Disqualified', label: 'Disqualified' },
                     ]}
                     value={status}
-                    onChange={(val) => setStatus(val || 'Qualified')}
+                    onChange={(val) => {
+                      setStatus(val || 'Qualified');
+                      clearError('status');
+                    }}
                     radius="md"
                     size="md"
                     styles={{
@@ -701,7 +965,11 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                       placeholder="YYYY-MM-DD"
                       type="date"
                       value={nextFollowDate}
-                      onChange={(e) => setNextFollowDate(e.target.value)}
+                      onChange={(e) => {
+                        setNextFollowDate(e.target.value);
+                        clearError('nextFollowDate');
+                      }}
+                      error={errors.nextFollowDate}
                       radius="md"
                       size="md"
                       styles={{
@@ -717,7 +985,11 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                       placeholder="YYYY-MM-DD"
                       type="date"
                       value={qualificationDate}
-                      onChange={(e) => setQualificationDate(e.target.value)}
+                      onChange={(e) => {
+                        setQualificationDate(e.target.value);
+                        clearError('qualificationDate');
+                      }}
+                      error={errors.qualificationDate}
                       radius="md"
                       size="md"
                       styles={{
@@ -808,7 +1080,9 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                         placeholder="e.g. 33AAAAA0000A1Z5"
                         maxLength={15}
                         value={gstNumber}
-                        onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+                        onChange={(e) => handleGstChange(e.target.value)}
+                        onBlur={() => handleBlurField('gstNumber')}
+                        error={errors.gstNumber}
                         radius="md"
                         leftSection={<IconBuilding size={16} />}
                         rightSection={
@@ -837,7 +1111,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                             fontSize: 13,
                             fontWeight: 500,
                             backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            borderColor: errors.gstNumber ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
                             color: isDark ? '#F8FAFC' : '#0F172A',
                             borderRadius: 10,
                             boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -856,7 +1130,10 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                           { value: '500+ Employees', label: '500+ Employees' },
                         ]}
                         value={employeeCount || null}
-                        onChange={(val) => setEmployeeCount(val || '')}
+                        onChange={(val) => {
+                          setEmployeeCount(val || '');
+                          clearError('employeeCount');
+                        }}
                         radius="md"
                         leftSection={<IconUsers size={16} />}
                         styles={{
@@ -889,7 +1166,9 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                           { value: 'Unverified', label: 'Unverified' },
                         ]}
                         value={verificationStatus}
-                        onChange={(val) => setVerificationStatus(val || 'Unverified')}
+                        onChange={handleVerificationStatusChange}
+                        onBlur={() => handleBlurField('verificationStatus')}
+                        error={errors.verificationStatus}
                         radius="md"
                         leftSection={<IconShieldCheck size={16} />}
                         styles={{
@@ -905,7 +1184,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                             fontSize: 13,
                             fontWeight: 500,
                             backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            borderColor: errors.verificationStatus ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
                             color: isDark ? '#F8FAFC' : '#0F172A',
                             borderRadius: 10,
                             boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -921,7 +1200,9 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                         placeholder="e.g. ABCDE1234F"
                         maxLength={10}
                         value={companyPan}
-                        onChange={(e) => setCompanyPan(e.target.value.toUpperCase())}
+                        onChange={(e) => handlePanChange(e.target.value)}
+                        onBlur={() => handleBlurField('companyPan')}
+                        error={errors.companyPan}
                         radius="md"
                         leftSection={<IconCreditCard size={16} />}
                         styles={{
@@ -937,7 +1218,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                             fontSize: 13,
                             fontWeight: 500,
                             backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            borderColor: errors.companyPan ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
                             color: isDark ? '#F8FAFC' : '#0F172A',
                             borderRadius: 10,
                             boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -947,10 +1228,12 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
                       <TextInput
                         label="CIN Number"
-                        placeholder="e.g. U72900TN2020PTC..."
+                        placeholder="e.g. U72900TN2020PTC123456"
                         maxLength={21}
                         value={cinNumber}
-                        onChange={(e) => setCinNumber(e.target.value.toUpperCase())}
+                        onChange={(e) => handleCinChange(e.target.value)}
+                        onBlur={() => handleBlurField('cinNumber')}
+                        error={errors.cinNumber}
                         radius="md"
                         leftSection={<IconFileCertificate size={16} />}
                         styles={{
@@ -966,7 +1249,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                             fontSize: 13,
                             fontWeight: 500,
                             backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            borderColor: errors.cinNumber ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
                             color: isDark ? '#F8FAFC' : '#0F172A',
                             borderRadius: 10,
                             boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -974,11 +1257,17 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                         }}
                       />
 
-                      <TextInput
+                      <Select
                         label="Registered State"
-                        placeholder="e.g. Tamil Nadu, Karnataka"
-                        value={registeredState}
-                        onChange={(e) => setRegisteredState(e.target.value)}
+                        placeholder="Select or search state"
+                        data={Array.from(new Set([...INDIAN_STATES, ...(registeredState ? [registeredState] : [])]))}
+                        searchable
+                        clearable
+                        value={registeredState || null}
+                        onChange={(val) => {
+                          setRegisteredState(val || '');
+                          clearError('registeredState');
+                        }}
                         radius="md"
                         leftSection={<IconMapPin size={16} />}
                         styles={{
@@ -1016,7 +1305,10 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                           { value: '₹50 Cr+', label: '₹50 Cr+' },
                         ]}
                         value={annualTurnover || null}
-                        onChange={(val) => setAnnualTurnover(val || '')}
+                        onChange={(val) => {
+                          setAnnualTurnover(val || '');
+                          clearError('annualTurnover');
+                        }}
                         radius="md"
                         leftSection={<IconCoin size={16} />}
                         styles={{
@@ -1044,7 +1336,9 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                         label="Website"
                         placeholder="https://company.com"
                         value={companyWebsite}
-                        onChange={(e) => setCompanyWebsite(e.target.value)}
+                        onChange={(e) => handleWebsiteChange(e.target.value)}
+                        onBlur={() => handleBlurField('companyWebsite')}
+                        error={errors.companyWebsite}
                         radius="md"
                         leftSection={<IconWorld size={16} />}
                         styles={{
@@ -1060,7 +1354,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                             fontSize: 13,
                             fontWeight: 500,
                             backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            borderColor: errors.companyWebsite ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
                             color: isDark ? '#F8FAFC' : '#0F172A',
                             borderRadius: 10,
                             boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -1070,9 +1364,11 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
                       <TextInput
                         label="LinkedIn"
-                        placeholder="https://linkedin.com"
+                        placeholder="https://linkedin.com/company/..."
                         value={linkedinUrl}
-                        onChange={(e) => setLinkedinUrl(e.target.value)}
+                        onChange={(e) => handleLinkedinChange(e.target.value)}
+                        onBlur={() => handleBlurField('linkedinUrl')}
+                        error={errors.linkedinUrl}
                         radius="md"
                         leftSection={<IconBrandLinkedin size={16} />}
                         styles={{
@@ -1088,7 +1384,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                             fontSize: 13,
                             fontWeight: 500,
                             backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            borderColor: errors.linkedinUrl ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
                             color: isDark ? '#F8FAFC' : '#0F172A',
                             borderRadius: 10,
                             boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -1106,7 +1402,11 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                     placeholder="Specify what to follow up on (e.g. Client requested callback on Friday to discuss product demo and pricing)..."
                     required
                     value={followUpNotes}
-                    onChange={(e) => setFollowUpNotes(e.target.value)}
+                    onChange={(e) => {
+                      setFollowUpNotes(e.target.value);
+                      clearError('followUpNotes');
+                    }}
+                    error={errors.followUpNotes}
                     radius="md"
                     size="md"
                     minRows={3}
@@ -1125,7 +1425,11 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                     placeholder="Please specify why this contact is disqualified (e.g. Budget mismatch, Timeline mismatch, No active requirement)..."
                     required
                     value={disqualificationReason}
-                    onChange={(e) => setDisqualificationReason(e.target.value)}
+                    onChange={(e) => {
+                      setDisqualificationReason(e.target.value);
+                      clearError('disqualificationReason');
+                    }}
+                    error={errors.disqualificationReason}
                     radius="md"
                     size="md"
                     minRows={2}
