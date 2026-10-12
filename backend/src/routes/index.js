@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRouter from './auth.routes.js';
 import employeeRouter from './employee.routes.js';
 import contactRouter from './contact.routes.js';
+import projectRouter from './project.routes.js';
 import accessControlRouter from './accessControl.routes.js';
 import moduleRouter from './module.routes.js';
 import leadRouter from './lead.routes.js';
@@ -14,6 +15,7 @@ const apiRouter = Router();
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/employees', employeeRouter);
 apiRouter.use('/contacts', contactRouter);
+apiRouter.use('/projects', projectRouter);
 apiRouter.use('/access-control', accessControlRouter);
 apiRouter.use('/modules', moduleRouter);
 apiRouter.use('/leads', leadRouter);
@@ -26,6 +28,7 @@ export {
   authRouter,
   employeeRouter,
   contactRouter,
+  projectRouter,
   accessControlRouter,
   moduleRouter,
   leadRouter,

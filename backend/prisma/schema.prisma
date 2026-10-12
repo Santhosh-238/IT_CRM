@@ -5,6 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/client"
 }
 
 model User {
@@ -110,6 +111,17 @@ model Contact {
   designation            String?
   profession             String?   // when contactType is Individual
 
+  // Company Verification & Firmographic Details
+  gstNumber              String?   // GSTIN (e.g. 33AAAAA0000A1Z5)
+  employeeCount          String?   // e.g. "1-10", "11-50", "51-200", "201-500", "500+"
+  companyPan             String?   // PAN (e.g. AAAAA0000A)
+  cinNumber              String?   // Corporate Identification Number
+  companyWebsite         String?   // e.g. https://example.com
+  linkedinUrl            String?   // LinkedIn Company Profile URL
+  annualTurnover         String?   // e.g. ₹5 Cr - ₹25 Cr
+  verificationStatus     String?   @default("Unverified") // "Verified", "Pending", "Unverified"
+  registeredState        String?   // e.g. Tamil Nadu, Karnataka
+
   // 3. Requirement Details
   category               String?   @default("Product") // Product / Service
   productList            String[]  @default([]) // e.g. ["HRMS", "IT CRM"]
@@ -198,6 +210,51 @@ model ScheduledMeeting {
   requirementFileSize String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+}
+
+model Project {
+  id                 String    @id @default(uuid())
+  projectId          String    @unique // e.g. PRJ-1001
+  name               String    // Project Title
+  description        String?
+  
+  // Client Details
+  contactId          String?   // Reference to Contact
+  clientName         String    // Client / Company Name
+  clientEmail        String?
+  clientPhone        String?
+  
+  // Project Type & Domain
+  projectType        String?   @default("Fixed Price") // "Fixed Price", "Time & Material", "Retainer", "Dedicated Team"
+  category           String?   @default("Full-Stack Web Development") // "Web Dev", "Mobile App", "DevOps & Cloud", "AI/ML Solutions", "UI/UX Design"
+  
+  // Ownership & Team
+  projectManagerId   String?   // Lead / PM Employee ID
+  projectManagerName String?   // Lead / PM Name
+  teamMembers        String[]  @default([]) // Array of assigned Employee IDs
+  
+  // Lifecycle & Metrics
+  status             String    @default("Planning") // "Planning", "In Progress", "In Review", "On Hold", "Completed", "Cancelled"
+  priority           String    @default("Medium") // "Low", "Medium", "High", "Critical"
+  progress           Int       @default(0) // 0 to 100 percentage
+  modules            Json?     @default("[]")
+  
+  // Budget & Timeline
+  estimatedBudget    Float?    // e.g. 500000
+  actualCost         Float?    // e.g. 350000
+  startDate          String?   // YYYY-MM-DD
+  targetEndDate      String?   // YYYY-MM-DD
+  actualEndDate      String?
+  
+  // Project Assets & Repositories
+  figmaUrl           String?
+  githubUrl          String?
+  liveUrl            String?
+  
+  // Metadata
+  createdBy          String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 

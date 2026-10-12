@@ -15,11 +15,12 @@ import {
   Breadcrumbs,
   Anchor,
   useComputedColorScheme,
-} from '@mantine/core';`1`
+} from '@mantine/core';
 import {
   IconArrowLeft,
   IconUser,
   IconX,
+  IconShieldCheck,
 } from '@tabler/icons-react';
 import { Contact, ContactFormData } from '../../types/contact';
 import { useContact } from '../../context/ContactContext';
@@ -46,6 +47,15 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
     profession: '',
     companyName: '',
     designation: '',
+    gstNumber: '',
+    employeeCount: '',
+    companyPan: '',
+    cinNumber: '',
+    companyWebsite: '',
+    linkedinUrl: '',
+    annualTurnover: '',
+    verificationStatus: 'Unverified',
+    registeredState: '',
     address: '',
     source: '',
     customSource: '',
@@ -72,6 +82,15 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
         profession: initialData.profession || '',
         companyName: initialData.companyName || '',
         designation: initialData.designation || '',
+        gstNumber: initialData.gstNumber || '',
+        employeeCount: initialData.employeeCount || '',
+        companyPan: initialData.companyPan || '',
+        cinNumber: initialData.cinNumber || '',
+        companyWebsite: initialData.companyWebsite || '',
+        linkedinUrl: initialData.linkedinUrl || '',
+        annualTurnover: initialData.annualTurnover || '',
+        verificationStatus: initialData.verificationStatus || 'Unverified',
+        registeredState: initialData.registeredState || '',
         address: initialData.address || '',
         source: initialData.source || '',
         customSource: initialData.customSource || '',
