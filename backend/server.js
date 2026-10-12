@@ -3,6 +3,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import app from './src/app.js';
 import { env } from './src/config/env.js';
 import { setIO } from './src/utils/socket.js';
+import { autoSyncDatabase } from './src/config/autoDbSync.js';
 
 // 1. Create HTTP server instance with Express app
 const server = http.createServer(app);
@@ -26,9 +27,10 @@ io.on('connection', (socket) => {
 // 4. Start Server Listener
 const PORT = env.PORT || 5000;
 
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`⚡ Redis: Active | 🗄️ PostgreSQL: Connected | 🔌 Socket.IO: Ready`);
+  await autoSyncDatabase();
 });
 
 // 5. Graceful Process Shutdown

@@ -236,6 +236,10 @@ exports.Prisma.ContactScalarFieldEnum = {
   assignedTo: 'assignedTo',
   assignedToName: 'assignedToName',
   assignmentStatus: 'assignmentStatus',
+  contactMode: 'contactMode',
+  createdBy: 'createdBy',
+  meetingType: 'meetingType',
+  uuid: 'uuid',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -286,9 +290,14 @@ exports.Prisma.ScheduledMeetingScalarFieldEnum = {
   employeeEmail: 'employeeEmail',
   employeeDesignation: 'employeeDesignation',
   contactId: 'contactId',
+  leadId: 'leadId',
   clientName: 'clientName',
   status: 'status',
   notes: 'notes',
+  requirements: 'requirements',
+  requirementFileName: 'requirementFileName',
+  requirementFileUrl: 'requirementFileUrl',
+  requirementFileSize: 'requirementFileSize',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
@@ -310,6 +319,7 @@ exports.Prisma.ProjectScalarFieldEnum = {
   status: 'status',
   priority: 'priority',
   progress: 'progress',
+  modules: 'modules',
   estimatedBudget: 'estimatedBudget',
   actualCost: 'actualCost',
   startDate: 'startDate',
@@ -328,6 +338,11 @@ exports.Prisma.SortOrder = {
   desc: 'desc'
 };
 
+exports.Prisma.NullableJsonNullValueInput = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
+};
+
 exports.Prisma.QueryMode = {
   default: 'default',
   insensitive: 'insensitive'
@@ -336,6 +351,12 @@ exports.Prisma.QueryMode = {
 exports.Prisma.NullsOrder = {
   first: 'first',
   last: 'last'
+};
+
+exports.Prisma.JsonNullValueFilter = {
+  DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull,
+  AnyNull: Prisma.AnyNull
 };
 
 
