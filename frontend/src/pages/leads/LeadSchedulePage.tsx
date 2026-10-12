@@ -41,6 +41,7 @@ import {
   IconTag,
   IconUserCheck,
   IconVideo,
+  IconMapPin,
   IconTrash,
   IconExternalLink,
   IconChevronDown,
@@ -122,26 +123,36 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
   const [showTagInput, setShowTagInput] = useState<boolean>(false);
 
   // Meeting Form Fields
-  const [meetingTitle, setMeetingTitle] = useState<string>(
-    activeLead ? `Discovery & Requirement Call with ${activeLead.name}` : 'Discovery Call'
-  );
-  const [meetingType, setMeetingType] = useState<string>('Virtual (Google Meet)');
-  const [meetingDate, setMeetingDate] = useState<string>(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split('T')[0];
-  });
-  const [meetingTime, setMeetingTime] = useState<string>('11:00 AM');
+  const [meetingTitle, setMeetingTitle] = useState<string>('');
+  const [meetingType, setMeetingType] = useState<string>('');
+  const [meetingDate, setMeetingDate] = useState<string>('');
+  const [meetingTime, setMeetingTime] = useState<string>('');
   const [timePickerOpened, setTimePickerOpened] = useState<boolean>(false);
   const [meetingHours, setMeetingHours] = useState<string>('11');
   const [meetingMinutes, setMeetingMinutes] = useState<string>('00');
   const [meetingPeriod, setMeetingPeriod] = useState<string>('AM');
   const [exactMinInput, setExactMinInput] = useState<string>('0');
-  const [duration, setDuration] = useState<string>('30 Minutes');
-  const [hostName, setHostName] = useState<string>(currentUser?.name || 'Santhosh C');
+  const [duration, setDuration] = useState<string>('');
+  const [hostName, setHostName] = useState<string>('');
   const [meetingLink, setMeetingLink] = useState<string>('');
-  const [stageAfterMeeting, setStageAfterMeeting] = useState<string>(activeLead?.stage || 'Discovery');
+  const [stageAfterMeeting, setStageAfterMeeting] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
+
+  // Dynamic field labels & placeholders based on Meeting Type (Virtual vs In-Person)
+  const isVirtualMeeting = meetingType.toLowerCase().includes('virtual');
+  const isInPersonMeeting = meetingType.toLowerCase().includes('in-person');
+
+  const locationFieldLabel = isVirtualMeeting
+    ? 'Meeting Link'
+    : isInPersonMeeting
+    ? 'Meeting Location'
+    : 'Meeting Link / Location';
+
+  const locationFieldPlaceholder = isVirtualMeeting
+    ? 'https://meet.google.com/... or https://zoom.us/j/...'
+    : isInPersonMeeting
+    ? 'Client Office Address, Conference Room, or Our Office location'
+    : 'Enter meeting link or location address';
 
   // View mode for right container: 'schedule' (Schedule Meeting form) vs 'pipeline' (Activity Pipeline)
   const [rightViewMode, setRightViewMode] = useState<'schedule' | 'pipeline'>('schedule');
@@ -336,7 +347,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     setMeetingMinutes('00');
     setMeetingPeriod('AM');
     setExactMinInput('0');
-    setMeetingTime('12:00 AM');
+    setMeetingTime('');
   };
 
   const handleManualTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -476,6 +487,32 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
       return;
     }
 
+    if (!meetingType) {
+      notifications.show({
+        title: 'Meeting Type Required',
+        message: 'Please select a meeting type (Virtual or In-Person).',
+        color: 'red',
+      });
+      return;
+    }
+
+    if (!meetingLink.trim()) {
+      notifications.show({
+        title: isVirtualMeeting
+          ? 'Meeting Link Required'
+          : isInPersonMeeting
+          ? 'Meeting Location Required'
+          : 'Link / Location Required',
+        message: isVirtualMeeting
+          ? 'Please enter the virtual meeting link (Google Meet or Zoom URL).'
+          : isInPersonMeeting
+          ? 'Please enter the in-person meeting location or office address.'
+          : 'Please enter the meeting link or location address.',
+        color: 'red',
+      });
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -484,7 +521,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
       try {
         const [timePart, meridiem] = finalTime.split(' ');
         const [h, m] = timePart.split(':').map(Number);
-        const durMin = duration.includes('45') ? 45 : duration.includes('60') ? 60 : duration.includes('15') ? 15 : 30;
+        const durMin = (duration && duration.includes('45')) ? 45 : (duration && duration.includes('60')) ? 60 : (duration && duration.includes('15')) ? 15 : 30;
         let totalMin = (h % 12 + (meridiem === 'PM' ? 12 : 0)) * 60 + m + durMin;
         const endH = Math.floor(totalMin / 60) % 24;
         const endM = totalMin % 60;
@@ -506,19 +543,19 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           startTime: finalTime,
           meetingTime: finalTime,
           endTime: computedEndTime,
-          meetingType,
+          meetingType: meetingType || 'Virtual (Google Meet)',
           meetingLocation: meetingLink.trim(),
           meetingLink: meetingLink.trim(),
           location: meetingLink.trim(),
-          employeeName: hostName,
-          assignedTo: hostName,
+          employeeName: hostName.trim() || currentUser?.name || 'Assigned Host',
+          assignedTo: hostName.trim() || currentUser?.name || 'Assigned Host',
           clientName: activeLead.companyName ? `${activeLead.name} (${activeLead.companyName})` : activeLead.name,
           contactId: activeLead.id,
           status: 'Scheduled',
           meetingStatus: 'Scheduled',
-          description: `First discovery meeting with ${activeLead.name}. Stage: ${stageAfterMeeting}`,
-          notes: `First discovery meeting with ${activeLead.name}. Stage: ${stageAfterMeeting}`,
-          stageAfterMeeting,
+          description: `First discovery meeting with ${activeLead.name}. Stage: ${stageAfterMeeting || activeLead.stage || 'Discovery'}`,
+          notes: `First discovery meeting with ${activeLead.name}. Stage: ${stageAfterMeeting || activeLead.stage || 'Discovery'}`,
+          stageAfterMeeting: stageAfterMeeting || activeLead.stage || 'Discovery',
         });
         if (savedApiMeeting && savedApiMeeting.id) {
           backendId = savedApiMeeting.id;
@@ -531,13 +568,13 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
         id: backendId,
         leadId: activeLead.id,
         title: meetingTitle.trim(),
-        meetingType,
+        meetingType: meetingType || 'Virtual (Google Meet)',
         date: meetingDate,
         time: finalTime,
-        duration,
-        hostName,
+        duration: duration || '30 Minutes',
+        hostName: hostName.trim() || currentUser?.name || 'Assigned Host',
         meetingLink: meetingLink.trim(),
-        stageAfterMeeting,
+        stageAfterMeeting: stageAfterMeeting || activeLead.stage || 'Discovery',
         status: 'Scheduled',
         createdAt: new Date().toISOString(),
       };
@@ -559,6 +596,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
         icon: <IconCheck size={16} />,
       });
 
+      setMeetingTitle('');
+      setMeetingType('');
+      setMeetingDate('');
+      setMeetingTime('');
+      setDuration('');
+      setHostName('');
+      setMeetingLink('');
+      setStageAfterMeeting('');
       setScheduleModalOpened(false);
       // Immediately open and display Activity Pipeline for this lead
       setRightViewMode('pipeline');
@@ -1162,7 +1207,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                     <TextInput
                       label="Meeting Title / Subject"
                       withAsterisk
-                      placeholder="Enter meeting subject..."
+                      placeholder={activeLead ? `e.g. Discovery & Requirement Call with ${activeLead.name}` : 'e.g. Discovery & Requirement Call'}
                       value={meetingTitle}
                       onChange={(e) => setMeetingTitle(e.target.value)}
                       required
@@ -1180,15 +1225,16 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                     <Select
                       label="Meeting Type"
                       withAsterisk
+                      placeholder="Select Meeting Type"
+                      clearable
                       data={[
                         'Virtual (Google Meet)',
                         'Virtual (Zoom)',
-                        'Phone Call',
                         'In-Person (Client Office)',
                         'In-Person (Our Office)',
                       ]}
                       value={meetingType}
-                      onChange={(val) => setMeetingType(val || 'Virtual (Google Meet)')}
+                      onChange={(val) => setMeetingType(val || '')}
                       required
                       styles={{
                         label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
@@ -1205,6 +1251,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
                     <MeetingDatePicker
                       label="Meeting Date"
+                      placeholder="Select Meeting Date"
                       required
                       value={meetingDate}
                       onChange={(val) => setMeetingDate(val)}
@@ -1224,7 +1271,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                         <Popover.Target>
                           <TextInput
                             label="Meeting Time"
-                            placeholder="11:00 AM"
+                            placeholder="Select Meeting Time (e.g. 11:00 AM)"
                             required
                             withAsterisk
                             value={meetingTime}
@@ -1275,7 +1322,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                                 },
                               }}
                             >
-                              {meetingTime || '11:00 AM'}
+                              {meetingTime || 'Select Time'}
                             </Badge>
                           </Group>
                           <Divider mb={8} />
@@ -1429,9 +1476,11 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
                     <Select
                       label="Duration"
+                      placeholder="Select Duration"
+                      clearable
                       data={['15 Minutes', '30 Minutes', '45 Minutes', '1 Hour', '1.5 Hours', '2 Hours']}
                       value={duration}
-                      onChange={(val) => setDuration(val || '30 Minutes')}
+                      onChange={(val) => setDuration(val || '')}
                       styles={{
                         label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
                         input: {
@@ -1445,6 +1494,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
 
                     <TextInput
                       label="Host / Assigned Rep"
+                      placeholder={currentUser?.name ? `e.g. ${currentUser.name}` : 'e.g. Host / Assigned Rep'}
                       value={hostName}
                       onChange={(e) => setHostName(e.target.value)}
                       styles={{
@@ -1459,39 +1509,30 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                     />
                   </SimpleGrid>
 
-                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                    <TextInput
-                      label="Meeting Link / Venue"
-                      value={meetingLink}
-                      onChange={(e) => setMeetingLink(e.target.value)}
-                      placeholder="https://meet.google.com/..."
-                      styles={{
-                        label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
-                        input: {
-                          height: 44,
-                          borderRadius: 10,
-                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                          borderColor: isDark ? '#334155' : '#E2E8F0',
-                        },
-                      }}
-                    />
-
-                    <Select
-                      label="Stage After Meeting"
-                      data={['Discovery', 'Demo Scheduled', 'Proposal Sent', 'Negotiation', 'Qualified']}
-                      value={stageAfterMeeting}
-                      onChange={(val) => setStageAfterMeeting(val || 'Discovery')}
-                      styles={{
-                        label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
-                        input: {
-                          height: 44,
-                          borderRadius: 10,
-                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                          borderColor: isDark ? '#334155' : '#E2E8F0',
-                        },
-                      }}
-                    />
-                  </SimpleGrid>
+                  <TextInput
+                    label={locationFieldLabel}
+                    withAsterisk
+                    required
+                    value={meetingLink}
+                    onChange={(e) => setMeetingLink(e.target.value)}
+                    placeholder={locationFieldPlaceholder}
+                    leftSection={
+                      isInPersonMeeting ? (
+                        <IconMapPin size={16} color="#64748B" />
+                      ) : (
+                        <IconVideo size={16} color="#64748B" />
+                      )
+                    }
+                    styles={{
+                      label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
+                      input: {
+                        height: 44,
+                        borderRadius: 10,
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                      },
+                    }}
+                  />
 
                   <Group justify="flex-end" mt="xl" gap="md">
                     {isFirstMeetingScheduled && (
@@ -2206,52 +2247,6 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
               </>
             )}
             </ScrollArea>
-
-            {/* Bottom Bar: Quick Activity Actions (Pinned at bottom) */}
-            {rightViewMode === 'pipeline' && (scheduledMeetings.length > 0 || customActivities.length > 0) && (
-              <Box style={{ flexShrink: 0 }} pt="md">
-                <Group
-                  gap="xl"
-                  style={{
-                    borderTop: isDark ? '1px solid #1F2937' : '1px solid #EAECEF',
-                    color: isDark ? '#94A3B8' : '#64748B',
-                  }}
-                >
-                  <Group
-                    gap="xs"
-                    style={{ cursor: 'pointer', transition: 'color 0.2s ease' }}
-                    onClick={() => setReplyBoxOpened(true)}
-                  >
-                    <IconMail size={16} color="#2563EB" />
-                    <Text size="13px" fw={600} style={{ color: isDark ? '#E2E8F0' : '#4B5563' }}>
-                      Send Email to Lead
-                    </Text>
-                  </Group>
-
-                  <Group
-                    gap="xs"
-                    style={{ cursor: 'pointer', transition: 'color 0.2s ease' }}
-                    onClick={() => setCommentBoxOpened(true)}
-                  >
-                    <IconNote size={16} color="#D97706" />
-                    <Text size="13px" fw={600} style={{ color: isDark ? '#E2E8F0' : '#4B5563' }}>
-                      Add Activity Note
-                    </Text>
-                  </Group>
-
-                  <Group
-                    gap="xs"
-                    style={{ cursor: 'pointer', transition: 'color 0.2s ease' }}
-                    onClick={() => setCallModalOpened(true)}
-                  >
-                    <IconPhoneCall size={16} color="#10B981" />
-                    <Text size="13px" fw={600} style={{ color: isDark ? '#E2E8F0' : '#4B5563' }}>
-                      Log Call
-                    </Text>
-                  </Group>
-                </Group>
-              </Box>
-            )}
         </Paper>
 
           {/* ========================================================================= */}

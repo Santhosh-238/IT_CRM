@@ -447,6 +447,15 @@ const inferDuration = (start?: string, end?: string): string => {
       return;
     }
 
+    if (!formLocation.trim()) {
+      notifications.show({
+        title: 'Validation Error',
+        message: formMeetingType === 'Virtual' ? 'Please enter the virtual meeting link.' : 'Please enter the meeting location / address.',
+        color: 'red',
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const computedEndTime = calculateEndTime(formStartTime, formDuration);
@@ -1056,18 +1065,21 @@ const inferDuration = (start?: string, end?: string): string => {
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
             <Select
               label="Meeting Type"
+              withAsterisk
+              required
               data={[
                 { value: 'Virtual', label: 'Virtual (Google Meet / Zoom)' },
                 { value: 'In-person', label: 'In-person (Office / Client Site)' },
-                { value: 'Phone Call', label: 'Phone Call' },
               ]}
               value={formMeetingType}
               onChange={(val) => setFormMeetingType(val || 'Virtual')}
             />
 
             <TextInput
-              label="Location / Meeting URL"
-              placeholder="https://meet.google.com/xyz or Room 102"
+              label={formMeetingType === 'Virtual' ? 'Meeting Link' : 'Meeting Location'}
+              withAsterisk
+              required
+              placeholder={formMeetingType === 'Virtual' ? 'https://meet.google.com/xyz or Zoom URL' : 'Client Office Address or Office Room'}
               value={formLocation}
               onChange={(e) => setFormLocation(e.currentTarget.value)}
             />

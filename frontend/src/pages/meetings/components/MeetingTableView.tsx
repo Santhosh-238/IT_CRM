@@ -23,6 +23,7 @@ import {
   IconClock,
   IconTarget,
   IconFileDescription,
+  IconEye,
 } from '@tabler/icons-react';
 import { ScheduledMeeting } from '../../../types/meeting';
 import { MeetingDetailsModal } from './MeetingDetailsModal';
@@ -383,6 +384,21 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
                     {/* 7. Actions */}
                     <Table.Td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                       <Group gap={6} justify="flex-end" wrap="nowrap">
+                        {/* Direct View Attached Document */}
+                        {meeting.requirementFileUrl ? (
+                          <Tooltip label={`View Requirement Document (${meeting.requirementFileName || 'Document'})`} withArrow>
+                            <ActionIcon
+                              variant="light"
+                              color="teal"
+                              size="md"
+                              radius="md"
+                              onClick={() => handleOpenDetails(meeting)}
+                            >
+                              <IconEye size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                        ) : null}
+
                         {/* View Details & Requirements */}
                         <Tooltip label="View Details & Requirements" withArrow>
                           <ActionIcon

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Group,
   TextInput,
-  Select,
   Button,
   Box,
   Text,
@@ -15,7 +14,6 @@ import {
 import {
   IconSearch,
   IconX,
-  IconPlus,
   IconAlertTriangle,
   IconChevronLeft,
   IconChevronRight,
@@ -113,17 +111,6 @@ export const LeadsPage: React.FC = () => {
       setDeleteLoading(false);
     }
   };
-
-  const statusOptions = Array.from(
-    new Set([
-      'All',
-      ...(metadata?.statuses
-        ? metadata.statuses.map((s) => (s === 'Contacted' ? 'In Progress' : (s === 'Won' || s === 'Completed' ? 'Complete' : s)))
-        : ['New', 'In Progress', 'Qualified', 'Proposal Sent', 'Complete', 'Lost']),
-    ])
-  );
-  const sourceOptions = ['All', ...(metadata?.sources || ['Website', 'Referral', 'Cold Call', 'LinkedIn', 'Social Media', 'Other'])];
-  const categoryOptions = ['All', ...(metadata?.categories || ['Product', 'Service'])];
 
   const totalCount = stats?.total ?? leads.length;
   const newCount = stats?.new ?? 0;
@@ -451,68 +438,6 @@ export const LeadsPage: React.FC = () => {
               />
             </form>
 
-            {/* Status Dropdown */}
-            <Select
-              data={statusOptions}
-              value={filters.status === 'Won' || filters.status === 'Completed' ? 'Complete' : (filters.status || 'All')}
-              onChange={(val) => {
-                const s = val || 'All';
-                setFilters({ status: s });
-                if (s === 'New') setActiveTab('NEW');
-                else if (s === 'In Progress') setActiveTab('IN_PROGRESS');
-                else if (s === 'Complete') setActiveTab('COMPLETE');
-                else if (s === 'All') setActiveTab('ALL');
-              }}
-              size="sm"
-              radius="md"
-              style={{ width: 135 }}
-              styles={{
-                input: {
-                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                  fontSize: 13,
-                  height: 36,
-                },
-              }}
-            />
-
-            {/* Source Dropdown */}
-            <Select
-              data={sourceOptions}
-              value={filters.source || 'All'}
-              onChange={(val) => setFilters({ source: val || 'All' })}
-              size="sm"
-              radius="md"
-              style={{ width: 130 }}
-              styles={{
-                input: {
-                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                  fontSize: 13,
-                  height: 36,
-                },
-              }}
-            />
-
-            {/* Add Lead Button */}
-            <Button
-              size="sm"
-              radius="md"
-              leftSection={<IconPlus size={15} stroke={2.5} />}
-              onClick={handleOpenAddModal}
-              style={{
-                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-                color: '#FFFFFF',
-                fontWeight: 600,
-                fontSize: 13,
-                height: 36,
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              Add Lead
-            </Button>
           </Group>
         </Group>
       </Paper>
@@ -522,7 +447,6 @@ export const LeadsPage: React.FC = () => {
         leads={leads}
         onEdit={handleOpenEditModal}
         onDelete={(lead) => setDeleteTarget(lead)}
-        onAddNew={handleOpenAddModal}
         loading={loading}
       />
 
