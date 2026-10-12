@@ -456,6 +456,7 @@ export const ContactsPage: React.FC = () => {
       {/* 2. Contact Table View */}
       <ContactTableView
         contacts={contacts}
+        activeTab={activeTab}
         loading={loading}
         onView={handleOpenViewDrawer}
         onEdit={(contact) => handleOpenEditModal(contact)}

@@ -15,6 +15,9 @@ import {
   Badge,
   useComputedColorScheme,
   UnstyledButton,
+  CopyButton,
+  Tooltip,
+  Divider,
 } from '@mantine/core';
 import {
   IconArrowLeft,
@@ -32,6 +35,19 @@ import {
   IconCalendar,
   IconTag,
   IconUserCheck,
+  IconShieldCheck,
+  IconShieldX,
+  IconUsers,
+  IconReceiptTax,
+  IconCreditCard,
+  IconFileCertificate,
+  IconMapPin,
+  IconCoin,
+  IconWorld,
+  IconBrandLinkedin,
+  IconExternalLink,
+  IconCopy,
+  IconIdBadge,
 } from '@tabler/icons-react';
 import { Contact } from '../../types/contact';
 import { useContact } from '../../context/ContactContext';
@@ -54,7 +70,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
   const isDark = computedColorScheme === 'dark';
 
   const { currentUser } = useCRM();
-  const { contacts, updateContact, metadata, loading } = useContact();
+  const { contacts, updateContact, assignContact, metadata, loading } = useContact();
   const { fetchLeads, fetchStats } = useLead();
 
   // If no contact passed via props, check sessionStorage or default to the first contact
@@ -85,6 +101,18 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
   const [followUpNotes, setFollowUpNotes] = useState<string>(activeContact?.remarks || activeContact?.notes || '');
   const [disqualificationReason, setDisqualificationReason] = useState<string>(activeContact?.disqualificationReason || '');
 
+  // Assignment & Company Verification states
+  const [assignedTo, setAssignedTo] = useState<string>(activeContact?.assignedTo || '');
+  const [gstNumber, setGstNumber] = useState<string>(activeContact?.gstNumber || '');
+  const [employeeCount, setEmployeeCount] = useState<string>(activeContact?.employeeCount || '');
+  const [companyPan, setCompanyPan] = useState<string>(activeContact?.companyPan || '');
+  const [cinNumber, setCinNumber] = useState<string>(activeContact?.cinNumber || '');
+  const [companyWebsite, setCompanyWebsite] = useState<string>(activeContact?.companyWebsite || '');
+  const [linkedinUrl, setLinkedinUrl] = useState<string>(activeContact?.linkedinUrl || '');
+  const [annualTurnover, setAnnualTurnover] = useState<string>(activeContact?.annualTurnover || '');
+  const [verificationStatus, setVerificationStatus] = useState<string>(activeContact?.verificationStatus || 'Unverified');
+  const [registeredState, setRegisteredState] = useState<string>(activeContact?.registeredState || '');
+
   // Tags
   const [tags, setTags] = useState<string[]>(() => {
     const initialTags: string[] = [];
@@ -108,6 +136,17 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
       setNextFollowDate(activeContact.nextFollowDate || '');
       setFollowUpNotes(activeContact.remarks || activeContact.notes || '');
       setDisqualificationReason(activeContact.disqualificationReason || '');
+
+      setAssignedTo(activeContact.assignedTo || '');
+      setGstNumber(activeContact.gstNumber || '');
+      setEmployeeCount(activeContact.employeeCount || '');
+      setCompanyPan(activeContact.companyPan || '');
+      setCinNumber(activeContact.cinNumber || '');
+      setCompanyWebsite(activeContact.companyWebsite || '');
+      setLinkedinUrl(activeContact.linkedinUrl || '');
+      setAnnualTurnover(activeContact.annualTurnover || '');
+      setVerificationStatus(activeContact.verificationStatus || 'Unverified');
+      setRegisteredState(activeContact.registeredState || '');
 
       const initialTags: string[] = [];
       if (activeContact.productList && activeContact.productList.length > 0) {
@@ -139,7 +178,14 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
     const res = await updateContact(activeContact.id, {
       stage: status === 'Qualified' ? 'Qualification' : 'Initialization',
       status: status,
-      qualificationStatus: status === 'Disqualified' ? 'Disqualified' : status === 'Follow-up Required' ? 'Follow-up Required' : 'Qualified',
+      qualificationStatus:
+        status === 'Disqualified'
+          ? 'Disqualified'
+          : status === 'Follow-up Required'
+          ? 'Follow-up Required'
+          : status === 'In Progress'
+          ? 'In Progress'
+          : 'Qualified',
       qualifiedBy: qualifiedBy,
       qualificationDate: qualificationDate,
       nextFollowDate: status === 'Follow-up Required' ? nextFollowDate : undefined,
@@ -148,6 +194,16 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
       disqualificationReason: status === 'Disqualified' ? disqualificationReason : undefined,
       productList: activeContact.category === 'Product' ? tags : activeContact.productList,
       serviceList: activeContact.category === 'Service' ? tags : activeContact.serviceList,
+      assignedTo: assignedTo && assignedTo !== 'none' ? assignedTo : undefined,
+      gstNumber: gstNumber || undefined,
+      employeeCount: employeeCount || undefined,
+      companyPan: companyPan || undefined,
+      cinNumber: cinNumber || undefined,
+      companyWebsite: companyWebsite || undefined,
+      linkedinUrl: linkedinUrl || undefined,
+      annualTurnover: annualTurnover || undefined,
+      verificationStatus: verificationStatus || undefined,
+      registeredState: registeredState || undefined,
     });
 
     setSaving(false);
@@ -213,6 +269,14 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
     label: emp.name,
   })) || [
     { value: 'Admin', label: 'Admin' },
+  ];
+
+  const employeeAssignOptions = [
+    { value: 'none', label: '— Unassigned —' },
+    ...(metadata?.employees?.map((emp) => ({
+      value: emp.id,
+      label: `${emp.name} (${emp.empCode})`,
+    })) || []),
   ];
 
   return (
@@ -664,6 +728,376 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                     />
                   )}
                 </SimpleGrid>
+
+                {/* Employee Assignment Row */}
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+                  <Select
+                    label="Assign to Employee"
+                    placeholder="Select employee to assign"
+                    data={employeeAssignOptions}
+                    value={assignedTo || 'none'}
+                    onChange={(val) => setAssignedTo(val === 'none' ? '' : val || '')}
+                    radius="md"
+                    size="md"
+                    leftSection={<IconIdBadge size={16} />}
+                    styles={{
+                      input: {
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      },
+                    }}
+                  />
+
+                  <Select
+                    label="Qualified / Reviewed By"
+                    placeholder="Select who qualified"
+                    data={employeeOptions}
+                    value={qualifiedBy}
+                    onChange={(val) => setQualifiedBy(val || 'Admin')}
+                    radius="md"
+                    size="md"
+                    leftSection={<IconUserCheck size={16} />}
+                    styles={{
+                      input: {
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      },
+                    }}
+                  />
+                </SimpleGrid>
+
+                {/* Company Verification Inputs */}
+                <Paper
+                  p={{ base: 'md', sm: 'lg' }}
+                  radius="18px"
+                  style={{
+                    backgroundColor: isDark ? '#141E2E' : '#F8FAFC',
+                    border: isDark ? '1px solid rgba(255, 255, 255, 0.09)' : '1px solid #E2E8F0',
+                    boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 2px 12px rgba(0, 0, 0, 0.03)',
+                  }}
+                >
+                  {/* Card Header: Simple & Clean */}
+                  <Group justify="space-between" align="center" mb="md">
+                    <Group gap="sm" align="center">
+                      <Box
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          backgroundColor: isDark ? 'rgba(79, 70, 229, 0.15)' : '#EEF2FF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: isDark ? '#A5B4FC' : '#4F46E5',
+                        }}
+                      >
+                        <IconShieldCheck size={18} stroke={2} />
+                      </Box>
+                      <Text fw={700} size="15px" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                        Company Verification
+                      </Text>
+                    </Group>
+                  </Group>
+
+                  <Divider mb="md" color={isDark ? 'rgba(255, 255, 255, 0.06)' : '#EAECEF'} />
+
+                  {/* Form Grid: 3 Clean Rows of 3 Fields */}
+                  <Stack gap="md">
+                    {/* Row 1: GST Number, Employee Count, Verification Status */}
+                    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+                      <TextInput
+                        label="GST Number"
+                        placeholder="e.g. 33AAAAA0000A1Z5"
+                        maxLength={15}
+                        value={gstNumber}
+                        onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+                        radius="md"
+                        leftSection={<IconBuilding size={16} />}
+                        rightSection={
+                          gstNumber ? (
+                            <CopyButton value={gstNumber} timeout={2000}>
+                              {({ copied, copy }) => (
+                                <Tooltip label={copied ? 'Copied' : 'Copy GST'}>
+                                  <ActionIcon size="sm" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                                    {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                                  </ActionIcon>
+                                </Tooltip>
+                              )}
+                            </CopyButton>
+                          ) : null
+                        }
+                        styles={{
+                          label: {
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: isDark ? '#E2E8F0' : '#334155',
+                            marginBottom: 6,
+                            whiteSpace: 'nowrap',
+                          },
+                          input: {
+                            height: 42,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            color: isDark ? '#F8FAFC' : '#0F172A',
+                            borderRadius: 10,
+                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
+
+                      <Select
+                        label="Employee Count"
+                        placeholder="Select employee range"
+                        data={[
+                          { value: '1-10 Employees', label: '1 - 10 Employees' },
+                          { value: '11-50 Employees', label: '11 - 50 Employees' },
+                          { value: '51-200 Employees', label: '51 - 200 Employees' },
+                          { value: '201-500 Employees', label: '201 - 500 Employees' },
+                          { value: '500+ Employees', label: '500+ Employees' },
+                        ]}
+                        value={employeeCount || null}
+                        onChange={(val) => setEmployeeCount(val || '')}
+                        radius="md"
+                        leftSection={<IconUsers size={16} />}
+                        styles={{
+                          label: {
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: isDark ? '#E2E8F0' : '#334155',
+                            marginBottom: 6,
+                            whiteSpace: 'nowrap',
+                          },
+                          input: {
+                            height: 42,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            color: isDark ? '#F8FAFC' : '#0F172A',
+                            borderRadius: 10,
+                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
+
+                      <Select
+                        label="Verification Status"
+                        placeholder="Select status"
+                        data={[
+                          { value: 'Verified', label: 'Verified' },
+                          { value: 'Pending', label: 'Pending' },
+                          { value: 'Unverified', label: 'Unverified' },
+                        ]}
+                        value={verificationStatus}
+                        onChange={(val) => setVerificationStatus(val || 'Unverified')}
+                        radius="md"
+                        leftSection={<IconShieldCheck size={16} />}
+                        styles={{
+                          label: {
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: isDark ? '#E2E8F0' : '#334155',
+                            marginBottom: 6,
+                            whiteSpace: 'nowrap',
+                          },
+                          input: {
+                            height: 42,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            color: isDark ? '#F8FAFC' : '#0F172A',
+                            borderRadius: 10,
+                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
+                    </SimpleGrid>
+
+                    {/* Row 2: Company PAN, CIN Number, Registered State */}
+                    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+                      <TextInput
+                        label="Company PAN"
+                        placeholder="e.g. ABCDE1234F"
+                        maxLength={10}
+                        value={companyPan}
+                        onChange={(e) => setCompanyPan(e.target.value.toUpperCase())}
+                        radius="md"
+                        leftSection={<IconCreditCard size={16} />}
+                        styles={{
+                          label: {
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: isDark ? '#E2E8F0' : '#334155',
+                            marginBottom: 6,
+                            whiteSpace: 'nowrap',
+                          },
+                          input: {
+                            height: 42,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            color: isDark ? '#F8FAFC' : '#0F172A',
+                            borderRadius: 10,
+                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
+
+                      <TextInput
+                        label="CIN Number"
+                        placeholder="e.g. U72900TN2020PTC..."
+                        maxLength={21}
+                        value={cinNumber}
+                        onChange={(e) => setCinNumber(e.target.value.toUpperCase())}
+                        radius="md"
+                        leftSection={<IconFileCertificate size={16} />}
+                        styles={{
+                          label: {
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: isDark ? '#E2E8F0' : '#334155',
+                            marginBottom: 6,
+                            whiteSpace: 'nowrap',
+                          },
+                          input: {
+                            height: 42,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            color: isDark ? '#F8FAFC' : '#0F172A',
+                            borderRadius: 10,
+                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
+
+                      <TextInput
+                        label="Registered State"
+                        placeholder="e.g. Tamil Nadu, Karnataka"
+                        value={registeredState}
+                        onChange={(e) => setRegisteredState(e.target.value)}
+                        radius="md"
+                        leftSection={<IconMapPin size={16} />}
+                        styles={{
+                          label: {
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: isDark ? '#E2E8F0' : '#334155',
+                            marginBottom: 6,
+                            whiteSpace: 'nowrap',
+                          },
+                          input: {
+                            height: 42,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            color: isDark ? '#F8FAFC' : '#0F172A',
+                            borderRadius: 10,
+                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
+                    </SimpleGrid>
+
+                    {/* Row 3: Annual Turnover, Website, LinkedIn */}
+                    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+                      <Select
+                        label="Annual Turnover"
+                        placeholder="Select turnover"
+                        data={[
+                          { value: '< ₹50 Lakhs', label: '< ₹50 Lakhs' },
+                          { value: '₹50 Lakhs - ₹2 Cr', label: '₹50 Lakhs - ₹2 Cr' },
+                          { value: '₹2 Cr - ₹10 Cr', label: '₹2 Cr - ₹10 Cr' },
+                          { value: '₹10 Cr - ₹50 Cr', label: '₹10 Cr - ₹50 Cr' },
+                          { value: '₹50 Cr+', label: '₹50 Cr+' },
+                        ]}
+                        value={annualTurnover || null}
+                        onChange={(val) => setAnnualTurnover(val || '')}
+                        radius="md"
+                        leftSection={<IconCoin size={16} />}
+                        styles={{
+                          label: {
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: isDark ? '#E2E8F0' : '#334155',
+                            marginBottom: 6,
+                            whiteSpace: 'nowrap',
+                          },
+                          input: {
+                            height: 42,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            color: isDark ? '#F8FAFC' : '#0F172A',
+                            borderRadius: 10,
+                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
+
+                      <TextInput
+                        label="Website"
+                        placeholder="https://company.com"
+                        value={companyWebsite}
+                        onChange={(e) => setCompanyWebsite(e.target.value)}
+                        radius="md"
+                        leftSection={<IconWorld size={16} />}
+                        styles={{
+                          label: {
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: isDark ? '#E2E8F0' : '#334155',
+                            marginBottom: 6,
+                            whiteSpace: 'nowrap',
+                          },
+                          input: {
+                            height: 42,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            color: isDark ? '#F8FAFC' : '#0F172A',
+                            borderRadius: 10,
+                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
+
+                      <TextInput
+                        label="LinkedIn"
+                        placeholder="https://linkedin.com"
+                        value={linkedinUrl}
+                        onChange={(e) => setLinkedinUrl(e.target.value)}
+                        radius="md"
+                        leftSection={<IconBrandLinkedin size={16} />}
+                        styles={{
+                          label: {
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            color: isDark ? '#E2E8F0' : '#334155',
+                            marginBottom: 6,
+                            whiteSpace: 'nowrap',
+                          },
+                          input: {
+                            height: 42,
+                            fontSize: 13,
+                            fontWeight: 500,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            color: isDark ? '#F8FAFC' : '#0F172A',
+                            borderRadius: 10,
+                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
+                          },
+                        }}
+                      />
+                    </SimpleGrid>
+                  </Stack>
+                </Paper>
 
                 {/* If Follow-up Required, prompt Follow-up Note / Agenda */}
                 {status === 'Follow-up Required' && (

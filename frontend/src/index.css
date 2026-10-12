@@ -608,4 +608,185 @@ input:-webkit-autofill:active {
   color: #F8FAFC !important;
 }
 
+/* =========================================================
+ * SIGNATURE CRM INPUT BOX DESIGN (Projects & Forms)
+ * ========================================================= */
+.project-form-input .mantine-TextInput-input,
+.project-form-input .mantine-Select-input,
+.project-form-input .mantine-DatePickerInput-input,
+.project-form-input .mantine-DateInput-input {
+  height: 36px !important;
+  border-radius: 7px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  color: #0F172A !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.project-form-input .mantine-Textarea-input {
+  border-radius: 8px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  color: #0F172A !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  min-height: 85px !important;
+  padding: 8px 12px !important;
+}
+
+.project-form-input .mantine-TextInput-input:hover,
+.project-form-input .mantine-Select-input:hover,
+.project-form-input .mantine-DatePickerInput-input:hover,
+.project-form-input .mantine-DateInput-input:hover,
+.project-form-input .mantine-Textarea-input:hover {
+  border-color: #94A3B8 !important;
+  background-color: #FAFAFA !important;
+}
+
+.project-form-input .mantine-TextInput-input:focus,
+.project-form-input .mantine-Select-input:focus,
+.project-form-input .mantine-DatePickerInput-input:focus,
+.project-form-input .mantine-DateInput-input:focus,
+.project-form-input .mantine-Textarea-input:focus,
+.project-form-input .mantine-TextInput-input:focus-within,
+.project-form-input .mantine-Select-input:focus-within,
+.project-form-input .mantine-DatePickerInput-input:focus-within,
+.project-form-input .mantine-DateInput-input:focus-within {
+  border-color: #2563EB !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.14) !important;
+  outline: none !important;
+}
+
+.project-form-input .mantine-TextInput-input::placeholder,
+.project-form-input .mantine-Select-input::placeholder,
+.project-form-input .mantine-DatePickerInput-input::placeholder,
+.project-form-input .mantine-DateInput-input::placeholder,
+.project-form-input .mantine-Textarea-input::placeholder {
+  color: #94A3B8 !important;
+  font-weight: 400 !important;
+  font-size: 13.5px !important;
+}
+
+.project-form-input .mantine-TextInput-label,
+.project-form-input .mantine-Select-label,
+.project-form-input .mantine-DatePickerInput-label,
+.project-form-input .mantine-DateInput-label,
+.project-form-input .mantine-Textarea-label {
+  font-weight: 600 !important;
+  font-size: 12.5px !important;
+  margin-bottom: 5px !important;
+  color: #334155 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.project-form-input .mantine-TextInput-section,
+.project-form-input .mantine-Select-section,
+.project-form-input .mantine-DatePickerInput-section,
+.project-form-input .mantine-DateInput-section {
+  color: #64748B !important;
+}
+
+/* Dark mode overrides */
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-input,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-input,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-input,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-input,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Textarea-input {
+  background-color: #1E293B !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+  color: #F8FAFC !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-input:hover,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-input:hover,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-input:hover,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-input:hover,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Textarea-input:hover {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background-color: #243247 !important;
+}
+
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-input:focus,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-input:focus,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-input:focus,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-input:focus,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Textarea-input:focus {
+  border-color: #3B82F6 !important;
+  background-color: #1E293B !important;
+  box-shadow: 0 0 0 3.5px rgba(59, 130, 246, 0.2) !important;
+}
+
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-label,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-label,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-label,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-label,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Textarea-label {
+  color: #E2E8F0 !important;
+}
+
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-section,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-section,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-section,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-section {
+  color: #94A3B8 !important;
+}
+
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-input::placeholder,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-input::placeholder,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-input::placeholder,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-input::placeholder,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Textarea-input::placeholder {
+  color: #64748B !important;
+}
+
+/* =========================================================
+ * 🚫 HIDE HORIZONTAL SCROLLBARS ON TABLES & CONTAINERS
+ * ========================================================= */
+.mantine-Table-scrollContainer,
+[class*="Table-scrollContainer"],
+.no-scrollbar,
+.hide-scrollbar,
+[data-no-scrollbar] {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE 10+ and Edge */
+}
+
+.mantine-Table-scrollContainer::-webkit-scrollbar,
+[class*="Table-scrollContainer"]::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar,
+.hide-scrollbar::-webkit-scrollbar,
+[data-no-scrollbar]::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+/* Sleek global custom scrollbars for any essential vertical scroll */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 0px; /* Hide horizontal scrollbar by default */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+
 

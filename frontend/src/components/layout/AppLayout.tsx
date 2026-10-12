@@ -7,17 +7,20 @@ import { DashboardPage } from '../../pages/DashboardPage';
 import { EmployeesPage, AddEmployeePage } from '../../pages/employees';
 import { ContactsPage, AddContactPage, ContactDetailsPage, ContactQualificationPage } from '../../pages/contacts';
 import { LeadsPage, LeadSchedulePage } from '../../pages/leads';
+import { ProjectsPage, AddProjectPage, ProjectDetailsPage } from '../../pages/projects';
 import { AccessControlPage } from '../../pages/access-control/AccessControlPage';
 import { ScheduledMeetingsPage } from '../../pages/meetings';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
 import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
+import { useProject } from '../../context/ProjectContext';
 
 export const AppLayout: React.FC = () => {
   const { activeNav, setActiveNav, sidebarMobileOpened, setSidebarMobileOpened } = useCRM();
   const { selectedContact, deleteContact } = useContact();
   const { isSuperAdmin } = usePermissions();
   const { selectedLead } = useLead();
+  const { selectedProject, setSelectedProject, deleteProject: deleteProj, projects } = useProject();
 
   if (activeNav === 'signup') {
     return (
@@ -162,6 +165,79 @@ export const AppLayout: React.FC = () => {
           />
         );
       }
+      case 'projects':
+      case 'projects-management':
+      case 'projects-all':
+      case 'project':
+        return <ProjectsPage initialSubNav="all" />;
+      case 'project-details':
+      case 'projects-details':
+      case 'projects/details': {
+        let viewProject = selectedProject;
+        if (!viewProject && typeof window !== 'undefined') {
+          try {
+            const saved = sessionStorage.getItem('crm_viewing_project');
+            if (saved) viewProject = JSON.parse(saved);
+          } catch (e) {}
+        }
+        if (!viewProject && projects && projects.length > 0) {
+          viewProject = projects[0];
+        }
+        if (viewProject) {
+          return (
+            <ProjectDetailsPage
+              project={viewProject}
+              onBack={() => {
+                if (typeof window !== 'undefined') sessionStorage.removeItem('crm_viewing_project');
+                setSelectedProject(null);
+                setActiveNav('projects');
+              }}
+              onEdit={(p) => {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('crm_editing_project', JSON.stringify(p));
+                }
+                setActiveNav('add-project');
+              }}
+              onDelete={async (p) => {
+                await deleteProj(p.id);
+                if (typeof window !== 'undefined') sessionStorage.removeItem('crm_viewing_project');
+                setSelectedProject(null);
+                setActiveNav('projects');
+              }}
+            />
+          );
+        }
+        return <ProjectsPage initialSubNav="all" />;
+      }
+      case 'add-project':
+      case 'projects/add':
+      case 'projects/create':
+      case 'create-project': {
+        let editData = null;
+        try {
+          const savedEdit = typeof window !== 'undefined' ? sessionStorage.getItem('crm_editing_project') : null;
+          if (savedEdit) editData = JSON.parse(savedEdit);
+        } catch (e) {}
+
+        return (
+          <AddProjectPage
+            onBack={() => {
+              if (typeof window !== 'undefined') sessionStorage.removeItem('crm_editing_project');
+              setActiveNav('projects');
+            }}
+            initialData={editData}
+          />
+        );
+      }
+      case 'projects-my':
+        return <ProjectsPage initialSubNav="my" />;
+      case 'projects-tasks':
+      case 'projects-milestones':
+        return <ProjectsPage initialSubNav="tasks" />;
+      case 'projects-team':
+        return <ProjectsPage initialSubNav="team" />;
+      case 'projects-reports':
+        return <ProjectsPage initialSubNav="reports" />;
       case 'access-control':
       case 'access-control-matrix':
       case 'rbac':
