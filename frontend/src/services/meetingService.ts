@@ -8,6 +8,7 @@ export async function fetchMeetingsApi(filters?: MeetingFilters): Promise<{
   count: number;
 }> {
   const params = new URLSearchParams();
+  if (filters?.leadId) params.append('leadId', filters.leadId);
   if (filters?.date && filters.date !== 'ALL') params.append('date', filters.date);
   if (filters?.startDate) params.append('startDate', filters.startDate);
   if (filters?.endDate) params.append('endDate', filters.endDate);

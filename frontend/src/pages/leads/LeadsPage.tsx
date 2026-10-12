@@ -8,7 +8,7 @@ import {
   Text,
   ActionIcon,
   Modal,
-  Pagination,
+  Paper,
   useComputedColorScheme,
   UnstyledButton,
 } from '@mantine/core';
@@ -17,13 +17,15 @@ import {
   IconX,
   IconPlus,
   IconAlertTriangle,
+  IconChevronLeft,
+  IconChevronRight,
 } from '@tabler/icons-react';
 import { Lead } from '../../types/lead';
 import { useLead } from '../../context/LeadContext';
 import { LeadTableView } from './components/LeadTableView';
 import { LeadModal } from './components/LeadModal';
 
-type ActiveTabType = 'ALL' | 'NEW' | 'IN_PROGRESS' | 'WON';
+type ActiveTabType = 'ALL' | 'NEW' | 'IN_PROGRESS' | 'COMPLETE';
 
 export const LeadsPage: React.FC = () => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
@@ -55,12 +57,18 @@ export const LeadsPage: React.FC = () => {
   });
 
   React.useEffect(() => {
-    if (activeTab === 'NEW') {
-      setFilters({ status: 'New' });
-    }
+    try {
+      const savedTab = sessionStorage.getItem('crm_leads_tab');
+      if (savedTab === 'NEW') {
+        sessionStorage.removeItem('crm_leads_tab');
+        setActiveTab('NEW');
+        setFilters({ status: 'New' });
+      }
+    } catch (e) {}
     fetchLeads();
     fetchStats();
-  }, [fetchLeads, fetchStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [modalOpened, setModalOpened] = useState<boolean>(false);
   const [selectedLeadForEdit, setSelectedLeadForEdit] = useState<Lead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
@@ -73,8 +81,8 @@ export const LeadsPage: React.FC = () => {
       setFilters({ status: 'New' });
     } else if (tab === 'IN_PROGRESS') {
       setFilters({ status: 'In Progress' });
-    } else if (tab === 'WON') {
-      setFilters({ status: 'Won' });
+    } else if (tab === 'COMPLETE') {
+      setFilters({ status: 'Complete' });
     } else {
       setFilters({ status: 'All' });
     }
@@ -106,41 +114,47 @@ export const LeadsPage: React.FC = () => {
     }
   };
 
-  const statusOptions = ['All', ...(metadata?.statuses || ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Won', 'Lost'])];
+  const statusOptions = Array.from(
+    new Set([
+      'All',
+      ...(metadata?.statuses
+        ? metadata.statuses.map((s) => (s === 'Contacted' ? 'In Progress' : (s === 'Won' || s === 'Completed' ? 'Complete' : s)))
+        : ['New', 'In Progress', 'Qualified', 'Proposal Sent', 'Complete', 'Lost']),
+    ])
+  );
   const sourceOptions = ['All', ...(metadata?.sources || ['Website', 'Referral', 'Cold Call', 'LinkedIn', 'Social Media', 'Other'])];
   const categoryOptions = ['All', ...(metadata?.categories || ['Product', 'Service'])];
 
   const totalCount = stats?.total ?? leads.length;
   const newCount = stats?.new ?? 0;
   const inProgressCount = stats?.inProgress ?? 0;
-  const wonCount = stats?.won ?? 0;
+  const completedCount = stats?.complete ?? stats?.completed ?? stats?.won ?? 0;
 
   const startRecord = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
   return (
-    <Box>
-      {/* Top Controls Bar */}
-      <Box
+    <Box p={{ base: 'md', md: 'lg' }} style={{ maxWidth: 1520, margin: '0 auto' }}>
+      {/* Top Controls Bar - Modern Toolbar Card matching Contacts Page */}
+      <Paper
         p="sm"
-        px="md"
+        radius="lg"
         style={{
-          background: isDark ? '#111827' : '#FFFFFF',
+          backgroundColor: isDark ? '#111827' : '#FFFFFF',
           border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-          borderRadius: 16,
+          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
         }}
       >
-        <Group justify="space-between" wrap="wrap" gap="md" align="center">
-          {/* Left: Filter Tabs with Mobile Horizontal Scrolling */}
-          <Group
-            gap={8}
-            wrap="nowrap"
+        <Group justify="space-between" wrap="wrap" gap="sm" align="center">
+          {/* Left: Capsule Segmented Tabs */}
+          <Box
             style={{
-              overflowX: 'auto',
-              maxWidth: '100%',
-              scrollbarWidth: 'none',
-              paddingBottom: 2,
-              WebkitOverflowScrolling: 'touch',
+              display: 'inline-flex',
+              alignItems: 'center',
+              backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+              padding: 3,
+              borderRadius: 10,
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #E2E8F0',
             }}
           >
             {/* 1. All */}
@@ -151,24 +165,56 @@ export const LeadsPage: React.FC = () => {
                 alignItems: 'center',
                 gap: 8,
                 padding: '6px 14px',
-                borderRadius: 20,
+                borderRadius: 8,
+                backgroundColor:
+                  activeTab === 'ALL'
+                    ? isDark
+                      ? '#0F172A'
+                      : '#FFFFFF'
+                    : 'transparent',
+                boxShadow:
+                  activeTab === 'ALL'
+                    ? isDark
+                      ? '0 1px 3px rgba(0, 0, 0, 0.4)'
+                      : '0 1px 3px rgba(0, 0, 0, 0.08)'
+                    : 'none',
+                color:
+                  activeTab === 'ALL'
+                    ? isDark
+                      ? '#818CF8'
+                      : '#4F46E5'
+                    : isDark
+                    ? '#94A3B8'
+                    : '#64748B',
+                fontWeight: activeTab === 'ALL' ? 700 : 500,
                 fontSize: 13,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                backgroundColor: activeTab === 'ALL' ? (isDark ? '#374151' : '#0F172A') : 'transparent',
-                color: activeTab === 'ALL' ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
-                border: activeTab === 'ALL' ? 'none' : isDark ? '1px solid #374151' : '1px solid #E2E8F0',
                 transition: 'all 0.15s ease',
               }}
             >
               <span>All</span>
               <Box
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 20,
+                  height: 20,
+                  padding: '0 6px',
+                  borderRadius: 10,
                   fontSize: 11,
                   fontWeight: 700,
-                  padding: '1px 6px',
-                  borderRadius: 10,
-                  backgroundColor: activeTab === 'ALL' ? 'rgba(255, 255, 255, 0.2)' : isDark ? '#1F2937' : '#F1F5F9',
+                  backgroundColor:
+                    activeTab === 'ALL'
+                      ? '#4F46E5'
+                      : isDark
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : '#E2E8F0',
+                  color:
+                    activeTab === 'ALL'
+                      ? '#FFFFFF'
+                      : isDark
+                      ? '#CBD5E1'
+                      : '#64748B',
                 }}
               >
                 {totalCount}
@@ -183,24 +229,56 @@ export const LeadsPage: React.FC = () => {
                 alignItems: 'center',
                 gap: 8,
                 padding: '6px 14px',
-                borderRadius: 20,
+                borderRadius: 8,
+                backgroundColor:
+                  activeTab === 'NEW'
+                    ? isDark
+                      ? '#0F172A'
+                      : '#FFFFFF'
+                    : 'transparent',
+                boxShadow:
+                  activeTab === 'NEW'
+                    ? isDark
+                      ? '0 1px 3px rgba(0, 0, 0, 0.4)'
+                      : '0 1px 3px rgba(0, 0, 0, 0.08)'
+                    : 'none',
+                color:
+                  activeTab === 'NEW'
+                    ? isDark
+                      ? '#60A5FA'
+                      : '#2563EB'
+                    : isDark
+                    ? '#94A3B8'
+                    : '#64748B',
+                fontWeight: activeTab === 'NEW' ? 700 : 500,
                 fontSize: 13,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                backgroundColor: activeTab === 'NEW' ? (isDark ? '#374151' : '#0F172A') : 'transparent',
-                color: activeTab === 'NEW' ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
-                border: activeTab === 'NEW' ? 'none' : isDark ? '1px solid #374151' : '1px solid #E2E8F0',
                 transition: 'all 0.15s ease',
               }}
             >
               <span>New</span>
               <Box
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 20,
+                  height: 20,
+                  padding: '0 6px',
+                  borderRadius: 10,
                   fontSize: 11,
                   fontWeight: 700,
-                  padding: '1px 6px',
-                  borderRadius: 10,
-                  backgroundColor: activeTab === 'NEW' ? 'rgba(255, 255, 255, 0.2)' : isDark ? '#1F2937' : '#F1F5F9',
+                  backgroundColor:
+                    activeTab === 'NEW'
+                      ? '#2563EB'
+                      : isDark
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : '#E2E8F0',
+                  color:
+                    activeTab === 'NEW'
+                      ? '#FFFFFF'
+                      : isDark
+                      ? '#CBD5E1'
+                      : '#64748B',
                 }}
               >
                 {newCount}
@@ -215,148 +293,229 @@ export const LeadsPage: React.FC = () => {
                 alignItems: 'center',
                 gap: 8,
                 padding: '6px 14px',
-                borderRadius: 20,
+                borderRadius: 8,
+                backgroundColor:
+                  activeTab === 'IN_PROGRESS'
+                    ? isDark
+                      ? '#0F172A'
+                      : '#FFFFFF'
+                    : 'transparent',
+                boxShadow:
+                  activeTab === 'IN_PROGRESS'
+                    ? isDark
+                      ? '0 1px 3px rgba(0, 0, 0, 0.4)'
+                      : '0 1px 3px rgba(0, 0, 0, 0.08)'
+                    : 'none',
+                color:
+                  activeTab === 'IN_PROGRESS'
+                    ? isDark
+                      ? '#F59E0B'
+                      : '#D97706'
+                    : isDark
+                    ? '#94A3B8'
+                    : '#64748B',
+                fontWeight: activeTab === 'IN_PROGRESS' ? 700 : 500,
                 fontSize: 13,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                backgroundColor: activeTab === 'IN_PROGRESS' ? (isDark ? '#374151' : '#0F172A') : 'transparent',
-                color: activeTab === 'IN_PROGRESS' ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
-                border: activeTab === 'IN_PROGRESS' ? 'none' : isDark ? '1px solid #374151' : '1px solid #E2E8F0',
                 transition: 'all 0.15s ease',
               }}
             >
               <span>In Progress</span>
               <Box
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 20,
+                  height: 20,
+                  padding: '0 6px',
+                  borderRadius: 10,
                   fontSize: 11,
                   fontWeight: 700,
-                  padding: '1px 6px',
-                  borderRadius: 10,
-                  backgroundColor: activeTab === 'IN_PROGRESS' ? 'rgba(255, 255, 255, 0.2)' : isDark ? '#1F2937' : '#F1F5F9',
+                  backgroundColor:
+                    activeTab === 'IN_PROGRESS'
+                      ? '#D97706'
+                      : isDark
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : '#E2E8F0',
+                  color:
+                    activeTab === 'IN_PROGRESS'
+                      ? '#FFFFFF'
+                      : isDark
+                      ? '#CBD5E1'
+                      : '#64748B',
                 }}
               >
                 {inProgressCount}
               </Box>
             </UnstyledButton>
 
-            {/* 4. Won */}
+            {/* 4. Complete */}
             <UnstyledButton
-              onClick={() => handleTabChange('WON')}
+              onClick={() => handleTabChange('COMPLETE')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
                 padding: '6px 14px',
-                borderRadius: 20,
+                borderRadius: 8,
+                backgroundColor:
+                  activeTab === 'COMPLETE'
+                    ? isDark
+                      ? '#0F172A'
+                      : '#FFFFFF'
+                    : 'transparent',
+                boxShadow:
+                  activeTab === 'COMPLETE'
+                    ? isDark
+                      ? '0 1px 3px rgba(0, 0, 0, 0.4)'
+                      : '0 1px 3px rgba(0, 0, 0, 0.08)'
+                    : 'none',
+                color:
+                  activeTab === 'COMPLETE'
+                    ? isDark
+                      ? '#34D399'
+                      : '#059669'
+                    : isDark
+                    ? '#94A3B8'
+                    : '#64748B',
+                fontWeight: activeTab === 'COMPLETE' ? 700 : 500,
                 fontSize: 13,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                backgroundColor: activeTab === 'WON' ? (isDark ? '#374151' : '#0F172A') : 'transparent',
-                color: activeTab === 'WON' ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
-                border: activeTab === 'WON' ? 'none' : isDark ? '1px solid #374151' : '1px solid #E2E8F0',
                 transition: 'all 0.15s ease',
               }}
             >
-              <span>Won</span>
+              <span>Complete</span>
               <Box
                 style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 20,
+                  height: 20,
+                  padding: '0 6px',
+                  borderRadius: 10,
                   fontSize: 11,
                   fontWeight: 700,
-                  padding: '1px 6px',
-                  borderRadius: 10,
-                  backgroundColor: activeTab === 'WON' ? 'rgba(255, 255, 255, 0.2)' : isDark ? '#1F2937' : '#F1F5F9',
+                  backgroundColor:
+                    activeTab === 'COMPLETE'
+                      ? '#059669'
+                      : isDark
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : '#E2E8F0',
+                  color:
+                    activeTab === 'COMPLETE'
+                      ? '#FFFFFF'
+                      : isDark
+                      ? '#CBD5E1'
+                      : '#64748B',
                 }}
               >
-                {wonCount}
+                {completedCount}
               </Box>
             </UnstyledButton>
-          </Group>
+          </Box>
 
-          {/* Right: Search, Dropdowns, Add Lead - Mobile Responsive */}
-          <Group
-            gap="sm"
-            wrap="wrap"
-            align="center"
-            style={{
-              flex: '1 1 auto',
-              justifyContent: 'flex-end',
-            }}
-          >
-            {/* Search leads */}
-            <Box style={{ flex: '1 1 180px', minWidth: 140 }}>
-              <form onSubmit={handleSearchSubmit}>
-                <TextInput
-                  placeholder="Search leads..."
-                  leftSection={<IconSearch size={15} color="#94A3B8" />}
-                  rightSection={
-                    searchInput ? (
-                      <ActionIcon
-                        size="xs"
-                        variant="subtle"
-                        onClick={() => {
-                          setSearchInput('');
-                          setFilters({ search: '' });
-                        }}
-                      >
-                        <IconX size={12} />
-                      </ActionIcon>
-                    ) : null
-                  }
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onBlur={() => setFilters({ search: searchInput })}
-                  size="sm"
-                  radius="md"
-                  styles={{
-                    input: {
-                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                      fontSize: 13,
-                    },
-                  }}
-                />
-              </form>
-            </Box>
-
-            {/* Status Dropdown */}
-            <Box style={{ flex: '0 1 140px', minWidth: 110 }}>
-              <Select
-                data={statusOptions}
-                value={filters.status || 'All'}
-                onChange={(val) => setFilters({ status: val || 'All' })}
+          {/* Right: Search, Filter Selects & Add Button */}
+          <Group gap="xs" align="center" wrap="wrap" style={{ flex: 1, justifyContent: 'flex-end' }}>
+            {/* Search leads... */}
+            <form onSubmit={handleSearchSubmit} style={{ flex: '1 1 180px', maxWidth: 220, minWidth: 150 }}>
+              <TextInput
+                placeholder="Search leads..."
+                leftSection={<IconSearch size={15} color="#94A3B8" />}
+                rightSection={
+                  searchInput ? (
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => {
+                        setSearchInput('');
+                        setFilters({ search: '' });
+                      }}
+                    >
+                      <IconX size={12} />
+                    </ActionIcon>
+                  ) : null
+                }
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onBlur={() => setFilters({ search: searchInput })}
                 size="sm"
                 radius="md"
                 styles={{
                   input: {
-                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
                     borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
                     fontSize: 13,
+                    height: 36,
                   },
                 }}
               />
-            </Box>
+            </form>
+
+            {/* Status Dropdown */}
+            <Select
+              data={statusOptions}
+              value={filters.status === 'Won' || filters.status === 'Completed' ? 'Complete' : (filters.status || 'All')}
+              onChange={(val) => {
+                const s = val || 'All';
+                setFilters({ status: s });
+                if (s === 'New') setActiveTab('NEW');
+                else if (s === 'In Progress') setActiveTab('IN_PROGRESS');
+                else if (s === 'Complete') setActiveTab('COMPLETE');
+                else if (s === 'All') setActiveTab('ALL');
+              }}
+              size="sm"
+              radius="md"
+              style={{ width: 135 }}
+              styles={{
+                input: {
+                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
+                  fontSize: 13,
+                  height: 36,
+                },
+              }}
+            />
+
+            {/* Source Dropdown */}
+            <Select
+              data={sourceOptions}
+              value={filters.source || 'All'}
+              onChange={(val) => setFilters({ source: val || 'All' })}
+              size="sm"
+              radius="md"
+              style={{ width: 130 }}
+              styles={{
+                input: {
+                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
+                  fontSize: 13,
+                  height: 36,
+                },
+              }}
+            />
 
             {/* Add Lead Button */}
             <Button
-              radius="md"
               size="sm"
-              leftSection={<IconPlus size={16} stroke={2.5} />}
+              radius="md"
+              leftSection={<IconPlus size={15} stroke={2.5} />}
               onClick={handleOpenAddModal}
               style={{
-                backgroundColor: isDark ? '#374151' : '#0F172A',
+                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
                 color: '#FFFFFF',
                 fontWeight: 600,
                 fontSize: 13,
                 height: 36,
-                padding: '0 16px',
-                whiteSpace: 'nowrap',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)',
+                transition: 'all 0.15s ease',
               }}
             >
-              + Add Lead
+              Add Lead
             </Button>
           </Group>
         </Group>
-      </Box>
+      </Paper>
 
       {/* Table Content */}
       <LeadTableView
@@ -367,22 +526,80 @@ export const LeadsPage: React.FC = () => {
         loading={loading}
       />
 
-      {/* Pagination Footer */}
-      {pagination.total > 0 && (
-        <Group justify="space-between" mt="md" px="xs" wrap="wrap">
-          <Text size="sm" c="dimmed">
+      {/* Pagination Footer matching Contacts page */}
+      <Paper
+        mt="md"
+        p="sm"
+        radius="lg"
+        style={{
+          backgroundColor: isDark ? '#111827' : '#FFFFFF',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+        }}
+      >
+        <Group justify="space-between" align="center" wrap="wrap">
+          <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
             Showing {startRecord} to {endRecord} of {pagination.total} leads
           </Text>
-          <Pagination
-            value={pagination.page}
-            onChange={(newPage) => setPage(newPage)}
-            total={pagination.totalPages}
-            radius="md"
-            size="sm"
-            color="dark"
-          />
+
+          <Group gap={6} align="center">
+            {/* Previous */}
+            <Button
+              variant="default"
+              size="xs"
+              radius="md"
+              disabled={pagination.page <= 1}
+              onClick={() => setPage(pagination.page - 1)}
+              leftSection={<IconChevronLeft size={13} />}
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+              }}
+            >
+              Previous
+            </Button>
+
+            {/* Page number pill */}
+            <Box
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minWidth: 28,
+                height: 28,
+                padding: '0 6px',
+                borderRadius: 6,
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1',
+                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                color: isDark ? '#F8FAFC' : '#0F172A',
+                fontWeight: 600,
+                fontSize: 12,
+              }}
+            >
+              {pagination.page}
+            </Box>
+
+            <Text size="12px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+              of {pagination.totalPages || 1}
+            </Text>
+
+            {/* Next */}
+            <Button
+              variant="default"
+              size="xs"
+              radius="md"
+              disabled={pagination.page >= (pagination.totalPages || 1)}
+              onClick={() => setPage(pagination.page + 1)}
+              rightSection={<IconChevronRight size={13} />}
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+              }}
+            >
+              Next
+            </Button>
+          </Group>
         </Group>
-      )}
+      </Paper>
 
       {/* Add / Edit Modal */}
       <LeadModal

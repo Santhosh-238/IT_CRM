@@ -134,6 +134,10 @@ model Contact {
   assignedTo             String?   // Employee ID
   assignedToName         String?   // Assigned Employee Name
   assignmentStatus       String?   @default("Unassigned") // Assigned / Unassigned
+  contactMode            String?
+  createdBy              String?
+  meetingType            String?
+  uuid                   String?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 }
@@ -184,9 +188,14 @@ model ScheduledMeeting {
   employeeEmail       String?
   employeeDesignation String?
   contactId           String?
+  leadId              String?  @map("lead_id")
   clientName          String?
   status              String   @default("Scheduled")
   notes               String?
+  requirements        String?
+  requirementFileName String?
+  requirementFileUrl  String?
+  requirementFileSize String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }

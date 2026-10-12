@@ -149,13 +149,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
               className={activeNav === 'leads' || activeNav === 'add-lead' || activeNav === 'lead-schedule' || activeNav === 'lead-details' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
               style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
             />
-          </Stack>
-
-          {/* 3. Administration Section */}
-          <Text size="10px" fw={800} c="dimmed" tt="uppercase" px="xs" mt="sm" style={{ letterSpacing: '0.08em' }}>
-            Administration & Security
-          </Text>
-          <Stack gap={6}>
             <NavLink
               label="Scheduled Meetings"
               leftSection={<IconCalendarEvent size={18} stroke={2} />}
@@ -164,17 +157,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
               className={activeNav === 'scheduled-meetings' || activeNav === 'meetings' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
               style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
             />
-            {can('access_control', 'view') && (
-              <NavLink
-                label="Access Control & RBAC"
-                leftSection={<IconShieldLock size={18} stroke={2} />}
-                active={activeNav === 'access-control' || activeNav === 'rbac'}
-                onClick={() => onSelectNav('access-control')}
-                className={activeNav === 'access-control' || activeNav === 'rbac' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-              />
-            )}
           </Stack>
+
+          {/* 3. Administration Section */}
+          {can('access_control', 'view') && (
+            <>
+              <Text size="10px" fw={800} c="dimmed" tt="uppercase" px="xs" mt="sm" style={{ letterSpacing: '0.08em' }}>
+                Administration & Security
+              </Text>
+              <Stack gap={6}>
+                <NavLink
+                  label="Access Control & RBAC"
+                  leftSection={<IconShieldLock size={18} stroke={2} />}
+                  active={activeNav === 'access-control' || activeNav === 'rbac'}
+                  onClick={() => onSelectNav('access-control')}
+                  className={activeNav === 'access-control' || activeNav === 'rbac' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+                  style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                />
+              </Stack>
+            </>
+          )}
         </Stack>
       </ScrollArea>
     </Box>

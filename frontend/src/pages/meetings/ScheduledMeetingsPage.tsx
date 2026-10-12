@@ -1,53 +1,42 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
-  Stack,
   Group,
-  Text,
-  Badge,
-  Button,
-  Paper,
-  SimpleGrid,
   TextInput,
   Select,
-  Textarea,
-  Modal,
+  Button,
+  Text,
   ActionIcon,
-  Tooltip,
-  Avatar,
+  Modal,
+  Pagination,
+  useComputedColorScheme,
+  UnstyledButton,
+  Stack,
+  Textarea,
+  SimpleGrid,
   ThemeIcon,
-  SegmentedControl,
-  Card,
-  Divider,
   Loader,
   Center,
-  Menu,
-  useComputedColorScheme,
-  Grid,
+  Paper,
+  Badge,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
-  IconCalendarEvent,
-  IconClock,
-  IconUser,
-  IconVideo,
-  IconBuilding,
   IconSearch,
   IconPlus,
-  IconRefresh,
-  IconCheck,
   IconX,
-  IconEdit,
-  IconTrash,
-  IconExternalLink,
-  IconCalendar,
-  IconFilter,
-  IconMapPin,
-  IconDotsVertical,
-  IconUsers,
-  IconInfoCircle,
+  IconAlertTriangle,
+  IconAlertCircle,
+  IconCalendarEvent,
+  IconArrowLeft,
+  IconBuilding,
+  IconUser,
+  IconPhoneCall,
+  IconMail,
+  IconLayersSubtract,
 } from '@tabler/icons-react';
 import { ScheduledMeeting, MeetingStats } from '../../types/meeting';
+import { Lead } from '../../types/lead';
 import {
   fetchMeetingsApi,
   fetchMeetingStatsApi,
@@ -56,30 +45,100 @@ import {
   deleteMeetingApi,
 } from '../../services/meetingService';
 import { useEmployee } from '../../context/EmployeeContext';
+import { useCRM } from '../../context/CRMContext';
+import { useLead } from '../../context/LeadContext';
 import { CRM_COLORS } from '../../theme/colors';
+import { MeetingTableView } from './components/MeetingTableView';
+import { LeadMeetingsTableView } from './components/LeadMeetingsTableView';
+import { MeetingDetailsModal } from './components/MeetingDetailsModal';
+import { MeetingTimePicker } from './components/MeetingTimePicker';
+import { MeetingDatePicker } from './components/MeetingDatePicker';
+
+type ActiveLeadTabType = 'ALL' | 'TODAY' | 'UPCOMING' | 'COMPLETED';
 
 export const ScheduledMeetingsPage: React.FC = () => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
   const { employees } = useEmployee();
+  const { activeNav, setActiveNav } = useCRM();
+  const { leads, setSelectedLead, fetchLeads } = useLead();
 
   const [meetings, setMeetings] = useState<ScheduledMeeting[]>([]);
   const [stats, setStats] = useState<MeetingStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Filters
-  const [dateFilterTab, setDateFilterTab] = useState<string>('all'); // 'all', 'today', 'upcoming', 'past'
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('ALL');
-  const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  // Drill-down State: Which lead's meetings are currently being viewed
+  const [activeLeadSelection, setActiveLeadSelection] = useState<Lead | null>(null);
 
-  // Modal state
+  // Meeting Details Modal State
+  const [detailsMeeting, setDetailsMeeting] = useState<ScheduledMeeting | null>(null);
+
+  // Filter States for Leads View
+  const [leadTab, setLeadTab] = useState<ActiveLeadTabType>('ALL');
+  const [searchInput, setSearchInput] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [page, setPage] = useState<number>(1);
+  const pageSize = 10;
+
+  // Modal States
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [editingMeeting, setEditingMeeting] = useState<ScheduledMeeting | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
-  // Form state
+  // Delete State
+  const [deleteTarget, setDeleteTarget] = useState<ScheduledMeeting | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+
+// Helper to compute end time from start time and duration
+const calculateEndTime = (startTimeStr: string, durationStr: string): string => {
+  try {
+    const trimmed = (startTimeStr || '10:00 AM').trim();
+    const parts = trimmed.split(' ');
+    const timePart = parts[0] || '10:00';
+    const meridiem = (parts[1] || 'AM').toUpperCase();
+    const [h, m] = timePart.split(':').map(Number);
+    let durMin = 30;
+    if (durationStr.includes('15')) durMin = 15;
+    else if (durationStr.includes('45')) durMin = 45;
+    else if (durationStr.includes('1.5')) durMin = 90;
+    else if (durationStr.includes('2')) durMin = 120;
+    else if (durationStr.includes('1 Hour') || durationStr.includes('60')) durMin = 60;
+    else durMin = 30;
+
+    const baseH = (h % 12) + (meridiem === 'PM' ? 12 : 0);
+    const totalMin = baseH * 60 + (isNaN(m) ? 0 : m) + durMin;
+    const endH = Math.floor(totalMin / 60) % 24;
+    const endM = totalMin % 60;
+    const endMeridiem = endH >= 12 ? 'PM' : 'AM';
+    const displayEndH = (endH % 12) || 12;
+    return `${displayEndH}:${endM.toString().padStart(2, '0')} ${endMeridiem}`;
+  } catch (_) {
+    return '10:30 AM';
+  }
+};
+
+const inferDuration = (start?: string, end?: string): string => {
+  if (!start || !end) return '30 Minutes';
+  try {
+    const parseM = (t: string) => {
+      const parts = t.trim().split(' ');
+      const timePart = parts[0] || '10:00';
+      const meridiem = (parts[1] || 'AM').toUpperCase();
+      const [h, m] = timePart.split(':').map(Number);
+      return ((h % 12) + (meridiem === 'PM' ? 12 : 0)) * 60 + (isNaN(m) ? 0 : m);
+    };
+    const diff = parseM(end) - parseM(start);
+    if (diff === 15) return '15 Minutes';
+    if (diff === 30) return '30 Minutes';
+    if (diff === 45) return '45 Minutes';
+    if (diff === 60) return '1 Hour';
+    if (diff === 90) return '1.5 Hours';
+    if (diff === 120) return '2 Hours';
+  } catch (_) {}
+  return '30 Minutes';
+};
+
+  // Form Fields State
   const [formPurpose, setFormPurpose] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formEmployeeId, setFormEmployeeId] = useState<string | null>(null);
@@ -88,14 +147,15 @@ export const ScheduledMeetingsPage: React.FC = () => {
   const [formEmployeeDesignation, setFormEmployeeDesignation] = useState('');
   const [formMeetingDate, setFormMeetingDate] = useState(new Date().toISOString().split('T')[0]);
   const [formStartTime, setFormStartTime] = useState('10:00 AM');
-  const [formEndTime, setFormEndTime] = useState('11:00 AM');
+  const [formDuration, setFormDuration] = useState('30 Minutes');
+  const [formEndTime, setFormEndTime] = useState('10:30 AM');
   const [formMeetingType, setFormMeetingType] = useState('Virtual');
-  const [formLocation, setFormLocation] = useState('https://meet.google.com/');
+  const [formLocation, setFormLocation] = useState('');
+  const [formContactId, setFormContactId] = useState<string | null>(null);
   const [formClientName, setFormClientName] = useState('');
   const [formStatus, setFormStatus] = useState('Scheduled');
   const [formNotes, setFormNotes] = useState('');
 
-  // Today ISO String
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const loadData = async () => {
@@ -105,8 +165,9 @@ export const ScheduledMeetingsPage: React.FC = () => {
         fetchMeetingsApi(),
         fetchMeetingStatsApi().catch(() => null),
       ]);
-      setMeetings(meetingsRes.meetings);
+      setMeetings(meetingsRes.meetings || []);
       if (statsRes) setStats(statsRes);
+      if (fetchLeads) fetchLeads();
     } catch (err: any) {
       notifications.show({
         title: 'Error Loading Meetings',
@@ -122,173 +183,315 @@ export const ScheduledMeetingsPage: React.FC = () => {
     loadData();
   }, []);
 
-  // Filtered Meetings
-  const filteredMeetings = useMemo(() => {
-    return meetings.filter((m) => {
-      // 1. Date tab filter
-      if (dateFilterTab === 'today') {
-        if (m.meetingDate !== todayStr) return false;
-      } else if (dateFilterTab === 'upcoming') {
-        if (m.meetingDate < todayStr) return false;
-      } else if (dateFilterTab === 'past') {
-        if (m.meetingDate >= todayStr) return false;
+  // Auto-open meeting details if navigated via "View Outcome" from Activity Pipeline
+  useEffect(() => {
+    if (activeNav !== 'scheduled-meetings' && activeNav !== 'meetings') return;
+    const targetMeetingId = sessionStorage.getItem('crm_open_meeting_id');
+    const targetMeetingDataStr = sessionStorage.getItem('crm_open_meeting_data');
+    if (!targetMeetingId && !targetMeetingDataStr) return;
+
+    let targetMeetingData: ScheduledMeeting | null = null;
+    try {
+      if (targetMeetingDataStr) targetMeetingData = JSON.parse(targetMeetingDataStr);
+    } catch (_) {}
+
+    const openMeetingModal = (targetMeeting: ScheduledMeeting) => {
+      // Find matching lead
+      const matchedLead = leads.find(
+        (l) =>
+          (targetMeeting.leadId && String(targetMeeting.leadId) === String(l.id)) ||
+          (targetMeeting.leadDbId && String(targetMeeting.leadDbId) === String(l.id)) ||
+          (targetMeeting.leadCode && targetMeeting.leadCode === l.leadId) ||
+          (targetMeeting.contactId && String(targetMeeting.contactId) === String(l.id)) ||
+          (targetMeeting.clientName && l.name && targetMeeting.clientName.toLowerCase().includes(l.name.toLowerCase()))
+      );
+
+      if (matchedLead) {
+        setActiveLeadSelection(matchedLead);
+      } else {
+        try {
+          const saved = sessionStorage.getItem('crm_selected_lead');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed) setActiveLeadSelection(parsed);
+          }
+        } catch (_) {}
       }
 
-      // 2. Specific date
-      if (selectedDate && m.meetingDate !== selectedDate) {
-        return false;
+      setDetailsMeeting(targetMeeting);
+      sessionStorage.removeItem('crm_open_meeting_id');
+      sessionStorage.removeItem('crm_open_meeting_data');
+      return true;
+    };
+
+    // 1. If full meeting data is in session, open it immediately without any delay!
+    if (targetMeetingData) {
+      const fresh = meetings.find((m) => String(m.id) === String(targetMeetingId || targetMeetingData?.id));
+      openMeetingModal(fresh || targetMeetingData);
+      return;
+    }
+
+    // 2. Otherwise search in meetings list with String comparison
+    const found = meetings.find((m) => String(m.id) === String(targetMeetingId));
+    if (found) {
+      openMeetingModal(found);
+    } else {
+      fetchMeetingsApi()
+        .then((res) => {
+          if (res.meetings) {
+            setMeetings(res.meetings);
+            const foundInApi = res.meetings.find((m) => String(m.id) === String(targetMeetingId));
+            if (foundInApi) {
+              openMeetingModal(foundInApi);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [activeNav, meetings, leads]);
+
+  // Map meetings to leads
+  const leadMeetingsMap = useMemo(() => {
+    const map = new Map<string, ScheduledMeeting[]>();
+    leads.forEach((l) => map.set(l.id, []));
+
+    meetings.forEach((m) => {
+      // Find matching lead
+      const matched = leads.find(
+        (l) =>
+          (m.leadId && m.leadId === l.id) ||
+          (m.leadDbId && m.leadDbId === l.id) ||
+          (m.leadCode && m.leadCode === l.leadId) ||
+          (m.contactId && m.contactId === l.id) ||
+          (m.clientName && m.clientName.toLowerCase().includes(l.name.toLowerCase()))
+      );
+      if (matched) {
+        const arr = map.get(matched.id) || [];
+        arr.push(m);
+        map.set(matched.id, arr);
+      }
+    });
+
+    return map;
+  }, [leads, meetings]);
+
+  // Filtered Leads List (ONLY leads that have meetings are displayed)
+  const filteredLeads = useMemo(() => {
+    return leads.filter((lead) => {
+      const leadMeets = leadMeetingsMap.get(lead.id) || [];
+      const hasMeetings = leadMeets.length > 0;
+
+      // Must have scheduled meetings
+      if (!hasMeetings) return false;
+
+      const hasToday = leadMeets.some((m) => m.meetingDate === todayStr);
+      const hasUpcoming = leadMeets.some(
+        (m) => m.meetingDate > todayStr && m.status?.toLowerCase() !== 'cancelled'
+      );
+      const hasCompleted = leadMeets.some((m) => m.status?.toLowerCase() === 'completed');
+
+      // 1. Tab filter
+      if (leadTab === 'TODAY' && !hasToday) return false;
+      if (leadTab === 'UPCOMING' && !hasUpcoming) return false;
+      if (leadTab === 'COMPLETED' && !hasCompleted) return false;
+
+      // 2. Status dropdown filter
+      if (statusFilter !== 'All') {
+        const matchesStatus = leadMeets.some(
+          (m) => (m.status || m.meetingStatus || '').toLowerCase() === statusFilter.toLowerCase()
+        );
+        if (!matchesStatus) return false;
       }
 
-      // 3. Employee
-      if (selectedEmployeeId !== 'ALL') {
-        if (m.employeeId !== selectedEmployeeId && m.employeeName !== selectedEmployeeId) {
+      // 3. Search query
+      if (searchInput.trim()) {
+        const query = searchInput.toLowerCase();
+        const matchName = (lead.name || '').toLowerCase().includes(query);
+        const matchCompany = (lead.companyName || '').toLowerCase().includes(query);
+        const matchEmail = (lead.email || '').toLowerCase().includes(query);
+        const matchPhone = (lead.phone || '').toLowerCase().includes(query);
+        const matchProfession = (lead.profession || '').toLowerCase().includes(query);
+        const matchMeeting = leadMeets.some(
+          (m) =>
+            (m.title || '').toLowerCase().includes(query) ||
+            (m.purpose || '').toLowerCase().includes(query) ||
+            (m.employeeName || '').toLowerCase().includes(query)
+        );
+        if (!matchName && !matchCompany && !matchEmail && !matchPhone && !matchProfession && !matchMeeting)
           return false;
-        }
-      }
-
-      // 4. Status
-      if (selectedStatus !== 'ALL') {
-        if (m.status?.toLowerCase() !== selectedStatus.toLowerCase()) {
-          return false;
-        }
-      }
-
-      // 5. Search
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const inPurpose = m.purpose?.toLowerCase().includes(q);
-        const inTitle = m.title?.toLowerCase().includes(q);
-        const inEmp = m.employeeName?.toLowerCase().includes(q);
-        const inClient = m.clientName?.toLowerCase().includes(q);
-        const inNotes = m.notes?.toLowerCase().includes(q);
-        if (!inPurpose && !inTitle && !inEmp && !inClient && !inNotes) {
-          return false;
-        }
       }
 
       return true;
     });
-  }, [meetings, dateFilterTab, selectedDate, selectedEmployeeId, selectedStatus, searchQuery, todayStr]);
+  }, [leads, leadMeetingsMap, leadTab, statusFilter, searchInput, todayStr]);
 
-  // Group date-wise sorted by date ascending
-  const dateWiseGrouped = useMemo(() => {
-    const groups: Record<string, ScheduledMeeting[]> = {};
-    filteredMeetings.forEach((m) => {
-      const d = m.meetingDate || 'Unscheduled';
-      if (!groups[d]) groups[d] = [];
-      groups[d].push(m);
-    });
+  // Pagination for Leads list
+  const totalLeadPages = Math.ceil(filteredLeads.length / pageSize) || 1;
+  const paginatedLeads = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredLeads.slice(start, start + pageSize);
+  }, [filteredLeads, page, pageSize]);
 
-    // Sort dates
-    const sortedDates = Object.keys(groups).sort((a, b) => {
-      if (dateFilterTab === 'past') return b.localeCompare(a); // past descending
-      return a.localeCompare(b); // upcoming ascending
-    });
+  // Counts for top capsule pills (for leads with meetings)
+  const leadsWithMeetings = useMemo(() => {
+    return leads.filter((l) => (leadMeetingsMap.get(l.id) || []).length > 0);
+  }, [leads, leadMeetingsMap]);
 
-    return sortedDates.map((date) => ({
-      date,
-      items: groups[date],
-    }));
-  }, [filteredMeetings, dateFilterTab]);
+  const totalLeadsWithMeetingsCount = leadsWithMeetings.length;
 
-  // Open Add Modal
-  const handleOpenAddModal = () => {
+  const todayLeadsCount = useMemo(() => {
+    return leadsWithMeetings.filter((l) =>
+      (leadMeetingsMap.get(l.id) || []).some((m) => m.meetingDate === todayStr)
+    ).length;
+  }, [leadsWithMeetings, leadMeetingsMap, todayStr]);
+
+  const upcomingLeadsCount = useMemo(() => {
+    return leadsWithMeetings.filter((l) =>
+      (leadMeetingsMap.get(l.id) || []).some(
+        (m) => m.meetingDate > todayStr && m.status?.toLowerCase() !== 'cancelled'
+      )
+    ).length;
+  }, [leadsWithMeetings, leadMeetingsMap, todayStr]);
+
+  const completedLeadsCount = useMemo(() => {
+    return leadsWithMeetings.filter((l) =>
+      (leadMeetingsMap.get(l.id) || []).some((m) => m.status?.toLowerCase() === 'completed')
+    ).length;
+  }, [leadsWithMeetings, leadMeetingsMap]);
+
+  // Selected Lead's Meetings
+  const selectedLeadMeetings = useMemo(() => {
+    if (!activeLeadSelection) return [];
+    return leadMeetingsMap.get(activeLeadSelection.id) || [];
+  }, [activeLeadSelection, leadMeetingsMap]);
+
+  // Handlers
+  const handleLeadTabChange = (tab: ActiveLeadTabType) => {
+    setLeadTab(tab);
+    setPage(1);
+  };
+
+  const handleSelectLead = (lead: Lead) => {
+    setActiveLeadSelection(lead);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('crm_selected_lead', JSON.stringify(lead));
+    }
+  };
+
+  const handleOpenAddModal = (targetLead?: Lead | null) => {
     setEditingMeeting(null);
     setFormPurpose('');
     setFormTitle('');
-    // Auto select first employee if available
-    if (employees.length > 0) {
-      const first = employees[0];
-      setFormEmployeeId(first.id || first.empCode);
-      setFormEmployeeName(first.name);
-      setFormEmployeeEmail(first.email || '');
-      setFormEmployeeDesignation(first.designation || first.role || '');
+    const host = employees.length > 0 ? employees[0] : null;
+    setFormEmployeeId(host ? host.id || host.empCode : null);
+    setFormEmployeeName(host ? host.name : 'Admin User');
+    setFormEmployeeEmail(host ? host.email || '' : '');
+    setFormEmployeeDesignation(host ? host.designation || host.role || '' : '');
+
+    const leadToUse = targetLead || activeLeadSelection;
+    if (leadToUse) {
+      setFormContactId(leadToUse.id);
+      setFormClientName(leadToUse.companyName ? `${leadToUse.name} (${leadToUse.companyName})` : leadToUse.name);
     } else {
-      setFormEmployeeId(null);
-      setFormEmployeeName('Admin Employee');
-      setFormEmployeeEmail('');
-      setFormEmployeeDesignation('Sales Executive');
+      setFormContactId(null);
+      setFormClientName('');
     }
-    setFormMeetingDate(todayStr);
+
+    setFormMeetingDate(new Date().toISOString().split('T')[0]);
     setFormStartTime('10:00 AM');
-    setFormEndTime('11:00 AM');
+    setFormDuration('30 Minutes');
+    setFormEndTime('10:30 AM');
     setFormMeetingType('Virtual');
-    setFormLocation('https://meet.google.com/crm-session');
-    setFormClientName('');
+    setFormLocation('');
     setFormStatus('Scheduled');
     setFormNotes('');
     setModalOpen(true);
   };
 
-  // Open Edit Modal
   const handleOpenEditModal = (meeting: ScheduledMeeting) => {
     setEditingMeeting(meeting);
-    setFormPurpose(meeting.purpose || '');
-    setFormTitle(meeting.title || '');
+    setFormPurpose(meeting.purpose || meeting.title || '');
+    setFormTitle(meeting.title || meeting.purpose || '');
     setFormEmployeeId(meeting.employeeId || null);
-    setFormEmployeeName(meeting.employeeName || '');
+    setFormEmployeeName(meeting.employeeName || meeting.assignedTo || '');
     setFormEmployeeEmail(meeting.employeeEmail || '');
     setFormEmployeeDesignation(meeting.employeeDesignation || '');
-    setFormMeetingDate(meeting.meetingDate || todayStr);
-    setFormStartTime(meeting.startTime || '10:00 AM');
-    setFormEndTime(meeting.endTime || '11:00 AM');
+    setFormMeetingDate(meeting.meetingDate || '');
+    const meetingTime = meeting.meetingTime || meeting.startTime || meeting.time || '10:00 AM';
+    const dur = meeting.duration || inferDuration(meeting.startTime, meeting.endTime);
+    setFormStartTime(meetingTime);
+    setFormDuration(dur);
+    setFormEndTime(meeting.endTime || calculateEndTime(meetingTime, dur));
     setFormMeetingType(meeting.meetingType || 'Virtual');
-    setFormLocation(meeting.location || '');
-    setFormClientName(meeting.clientName || '');
+    setFormLocation(meeting.location || meeting.meetingLocation || meeting.meetingLink || '');
+    setFormContactId(meeting.leadId || meeting.contactId || null);
+    setFormClientName(meeting.clientName || meeting.leadName || '');
     setFormStatus(meeting.status || 'Scheduled');
-    setFormNotes(meeting.notes || '');
+    setFormNotes(meeting.notes || meeting.description || '');
     setModalOpen(true);
   };
 
-  // Save / Update Meeting
   const handleSaveMeeting = async () => {
-    if (!formPurpose.trim()) {
-      notifications.show({ title: 'Validation', message: 'Purpose of the meeting is required.', color: 'red' });
+    if (!formPurpose.trim() && !formTitle.trim()) {
+      notifications.show({ title: 'Validation Error', message: 'Please enter meeting title or purpose.', color: 'red' });
       return;
     }
     if (!formMeetingDate) {
-      notifications.show({ title: 'Validation', message: 'Meeting date is required.', color: 'red' });
+      notifications.show({ title: 'Validation Error', message: 'Please select meeting date.', color: 'red' });
       return;
     }
-    if (!formEmployeeName.trim()) {
-      notifications.show({ title: 'Validation', message: 'Employee name is required.', color: 'red' });
+
+    const resolvedLeadId = formContactId || activeLeadSelection?.id;
+    if (!resolvedLeadId && !editingMeeting) {
+      notifications.show({ title: 'Validation Error', message: 'Please select an associated lead.', color: 'red' });
       return;
     }
 
     setSubmitting(true);
     try {
+      const computedEndTime = calculateEndTime(formStartTime, formDuration);
       const payload: Partial<ScheduledMeeting> = {
-        title: formTitle.trim() || formPurpose.trim(),
-        purpose: formPurpose.trim(),
-        meetingDate: formMeetingDate,
-        startTime: formStartTime.trim(),
-        endTime: formEndTime.trim(),
-        meetingType: formMeetingType,
-        location: formLocation.trim(),
+        title: (formTitle || formPurpose).trim(),
+        purpose: (formPurpose || formTitle).trim(),
+        meetingTitle: (formTitle || formPurpose).trim(),
+        leadId: resolvedLeadId || undefined,
+        lead_id: resolvedLeadId || undefined,
         employeeId: formEmployeeId || undefined,
-        employeeName: formEmployeeName.trim(),
+        employeeName: formEmployeeName.trim() || 'Admin User',
+        assignedTo: formEmployeeName.trim() || 'Admin User',
+        assigned_to: formEmployeeName.trim() || 'Admin User',
         employeeEmail: formEmployeeEmail.trim() || undefined,
         employeeDesignation: formEmployeeDesignation.trim() || undefined,
-        clientName: formClientName.trim() || 'Internal / Client Session',
+        meetingDate: formMeetingDate,
+        startTime: formStartTime,
+        meetingTime: formStartTime,
+        time: formStartTime,
+        endTime: computedEndTime,
+        duration: formDuration,
+        meetingType: formMeetingType,
+        location: formLocation.trim() || undefined,
+        meetingLocation: formLocation.trim() || undefined,
+        contactId: resolvedLeadId || undefined,
+        clientName: formClientName.trim() || undefined,
         status: formStatus,
-        notes: formNotes.trim(),
+        meetingStatus: formStatus,
+        notes: formNotes.trim() || undefined,
+        description: formNotes.trim() || undefined,
       };
 
       if (editingMeeting) {
         await updateMeetingApi(editingMeeting.id, payload);
         notifications.show({
           title: 'Meeting Updated',
-          message: `Meeting details updated successfully.`,
+          message: 'Scheduled meeting updated successfully.',
           color: 'teal',
-          icon: <IconCheck size={16} />,
         });
       } else {
         await createMeetingApi(payload);
         notifications.show({
           title: 'Meeting Scheduled',
-          message: `Scheduled meeting added for ${formEmployeeName}.`,
+          message: 'New meeting scheduled successfully.',
           color: 'teal',
-          icon: <IconCheck size={16} />,
         });
       }
 
@@ -296,8 +499,8 @@ export const ScheduledMeetingsPage: React.FC = () => {
       await loadData();
     } catch (err: any) {
       notifications.show({
-        title: 'Error Saving Meeting',
-        message: err.message || 'Could not save meeting details',
+        title: 'Save Failed',
+        message: err.message || 'Could not save meeting to database.',
         color: 'red',
       });
     } finally {
@@ -305,667 +508,511 @@ export const ScheduledMeetingsPage: React.FC = () => {
     }
   };
 
-  // Quick Status Update
-  const handleQuickStatus = async (id: string, newStatus: string) => {
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
     try {
-      await updateMeetingApi(id, { status: newStatus });
-      notifications.show({
-        title: 'Status Updated',
-        message: `Meeting marked as ${newStatus}`,
-        color: 'teal',
-      });
-      await loadData();
-    } catch (err: any) {
-      notifications.show({ title: 'Update Failed', message: err.message, color: 'red' });
-    }
-  };
-
-  // Delete Meeting
-  const handleDeleteMeeting = async (id: string, purpose: string) => {
-    if (!window.confirm(`Are you sure you want to delete the meeting: "${purpose}"?`)) return;
-    try {
-      await deleteMeetingApi(id);
+      await deleteMeetingApi(deleteTarget.id);
       notifications.show({
         title: 'Meeting Deleted',
-        message: 'Scheduled meeting removed.',
+        message: 'Scheduled meeting removed successfully from database.',
         color: 'blue',
       });
+      setDeleteTarget(null);
       await loadData();
     } catch (err: any) {
       notifications.show({ title: 'Delete Failed', message: err.message, color: 'red' });
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
-  // Helper: Format Date Friendly
-  const formatDateHeader = (dateStr: string) => {
-    try {
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-        return d.toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        });
-      }
-      return dateStr;
-    } catch {
-      return dateStr;
+  const handleOpenLeadActivityPipeline = (lead: Lead) => {
+    setSelectedLead(lead);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('crm_selected_lead', JSON.stringify(lead));
+      sessionStorage.setItem('crm_schedule_tab', 'pipeline');
+    }
+    setActiveNav('lead-schedule');
+  };
+
+  const handleNavigateToLeadFromMeeting = (m: ScheduledMeeting) => {
+    const matched = leads.find(
+      (l) =>
+        (m.leadId && m.leadId === l.id) ||
+        (m.leadDbId && m.leadDbId === l.id) ||
+        (m.leadCode && m.leadCode === l.leadId) ||
+        (m.contactId && m.contactId === l.id) ||
+        (m.clientName && m.clientName.toLowerCase().includes(l.name.toLowerCase()))
+    );
+    if (matched) {
+      handleOpenLeadActivityPipeline(matched);
+    } else if (activeLeadSelection) {
+      handleOpenLeadActivityPipeline(activeLeadSelection);
     }
   };
 
-  // Colors
-  const cardBg = isDark ? '#111827' : '#FFFFFF';
-  const cardBorder = isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(15, 23, 42, 0.08)';
-  const headingColor = isDark ? '#F8FAFC' : '#0F172A';
+  const statusDropdownOptions = [
+    { value: 'All', label: 'All' },
+    { value: 'Scheduled', label: 'Scheduled' },
+    { value: 'In Progress', label: 'In Progress' },
+    { value: 'Completed', label: 'Completed' },
+    { value: 'Cancelled', label: 'Cancelled' },
+  ];
 
   return (
-    <Stack gap="xl">
-      {/* 1. Header & Actions */}
-      <Box>
-        <Group justify="space-between" align="flex-start" wrap="wrap">
-          <div>
-            <Group gap="xs" align="center">
-              <ThemeIcon size={38} radius="12px" color="indigo" variant="light">
-                <IconCalendarEvent size={22} />
-              </ThemeIcon>
-              <div>
-                <Group gap="xs" align="center">
-                  <Text fw={800} size="26px" style={{ letterSpacing: '-0.03em', color: headingColor, lineHeight: 1.2 }}>
-                    Scheduled Meetings
-                  </Text>
-                  <Badge size="md" variant="light" color="indigo" radius="sm" fw={700}>
-                    Admin Module
-                  </Badge>
-                </Group>
-                <Text size="sm" c="dimmed" mt={2}>
-                  Track date-wise scheduled meetings, employee creators, purpose, and meeting timings
-                </Text>
-              </div>
-            </Group>
-          </div>
+    <Box p={{ base: 'md', md: 'lg' }} style={{ maxWidth: 1520, margin: '0 auto' }}>
+      {/* ========================================================================= */}
+      {/* VIEW A: SELECTED LEAD MEETINGS VIEW (Drill-Down Detail)                   */}
+      {/* ========================================================================= */}
+      {activeLeadSelection ? (
+        <Box>
+          {/* Top Bar with Back Button & Action Controls */}
+          <Paper
+            p="sm"
+            radius="lg"
+            mb="md"
+            style={{
+              backgroundColor: isDark ? '#111827' : '#FFFFFF',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
+            }}
+          >
+            <Group justify="space-between" align="center" wrap="wrap" gap="md">
+              <Group gap="sm">
+                <Button
+                  variant="subtle"
+                  color="gray"
+                  size="sm"
+                  leftSection={<IconArrowLeft size={16} />}
+                  onClick={() => setActiveLeadSelection(null)}
+                  style={{
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    fontSize: 13,
+                  }}
+                >
+                  Back to Leads
+                </Button>
 
-          <Group gap="sm">
-            <Button
-              variant="default"
-              size="sm"
-              radius="100px"
-              leftSection={<IconRefresh size={16} />}
-              onClick={loadData}
-              loading={loading}
-            >
-              Refresh
-            </Button>
-            <Button
-              size="sm"
-              radius="100px"
-              leftSection={<IconPlus size={16} />}
-              onClick={handleOpenAddModal}
-              style={{
-                background: isDark ? '#3B82F6' : CRM_COLORS.primary,
-                color: '#FFFFFF',
-                fontWeight: 700,
-                boxShadow: isDark ? '0 4px 14px rgba(59, 130, 246, 0.35)' : undefined,
-              }}
-            >
-              Schedule Meeting
-            </Button>
-          </Group>
-        </Group>
-      </Box>
+                <Box
+                  style={{
+                    height: 24,
+                    width: 1,
+                    backgroundColor: isDark ? '#374151' : '#E2E8F0',
+                  }}
+                />
 
-      {/* 2. Overview KPI Metrics */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
-        {/* Card 1: Today's Meetings */}
-        <Paper p="lg" radius="20px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
-          <Group justify="space-between" align="flex-start" mb="xs">
-            <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-              Today's Schedule
-            </Text>
-            <ThemeIcon size="md" radius="xl" variant="light" color="cyan">
-              <IconCalendarEvent size={18} />
-            </ThemeIcon>
-          </Group>
-          <Text fw={800} size="30px" style={{ letterSpacing: '-0.03em', color: isDark ? '#38BDF8' : '#0284C7', lineHeight: 1.2 }}>
-            {stats ? stats.todayCount : meetings.filter((m) => m.meetingDate === todayStr).length}
-          </Text>
-          <Text size="xs" c="dimmed" mt={4}>
-            Meetings scheduled for today
-          </Text>
-        </Paper>
-
-        {/* Card 2: Upcoming Meetings */}
-        <Paper p="lg" radius="20px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
-          <Group justify="space-between" align="flex-start" mb="xs">
-            <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-              Upcoming Meetings
-            </Text>
-            <ThemeIcon size="md" radius="xl" variant="light" color="indigo">
-              <IconClock size={18} />
-            </ThemeIcon>
-          </Group>
-          <Text fw={800} size="30px" style={{ letterSpacing: '-0.03em', color: isDark ? '#818CF8' : '#4F46E5', lineHeight: 1.2 }}>
-            {stats ? stats.upcomingCount : meetings.filter((m) => m.meetingDate > todayStr).length}
-          </Text>
-          <Text size="xs" c="dimmed" mt={4}>
-            Tomorrow & future dates
-          </Text>
-        </Paper>
-
-        {/* Card 3: Total Scheduled */}
-        <Paper p="lg" radius="20px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
-          <Group justify="space-between" align="flex-start" mb="xs">
-            <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-              Total Meetings
-            </Text>
-            <ThemeIcon size="md" radius="xl" variant="light" color="teal">
-              <IconVideo size={18} />
-            </ThemeIcon>
-          </Group>
-          <Text fw={800} size="30px" style={{ letterSpacing: '-0.03em', color: isDark ? '#34D399' : '#059669', lineHeight: 1.2 }}>
-            {stats ? stats.total : meetings.length}
-          </Text>
-          <Text size="xs" c="dimmed" mt={4}>
-            Across all employees & dates
-          </Text>
-        </Paper>
-
-        {/* Card 4: Active Employee Creators */}
-        <Paper p="lg" radius="20px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
-          <Group justify="space-between" align="flex-start" mb="xs">
-            <Text size="xs" fw={700} c="dimmed" tt="uppercase">
-              Active Hosts
-            </Text>
-            <ThemeIcon size="md" radius="xl" variant="light" color="violet">
-              <IconUsers size={18} />
-            </ThemeIcon>
-          </Group>
-          <Text fw={800} size="30px" style={{ letterSpacing: '-0.03em', color: isDark ? '#C084FC' : '#7C3AED', lineHeight: 1.2 }}>
-            {stats ? Object.keys(stats.employeeBreakdown || {}).length : new Set(meetings.map((m) => m.employeeName)).size}
-          </Text>
-          <Text size="xs" c="dimmed" mt={4}>
-            Employees hosting sessions
-          </Text>
-        </Paper>
-      </SimpleGrid>
-
-      {/* 3. Date-Wise Filter & Search Bar */}
-      <Paper p="md" radius="18px" style={{ background: cardBg, border: cardBorder }}>
-        <Stack gap="md">
-          {/* Quick Date Tabs */}
-          <Group justify="space-between" align="center" wrap="wrap">
-            <SegmentedControl
-              value={dateFilterTab}
-              onChange={(val) => {
-                setDateFilterTab(val);
-                setSelectedDate('');
-              }}
-              data={[
-                { label: 'All Dates', value: 'all' },
-                {
-                  label: `Today (${meetings.filter((m) => m.meetingDate === todayStr).length})`,
-                  value: 'today',
-                },
-                {
-                  label: `Upcoming (${meetings.filter((m) => m.meetingDate > todayStr).length})`,
-                  value: 'upcoming',
-                },
-                {
-                  label: `Past (${meetings.filter((m) => m.meetingDate < todayStr).length})`,
-                  value: 'past',
-                },
-              ]}
-              radius="100px"
-              size="xs"
-              style={{ fontWeight: 600 }}
-            />
-
-            <Group gap="xs">
-              <Text size="xs" fw={700} c="dimmed">
-                Showing {filteredMeetings.length} of {meetings.length} meetings
-              </Text>
-            </Group>
-          </Group>
-
-          {/* Detailed Filters Bar */}
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="sm">
-            {/* Search Input */}
-            <TextInput
-              placeholder="Search by purpose, employee, client..."
-              leftSection={<IconSearch size={16} />}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.currentTarget.value)}
-              radius="100px"
-              size="sm"
-            />
-
-            {/* Jump to Specific Date */}
-            <TextInput
-              type="date"
-              placeholder="Specific Date"
-              leftSection={<IconCalendar size={16} />}
-              value={selectedDate}
-              onChange={(e) => {
-                setSelectedDate(e.currentTarget.value);
-                if (e.currentTarget.value) setDateFilterTab('all');
-              }}
-              radius="100px"
-              size="sm"
-            />
-
-            {/* Employee Filter */}
-            <Select
-              placeholder="Filter by Employee Creator"
-              leftSection={<IconUser size={16} />}
-              value={selectedEmployeeId}
-              onChange={(val) => setSelectedEmployeeId(val || 'ALL')}
-              data={[
-                { value: 'ALL', label: 'All Employees' },
-                ...Array.from(new Set(meetings.map((m) => m.employeeName))).map((name) => ({
-                  value: name,
-                  label: name,
-                })),
-              ]}
-              radius="100px"
-              size="sm"
-              searchable
-            />
-
-            {/* Status Filter */}
-            <Select
-              placeholder="Filter by Status"
-              leftSection={<IconFilter size={16} />}
-              value={selectedStatus}
-              onChange={(val) => setSelectedStatus(val || 'ALL')}
-              data={[
-                { value: 'ALL', label: 'All Statuses' },
-                { value: 'Scheduled', label: 'Scheduled' },
-                { value: 'Completed', label: 'Completed' },
-                { value: 'Cancelled', label: 'Cancelled' },
-              ]}
-              radius="100px"
-              size="sm"
-            />
-          </SimpleGrid>
-        </Stack>
-      </Paper>
-
-      {/* 4. Date-Wise Grouped Display */}
-      {loading ? (
-        <Center py={80}>
-          <Stack align="center" gap="sm">
-            <Loader size="lg" color="indigo" />
-            <Text size="sm" c="dimmed">
-              Loading scheduled meetings date-wise...
-            </Text>
-          </Stack>
-        </Center>
-      ) : dateWiseGrouped.length === 0 ? (
-        <Paper p={60} radius="24px" style={{ background: cardBg, border: cardBorder, textAlign: 'center' }}>
-          <Stack align="center" gap="md">
-            <ThemeIcon size={64} radius="24px" variant="light" color="indigo">
-              <IconCalendarEvent size={32} />
-            </ThemeIcon>
-            <div>
-              <Text fw={700} size="lg" style={{ color: headingColor }}>
-                No Scheduled Meetings Found
-              </Text>
-              <Text size="sm" c="dimmed" mt={4} style={{ maxWidth: 460 }}>
-                {searchQuery || selectedDate || selectedEmployeeId !== 'ALL' || selectedStatus !== 'ALL'
-                  ? 'No meetings match your selected filters. Try clearing filters or search terms.'
-                  : 'There are no meetings scheduled for this period. Click below to schedule a new meeting.'}
-              </Text>
-            </div>
-            <Button
-              size="sm"
-              radius="100px"
-              leftSection={<IconPlus size={16} />}
-              onClick={handleOpenAddModal}
-              style={{
-                background: isDark ? '#3B82F6' : CRM_COLORS.primary,
-                color: '#FFFFFF',
-                fontWeight: 700,
-              }}
-            >
-              Schedule New Meeting
-            </Button>
-          </Stack>
-        </Paper>
-      ) : (
-        <Stack gap="xl">
-          {dateWiseGrouped.map(({ date, items }) => {
-            const isToday = date === todayStr;
-            const isTomorrow = (() => {
-              const tm = new Date();
-              tm.setDate(tm.getDate() + 1);
-              return date === tm.toISOString().split('T')[0];
-            })();
-            const isPast = date < todayStr;
-
-            return (
-              <Box key={date}>
-                {/* Date Group Header */}
-                <Group justify="space-between" align="center" mb="md" px="xs">
-                  <Group gap="sm" align="center">
-                    <ThemeIcon
-                      size={28}
-                      radius="8px"
-                      color={isToday ? 'cyan' : isTomorrow ? 'indigo' : isPast ? 'gray' : 'blue'}
-                      variant={isToday ? 'filled' : 'light'}
-                    >
-                      <IconCalendar size={16} />
-                    </ThemeIcon>
-                    <Text fw={800} size="18px" style={{ color: headingColor, letterSpacing: '-0.02em' }}>
-                      {formatDateHeader(date)}
-                    </Text>
-
-                    {isToday && (
-                      <Badge color="cyan" variant="filled" size="sm" radius="sm" fw={800}>
-                        TODAY
-                      </Badge>
-                    )}
-                    {isTomorrow && (
-                      <Badge color="indigo" variant="light" size="sm" radius="sm" fw={700}>
-                        TOMORROW
-                      </Badge>
-                    )}
-                    {isPast && (
-                      <Badge color="gray" variant="light" size="sm" radius="sm">
-                        PAST
-                      </Badge>
-                    )}
-                  </Group>
-
-                  <Badge variant="outline" color="gray" size="sm" radius="sm">
-                    {items.length} {items.length === 1 ? 'Meeting' : 'Meetings'}
-                  </Badge>
-                </Group>
-
-                {/* Meetings List for this date */}
-                <Stack gap="sm">
-                  {items.map((m) => {
-                    const isCompleted = m.status?.toLowerCase() === 'completed';
-                    const isCancelled = m.status?.toLowerCase() === 'cancelled';
-
-                    return (
-                      <Paper
-                        key={m.id}
-                        p="lg"
-                        radius="18px"
-                        className="crextio-card"
+                <Group gap="xs">
+                  <Box
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 8,
+                      background: isDark ? 'rgba(79, 70, 229, 0.2)' : 'rgba(79, 70, 229, 0.08)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: isDark ? '#818CF8' : '#4F46E5',
+                      fontWeight: 700,
+                      fontSize: 14,
+                    }}
+                  >
+                    {(activeLeadSelection.name || 'L').charAt(0).toUpperCase()}
+                  </Box>
+                  <div>
+                    <Group gap={8} align="center">
+                      <Text fw={700} size="md" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                        {activeLeadSelection.name}
+                      </Text>
+                      <Box
                         style={{
-                          background: cardBg,
-                          border: isToday
-                            ? `1.5px solid ${isDark ? 'rgba(56, 189, 248, 0.4)' : '#38BDF8'}`
-                            : cardBorder,
-                          transition: 'all 0.2s ease',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '2px 8px',
+                          borderRadius: 100,
+                          backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
+                          color: isDark ? '#A5B4FC' : '#4F46E5',
+                          border: isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #E0E7FF',
+                          fontSize: 11,
+                          fontWeight: 700,
                         }}
                       >
-                        <Grid align="center" gutter="md">
-                          {/* Column 1: Time & Mode (Left) */}
-                          <Grid.Col span={{ base: 12, md: 3 }}>
-                            <Stack gap={6}>
-                              <Group gap="xs" align="center">
-                                <ThemeIcon
-                                  size="md"
-                                  radius="8px"
-                                  variant="light"
-                                  color={isCompleted ? 'teal' : isCancelled ? 'gray' : 'indigo'}
-                                >
-                                  <IconClock size={16} />
-                                </ThemeIcon>
-                                <div>
-                                  <Text fw={800} size="15px" style={{ color: headingColor }}>
-                                    {m.startTime} – {m.endTime}
-                                  </Text>
-                                  <Text size="11px" c="dimmed">
-                                    Date: {m.meetingDate}
-                                  </Text>
-                                </div>
-                              </Group>
+                        {selectedLeadMeetings.length} {selectedLeadMeetings.length === 1 ? 'Meeting' : 'Meetings'}
+                      </Box>
+                    </Group>
+                    <Text size="xs" c="dimmed">
+                      {activeLeadSelection.companyName
+                        ? `${activeLeadSelection.companyName} • ${activeLeadSelection.email || activeLeadSelection.phone || 'Lead'}`
+                        : `${activeLeadSelection.email || activeLeadSelection.phone || 'Individual Lead'}`}
+                    </Text>
+                  </div>
+                </Group>
+              </Group>
 
-                              <Group gap={6} mt={2}>
-                                <Badge
-                                  size="xs"
-                                  variant="dot"
-                                  color={m.meetingType === 'In-person' ? 'orange' : 'blue'}
-                                  radius="sm"
-                                >
-                                  {m.meetingType || 'Virtual'}
-                                </Badge>
-                                {m.location && (
-                                  <Tooltip label={m.location}>
-                                    <Text
-                                      size="xs"
-                                      c="dimmed"
-                                      style={{
-                                        maxWidth: 140,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                      }}
-                                    >
-                                      {m.location}
-                                    </Text>
-                                  </Tooltip>
-                                )}
-                              </Group>
-                            </Stack>
-                          </Grid.Col>
+              <Group gap="xs">
+                <Button
+                  size="sm"
+                  variant="default"
+                  radius="md"
+                  leftSection={<IconLayersSubtract size={16} color="#4F46E5" />}
+                  onClick={() => handleOpenLeadActivityPipeline(activeLeadSelection)}
+                  style={{
+                    fontWeight: 600,
+                    fontSize: 13,
+                    height: 36,
+                    borderColor: isDark ? '#374151' : '#E2E8F0',
+                  }}
+                >
+                  Activity Pipeline
+                </Button>
 
-                          {/* Column 2: Purpose of the Meeting & Agenda (Center) */}
-                          <Grid.Col span={{ base: 12, md: 5 }}>
-                            <Stack gap={4}>
-                              <Group gap="xs" align="center">
-                                <Badge size="xs" variant="light" color="indigo" radius="sm" fw={700}>
-                                  PURPOSE
-                                </Badge>
-                                <Text fw={700} size="15px" style={{ color: headingColor }}>
-                                  {m.title || m.purpose}
-                                </Text>
-                              </Group>
+                <Button
+                  size="sm"
+                  radius="md"
+                  leftSection={<IconPlus size={16} />}
+                  onClick={() => handleOpenAddModal(activeLeadSelection)}
+                  style={{
+                    background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                    color: '#FFFFFF',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    height: 36,
+                    border: 'none',
+                    boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)',
+                  }}
+                >
+                  Schedule Meeting
+                </Button>
+              </Group>
+            </Group>
+          </Paper>
 
-                              {/* Detailed Purpose Description */}
-                              <Box
-                                p="xs"
-                                style={{
-                                  background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(15, 23, 42, 0.02)',
-                                  borderRadius: 8,
-                                  borderLeft: `3px solid ${isDark ? '#3B82F6' : CRM_COLORS.primary}`,
-                                }}
-                              >
-                                <Text size="13px" fw={500} style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
-                                  {m.purpose}
-                                </Text>
-                                {m.notes && (
-                                  <Text size="12px" c="dimmed" mt={4}>
-                                    Notes: {m.notes}
-                                  </Text>
-                                )}
-                              </Box>
-
-                              {m.clientName && (
-                                <Group gap={6} mt={2}>
-                                  <IconBuilding size={14} color="#94A3B8" />
-                                  <Text size="xs" fw={600} c="dimmed">
-                                    Client / Account: <Text span inherit c={isDark ? '#F8FAFC' : '#0F172A'}>{m.clientName}</Text>
-                                  </Text>
-                                </Group>
-                              )}
-                            </Stack>
-                          </Grid.Col>
-
-                          {/* Column 3: Which Employee Created the Meeting */}
-                          <Grid.Col span={{ base: 12, md: 2.5 }}>
-                            <Box
-                              p="xs"
-                              style={{
-                                background: isDark ? 'rgba(30, 41, 59, 0.5)' : '#F8FAFC',
-                                borderRadius: 12,
-                                border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.05)' : '#E2E8F0'}`,
-                              }}
-                            >
-                              <Text size="10px" fw={800} c="dimmed" tt="uppercase" mb={6} style={{ letterSpacing: '0.04em' }}>
-                                Meeting Creator / Host
-                              </Text>
-                              <Group gap="xs" align="center">
-                                <Avatar size={34} radius="xl" color="indigo">
-                                  {m.employeeName ? m.employeeName.charAt(0).toUpperCase() : 'E'}
-                                </Avatar>
-                                <Box style={{ minWidth: 0 }}>
-                                  <Text fw={700} size="13px" style={{ color: headingColor }} truncate>
-                                    {m.employeeName}
-                                  </Text>
-                                  <Text size="11px" c="dimmed" truncate>
-                                    {m.employeeDesignation || 'CRM Team Member'}
-                                  </Text>
-                                </Box>
-                              </Group>
-                            </Box>
-                          </Grid.Col>
-
-                          {/* Column 4: Status & Actions (Right) */}
-                          <Grid.Col span={{ base: 12, md: 1.5 }}>
-                            <Stack gap="xs" align="flex-end">
-                              <Badge
-                                size="sm"
-                                radius="sm"
-                                variant="light"
-                                color={
-                                  isCompleted ? 'teal' : isCancelled ? 'red' : 'blue'
-                                }
-                                fw={700}
-                              >
-                                {m.status || 'Scheduled'}
-                              </Badge>
-
-                              <Group gap={6}>
-                                {m.location && m.location.startsWith('http') && (
-                                  <Tooltip label="Open Meeting Link">
-                                    <ActionIcon
-                                      size="sm"
-                                      variant="light"
-                                      color="cyan"
-                                      radius="md"
-                                      component="a"
-                                      href={m.location}
-                                      target="_blank"
-                                    >
-                                      <IconExternalLink size={14} />
-                                    </ActionIcon>
-                                  </Tooltip>
-                                )}
-
-                                <Menu shadow="md" width={180} position="bottom-end">
-                                  <Menu.Target>
-                                    <ActionIcon size="sm" variant="subtle" radius="md">
-                                      <IconDotsVertical size={16} />
-                                    </ActionIcon>
-                                  </Menu.Target>
-
-                                  <Menu.Dropdown>
-                                    <Menu.Label>Actions</Menu.Label>
-                                    <Menu.Item
-                                      leftSection={<IconEdit size={14} />}
-                                      onClick={() => handleOpenEditModal(m)}
-                                    >
-                                      Edit Details
-                                    </Menu.Item>
-                                    {!isCompleted && (
-                                      <Menu.Item
-                                        leftSection={<IconCheck size={14} />}
-                                        color="teal"
-                                        onClick={() => handleQuickStatus(m.id, 'Completed')}
-                                      >
-                                        Mark Completed
-                                      </Menu.Item>
-                                    )}
-                                    {!isCancelled && (
-                                      <Menu.Item
-                                        leftSection={<IconX size={14} />}
-                                        color="orange"
-                                        onClick={() => handleQuickStatus(m.id, 'Cancelled')}
-                                      >
-                                        Mark Cancelled
-                                      </Menu.Item>
-                                    )}
-                                    <Menu.Divider />
-                                    <Menu.Item
-                                      leftSection={<IconTrash size={14} />}
-                                      color="red"
-                                      onClick={() => handleDeleteMeeting(m.id, m.purpose)}
-                                    >
-                                      Delete Meeting
-                                    </Menu.Item>
-                                  </Menu.Dropdown>
-                                </Menu>
-                              </Group>
-                            </Stack>
-                          </Grid.Col>
-                        </Grid>
-                      </Paper>
-                    );
-                  })}
-                </Stack>
+          {/* That Lead's Meetings Table */}
+          <MeetingTableView
+            meetings={selectedLeadMeetings}
+            onEdit={handleOpenEditModal}
+            onDelete={(m) => setDeleteTarget(m)}
+            onAddNew={() => handleOpenAddModal(activeLeadSelection)}
+            onNavigateToLead={() => handleOpenLeadActivityPipeline(activeLeadSelection)}
+            onMeetingUpdated={() => loadData()}
+            onViewDetails={(m) => setDetailsMeeting(m)}
+            loading={loading}
+          />
+        </Box>
+      ) : (
+        /* ========================================================================= */
+        /* VIEW B: LEADS LIST VIEW (Screenshot 2 Layout)                              */
+        /* ========================================================================= */
+        <Box>
+          {/* Top Controls Bar - Matches Contacts design */}
+          <Paper
+            p="sm"
+            radius="lg"
+            mb="md"
+            style={{
+              backgroundColor: isDark ? '#111827' : '#FFFFFF',
+              border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
+              boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
+            }}
+          >
+            <Group justify="space-between" align="center" wrap="wrap" gap="md">
+              {/* Left Capsule Filter Tabs */}
+              <Box
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                  padding: 3,
+                  borderRadius: 10,
+                  border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0',
+                }}
+              >
+                {[
+                  { id: 'ALL' as ActiveLeadTabType, label: 'All', count: totalLeadsWithMeetingsCount },
+                  { id: 'TODAY' as ActiveLeadTabType, label: 'Today', count: todayLeadsCount },
+                  { id: 'UPCOMING' as ActiveLeadTabType, label: 'Upcoming', count: upcomingLeadsCount },
+                  { id: 'COMPLETED' as ActiveLeadTabType, label: 'Completed', count: completedLeadsCount },
+                ].map((tab) => {
+                  const active = leadTab === tab.id;
+                  return (
+                    <UnstyledButton
+                      key={tab.id}
+                      onClick={() => handleLeadTabChange(tab.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '5px 12px',
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: active ? 700 : 500,
+                        backgroundColor: active ? (isDark ? '#0F172A' : '#FFFFFF') : 'transparent',
+                        color: active ? (isDark ? '#818CF8' : '#4F46E5') : isDark ? '#94A3B8' : '#64748B',
+                        boxShadow: active ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <span>{tab.label}</span>
+                      <Box
+                        style={{
+                          minWidth: 20,
+                          height: 20,
+                          padding: '0 6px',
+                          borderRadius: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          backgroundColor: active
+                            ? isDark
+                              ? '#4338CA'
+                              : '#4F46E5'
+                            : isDark
+                            ? '#334155'
+                            : '#CBD5E1',
+                          color: active ? '#FFFFFF' : isDark ? '#94A3B8' : '#475569',
+                        }}
+                      >
+                        {tab.count}
+                      </Box>
+                    </UnstyledButton>
+                  );
+                })}
               </Box>
-            );
-          })}
-        </Stack>
+
+              {/* Right Search, Dropdown & Schedule Meeting Button */}
+              <Group gap="xs" wrap="wrap">
+                <TextInput
+                  placeholder="Search meetings or leads..."
+                  leftSection={<IconSearch size={15} color={isDark ? '#94A3B8' : '#64748B'} />}
+                  value={searchInput}
+                  onChange={(e) => {
+                    setSearchInput(e.currentTarget.value);
+                    setPage(1);
+                  }}
+                  size="sm"
+                  radius="md"
+                  styles={{
+                    input: {
+                      backgroundColor: isDark ? '#1F2937' : '#F8FAFC',
+                      borderColor: isDark ? '#374151' : '#E2E8F0',
+                      color: isDark ? '#F1F5F9' : '#0F172A',
+                      fontSize: 13,
+                      height: 36,
+                    },
+                  }}
+                  style={{ width: 220 }}
+                  rightSection={
+                    searchInput ? (
+                      <ActionIcon size="xs" variant="subtle" color="gray" onClick={() => setSearchInput('')}>
+                        <IconX size={12} />
+                      </ActionIcon>
+                    ) : null
+                  }
+                />
+
+                <Select
+                  data={statusDropdownOptions}
+                  value={statusFilter}
+                  onChange={(val) => {
+                    setStatusFilter(val || 'All');
+                    setPage(1);
+                  }}
+                  size="sm"
+                  radius="md"
+                  styles={{
+                    input: {
+                      backgroundColor: isDark ? '#1F2937' : '#F8FAFC',
+                      borderColor: isDark ? '#374151' : '#E2E8F0',
+                      color: isDark ? '#F1F5F9' : '#0F172A',
+                      fontSize: 13,
+                      height: 36,
+                    },
+                  }}
+                  style={{ width: 125 }}
+                  allowDeselect={false}
+                />
+
+                <Button
+                  leftSection={<IconPlus size={16} />}
+                  radius="md"
+                  size="sm"
+                  onClick={() => handleOpenAddModal(null)}
+                  style={{
+                    background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                    color: '#FFFFFF',
+                    fontWeight: 600,
+                    fontSize: 13,
+                    height: 36,
+                    border: 'none',
+                    boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)',
+                  }}
+                >
+                  Schedule Meeting
+                </Button>
+              </Group>
+            </Group>
+          </Paper>
+
+          {/* Table Container: Leads List View */}
+          {loading ? (
+            <Center p="4rem">
+              <Stack align="center" gap="sm">
+                <Loader color="indigo" />
+                <Text size="sm" c="dimmed">
+                  Loading leads and scheduled meetings...
+                </Text>
+              </Stack>
+            </Center>
+          ) : (
+            <LeadMeetingsTableView
+              leads={paginatedLeads}
+              meetings={meetings}
+              onSelectLead={handleSelectLead}
+              onScheduleMeetingForLead={(l) => handleOpenAddModal(l)}
+              loading={loading}
+            />
+          )}
+
+          {/* Pagination Footer */}
+          {!loading && filteredLeads.length > 0 && (
+            <Paper
+              p="sm"
+              px="md"
+              radius="lg"
+              mt="md"
+              style={{
+                backgroundColor: isDark ? '#111827' : '#FFFFFF',
+                border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
+                boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
+              }}
+            >
+              <Group justify="space-between" align="center">
+                <Text size="xs" c="dimmed">
+                  Showing {filteredLeads.length === 0 ? 0 : (page - 1) * pageSize + 1} to{' '}
+                  {Math.min(page * pageSize, filteredLeads.length)} of {filteredLeads.length} leads with meetings
+                </Text>
+                {totalLeadPages > 1 && (
+                  <Group gap="xs">
+                    <Button
+                      variant="subtle"
+                      size="xs"
+                      color="gray"
+                      disabled={page === 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      style={{ fontSize: 12, fontWeight: 500 }}
+                    >
+                      &lt; Previous
+                    </Button>
+                    <Box
+                      style={{
+                        minWidth: 28,
+                        height: 28,
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: isDark ? '1px solid #374151' : '1px solid #E2E8F0',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: isDark ? '#F1F5F9' : '#0F172A',
+                      }}
+                    >
+                      {page}
+                    </Box>
+                    <Text size="xs" c="dimmed">of {totalLeadPages}</Text>
+                    <Button
+                      variant="subtle"
+                      size="xs"
+                      color="gray"
+                      disabled={page === totalLeadPages}
+                      onClick={() => setPage((p) => Math.min(totalLeadPages, p + 1))}
+                      style={{ fontSize: 12, fontWeight: 500 }}
+                    >
+                      Next &gt;
+                    </Button>
+                  </Group>
+                )}
+              </Group>
+            </Paper>
+          )}
+        </Box>
       )}
 
-      {/* 5. Schedule / Edit Meeting Modal */}
+      {/* ========================================================================= */}
+      {/* ADD / EDIT MEETING MODAL                                                  */}
+      {/* ========================================================================= */}
       <Modal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
         title={
           <Group gap="xs">
-            <ThemeIcon size={28} radius="md" color="indigo" variant="light">
+            <ThemeIcon color="teal" variant="light" size="md" radius="md">
               <IconCalendarEvent size={18} />
             </ThemeIcon>
-            <Text fw={800} size="16px">
+            <Text fw={700} size="md">
               {editingMeeting ? 'Edit Scheduled Meeting' : 'Schedule New Meeting'}
             </Text>
           </Group>
         }
         size="lg"
-        radius="18px"
+        radius="lg"
       >
-        <Stack gap="md">
-          {/* Meeting Purpose (Crucial Requirement) */}
-          <Textarea
-            label="Purpose of the Meeting"
-            description="Clearly define the agenda, purpose, and objectives"
-            placeholder="e.g. Sales Demo for ERP Cloud & Module Pricing Discussion"
-            value={formPurpose}
-            onChange={(e) => setFormPurpose(e.currentTarget.value)}
-            required
-            autosize
-            minRows={2}
-            maxRows={4}
-          />
-
-          {/* Title */}
-          <TextInput
-            label="Meeting Title"
-            placeholder="e.g. ERP Solution Walkthrough"
-            value={formTitle}
-            onChange={(e) => setFormTitle(e.currentTarget.value)}
-          />
-
-          {/* Employee Creator Selection */}
+        <Stack gap="md" mt="xs">
+          {/* Associated Lead Selection */}
           <Select
-            label="Employee Creator / Host"
-            description="Which employee created and leads this meeting"
-            placeholder="Select employee"
-            data={
-              employees.length > 0
-                ? employees.map((emp) => ({
-                    value: emp.id || emp.empCode,
-                    label: `${emp.name} (${emp.designation || emp.role || 'Staff'})`,
-                  }))
-                : [{ value: 'admin', label: 'Admin User' }]
-            }
+            label="Associated Lead"
+            placeholder="Select Lead from CRM"
+            data={leads.map((l) => ({
+              value: l.id,
+              label: l.companyName ? `${l.name} (${l.companyName})` : l.name,
+            }))}
+            value={formContactId}
+            onChange={(val) => {
+              setFormContactId(val);
+              const matched = leads.find((l) => l.id === val);
+              if (matched) {
+                setFormClientName(matched.companyName ? `${matched.name} (${matched.companyName})` : matched.name);
+                if (!formTitle) {
+                  setFormTitle(`Discovery Call with ${matched.name}`);
+                  setFormPurpose(`Discovery Call with ${matched.name}`);
+                }
+              }
+            }}
+            searchable
+            clearable
+            required
+          />
+
+          {/* Meeting Title & Purpose */}
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <TextInput
+              label="Meeting Title"
+              placeholder="e.g. Discovery & Architecture Call"
+              value={formTitle}
+              onChange={(e) => setFormTitle(e.currentTarget.value)}
+              required
+            />
+            <TextInput
+              label="Purpose / Agenda"
+              placeholder="e.g. Product Demo & Scope Discussion"
+              value={formPurpose}
+              onChange={(e) => setFormPurpose(e.currentTarget.value)}
+              required
+            />
+          </SimpleGrid>
+
+          {/* Assigned Host / Employee */}
+          <Select
+            label="Assigned Host / User"
+            placeholder="Select Host"
+            data={employees.map((e) => ({
+              value: e.id || e.empCode,
+              label: `${e.name} (${e.designation || e.role || 'Host'})`,
+            }))}
             value={formEmployeeId}
             onChange={(val) => {
               setFormEmployeeId(val);
@@ -977,41 +1024,30 @@ export const ScheduledMeetingsPage: React.FC = () => {
               }
             }}
             searchable
-            required
+            clearable
           />
-
-          {/* Custom Employee Name input if not selected from list */}
-          {(!employees.length || !formEmployeeId) && (
-            <TextInput
-              label="Employee Name"
-              placeholder="e.g. Santhosh Kumar"
-              value={formEmployeeName}
-              onChange={(e) => setFormEmployeeName(e.currentTarget.value)}
-              required
-            />
-          )}
 
           {/* Date & Timings */}
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
-            <TextInput
-              type="date"
+            <MeetingDatePicker
               label="Meeting Date"
               value={formMeetingDate}
-              onChange={(e) => setFormMeetingDate(e.currentTarget.value)}
+              onChange={(val) => setFormMeetingDate(val)}
               required
             />
-            <TextInput
-              label="Start Time"
+            <MeetingTimePicker
+              label="Meeting Time"
               placeholder="10:00 AM"
               value={formStartTime}
-              onChange={(e) => setFormStartTime(e.currentTarget.value)}
+              onChange={(val) => setFormStartTime(val)}
               required
             />
-            <TextInput
-              label="End Time"
-              placeholder="11:00 AM"
-              value={formEndTime}
-              onChange={(e) => setFormEndTime(e.currentTarget.value)}
+            <Select
+              label="Duration"
+              data={['15 Minutes', '30 Minutes', '45 Minutes', '1 Hour', '1.5 Hours', '2 Hours']}
+              value={formDuration}
+              onChange={(val) => setFormDuration(val || '30 Minutes')}
+              allowDeselect={false}
               required
             />
           </SimpleGrid>
@@ -1037,27 +1073,18 @@ export const ScheduledMeetingsPage: React.FC = () => {
             />
           </SimpleGrid>
 
-          {/* Client / Attendee & Status */}
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            <TextInput
-              label="Client / Attendee Organization"
-              placeholder="e.g. Infosys Technologies"
-              value={formClientName}
-              onChange={(e) => setFormClientName(e.currentTarget.value)}
-            />
-
-            <Select
-              label="Meeting Status"
-              data={[
-                { value: 'Scheduled', label: 'Scheduled' },
-                { value: 'In Progress', label: 'In Progress' },
-                { value: 'Completed', label: 'Completed' },
-                { value: 'Cancelled', label: 'Cancelled' },
-              ]}
-              value={formStatus}
-              onChange={(val) => setFormStatus(val || 'Scheduled')}
-            />
-          </SimpleGrid>
+          {/* Status */}
+          <Select
+            label="Meeting Status"
+            data={[
+              { value: 'Scheduled', label: 'Scheduled' },
+              { value: 'In Progress', label: 'In Progress' },
+              { value: 'Completed', label: 'Completed' },
+              { value: 'Cancelled', label: 'Cancelled' },
+            ]}
+            value={formStatus}
+            onChange={(val) => setFormStatus(val || 'Scheduled')}
+          />
 
           {/* Additional Notes */}
           <Textarea
@@ -1070,26 +1097,75 @@ export const ScheduledMeetingsPage: React.FC = () => {
 
           {/* Buttons */}
           <Group justify="flex-end" mt="md">
-            <Button variant="default" radius="100px" onClick={() => setModalOpen(false)}>
+            <Button variant="default" radius="md" onClick={() => setModalOpen(false)}>
               Cancel
             </Button>
             <Button
-              radius="100px"
+              radius="md"
               loading={submitting}
               onClick={handleSaveMeeting}
               style={{
-                background: isDark ? '#3B82F6' : CRM_COLORS.primary,
+                background: isDark ? '#374151' : '#0F172A',
                 color: '#FFFFFF',
-                fontWeight: 700,
+                fontWeight: 600,
               }}
             >
-              {editingMeeting ? 'Save Changes' : 'Confirm & Schedule'}
+              {editingMeeting ? 'Update Meeting' : 'Schedule Meeting'}
             </Button>
           </Group>
         </Stack>
       </Modal>
-    </Stack>
+
+      {/* ========================================================================= */}
+      {/* DELETE CONFIRMATION MODAL                                                 */}
+      {/* ========================================================================= */}
+      <Modal
+        opened={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title={
+          <Group gap="xs">
+            <ThemeIcon color="red" variant="light" size="md" radius="md">
+              <IconAlertTriangle size={18} />
+            </ThemeIcon>
+            <Text fw={700} size="md">
+              Cancel / Delete Meeting
+            </Text>
+          </Group>
+        }
+        size="sm"
+        radius="lg"
+      >
+        <Stack gap="md" mt="xs">
+          <Text size="sm" c="dimmed">
+            Are you sure you want to remove the scheduled meeting &quot;
+            <Text component="span" fw={600} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+              {deleteTarget?.title || deleteTarget?.purpose}
+            </Text>
+            &quot;? This record will be permanently deleted from database.
+          </Text>
+
+          <Group justify="flex-end" mt="xs">
+            <Button variant="default" radius="md" onClick={() => setDeleteTarget(null)}>
+              No, Keep
+            </Button>
+            <Button color="red" radius="md" loading={deleteLoading} onClick={handleConfirmDelete}>
+              Yes, Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* Meeting Details & Requirements Modal */}
+      <MeetingDetailsModal
+        opened={!!detailsMeeting}
+        onClose={() => setDetailsMeeting(null)}
+        meeting={detailsMeeting}
+        onMeetingUpdated={(updated) => {
+          setDetailsMeeting(updated);
+          loadData();
+        }}
+        onNavigateToLead={handleNavigateToLeadFromMeeting}
+      />
+    </Box>
   );
 };
-
-export default ScheduledMeetingsPage;
