@@ -400,8 +400,8 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
     const submissionData: ProjectFormData = {
       ...formData,
       contactId: formData.contactId || (matchedContact ? matchedContact.id : undefined),
-      clientEmail: formData.clientEmail || (matchedContact ? matchedContact.email : undefined),
-      clientPhone: formData.clientPhone || (matchedContact ? matchedContact.phone : undefined),
+      clientEmail: formData.clientEmail || (matchedContact ? matchedContact.email || undefined : undefined),
+      clientPhone: formData.clientPhone || (matchedContact ? matchedContact.phone || undefined : undefined),
       projectManagerName: tlName,
       projectManagerId: tlName,
       clientName: combinedClient,
@@ -613,7 +613,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
             <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md">
               <TextInput
                 label="Project Name"
-                placeholder="e.g. Venus ERP"
+                placeholder="Enter project name"
                 required
                 value={formData.name}
                 onChange={(e) => handleFieldChange('name', e.target.value)}
@@ -625,7 +625,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
 
               <Select
                 label="Project Type"
-                placeholder="Select Project Type"
+                placeholder="Select project type"
                 data={projectTypeOptions}
                 value={formData.projectType || 'Full-Stack Web App'}
                 onChange={(val) => handleFieldChange('projectType', val || 'Full-Stack Web App')}
@@ -635,7 +635,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
 
               <Autocomplete
                 label="Company"
-                placeholder="e.g. SK Home Products"
+                placeholder="Enter company name"
                 required
                 value={companyName}
                 data={companyOptions}
@@ -647,7 +647,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
 
               <Autocomplete
                 label="Client Name"
-                placeholder="e.g. Sudhan"
+                placeholder="Enter client name"
                 value={clientPersonName}
                 data={clientOptions}
                 onChange={handleClientPersonChange}
@@ -713,7 +713,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" style={{ maxWidth: 760 }}>
               <TextInput
                 label="Project TL"
-                placeholder="e.g. Santhosh C (Team Lead)"
+                placeholder="Enter Project Tech Lead"
                 value={formData.projectManagerName || ''}
                 onChange={(e) => {
                   handleFieldChange('projectManagerName', e.target.value);
@@ -727,7 +727,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
               <Box>
                 <TextInput
                   label={`Team Member${formData.teamMembers?.length ? ` (${formData.teamMembers.length})` : ''}`}
-                  placeholder="Type name & press Enter or Add"
+                  placeholder="Enter team member name"
                   value={newMemberInput}
                   onChange={(e) => setNewMemberInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -831,7 +831,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
             <SimpleGrid cols={{ base: 1, xs: 2, md: 4 }} spacing="md">
               <DatePickerInput
                 label="Start Date"
-                placeholder="DD-MM-YYYY"
+                placeholder="Select start date"
                 value={parseDateStringToDate(formData.startDate)}
                 onChange={(val) => {
                   handleFieldChange('startDate', val ? dayjs(val).format('DD-MM-YYYY') : '');
@@ -845,7 +845,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
 
               <DatePickerInput
                 label="End Date"
-                placeholder="DD-MM-YYYY"
+                placeholder="Select end date"
                 value={parseDateStringToDate(formData.targetEndDate)}
                 onChange={(val) => {
                   handleFieldChange('targetEndDate', val ? dayjs(val).format('DD-MM-YYYY') : '');
@@ -908,7 +908,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
             <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md" mb="sm">
               <TextInput
                 label="Repository Links (GitHub)"
-                placeholder="https://github.com/company/repo"
+                placeholder="Enter GitHub repository URL"
                 leftSection={<IconBrandGithub size={16} stroke={1.8} color={isDark ? '#F8FAFC' : '#0F172A'} />}
                 value={formData.githubUrl || ''}
                 onChange={(e) => handleFieldChange('githubUrl', e.target.value)}
@@ -918,7 +918,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
 
               <TextInput
                 label="Deliverables (Figma UI)"
-                placeholder="https://figma.com/file/..."
+                placeholder="Enter Figma design URL"
                 leftSection={<IconBrandFigma size={16} stroke={1.8} color="#EA580C" />}
                 value={formData.figmaUrl || ''}
                 onChange={(e) => handleFieldChange('figmaUrl', e.target.value)}
@@ -928,7 +928,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
 
               <TextInput
                 label="Deliverables (Live URL)"
-                placeholder="https://app.clientdomain.com"
+                placeholder="Enter live deployment URL"
                 leftSection={<IconWorld size={16} stroke={1.8} color="#0284C7" />}
                 value={formData.liveUrl || ''}
                 onChange={(e) => handleFieldChange('liveUrl', e.target.value)}
@@ -939,7 +939,7 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
 
             <Textarea
               label="Scope of Work & Milestone Notes"
-              placeholder="Describe key deliverables, milestone goals, technology stack specifications, sprint roadmap, and client expectations..."
+              placeholder="Enter project scope, key deliverables, technology specifications, and milestone goals..."
               rows={3}
               value={formData.description || ''}
               onChange={(e) => handleFieldChange('description', e.target.value)}
