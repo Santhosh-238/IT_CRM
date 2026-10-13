@@ -8,6 +8,7 @@ import moduleRouter from './module.routes.js';
 import leadRouter from './lead.routes.js';
 import taskRouter from './task.routes.js';
 import meetingRouter from './meeting.routes.js';
+import callLogRouter from './callLog.routes.js';
 import crmRouter from './crm.routes.js';
 
 const apiRouter = Router();
@@ -21,6 +22,7 @@ apiRouter.use('/modules', moduleRouter);
 apiRouter.use('/leads', leadRouter);
 apiRouter.use('/tasks', taskRouter);
 apiRouter.use('/meetings', meetingRouter);
+apiRouter.use('/call-logs', callLogRouter);
 apiRouter.use('/', crmRouter);
 
 export default apiRouter;
@@ -34,6 +36,7 @@ export {
   leadRouter,
   taskRouter,
   meetingRouter,
+  callLogRouter,
   crmRouter,
 };
 

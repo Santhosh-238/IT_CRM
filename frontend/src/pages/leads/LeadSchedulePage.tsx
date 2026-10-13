@@ -65,8 +65,13 @@ import { notifications } from '@mantine/notifications';
 import { Lead, ScheduledMeeting } from '../../types/lead';
 import { useLead } from '../../context/LeadContext';
 import { useCRM } from '../../context/CRMContext';
+import { useEmployee } from '../../context/EmployeeContext';
+import { useContact } from '../../context/ContactContext';
 import { createMeetingApi, fetchMeetingsApi } from '../../services/meetingService';
 import { MeetingDatePicker } from '../meetings/components/MeetingDatePicker';
+import { CallLogModal } from '../calls/components/CallLogModal';
+import { CallLog } from '../../types/callLog';
+import { fetchCallLogsApi, createCallLogApi, deleteCallLogApi } from '../../services/callLogService';
 
 interface LeadSchedulePageProps {
   lead?: Lead | null;
@@ -85,6 +90,8 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
 
   const { currentUser, setActiveNav } = useCRM();
   const { leads, updateLead } = useLead();
+  const { employees } = useEmployee();
+  const { contacts } = useContact();
 
   // If no lead passed via props, retrieve from sessionStorage or fallback to first lead
   const [activeLead, setActiveLead] = useState<Lead | null>(() => {
@@ -250,6 +257,76 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     fetchLeadBackendMeetings();
   }, [fetchLeadBackendMeetings]);
 
+  // Synchronize call logs for this lead from backend CallLog database
+  const fetchLeadBackendCalls = useCallback(async () => {
+    if (!activeLead) return;
+    try {
+      const res = await fetchCallLogsApi({ leadId: activeLead.id });
+      if (res.calls) {
+        setCustomActivities((prev) => {
+          const nonCallActivities = prev.filter((a) => a.type !== 'call');
+
+          const backendCallActivities = res.calls.map((c) => {
+            const dateStr = c.callDate || new Date().toISOString().split('T')[0];
+            const parts = dateStr.split('-');
+            let formattedD = dateStr;
+            if (parts.length === 3) {
+              if (parts[0].length === 4) {
+                const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                formattedD = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              } else {
+                const d = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+                formattedD = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              }
+            }
+
+            return {
+              id: c.id,
+              type: 'call' as const,
+              author: c.employeeName || 'Staff',
+              title: `${c.callType || 'Outgoing'} Call`,
+              duration: c.duration,
+              status: c.status,
+              text: c.description || '',
+              date: formattedD,
+              timeAgo: c.callTime || 'Recorded',
+            };
+          });
+
+          // Merge backend calls with custom comments/emails
+          const merged = [...backendCallActivities, ...nonCallActivities];
+          try {
+            localStorage.setItem(`crm_activities_${activeLead.id}`, JSON.stringify(merged));
+          } catch (_) {}
+          return merged;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to sync calls for lead:', err);
+    }
+  }, [activeLead?.id, activeLead?.leadId, activeLead?.name, activeLead?.phone]);
+
+  useEffect(() => {
+    fetchLeadBackendCalls();
+  }, [fetchLeadBackendCalls]);
+
+  // Synchronize calls across tabs/windows or when window gets focused
+  useEffect(() => {
+    const handleSync = () => {
+      fetchLeadBackendCalls();
+    };
+    window.addEventListener('call:created', handleSync);
+    window.addEventListener('call:updated', handleSync);
+    window.addEventListener('call:deleted', handleSync);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('call:created', handleSync);
+      window.removeEventListener('call:updated', handleSync);
+      window.removeEventListener('call:deleted', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, [fetchLeadBackendCalls]);
+
   // Synchronize meeting updates in real-time across tabs / views
   useEffect(() => {
     const handleMeetingUpdated = (e: any) => {
@@ -370,29 +447,30 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     }
   };
 
-  const handleLogCall = () => {
+  const handleSaveCallFromPipeline = async (callData: Partial<CallLog>) => {
     if (!activeLead) return;
-    const newCall = {
-      id: `call-${Date.now()}`,
-      type: 'call' as const,
-      author: currentUser?.name || 'Sandy',
-      title: 'Outbound Call',
-      duration: callDuration,
-      status: callStatus,
-      text: callNotes.trim(),
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      timeAgo: 'Just now',
-    };
-    const updated = [newCall, ...customActivities];
-    setCustomActivities(updated);
-    localStorage.setItem(`crm_activities_${activeLead.id}`, JSON.stringify(updated));
-    setCallModalOpened(false);
-    setCallNotes('');
-    notifications.show({
-      title: 'Call Logged Successfully',
-      message: 'Call activity added to activity pipeline.',
-      color: 'teal',
-    });
+    try {
+      const payload: Partial<CallLog> = {
+        ...callData,
+        leadId: activeLead.id,
+      };
+
+      await createCallLogApi(payload);
+      await fetchLeadBackendCalls();
+
+      setCallModalOpened(false);
+      notifications.show({
+        title: 'Call Logged Successfully',
+        message: 'Call activity saved to Call Logs module and added to pipeline.',
+        color: 'teal',
+      });
+    } catch (err: any) {
+      notifications.show({
+        title: 'Error Saving Call',
+        message: err.message || 'Failed to log call.',
+        color: 'red',
+      });
+    }
   };
 
   const handleAddComment = () => {
@@ -457,8 +535,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     });
   };
 
-  const handleDeleteActivity = (actId: string) => {
+  const handleDeleteActivity = async (actId: string) => {
     if (!activeLead) return;
+    const target = customActivities.find((a) => a.id === actId);
+    if (target && target.type === 'call') {
+      try {
+        await deleteCallLogApi(target.id);
+      } catch (_) {}
+    }
     const updated = customActivities.filter((a) => a.id !== actId);
     setCustomActivities(updated);
     localStorage.setItem(`crm_activities_${activeLead.id}`, JSON.stringify(updated));
@@ -2058,114 +2142,148 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                   </Box>
 
                   {/* ========================================================= */}
-                  {/* STAGE 2: MEETING VENUE & LINK READY                       */}
                   {/* ========================================================= */}
-                  <Box mb="28px" style={{ position: 'relative' }}>
-                    {/* Node 2 Marker Icon */}
-                    <Box
-                      style={{
-                        position: 'absolute',
-                        left: '-52px',
-                        top: '0px',
-                        width: '38px',
-                        height: '38px',
-                        borderRadius: '50%',
-                        backgroundColor: isDark ? '#1E3A8A' : '#EFF6FF',
-                        border: isDark ? '2px solid #3B82F6' : '2px solid #2563EB',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: isDark ? '#93C5FD' : '#1D4ED8',
-                        zIndex: 2,
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                      }}
-                    >
-                      <IconVideo size={18} />
-                    </Box>
+                  {/* STAGE 2: MEETING VENUE / LOCATION & DETAILS                */}
+                  {/* ========================================================= */}
+                  {(() => {
+                    const meetTypeLower = (meet.meetingType || '').toLowerCase();
+                    const rawLoc = (meet.meetingLink || '').trim();
+                    const isLinkUrl =
+                      rawLoc.startsWith('http://') ||
+                      rawLoc.startsWith('https://') ||
+                      rawLoc.includes('meet.google.com') ||
+                      rawLoc.includes('zoom.us');
+                    const isMeetInPerson =
+                      meetTypeLower.includes('in-person') ||
+                      meetTypeLower.includes('in person') ||
+                      meetTypeLower.includes('physical') ||
+                      meetTypeLower.includes('client office') ||
+                      meetTypeLower.includes('our office') ||
+                      (!isLinkUrl && Boolean(rawLoc));
 
-                    {/* Stage 2 Header */}
-                    <Group justify="space-between" align="center" mb={8}>
-                      <Group gap="xs" align="center">
-                        <Text fw={700} size="14px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-                          Meeting Access Link & Calendar Invite
-                        </Text>
-                      </Group>
-                    </Group>
+                    return (
+                      <Box mb="28px" style={{ position: 'relative' }}>
+                        {/* Node 2 Marker Icon */}
+                        <Box
+                          style={{
+                            position: 'absolute',
+                            left: '-52px',
+                            top: '0px',
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '50%',
+                            backgroundColor: isMeetInPerson
+                              ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5')
+                              : (isDark ? '#1E3A8A' : '#EFF6FF'),
+                            border: isMeetInPerson
+                              ? (isDark ? '2px solid #10B981' : '2px solid #059669')
+                              : (isDark ? '2px solid #3B82F6' : '2px solid #2563EB'),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: isMeetInPerson
+                              ? (isDark ? '#6EE7B7' : '#047857')
+                              : (isDark ? '#93C5FD' : '#1D4ED8'),
+                            zIndex: 2,
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                          }}
+                        >
+                          {isMeetInPerson ? (
+                            <IconMapPin size={18} stroke={2} />
+                          ) : (
+                            <IconVideo size={18} />
+                          )}
+                        </Box>
 
-                    {/* Stage 2 Card */}
-                    <Box
-                      p="16px 20px"
-                      style={{
-                        backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                        border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-                        borderRadius: '14px',
-                      }}
-                    >
-                      <Group justify="space-between" align="center" wrap="wrap">
-                        <div>
-                          <Text size="xs" fw={700} c="dimmed" mb={4} style={{ letterSpacing: '0.04em' }}>
-                            {meet.meetingType ? `${meet.meetingType.toUpperCase()} VENUE` : 'MEETING VENUE'}
-                          </Text>
-                          <Text
-                            fw={600}
-                            size="13px"
-                            style={{
-                              color: meet.meetingLink ? '#0078D4' : isDark ? '#94A3B8' : '#64748B',
-                              fontFamily: meet.meetingLink ? 'monospace' : 'inherit',
-                              wordBreak: 'break-all',
-                            }}
-                          >
-                            {meet.meetingLink || 'Meeting venue/link not specified'}
-                          </Text>
-                          <Text size="xs" mt={4} style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                            {meet.meetingLink
-                              ? 'Calendar invite & dial-in credentials shared with client.'
-                              : 'Location or meeting link can be updated anytime.'}
-                          </Text>
-                        </div>
+                        {/* Stage 2 Header */}
+                        <Group justify="space-between" align="center" mb={8}>
+                          <Group gap="xs" align="center">
+                            <Text fw={700} size="14px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                              {isMeetInPerson ? 'Meeting Location & Venue Details' : 'Meeting Access Link & Calendar Invite'}
+                            </Text>
+                          </Group>
+                        </Group>
 
-                        {meet.meetingLink ? (
-                          <Group gap="xs">
-                            <Button
-                              size="xs"
-                              variant="default"
-                              leftSection={<IconCopy size={13} />}
-                              onClick={() => {
-                                navigator.clipboard.writeText(meet.meetingLink || '');
-                                notifications.show({
-                                  title: 'Link Copied',
-                                  message: 'Meeting link copied to clipboard.',
-                                  color: 'teal',
-                                });
-                              }}
-                              style={{ borderRadius: 8, fontWeight: 600 }}
-                            >
-                              Copy Link
-                            </Button>
-
-                            {meet.meetingLink.startsWith('http') && (
-                              <Button
-                                component="a"
-                                href={meet.meetingLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                size="xs"
-                                leftSection={<IconExternalLink size={13} />}
+                        {/* Stage 2 Card */}
+                        <Box
+                          p="16px 20px"
+                          style={{
+                            backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
+                            borderRadius: '14px',
+                          }}
+                        >
+                          <Group justify="space-between" align="center" wrap="wrap">
+                            <div>
+                              <Text size="xs" fw={700} c="dimmed" mb={4} style={{ letterSpacing: '0.04em' }}>
+                                {isMeetInPerson ? 'IN-PERSON VENUE' : (meet.meetingType ? `${meet.meetingType.toUpperCase()} VENUE` : 'VIRTUAL VENUE')}
+                              </Text>
+                              <Text
+                                fw={600}
+                                size="13px"
                                 style={{
-                                  backgroundColor: isDark ? '#14532D' : '#1E3A2B',
-                                  color: '#FFFFFF',
-                                  borderRadius: 8,
-                                  fontWeight: 700,
+                                  color: meet.meetingLink ? (isMeetInPerson ? (isDark ? '#F8FAFC' : '#0F172A') : '#0078D4') : (isDark ? '#94A3B8' : '#64748B'),
+                                  fontFamily: isMeetInPerson ? 'inherit' : (meet.meetingLink ? 'monospace' : 'inherit'),
+                                  wordBreak: 'break-all',
                                 }}
                               >
-                                Join {meet.meetingLink.includes('meet.google') ? 'Google Meet' : 'Meeting'}
-                              </Button>
-                            )}
+                                {meet.meetingLink || (isMeetInPerson ? 'Meeting venue/location not specified' : 'Meeting venue/link not specified')}
+                              </Text>
+                              <Text size="xs" mt={4} style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                                {meet.meetingLink
+                                  ? (isMeetInPerson
+                                      ? 'In-person meeting venue address for client and team.'
+                                      : 'Calendar invite & dial-in credentials shared with client.')
+                                  : 'Location or meeting link can be updated anytime.'}
+                              </Text>
+                            </div>
+
+                            {meet.meetingLink ? (
+                              <Group gap="xs">
+                                <Button
+                                  size="xs"
+                                  variant="default"
+                                  leftSection={isMeetInPerson ? <IconMapPin size={13} /> : <IconCopy size={13} />}
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(meet.meetingLink || '');
+                                    notifications.show({
+                                      title: isMeetInPerson ? 'Location Copied' : 'Link Copied',
+                                      message: isMeetInPerson ? 'Meeting venue address copied to clipboard.' : 'Meeting link copied to clipboard.',
+                                      color: 'teal',
+                                    });
+                                  }}
+                                  style={{ borderRadius: 8, fontWeight: 600 }}
+                                >
+                                  {isMeetInPerson ? 'Copy Location' : 'Copy Link'}
+                                </Button>
+
+                                {!isMeetInPerson && meet.meetingLink.startsWith('http') && (
+                                  <Button
+                                    component="a"
+                                    href={meet.meetingLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    size="xs"
+                                    leftSection={<IconExternalLink size={13} />}
+                                    style={{
+                                      background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                                      color: '#FFFFFF',
+                                      borderRadius: 8,
+                                      fontWeight: 600,
+                                      boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)',
+                                      border: 'none',
+                                    }}
+                                  >
+                                    Join Meet
+                                  </Button>
+                                )}
+                              </Group>
+                            ) : null}
                           </Group>
-                        ) : null}
-                      </Group>
-                    </Box>
-                  </Box>
+                        </Box>
+                      </Box>
+                    );
+                  })()}
 
                   {/* ========================================================= */}
                   {/* STAGE 3: DISCUSSION & REQUIREMENTS PHASE                  */}
@@ -2252,72 +2370,26 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           {/* ========================================================================= */}
           {/* LOG CALL MODAL                                                            */}
           {/* ========================================================================= */}
-          <Modal
+          <CallLogModal
             opened={callModalOpened}
             onClose={() => setCallModalOpened(false)}
-            size="md"
-            radius="16px"
-            styles={{
-              content: {
-                maxWidth: 'calc(100vw - 24px)',
-                margin: '10px auto',
-              },
-            }}
-            title={
-              <Group gap="xs">
-                <Box
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    backgroundColor: isDark ? '#064E3B' : '#D1FAE5',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#10B981',
-                  }}
-                >
-                  <IconPhoneCall size={16} />
-                </Box>
-                <Text fw={700} size="16px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-                  Log Outbound Call
-                </Text>
-              </Group>
+            onSave={handleSaveCallFromPipeline}
+            employees={employees}
+            contacts={contacts}
+            leads={leads}
+            initialLead={
+              activeLead
+                ? {
+                    id: activeLead.id,
+                    leadId: activeLead.leadId,
+                    name: activeLead.name,
+                    phone: activeLead.phone,
+                    companyName: activeLead.companyName,
+                    assignedEmployeeName: currentUser?.name,
+                  }
+                : null
             }
-          >
-            <Stack gap="md">
-              <Select
-                label="Call Outcome"
-                data={['Completed', 'No Answer', 'Busy', 'Wrong Number', 'Left Voicemail']}
-                value={callStatus}
-                onChange={(val) => setCallStatus(val || 'Completed')}
-              />
-              <Select
-                label="Duration"
-                data={['1m', '5m', '9m', '15m', '30m']}
-                value={callDuration}
-                onChange={(val) => setCallDuration(val || '9m')}
-              />
-              <Textarea
-                label="Call Notes"
-                placeholder="Discussed requirements and demo availability..."
-                value={callNotes}
-                onChange={(e) => setCallNotes(e.target.value)}
-                minRows={3}
-              />
-              <Group justify="flex-end" mt="sm">
-                <Button variant="default" onClick={() => setCallModalOpened(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  style={{ backgroundColor: '#10B981', color: '#FFF' }}
-                  onClick={handleLogCall}
-                >
-                  Save Call
-                </Button>
-              </Group>
-            </Stack>
-          </Modal>
+          />
 
           {/* ========================================================================= */}
           {/* SEND EMAIL MODAL                                                          */}

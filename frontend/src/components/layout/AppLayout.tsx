@@ -10,6 +10,7 @@ import { LeadsPage, LeadSchedulePage } from '../../pages/leads';
 import { ProjectsPage, AddProjectPage, ProjectDetailsPage } from '../../pages/projects';
 import { AccessControlPage } from '../../pages/access-control/AccessControlPage';
 import { ScheduledMeetingsPage } from '../../pages/meetings';
+import { CallLogsPage } from '../../pages/calls';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
 import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
@@ -245,6 +246,10 @@ export const AppLayout: React.FC = () => {
       case 'scheduled-meetings':
       case 'meetings':
         return <ScheduledMeetingsPage />;
+      case 'call-logs':
+      case 'calls':
+      case 'call-log':
+        return <CallLogsPage />;
       default:
         return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
     }

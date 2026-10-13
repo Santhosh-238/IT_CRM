@@ -24,10 +24,13 @@ import {
 } from '@tabler/icons-react';
 import { Lead } from '../../../types/lead';
 import { ScheduledMeeting } from '../../../types/meeting';
+import { isMeetingForLead } from '../meetingLeadUtils';
 
 interface LeadMeetingsTableViewProps {
   leads: Lead[];
   meetings: ScheduledMeeting[];
+  activeTab?: string;
+  statusFilter?: string;
   onSelectLead: (lead: Lead) => void;
   onScheduleMeetingForLead: (lead: Lead) => void;
   loading?: boolean;
@@ -36,6 +39,8 @@ interface LeadMeetingsTableViewProps {
 export const LeadMeetingsTableView: React.FC<LeadMeetingsTableViewProps> = ({
   leads,
   meetings,
+  activeTab = 'ALL',
+  statusFilter = 'All',
   onSelectLead,
   onScheduleMeetingForLead,
   loading = false,
@@ -44,14 +49,31 @@ export const LeadMeetingsTableView: React.FC<LeadMeetingsTableViewProps> = ({
   const isDark = computedColorScheme === 'dark';
 
   const getLeadMeetings = (lead: Lead) => {
-    return meetings.filter(
-      (m) =>
-        (m.leadId && m.leadId === lead.id) ||
-        (m.leadDbId && m.leadDbId === lead.id) ||
-        (m.leadCode && m.leadCode === lead.leadId) ||
-        (m.contactId && m.contactId === lead.id) ||
-        (m.clientName && m.clientName.toLowerCase().includes(lead.name.toLowerCase()))
-    );
+    let leadAllMeetings = meetings.filter((m) => isMeetingForLead(m, lead));
+
+    if (activeTab === 'COMPLETED') {
+      leadAllMeetings = leadAllMeetings.filter(
+        (m) => (m.status || m.meetingStatus || '').toLowerCase() === 'completed'
+      );
+    } else if (activeTab === 'TODAY') {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      leadAllMeetings = leadAllMeetings.filter((m) => m.meetingDate === todayStr);
+    } else if (activeTab === 'UPCOMING') {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      leadAllMeetings = leadAllMeetings.filter(
+        (m) => m.meetingDate && m.meetingDate > todayStr && (m.status || m.meetingStatus || '').toLowerCase() !== 'cancelled'
+      );
+    }
+
+    if (statusFilter && statusFilter !== 'All') {
+      leadAllMeetings = leadAllMeetings.filter(
+        (m) => (m.status || m.meetingStatus || '').toLowerCase() === statusFilter.toLowerCase()
+      );
+    }
+
+    return leadAllMeetings;
   };
 
   const formatDisplayDate = (dateString?: string) => {
@@ -196,9 +218,9 @@ export const LeadMeetingsTableView: React.FC<LeadMeetingsTableViewProps> = ({
                 MEETINGS COUNT
               </Table.Th>
 
-              {/* 4. LAST MEETING DATE */}
+              {/* 4. LATEST MEETING DATE */}
               <Table.Th style={{ color: '#64748B', fontWeight: 700, fontSize: 11, letterSpacing: '0.06em' }}>
-                LAST MEETING DATE
+                {activeTab === 'COMPLETED' ? 'LAST COMPLETED DATE' : 'LATEST MEETING DATE'}
               </Table.Th>
 
               {/* 5. STATUS */}
@@ -215,22 +237,54 @@ export const LeadMeetingsTableView: React.FC<LeadMeetingsTableViewProps> = ({
 
           <Table.Tbody>
             {leads.map((lead) => {
+              const allLeadMeetings = meetings.filter((m) => isMeetingForLead(m, lead));
               const leadMeetings = getLeadMeetings(lead);
               const meetingsCount = leadMeetings.length;
               const initialLetter = (lead.name || 'L').charAt(0).toUpperCase();
 
-              // Sort meetings: latest meeting date first
-              const sortedMeetings = [...leadMeetings].sort((a, b) => {
-                const dateA = a.meetingDate || '';
-                const dateB = b.meetingDate || '';
-                if (dateA !== dateB) return dateB.localeCompare(dateA);
-                return (b.startTime || '').localeCompare(a.startTime || '');
-              });
+              // Active meetings (excluding cancelled)
+              const activeAllMeets = allLeadMeetings.filter(
+                (m) => (m.status || m.meetingStatus || '').toLowerCase() !== 'cancelled'
+              );
+              // Pending meetings that still need to be attended
+              const pendingMeets = activeAllMeets.filter(
+                (m) => (m.status || m.meetingStatus || '').toLowerCase() !== 'completed'
+              );
+              // Lead is ONLY marked Completed if ALL active scheduled meetings are complete!
+              const isAllCompleted = activeAllMeets.length > 0 && pendingMeets.length === 0;
 
-              const lastMeeting = sortedMeetings[0];
-              const lastMeetingDate = lastMeeting?.meetingDate;
-              const lastMeetingTime = lastMeeting?.startTime;
-              const meetingStatus = lastMeeting?.status || lastMeeting?.meetingStatus || 'Scheduled';
+              // Overall status: Completed only when all are done, otherwise Scheduled (or active status)
+              const meetingStatus =
+                activeTab === 'COMPLETED' || isAllCompleted
+                  ? 'Completed'
+                  : (pendingMeets[0]?.status || pendingMeets[0]?.meetingStatus || 'Scheduled');
+
+              // Determine display meeting:
+              // If all complete: show latest completed meeting date.
+              // Otherwise: show NEXT meeting to attend (earliest upcoming/today date & time).
+              let displayMeeting: ScheduledMeeting | undefined;
+              if (isAllCompleted || activeTab === 'COMPLETED') {
+                const sortedCompleted = [...(activeTab === 'COMPLETED' ? leadMeetings : activeAllMeets)]
+                  .filter((m) => (m.status || m.meetingStatus || '').toLowerCase() === 'completed')
+                  .sort((a, b) => {
+                    const dateA = a.meetingDate || '';
+                    const dateB = b.meetingDate || '';
+                    if (dateA !== dateB) return dateB.localeCompare(dateA);
+                    return (b.startTime || '').localeCompare(a.startTime || '');
+                  });
+                displayMeeting = sortedCompleted[0];
+              } else {
+                const sortedPending = [...pendingMeets].sort((a, b) => {
+                  const dateA = a.meetingDate || '';
+                  const dateB = b.meetingDate || '';
+                  if (dateA !== dateB) return dateA.localeCompare(dateB);
+                  return (a.startTime || '').localeCompare(b.startTime || '');
+                });
+                displayMeeting = sortedPending[0] || leadMeetings[0];
+              }
+
+              const lastMeetingDate = displayMeeting?.meetingDate;
+              const lastMeetingTime = displayMeeting?.startTime;
 
               return (
                 <Table.Tr
@@ -315,9 +369,18 @@ export const LeadMeetingsTableView: React.FC<LeadMeetingsTableViewProps> = ({
                         justifyContent: 'center',
                         padding: '4px 10px',
                         borderRadius: 100,
-                        backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
-                        color: isDark ? '#A5B4FC' : '#4F46E5',
-                        border: isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #E0E7FF',
+                        backgroundColor:
+                          activeTab === 'COMPLETED'
+                            ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5')
+                            : (isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF'),
+                        color:
+                          activeTab === 'COMPLETED'
+                            ? (isDark ? '#34D399' : '#047857')
+                            : (isDark ? '#A5B4FC' : '#4F46E5'),
+                        border:
+                          activeTab === 'COMPLETED'
+                            ? (isDark ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #A7F3D0')
+                            : (isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #E0E7FF'),
                         fontSize: 12,
                         fontWeight: 700,
                       }}
@@ -326,9 +389,9 @@ export const LeadMeetingsTableView: React.FC<LeadMeetingsTableViewProps> = ({
                     </Box>
                   </Table.Td>
 
-                  {/* 4. LAST MEETING DATE */}
+                  {/* 4. LATEST MEETING DATE */}
                   <Table.Td>
-                    {lastMeeting ? (
+                    {displayMeeting ? (
                       <Stack gap={2}>
                         <Group gap={6} wrap="nowrap">
                           <IconCalendar size={14} color="#64748B" />
