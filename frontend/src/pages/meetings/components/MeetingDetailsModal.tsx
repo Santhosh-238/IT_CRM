@@ -431,7 +431,6 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
               { value: 'Scheduled', label: 'Scheduled' },
               { value: 'In Progress', label: 'In Progress' },
               { value: 'Completed', label: 'Completed' },
-              { value: 'Rescheduled', label: 'Rescheduled' },
               { value: 'Cancelled', label: 'Cancelled' },
             ]}
             styles={{

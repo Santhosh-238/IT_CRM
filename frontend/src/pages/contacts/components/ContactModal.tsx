@@ -197,14 +197,20 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     e.preventDefault();
     if (!validate()) return;
 
+    const payload: ContactFormData = {
+      ...formData,
+      stage: formData.stage || 'Initialization',
+      assignedTo: isEditing ? (formData.assignedTo || '') : '',
+    };
+
     if (isEditing && contact?.id) {
-      const res = await updateContact(contact.id, formData);
+      const res = await updateContact(contact.id, payload);
       if (res.success) {
         onClose();
         if (onSuccess) onSuccess();
       }
     } else {
-      const res = await createContact(formData);
+      const res = await createContact(payload);
       if (res.success) {
         onClose();
         if (onSuccess) onSuccess();
@@ -242,29 +248,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     'UI/UX Design',
   ];
 
-  const employeeOptions = [
-    { value: '', label: 'Unassigned (New)' },
-    ...(metadata?.employees?.map((emp) => ({
-      value: emp.id,
-      label: `${emp.name} (${emp.designation || emp.department || 'Staff'})`,
-    })) || []),
-  ];
 
-  const stageOptions = (metadata?.stages && metadata.stages.length > 0
-    ? metadata.stages
-    : [
-        'Initialization',
-        'Qualification',
-        'Discovery',
-        'Requirement Analysis',
-        'Demo / Presentation',
-        'Proposal / Quotation',
-        'Negotiation',
-        'Decision Making',
-        'Won',
-        'Lost',
-      ]
-  ).map((st) => ({ value: st, label: st }));
 
 
   return (
@@ -573,27 +557,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
             />
           )}
 
-          {/* Row 7: Assignment & Stage Progression */}
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-            <Select
-              label="Assign To"
-              placeholder="Unassigned (Assign later)"
-              clearable
-              data={employeeOptions}
-              value={formData.assignedTo || null}
-              onChange={(val) => setFormData({ ...formData, assignedTo: val || '' })}
-              radius="md"
-            />
 
-            <Select
-              label="Stage"
-              placeholder="Select stage"
-              data={stageOptions}
-              value={formData.stage || null}
-              onChange={(val) => setFormData({ ...formData, stage: val || '' })}
-              radius="md"
-            />
-          </SimpleGrid>
 
           {/* Row 8: Action Buttons matching the image */}
           <Group justify="flex-end" gap="sm" mt="md">

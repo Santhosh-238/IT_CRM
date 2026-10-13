@@ -56,7 +56,7 @@ const defaultFilters: ContactFilter = {
   priority: 'All',
   assignedTo: 'All',
   assignmentStatus: 'All',
-  sortBy: 'createdAt',
+  sortBy: 'updatedAt',
   sortOrder: 'desc',
 };
 

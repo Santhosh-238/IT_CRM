@@ -76,9 +76,9 @@ export const ContactsPage: React.FC = () => {
   // Keep filters in sync on initial mount and tab switch
   useEffect(() => {
     if (activeTab === 'NEW') {
-      setFilters({ assignmentStatus: 'Unassigned', status: 'All', assignedTo: 'All' });
+      setFilters({ assignmentStatus: 'Unassigned', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     } else if (activeTab === 'ASSIGNED') {
-      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: 'All' });
+      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     }
   }, [activeTab]);
 
@@ -93,9 +93,9 @@ export const ContactsPage: React.FC = () => {
       localStorage.setItem('crm_contacts_tab', tab);
     }
     if (tab === 'NEW') {
-      setFilters({ assignmentStatus: 'Unassigned', status: 'All', assignedTo: 'All' });
+      setFilters({ assignmentStatus: 'Unassigned', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     } else if (tab === 'ASSIGNED') {
-      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: 'All' });
+      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     }
   };
 
@@ -462,6 +462,7 @@ export const ContactsPage: React.FC = () => {
         onEdit={(contact) => handleOpenEditModal(contact)}
         onDelete={(contact) => setDeleteTarget(contact)}
         onAddNew={handleOpenAddModal}
+        onTabChange={handleTabChange}
       />
 
       {/* 3. Pagination Footer matching Screenshot */}

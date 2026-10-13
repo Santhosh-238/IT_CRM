@@ -300,13 +300,32 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
       }
     }
 
-    if (field === 'companyPan' && companyPan) {
-      if (!PAN_REGEX.test(companyPan)) {
+    if (field === 'employeeCount') {
+      if (!employeeCount || !employeeCount.trim()) {
+        newErr.employeeCount = 'Employee Count is required';
+      } else {
+        delete newErr.employeeCount;
+      }
+    }
+
+    if (field === 'companyPan') {
+      const cleanPan = (companyPan || '').trim().toUpperCase();
+      if (!cleanPan) {
+        newErr.companyPan = 'Company PAN is required';
+      } else if (!PAN_REGEX.test(cleanPan)) {
         newErr.companyPan = 'Invalid PAN format (5 letters, 4 digits, 1 letter, e.g. ABCDE1234F)';
-      } else if (gstNumber && GST_REGEX.test(gstNumber) && companyPan !== gstNumber.slice(2, 12)) {
+      } else if (gstNumber && GST_REGEX.test(gstNumber) && cleanPan !== gstNumber.slice(2, 12)) {
         newErr.companyPan = `PAN must match GST (${gstNumber.slice(2, 12)})`;
       } else {
         delete newErr.companyPan;
+      }
+    }
+
+    if (field === 'registeredState') {
+      if (!registeredState || !registeredState.trim()) {
+        newErr.registeredState = 'Registered State is required';
+      } else {
+        delete newErr.registeredState;
       }
     }
 
@@ -376,6 +395,23 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
     const cleanWeb = (companyWebsite || '').trim();
     const cleanLinkedIn = (linkedinUrl || '').trim();
 
+    // 1. Mandatory Fields: Employee Count, Company PAN, Registered State
+    if (!employeeCount || !employeeCount.trim()) {
+      errs.employeeCount = 'Employee Count is required';
+    }
+
+    if (!cleanPan) {
+      errs.companyPan = 'Company PAN is required';
+    } else if (!PAN_REGEX.test(cleanPan)) {
+      errs.companyPan = 'Invalid PAN format (5 letters, 4 digits, 1 letter, e.g. ABCDE1234F)';
+    } else if (cleanGst && GST_REGEX.test(cleanGst) && cleanPan !== cleanGst.slice(2, 12)) {
+      errs.companyPan = `PAN must match GST (${cleanGst.slice(2, 12)})`;
+    }
+
+    if (!registeredState || !registeredState.trim()) {
+      errs.registeredState = 'Registered State is required';
+    }
+
     // If marked Verified, at least GST or PAN must be provided and valid
     if (verificationStatus === 'Verified') {
       if (!cleanGst && !cleanPan) {
@@ -386,14 +422,6 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
     if (cleanGst && !GST_REGEX.test(cleanGst)) {
       errs.gstNumber = 'Invalid GST format (15 characters, e.g. 33AAAAA0000A1Z5)';
-    }
-
-    if (cleanPan) {
-      if (!PAN_REGEX.test(cleanPan)) {
-        errs.companyPan = 'Invalid PAN format (5 letters, 4 digits, 1 letter, e.g. ABCDE1234F)';
-      } else if (cleanGst && GST_REGEX.test(cleanGst) && cleanPan !== cleanGst.slice(2, 12)) {
-        errs.companyPan = `PAN must match GST (${cleanGst.slice(2, 12)})`;
-      }
     }
 
     if (cleanCin && !CIN_REGEX.test(cleanCin)) {
@@ -1121,6 +1149,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
                       <Select
                         label="Employee Count"
+                        required
                         placeholder="Select employee range"
                         data={[
                           { value: '1-10 Employees', label: '1 - 10 Employees' },
@@ -1134,6 +1163,8 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                           setEmployeeCount(val || '');
                           clearError('employeeCount');
                         }}
+                        onBlur={() => handleBlurField('employeeCount')}
+                        error={errors.employeeCount}
                         radius="md"
                         leftSection={<IconUsers size={16} />}
                         styles={{
@@ -1149,7 +1180,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                             fontSize: 13,
                             fontWeight: 500,
                             backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            borderColor: errors.employeeCount ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
                             color: isDark ? '#F8FAFC' : '#0F172A',
                             borderRadius: 10,
                             boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -1197,6 +1228,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                     <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
                       <TextInput
                         label="Company PAN"
+                        required
                         placeholder="e.g. ABCDE1234F"
                         maxLength={10}
                         value={companyPan}
@@ -1259,6 +1291,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
                       <Select
                         label="Registered State"
+                        required
                         placeholder="Select or search state"
                         data={Array.from(new Set([...INDIAN_STATES, ...(registeredState ? [registeredState] : [])]))}
                         searchable
@@ -1268,6 +1301,8 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                           setRegisteredState(val || '');
                           clearError('registeredState');
                         }}
+                        onBlur={() => handleBlurField('registeredState')}
+                        error={errors.registeredState}
                         radius="md"
                         leftSection={<IconMapPin size={16} />}
                         styles={{
@@ -1283,7 +1318,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                             fontSize: 13,
                             fontWeight: 500,
                             backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
+                            borderColor: errors.registeredState ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
                             color: isDark ? '#F8FAFC' : '#0F172A',
                             borderRadius: 10,
                             boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
@@ -1292,21 +1327,53 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                       />
                     </SimpleGrid>
 
-                    {/* Row 3: Annual Turnover, Website, LinkedIn */}
+                    {/* Row 3: Budget, Website, LinkedIn */}
                     <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-                      <Select
-                        label="Annual Turnover"
-                        placeholder="Select turnover"
-                        data={[
-                          { value: '< ₹50 Lakhs', label: '< ₹50 Lakhs' },
-                          { value: '₹50 Lakhs - ₹2 Cr', label: '₹50 Lakhs - ₹2 Cr' },
-                          { value: '₹2 Cr - ₹10 Cr', label: '₹2 Cr - ₹10 Cr' },
-                          { value: '₹10 Cr - ₹50 Cr', label: '₹10 Cr - ₹50 Cr' },
-                          { value: '₹50 Cr+', label: '₹50 Cr+' },
-                        ]}
-                        value={annualTurnover || null}
-                        onChange={(val) => {
-                          setAnnualTurnover(val || '');
+                      <TextInput
+                        label="Budget"
+                        placeholder="Enter budget (e.g. 500000)"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={annualTurnover || ''}
+                        onKeyDown={(e) => {
+                          if (
+                            [
+                              'Backspace',
+                              'Delete',
+                              'Tab',
+                              'Escape',
+                              'Enter',
+                              'ArrowLeft',
+                              'ArrowRight',
+                              'Home',
+                              'End',
+                            ].includes(e.key) ||
+                            e.ctrlKey ||
+                            e.metaKey
+                          ) {
+                            return;
+                          }
+                          if (!/^[0-9]$/.test(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          const pasteData = e.clipboardData.getData('text').replace(/\D/g, '');
+                          if (pasteData) {
+                            const target = e.currentTarget;
+                            const start = target.selectionStart ?? (annualTurnover || '').length;
+                            const end = target.selectionEnd ?? (annualTurnover || '').length;
+                            const current = annualTurnover || '';
+                            const updated = current.slice(0, start) + pasteData + current.slice(end);
+                            setAnnualTurnover(updated);
+                            clearError('annualTurnover');
+                          }
+                        }}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setAnnualTurnover(val);
                           clearError('annualTurnover');
                         }}
                         radius="md"
