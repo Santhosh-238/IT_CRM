@@ -44,6 +44,7 @@ import {
   updateMeetingApi,
   deleteMeetingApi,
 } from '../../services/meetingService';
+import { leadService } from '../../services/leadService';
 import { useEmployee } from '../../context/EmployeeContext';
 import { useCRM } from '../../context/CRMContext';
 import { useLead } from '../../context/LeadContext';
@@ -53,6 +54,7 @@ import { LeadMeetingsTableView } from './components/LeadMeetingsTableView';
 import { MeetingDetailsModal } from './components/MeetingDetailsModal';
 import { MeetingTimePicker } from './components/MeetingTimePicker';
 import { MeetingDatePicker } from './components/MeetingDatePicker';
+import { findLeadForMeeting } from './meetingLeadUtils';
 
 type ActiveLeadTabType = 'ALL' | 'TODAY' | 'UPCOMING' | 'COMPLETED';
 
@@ -62,6 +64,8 @@ export const ScheduledMeetingsPage: React.FC = () => {
   const { employees } = useEmployee();
   const { activeNav, setActiveNav } = useCRM();
   const { leads, setSelectedLead, fetchLeads } = useLead();
+  const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const effectiveLeads = allLeads.length > 0 ? allLeads : leads;
 
   const [meetings, setMeetings] = useState<ScheduledMeeting[]>([]);
   const [stats, setStats] = useState<MeetingStats | null>(null);
@@ -145,10 +149,10 @@ const inferDuration = (start?: string, end?: string): string => {
   const [formEmployeeName, setFormEmployeeName] = useState('');
   const [formEmployeeEmail, setFormEmployeeEmail] = useState('');
   const [formEmployeeDesignation, setFormEmployeeDesignation] = useState('');
-  const [formMeetingDate, setFormMeetingDate] = useState(new Date().toISOString().split('T')[0]);
-  const [formStartTime, setFormStartTime] = useState('10:00 AM');
+  const [formMeetingDate, setFormMeetingDate] = useState('');
+  const [formStartTime, setFormStartTime] = useState('');
   const [formDuration, setFormDuration] = useState('30 Minutes');
-  const [formEndTime, setFormEndTime] = useState('10:30 AM');
+  const [formEndTime, setFormEndTime] = useState('');
   const [formMeetingType, setFormMeetingType] = useState('Virtual');
   const [formLocation, setFormLocation] = useState('');
   const [formContactId, setFormContactId] = useState<string | null>(null);
@@ -156,17 +160,24 @@ const inferDuration = (start?: string, end?: string): string => {
   const [formStatus, setFormStatus] = useState('Scheduled');
   const [formNotes, setFormNotes] = useState('');
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [meetingsRes, statsRes] = await Promise.all([
+      const [meetingsRes, statsRes, leadsRes] = await Promise.all([
         fetchMeetingsApi(),
         fetchMeetingStatsApi().catch(() => null),
+        leadService.getLeads({}, { page: 1, limit: 1000 }).catch(() => null),
       ]);
       setMeetings(meetingsRes.meetings || []);
       if (statsRes) setStats(statsRes);
+      if (leadsRes && leadsRes.data) {
+        setAllLeads(leadsRes.data);
+      }
       if (fetchLeads) fetchLeads();
     } catch (err: any) {
       notifications.show({
@@ -196,15 +207,8 @@ const inferDuration = (start?: string, end?: string): string => {
     } catch (_) {}
 
     const openMeetingModal = (targetMeeting: ScheduledMeeting) => {
-      // Find matching lead
-      const matchedLead = leads.find(
-        (l) =>
-          (targetMeeting.leadId && String(targetMeeting.leadId) === String(l.id)) ||
-          (targetMeeting.leadDbId && String(targetMeeting.leadDbId) === String(l.id)) ||
-          (targetMeeting.leadCode && targetMeeting.leadCode === l.leadId) ||
-          (targetMeeting.contactId && String(targetMeeting.contactId) === String(l.id)) ||
-          (targetMeeting.clientName && l.name && targetMeeting.clientName.toLowerCase().includes(l.name.toLowerCase()))
-      );
+      // Find matching lead strictly by ID or exact name
+      const matchedLead = findLeadForMeeting(targetMeeting, leads);
 
       if (matchedLead) {
         setActiveLeadSelection(matchedLead);
@@ -248,23 +252,16 @@ const inferDuration = (start?: string, end?: string): string => {
         })
         .catch(() => {});
     }
-  }, [activeNav, meetings, leads]);
+  }, [activeNav, meetings, effectiveLeads]);
 
   // Map meetings to leads
   const leadMeetingsMap = useMemo(() => {
     const map = new Map<string, ScheduledMeeting[]>();
-    leads.forEach((l) => map.set(l.id, []));
+    effectiveLeads.forEach((l) => map.set(l.id, []));
 
     meetings.forEach((m) => {
-      // Find matching lead
-      const matched = leads.find(
-        (l) =>
-          (m.leadId && m.leadId === l.id) ||
-          (m.leadDbId && m.leadDbId === l.id) ||
-          (m.leadCode && m.leadCode === l.leadId) ||
-          (m.contactId && m.contactId === l.id) ||
-          (m.clientName && m.clientName.toLowerCase().includes(l.name.toLowerCase()))
-      );
+      // Find matching lead strictly by ID or exact name
+      const matched = findLeadForMeeting(m, effectiveLeads);
       if (matched) {
         const arr = map.get(matched.id) || [];
         arr.push(m);
@@ -273,27 +270,32 @@ const inferDuration = (start?: string, end?: string): string => {
     });
 
     return map;
-  }, [leads, meetings]);
+  }, [effectiveLeads, meetings]);
 
   // Filtered Leads List (ONLY leads that have meetings are displayed)
   const filteredLeads = useMemo(() => {
-    return leads.filter((lead) => {
+    return effectiveLeads.filter((lead) => {
       const leadMeets = leadMeetingsMap.get(lead.id) || [];
       const hasMeetings = leadMeets.length > 0;
 
       // Must have scheduled meetings
       if (!hasMeetings) return false;
 
-      const hasToday = leadMeets.some((m) => m.meetingDate === todayStr);
-      const hasUpcoming = leadMeets.some(
-        (m) => m.meetingDate > todayStr && m.status?.toLowerCase() !== 'cancelled'
+      const activeMeets = leadMeets.filter(
+        (m) => (m.status || m.meetingStatus || '').toLowerCase() !== 'cancelled'
       );
-      const hasCompleted = leadMeets.some((m) => m.status?.toLowerCase() === 'completed');
+      const pendingMeets = activeMeets.filter(
+        (m) => (m.status || m.meetingStatus || '').toLowerCase() !== 'completed'
+      );
+      const isAllCompleted = activeMeets.length > 0 && pendingMeets.length === 0;
+
+      const hasToday = pendingMeets.some((m) => m.meetingDate === todayStr) || (isAllCompleted && activeMeets.some((m) => m.meetingDate === todayStr));
+      const hasUpcoming = pendingMeets.some((m) => m.meetingDate > todayStr);
 
       // 1. Tab filter
       if (leadTab === 'TODAY' && !hasToday) return false;
       if (leadTab === 'UPCOMING' && !hasUpcoming) return false;
-      if (leadTab === 'COMPLETED' && !hasCompleted) return false;
+      if (leadTab === 'COMPLETED' && !isAllCompleted) return false;
 
       // 2. Status dropdown filter
       if (statusFilter !== 'All') {
@@ -323,7 +325,7 @@ const inferDuration = (start?: string, end?: string): string => {
 
       return true;
     });
-  }, [leads, leadMeetingsMap, leadTab, statusFilter, searchInput, todayStr]);
+  }, [effectiveLeads, leadMeetingsMap, leadTab, statusFilter, searchInput, todayStr]);
 
   // Pagination for Leads list
   const totalLeadPages = Math.ceil(filteredLeads.length / pageSize) || 1;
@@ -334,36 +336,58 @@ const inferDuration = (start?: string, end?: string): string => {
 
   // Counts for top capsule pills (for leads with meetings)
   const leadsWithMeetings = useMemo(() => {
-    return leads.filter((l) => (leadMeetingsMap.get(l.id) || []).length > 0);
-  }, [leads, leadMeetingsMap]);
+    return effectiveLeads.filter((l) => (leadMeetingsMap.get(l.id) || []).length > 0);
+  }, [effectiveLeads, leadMeetingsMap]);
 
   const totalLeadsWithMeetingsCount = leadsWithMeetings.length;
 
   const todayLeadsCount = useMemo(() => {
-    return leadsWithMeetings.filter((l) =>
-      (leadMeetingsMap.get(l.id) || []).some((m) => m.meetingDate === todayStr)
-    ).length;
+    return leadsWithMeetings.filter((l) => {
+      const lm = leadMeetingsMap.get(l.id) || [];
+      const active = lm.filter((m) => (m.status || m.meetingStatus || '').toLowerCase() !== 'cancelled');
+      const pending = active.filter((m) => (m.status || m.meetingStatus || '').toLowerCase() !== 'completed');
+      const isAllDone = active.length > 0 && pending.length === 0;
+      return pending.some((m) => m.meetingDate === todayStr) || (isAllDone && active.some((m) => m.meetingDate === todayStr));
+    }).length;
   }, [leadsWithMeetings, leadMeetingsMap, todayStr]);
 
   const upcomingLeadsCount = useMemo(() => {
-    return leadsWithMeetings.filter((l) =>
-      (leadMeetingsMap.get(l.id) || []).some(
-        (m) => m.meetingDate > todayStr && m.status?.toLowerCase() !== 'cancelled'
-      )
-    ).length;
+    return leadsWithMeetings.filter((l) => {
+      const lm = leadMeetingsMap.get(l.id) || [];
+      const active = lm.filter((m) => (m.status || m.meetingStatus || '').toLowerCase() !== 'cancelled');
+      const pending = active.filter((m) => (m.status || m.meetingStatus || '').toLowerCase() !== 'completed');
+      return pending.some((m) => m.meetingDate > todayStr);
+    }).length;
   }, [leadsWithMeetings, leadMeetingsMap, todayStr]);
 
   const completedLeadsCount = useMemo(() => {
-    return leadsWithMeetings.filter((l) =>
-      (leadMeetingsMap.get(l.id) || []).some((m) => m.status?.toLowerCase() === 'completed')
-    ).length;
+    return leadsWithMeetings.filter((l) => {
+      const lm = leadMeetingsMap.get(l.id) || [];
+      const active = lm.filter((m) => (m.status || m.meetingStatus || '').toLowerCase() !== 'cancelled');
+      const pending = active.filter((m) => (m.status || m.meetingStatus || '').toLowerCase() !== 'completed');
+      return active.length > 0 && pending.length === 0;
+    }).length;
   }, [leadsWithMeetings, leadMeetingsMap]);
 
-  // Selected Lead's Meetings
+  // Selected Lead's Meetings (filtered strictly by the active tab if on Completed/Today/Upcoming)
   const selectedLeadMeetings = useMemo(() => {
     if (!activeLeadSelection) return [];
-    return leadMeetingsMap.get(activeLeadSelection.id) || [];
-  }, [activeLeadSelection, leadMeetingsMap]);
+    const leadMeets = leadMeetingsMap.get(activeLeadSelection.id) || [];
+    if (leadTab === 'COMPLETED') {
+      return leadMeets.filter(
+        (m) => (m.status || m.meetingStatus || '').toLowerCase() === 'completed'
+      );
+    }
+    if (leadTab === 'TODAY') {
+      return leadMeets.filter((m) => m.meetingDate === todayStr);
+    }
+    if (leadTab === 'UPCOMING') {
+      return leadMeets.filter(
+        (m) => m.meetingDate && m.meetingDate > todayStr && (m.status || m.meetingStatus || '').toLowerCase() !== 'cancelled'
+      );
+    }
+    return leadMeets;
+  }, [activeLeadSelection, leadMeetingsMap, leadTab, todayStr]);
 
   // Handlers
   const handleLeadTabChange = (tab: ActiveLeadTabType) => {
@@ -397,10 +421,10 @@ const inferDuration = (start?: string, end?: string): string => {
       setFormClientName('');
     }
 
-    setFormMeetingDate(new Date().toISOString().split('T')[0]);
-    setFormStartTime('10:00 AM');
+    setFormMeetingDate('');
+    setFormStartTime('');
     setFormDuration('30 Minutes');
-    setFormEndTime('10:30 AM');
+    setFormEndTime('');
     setFormMeetingType('Virtual');
     setFormLocation('');
     setFormStatus('Scheduled');
@@ -438,6 +462,10 @@ const inferDuration = (start?: string, end?: string): string => {
     }
     if (!formMeetingDate) {
       notifications.show({ title: 'Validation Error', message: 'Please select meeting date.', color: 'red' });
+      return;
+    }
+    if (!formStartTime) {
+      notifications.show({ title: 'Validation Error', message: 'Please select meeting time.', color: 'red' });
       return;
     }
 
@@ -546,14 +574,7 @@ const inferDuration = (start?: string, end?: string): string => {
   };
 
   const handleNavigateToLeadFromMeeting = (m: ScheduledMeeting) => {
-    const matched = leads.find(
-      (l) =>
-        (m.leadId && m.leadId === l.id) ||
-        (m.leadDbId && m.leadDbId === l.id) ||
-        (m.leadCode && m.leadCode === l.leadId) ||
-        (m.contactId && m.contactId === l.id) ||
-        (m.clientName && m.clientName.toLowerCase().includes(l.name.toLowerCase()))
-    );
+    const matched = findLeadForMeeting(m, leads);
     if (matched) {
       handleOpenLeadActivityPipeline(matched);
     } else if (activeLeadSelection) {
@@ -641,14 +662,30 @@ const inferDuration = (start?: string, end?: string): string => {
                           justifyContent: 'center',
                           padding: '2px 8px',
                           borderRadius: 100,
-                          backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
-                          color: isDark ? '#A5B4FC' : '#4F46E5',
-                          border: isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #E0E7FF',
+                          backgroundColor:
+                            leadTab === 'COMPLETED'
+                              ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5')
+                              : (isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF'),
+                          color:
+                            leadTab === 'COMPLETED'
+                              ? (isDark ? '#34D399' : '#047857')
+                              : (isDark ? '#A5B4FC' : '#4F46E5'),
+                          border:
+                            leadTab === 'COMPLETED'
+                              ? (isDark ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #A7F3D0')
+                              : (isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #E0E7FF'),
                           fontSize: 11,
                           fontWeight: 700,
                         }}
                       >
-                        {selectedLeadMeetings.length} {selectedLeadMeetings.length === 1 ? 'Meeting' : 'Meetings'}
+                        {selectedLeadMeetings.length}{' '}
+                        {leadTab === 'COMPLETED'
+                          ? selectedLeadMeetings.length === 1
+                            ? 'Completed Meeting'
+                            : 'Completed Meetings'
+                          : selectedLeadMeetings.length === 1
+                          ? 'Meeting'
+                          : 'Meetings'}
                       </Box>
                     </Group>
                     <Text size="xs" c="dimmed">
@@ -880,6 +917,8 @@ const inferDuration = (start?: string, end?: string): string => {
             <LeadMeetingsTableView
               leads={paginatedLeads}
               meetings={meetings}
+              activeTab={leadTab}
+              statusFilter={statusFilter}
               onSelectLead={handleSelectLead}
               onScheduleMeetingForLead={(l) => handleOpenAddModal(l)}
               loading={loading}
@@ -953,66 +992,120 @@ const inferDuration = (start?: string, end?: string): string => {
 
       {/* ========================================================================= */}
       {/* ADD / EDIT MEETING MODAL                                                  */}
+      {/* ADD / EDIT MEETING MODAL                                                  */}
       {/* ========================================================================= */}
       <Modal
         opened={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={
-          <Group gap="xs">
-            <ThemeIcon color="teal" variant="light" size="md" radius="md">
-              <IconCalendarEvent size={18} />
-            </ThemeIcon>
-            <Text fw={700} size="md">
-              {editingMeeting ? 'Edit Scheduled Meeting' : 'Schedule New Meeting'}
-            </Text>
-          </Group>
-        }
         size="lg"
+        centered
+        withCloseButton={false}
         radius="lg"
+        styles={{
+          content: {
+            borderRadius: 16,
+            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.18)',
+          },
+          body: {
+            padding: 24,
+          },
+        }}
       >
-        <Stack gap="md" mt="xs">
+        {/* Header matching Contact design */}
+        <Group justify="space-between" align="flex-start" mb="lg">
+          <Group gap="md">
+            <Box
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                background: isDark ? 'rgba(37, 99, 235, 0.2)' : '#EFF6FF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isDark ? '#60A5FA' : '#2563EB',
+              }}
+            >
+              <IconCalendarEvent size={22} stroke={1.8} />
+            </Box>
+            <div>
+              <Text fw={800} size="19px" style={{ color: isDark ? '#F8FAFC' : '#0F172A', lineHeight: 1.2 }}>
+                {editingMeeting ? 'Edit Scheduled Meeting' : 'Schedule Meeting'}
+              </Text>
+              <Text size="xs" c="dimmed" mt={2}>
+                Enter meeting details
+              </Text>
+            </div>
+          </Group>
+
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="md"
+            radius="100px"
+            onClick={() => setModalOpen(false)}
+          >
+            <IconX size={18} />
+          </ActionIcon>
+        </Group>
+
+        <Stack gap="md">
           {/* Associated Lead Selection */}
           <Select
             label="Associated Lead"
             placeholder="Select Lead from CRM"
-            data={leads.map((l) => ({
+            data={effectiveLeads.map((l) => ({
               value: l.id,
               label: l.companyName ? `${l.name} (${l.companyName})` : l.name,
             }))}
             value={formContactId}
             onChange={(val) => {
               setFormContactId(val);
-              const matched = leads.find((l) => l.id === val);
+              const matched = effectiveLeads.find((l) => l.id === val);
               if (matched) {
                 setFormClientName(matched.companyName ? `${matched.name} (${matched.companyName})` : matched.name);
-                if (!formTitle) {
-                  setFormTitle(`Discovery Call with ${matched.name}`);
-                  setFormPurpose(`Discovery Call with ${matched.name}`);
-                }
+              } else {
+                setFormClientName('');
               }
             }}
             searchable
             clearable
             required
+            radius="md"
           />
 
           {/* Meeting Title & Purpose */}
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            <TextInput
-              label="Meeting Title"
-              placeholder="e.g. Discovery & Architecture Call"
-              value={formTitle}
-              onChange={(e) => setFormTitle(e.currentTarget.value)}
-              required
-            />
-            <TextInput
-              label="Purpose / Agenda"
-              placeholder="e.g. Product Demo & Scope Discussion"
-              value={formPurpose}
-              onChange={(e) => setFormPurpose(e.currentTarget.value)}
-              required
-            />
-          </SimpleGrid>
+          {(() => {
+            const currentLead = formContactId ? effectiveLeads.find((l) => l.id === formContactId) : null;
+            return (
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                <TextInput
+                  label="Meeting Title"
+                  placeholder={
+                    currentLead
+                      ? `e.g. Discovery Call with ${currentLead.name}`
+                      : 'e.g. Discovery & Architecture Call'
+                  }
+                  value={formTitle}
+                  onChange={(e) => setFormTitle(e.currentTarget.value)}
+                  required
+                  radius="md"
+                />
+                <TextInput
+                  label="Purpose / Agenda"
+                  placeholder={
+                    currentLead
+                      ? `e.g. Product Demo with ${currentLead.name}`
+                      : 'e.g. Product Demo & Scope Discussion'
+                  }
+                  value={formPurpose}
+                  onChange={(e) => setFormPurpose(e.currentTarget.value)}
+                  required
+                  radius="md"
+                />
+              </SimpleGrid>
+            );
+          })()}
 
           {/* Assigned Host / Employee */}
           <Select
@@ -1034,12 +1127,14 @@ const inferDuration = (start?: string, end?: string): string => {
             }}
             searchable
             clearable
+            radius="md"
           />
 
           {/* Date & Timings */}
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
             <MeetingDatePicker
               label="Meeting Date"
+              placeholder="DD-MM-YYYY"
               value={formMeetingDate}
               onChange={(val) => setFormMeetingDate(val)}
               required
@@ -1058,6 +1153,7 @@ const inferDuration = (start?: string, end?: string): string => {
               onChange={(val) => setFormDuration(val || '30 Minutes')}
               allowDeselect={false}
               required
+              radius="md"
             />
           </SimpleGrid>
 
@@ -1073,6 +1169,7 @@ const inferDuration = (start?: string, end?: string): string => {
               ]}
               value={formMeetingType}
               onChange={(val) => setFormMeetingType(val || 'Virtual')}
+              radius="md"
             />
 
             <TextInput
@@ -1082,6 +1179,7 @@ const inferDuration = (start?: string, end?: string): string => {
               placeholder={formMeetingType === 'Virtual' ? 'https://meet.google.com/xyz or Zoom URL' : 'Client Office Address or Office Room'}
               value={formLocation}
               onChange={(e) => setFormLocation(e.currentTarget.value)}
+              radius="md"
             />
           </SimpleGrid>
 
@@ -1096,6 +1194,7 @@ const inferDuration = (start?: string, end?: string): string => {
             ]}
             value={formStatus}
             onChange={(val) => setFormStatus(val || 'Scheduled')}
+            radius="md"
           />
 
           {/* Additional Notes */}
@@ -1105,11 +1204,21 @@ const inferDuration = (start?: string, end?: string): string => {
             value={formNotes}
             onChange={(e) => setFormNotes(e.currentTarget.value)}
             minRows={2}
+            radius="md"
           />
 
-          {/* Buttons */}
-          <Group justify="flex-end" mt="md">
-            <Button variant="default" radius="md" onClick={() => setModalOpen(false)}>
+          {/* Action Buttons matching Contact design */}
+          <Group justify="flex-end" gap="sm" mt="md">
+            <Button
+              variant="default"
+              radius="md"
+              onClick={() => setModalOpen(false)}
+              disabled={submitting}
+              style={{
+                fontWeight: 600,
+                minWidth: 90,
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -1117,12 +1226,15 @@ const inferDuration = (start?: string, end?: string): string => {
               loading={submitting}
               onClick={handleSaveMeeting}
               style={{
-                background: isDark ? '#374151' : '#0F172A',
+                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
                 color: '#FFFFFF',
                 fontWeight: 600,
+                minWidth: 120,
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
               }}
             >
-              {editingMeeting ? 'Update Meeting' : 'Schedule Meeting'}
+              {editingMeeting ? 'Update Meeting' : 'Save Meeting'}
             </Button>
           </Group>
         </Stack>

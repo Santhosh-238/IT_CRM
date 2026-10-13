@@ -20,6 +20,7 @@ interface MeetingDatePickerProps {
   label?: string;
   placeholder?: string;
   required?: boolean;
+  zIndex?: number;
 }
 
 const MONTH_NAMES = [
@@ -38,38 +39,77 @@ const formatToYMD = (d: Date): string => {
 
 const formatToDMY = (ymdStr: string): string => {
   if (!ymdStr) return '';
-  const parts = ymdStr.split('-');
+  const parts = ymdStr.split(/[-/. ]+/);
   if (parts.length === 3) {
     if (parts[0].length === 4) {
       // YYYY-MM-DD -> DD-MM-YYYY
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+      const d = parts[2].padStart(2, '0');
+      const m = parts[1].padStart(2, '0');
+      const y = parts[0];
+      return `${d}-${m}-${y}`;
+    } else {
+      // DD-MM-YYYY
+      const d = parts[0].padStart(2, '0');
+      const m = parts[1].padStart(2, '0');
+      const y = parts[2].length === 2 ? `20${parts[2]}` : parts[2];
+      return `${d}-${m}-${y}`;
     }
-    // already DD-MM-YYYY
-    return ymdStr;
   }
   return ymdStr;
 };
 
-const parseDateString = (str: string): Date | null => {
+const parseFlexibleDate = (str: string): Date | null => {
   if (!str) return null;
-  const parts = str.split('-');
-  if (parts.length === 3) {
-    if (parts[0].length === 4) {
-      // YYYY-MM-DD
-      const y = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10) - 1;
-      const d = parseInt(parts[2], 10);
-      return new Date(y, m, d);
-    } else {
-      // DD-MM-YYYY
-      const d = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10) - 1;
-      const y = parseInt(parts[2], 10);
-      return new Date(y, m, d);
+  const trimmed = str.trim();
+
+  // Check 8-digit ddmmyyyy e.g. '13102026'
+  const eightDigit = trimmed.match(/^(\d{2})(\d{2})(\d{4})$/);
+  if (eightDigit) {
+    const day = parseInt(eightDigit[1], 10);
+    const month = parseInt(eightDigit[2], 10) - 1;
+    const year = parseInt(eightDigit[3], 10);
+    if (month >= 0 && month <= 11 && day >= 1 && day <= 31 && year >= 1970 && year <= 2100) {
+      const d = new Date(year, month, day);
+      if (d.getFullYear() === year && d.getMonth() === month && d.getDate() === day) {
+        return d;
+      }
     }
   }
-  const parsed = new Date(str);
-  return isNaN(parsed.getTime()) ? null : parsed;
+
+  // Split on -, /, ., or space
+  const parts = trimmed.split(/[-/. ]+/);
+  if (parts.length === 3) {
+    let day: number, month: number, year: number;
+
+    if (parts[0].length === 4) {
+      // YYYY-MM-DD format
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+      day = parseInt(parts[2], 10);
+    } else {
+      // DD-MM-YYYY format
+      day = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+      let yr = parseInt(parts[2], 10);
+      if (yr < 100) {
+        yr = yr < 50 ? 2000 + yr : 1900 + yr;
+      }
+      year = yr;
+    }
+
+    if (
+      !isNaN(day) && !isNaN(month) && !isNaN(year) &&
+      month >= 0 && month <= 11 &&
+      day >= 1 && day <= 31 &&
+      year >= 1970 && year <= 2100
+    ) {
+      const d = new Date(year, month, day);
+      if (d.getFullYear() === year && d.getMonth() === month && d.getDate() === day) {
+        return d;
+      }
+    }
+  }
+  return null;
 };
 
 export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
@@ -78,23 +118,34 @@ export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
   label = 'Meeting Date',
   placeholder = 'DD-MM-YYYY',
   required = true,
+  zIndex = 1500,
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
 
   const [opened, setOpened] = useState(false);
 
-  // Parse current date or fallback to today
-  const initialDate = parseDateString(value) || new Date();
+  // Local text input state so typing is completely smooth without cursor jumps
+  const [inputText, setInputText] = useState<string>(() => formatToDMY(value));
+
+  // Calendar navigator state
+  const initialDate = parseFlexibleDate(value) || new Date();
   const [viewYear, setViewYear] = useState<number>(initialDate.getFullYear());
   const [viewMonth, setViewMonth] = useState<number>(initialDate.getMonth());
 
-  // Sync view when external value changes
+  // Synchronize internal state when external value changes
   useEffect(() => {
-    const d = parseDateString(value);
-    if (d) {
-      setViewYear(d.getFullYear());
-      setViewMonth(d.getMonth());
+    const parsedExt = parseFlexibleDate(value);
+    if (parsedExt) {
+      setViewYear(parsedExt.getFullYear());
+      setViewMonth(parsedExt.getMonth());
+      const dmy = formatToDMY(value);
+      const currentParsed = parseFlexibleDate(inputText);
+      if (!currentParsed || currentParsed.getTime() !== parsedExt.getTime()) {
+        setInputText(dmy);
+      }
+    } else if (!value) {
+      setInputText('');
     }
   }, [value]);
 
@@ -104,7 +155,7 @@ export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
 
   const today = new Date();
   const todayYMD = formatToYMD(today);
-  const selectedYMD = value ? (parseDateString(value) ? formatToYMD(parseDateString(value)!) : value) : '';
+  const selectedYMD = value ? (parseFlexibleDate(value) ? formatToYMD(parseFlexibleDate(value)!) : value) : '';
 
   const handlePrevMonth = () => {
     if (viewMonth === 0) {
@@ -127,6 +178,8 @@ export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
   const handleSelectDay = (dayNum: number) => {
     const chosen = new Date(viewYear, viewMonth, dayNum);
     const ymd = formatToYMD(chosen);
+    const dmy = formatToDMY(ymd);
+    setInputText(dmy);
     onChange(ymd);
   };
 
@@ -135,30 +188,63 @@ export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
     target.setDate(today.getDate() + daysFromToday);
     setViewYear(target.getFullYear());
     setViewMonth(target.getMonth());
-    onChange(formatToYMD(target));
+    const ymd = formatToYMD(target);
+    const dmy = formatToDMY(ymd);
+    setInputText(dmy);
+    onChange(ymd);
   };
 
   const handleClear = () => {
-    const ymd = formatToYMD(new Date());
-    setViewYear(today.getFullYear());
-    setViewMonth(today.getMonth());
+    const now = new Date();
+    setViewYear(now.getFullYear());
+    setViewMonth(now.getMonth());
+    const ymd = formatToYMD(now);
+    const dmy = formatToDMY(ymd);
+    setInputText(dmy);
     onChange(ymd);
   };
 
   const handleManualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value.trim();
-    // Allow user to type DD-MM-YYYY or YYYY-MM-DD
-    const d = parseDateString(val);
-    if (d) {
-      setViewYear(d.getFullYear());
-      setViewMonth(d.getMonth());
-      onChange(formatToYMD(d));
-    } else {
-      onChange(val);
+    const raw = e.target.value;
+    setInputText(raw);
+
+    const parsed = parseFlexibleDate(raw);
+    if (parsed) {
+      setViewYear(parsed.getFullYear());
+      setViewMonth(parsed.getMonth());
+      onChange(formatToYMD(parsed));
     }
   };
 
-  const displayFormattedValue = value ? formatToDMY(value) : '';
+  const handleBlur = () => {
+    const parsed = parseFlexibleDate(inputText);
+    if (parsed) {
+      const dmy = formatToDMY(formatToYMD(parsed));
+      setInputText(dmy);
+      onChange(formatToYMD(parsed));
+    } else if (inputText.trim() === '') {
+      setInputText('');
+      onChange('');
+    } else {
+      // If invalid or incomplete string was typed, revert to last valid value or clear
+      if (value) {
+        setInputText(formatToDMY(value));
+      } else {
+        setInputText('');
+        onChange('');
+      }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleBlur();
+      setOpened(false);
+    } else if (e.key === 'Escape') {
+      setOpened(false);
+    }
+  };
 
   return (
     <Box>
@@ -171,7 +257,7 @@ export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
         width={310}
         withArrow
         withinPortal
-        zIndex={1000}
+        zIndex={zIndex}
       >
         <Popover.Target>
           <TextInput
@@ -179,10 +265,12 @@ export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
             placeholder={placeholder}
             required={required}
             withAsterisk={required}
-            value={displayFormattedValue}
+            value={inputText}
             onChange={handleManualChange}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
             onClick={() => setOpened(true)}
-            leftSection={<IconCalendar size={16} color="#64748B" />}
+            radius="md"
             rightSection={
               <ActionIcon
                 variant="subtle"
@@ -192,6 +280,7 @@ export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
                   e.stopPropagation();
                   setOpened((o) => !o);
                 }}
+                title="Open Calendar"
               >
                 <IconCalendar size={16} />
               </ActionIcon>
@@ -218,7 +307,7 @@ export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
                 },
               }}
             >
-              {displayFormattedValue || formatToDMY(todayYMD)}
+              {formatToDMY(value) || inputText || formatToDMY(todayYMD)}
             </Badge>
           </Group>
           <Divider mb={8} />

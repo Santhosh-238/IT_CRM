@@ -256,3 +256,22 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model CallLog {
+  id           String   @id @default(uuid())
+  callId       String   @unique // e.g. CAL-1001
+  callType     String // "Incoming" | "Outgoing"
+  employeeId   String? // Reference to Employee id / empCode
+  employeeName String // Assigned Employee Name (Caller Name)
+  contactId    String? // Reference to Contact id
+  contactName  String // Contact Name (Receiver Name)
+  phoneNumber  String // Contact Phone Number (Receiver Number)
+  leadId       String?  @map("lead_id") // Reference to Lead id / leadId
+  duration     String // Duration (e.g. "02:30" or "2m 30s")
+  status       String // "Completed" | "Missed" | "Busy" | "No Answer"
+  callDate     String // YYYY-MM-DD
+  callTime     String // e.g. "10:30 AM"
+  description  String? // Notes / discussion summary
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

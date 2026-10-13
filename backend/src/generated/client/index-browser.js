@@ -333,6 +333,25 @@ exports.Prisma.ProjectScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.CallLogScalarFieldEnum = {
+  id: 'id',
+  callId: 'callId',
+  callType: 'callType',
+  employeeId: 'employeeId',
+  employeeName: 'employeeName',
+  contactId: 'contactId',
+  contactName: 'contactName',
+  phoneNumber: 'phoneNumber',
+  leadId: 'leadId',
+  duration: 'duration',
+  status: 'status',
+  callDate: 'callDate',
+  callTime: 'callTime',
+  description: 'description',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -370,7 +389,8 @@ exports.Prisma.ModelName = {
   Company: 'Company',
   Lead: 'Lead',
   ScheduledMeeting: 'ScheduledMeeting',
-  Project: 'Project'
+  Project: 'Project',
+  CallLog: 'CallLog'
 };
 
 /**

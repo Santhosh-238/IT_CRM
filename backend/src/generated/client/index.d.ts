@@ -63,6 +63,11 @@ export type ScheduledMeeting = $Result.DefaultSelection<Prisma.$ScheduledMeeting
  * 
  */
 export type Project = $Result.DefaultSelection<Prisma.$ProjectPayload>
+/**
+ * Model CallLog
+ * 
+ */
+export type CallLog = $Result.DefaultSelection<Prisma.$CallLogPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -281,6 +286,16 @@ export class PrismaClient<
     * ```
     */
   get project(): Prisma.ProjectDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.callLog`: Exposes CRUD operations for the **CallLog** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CallLogs
+    * const callLogs = await prisma.callLog.findMany()
+    * ```
+    */
+  get callLog(): Prisma.CallLogDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -731,7 +746,8 @@ export namespace Prisma {
     Company: 'Company',
     Lead: 'Lead',
     ScheduledMeeting: 'ScheduledMeeting',
-    Project: 'Project'
+    Project: 'Project',
+    CallLog: 'CallLog'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -750,7 +766,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "role" | "rolePermission" | "accessAuditLog" | "employee" | "contact" | "company" | "lead" | "scheduledMeeting" | "project"
+      modelProps: "user" | "role" | "rolePermission" | "accessAuditLog" | "employee" | "contact" | "company" | "lead" | "scheduledMeeting" | "project" | "callLog"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1494,6 +1510,80 @@ export namespace Prisma {
           }
         }
       }
+      CallLog: {
+        payload: Prisma.$CallLogPayload<ExtArgs>
+        fields: Prisma.CallLogFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CallLogFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CallLogFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload>
+          }
+          findFirst: {
+            args: Prisma.CallLogFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CallLogFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload>
+          }
+          findMany: {
+            args: Prisma.CallLogFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload>[]
+          }
+          create: {
+            args: Prisma.CallLogCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload>
+          }
+          createMany: {
+            args: Prisma.CallLogCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CallLogCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload>[]
+          }
+          delete: {
+            args: Prisma.CallLogDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload>
+          }
+          update: {
+            args: Prisma.CallLogUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload>
+          }
+          deleteMany: {
+            args: Prisma.CallLogDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CallLogUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CallLogUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload>[]
+          }
+          upsert: {
+            args: Prisma.CallLogUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CallLogPayload>
+          }
+          aggregate: {
+            args: Prisma.CallLogAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCallLog>
+          }
+          groupBy: {
+            args: Prisma.CallLogGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CallLogGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CallLogCountArgs<ExtArgs>
+            result: $Utils.Optional<CallLogCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1600,6 +1690,7 @@ export namespace Prisma {
     lead?: LeadOmit
     scheduledMeeting?: ScheduledMeetingOmit
     project?: ProjectOmit
+    callLog?: CallLogOmit
   }
 
   /* Types for Logging */
@@ -13726,6 +13817,1144 @@ export namespace Prisma {
 
 
   /**
+   * Model CallLog
+   */
+
+  export type AggregateCallLog = {
+    _count: CallLogCountAggregateOutputType | null
+    _min: CallLogMinAggregateOutputType | null
+    _max: CallLogMaxAggregateOutputType | null
+  }
+
+  export type CallLogMinAggregateOutputType = {
+    id: string | null
+    callId: string | null
+    callType: string | null
+    employeeId: string | null
+    employeeName: string | null
+    contactId: string | null
+    contactName: string | null
+    phoneNumber: string | null
+    leadId: string | null
+    duration: string | null
+    status: string | null
+    callDate: string | null
+    callTime: string | null
+    description: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type CallLogMaxAggregateOutputType = {
+    id: string | null
+    callId: string | null
+    callType: string | null
+    employeeId: string | null
+    employeeName: string | null
+    contactId: string | null
+    contactName: string | null
+    phoneNumber: string | null
+    leadId: string | null
+    duration: string | null
+    status: string | null
+    callDate: string | null
+    callTime: string | null
+    description: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type CallLogCountAggregateOutputType = {
+    id: number
+    callId: number
+    callType: number
+    employeeId: number
+    employeeName: number
+    contactId: number
+    contactName: number
+    phoneNumber: number
+    leadId: number
+    duration: number
+    status: number
+    callDate: number
+    callTime: number
+    description: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type CallLogMinAggregateInputType = {
+    id?: true
+    callId?: true
+    callType?: true
+    employeeId?: true
+    employeeName?: true
+    contactId?: true
+    contactName?: true
+    phoneNumber?: true
+    leadId?: true
+    duration?: true
+    status?: true
+    callDate?: true
+    callTime?: true
+    description?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type CallLogMaxAggregateInputType = {
+    id?: true
+    callId?: true
+    callType?: true
+    employeeId?: true
+    employeeName?: true
+    contactId?: true
+    contactName?: true
+    phoneNumber?: true
+    leadId?: true
+    duration?: true
+    status?: true
+    callDate?: true
+    callTime?: true
+    description?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type CallLogCountAggregateInputType = {
+    id?: true
+    callId?: true
+    callType?: true
+    employeeId?: true
+    employeeName?: true
+    contactId?: true
+    contactName?: true
+    phoneNumber?: true
+    leadId?: true
+    duration?: true
+    status?: true
+    callDate?: true
+    callTime?: true
+    description?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type CallLogAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CallLog to aggregate.
+     */
+    where?: CallLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CallLogs to fetch.
+     */
+    orderBy?: CallLogOrderByWithRelationInput | CallLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CallLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CallLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CallLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CallLogs
+    **/
+    _count?: true | CallLogCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CallLogMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CallLogMaxAggregateInputType
+  }
+
+  export type GetCallLogAggregateType<T extends CallLogAggregateArgs> = {
+        [P in keyof T & keyof AggregateCallLog]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCallLog[P]>
+      : GetScalarType<T[P], AggregateCallLog[P]>
+  }
+
+
+
+
+  export type CallLogGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CallLogWhereInput
+    orderBy?: CallLogOrderByWithAggregationInput | CallLogOrderByWithAggregationInput[]
+    by: CallLogScalarFieldEnum[] | CallLogScalarFieldEnum
+    having?: CallLogScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CallLogCountAggregateInputType | true
+    _min?: CallLogMinAggregateInputType
+    _max?: CallLogMaxAggregateInputType
+  }
+
+  export type CallLogGroupByOutputType = {
+    id: string
+    callId: string
+    callType: string
+    employeeId: string | null
+    employeeName: string
+    contactId: string | null
+    contactName: string
+    phoneNumber: string
+    leadId: string | null
+    duration: string
+    status: string
+    callDate: string
+    callTime: string
+    description: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: CallLogCountAggregateOutputType | null
+    _min: CallLogMinAggregateOutputType | null
+    _max: CallLogMaxAggregateOutputType | null
+  }
+
+  type GetCallLogGroupByPayload<T extends CallLogGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CallLogGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CallLogGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CallLogGroupByOutputType[P]>
+            : GetScalarType<T[P], CallLogGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CallLogSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    callId?: boolean
+    callType?: boolean
+    employeeId?: boolean
+    employeeName?: boolean
+    contactId?: boolean
+    contactName?: boolean
+    phoneNumber?: boolean
+    leadId?: boolean
+    duration?: boolean
+    status?: boolean
+    callDate?: boolean
+    callTime?: boolean
+    description?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["callLog"]>
+
+  export type CallLogSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    callId?: boolean
+    callType?: boolean
+    employeeId?: boolean
+    employeeName?: boolean
+    contactId?: boolean
+    contactName?: boolean
+    phoneNumber?: boolean
+    leadId?: boolean
+    duration?: boolean
+    status?: boolean
+    callDate?: boolean
+    callTime?: boolean
+    description?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["callLog"]>
+
+  export type CallLogSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    callId?: boolean
+    callType?: boolean
+    employeeId?: boolean
+    employeeName?: boolean
+    contactId?: boolean
+    contactName?: boolean
+    phoneNumber?: boolean
+    leadId?: boolean
+    duration?: boolean
+    status?: boolean
+    callDate?: boolean
+    callTime?: boolean
+    description?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["callLog"]>
+
+  export type CallLogSelectScalar = {
+    id?: boolean
+    callId?: boolean
+    callType?: boolean
+    employeeId?: boolean
+    employeeName?: boolean
+    contactId?: boolean
+    contactName?: boolean
+    phoneNumber?: boolean
+    leadId?: boolean
+    duration?: boolean
+    status?: boolean
+    callDate?: boolean
+    callTime?: boolean
+    description?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type CallLogOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "callId" | "callType" | "employeeId" | "employeeName" | "contactId" | "contactName" | "phoneNumber" | "leadId" | "duration" | "status" | "callDate" | "callTime" | "description" | "createdAt" | "updatedAt", ExtArgs["result"]["callLog"]>
+
+  export type $CallLogPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CallLog"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      callId: string
+      callType: string
+      employeeId: string | null
+      employeeName: string
+      contactId: string | null
+      contactName: string
+      phoneNumber: string
+      leadId: string | null
+      duration: string
+      status: string
+      callDate: string
+      callTime: string
+      description: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["callLog"]>
+    composites: {}
+  }
+
+  type CallLogGetPayload<S extends boolean | null | undefined | CallLogDefaultArgs> = $Result.GetResult<Prisma.$CallLogPayload, S>
+
+  type CallLogCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CallLogFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CallLogCountAggregateInputType | true
+    }
+
+  export interface CallLogDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CallLog'], meta: { name: 'CallLog' } }
+    /**
+     * Find zero or one CallLog that matches the filter.
+     * @param {CallLogFindUniqueArgs} args - Arguments to find a CallLog
+     * @example
+     * // Get one CallLog
+     * const callLog = await prisma.callLog.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CallLogFindUniqueArgs>(args: SelectSubset<T, CallLogFindUniqueArgs<ExtArgs>>): Prisma__CallLogClient<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CallLog that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CallLogFindUniqueOrThrowArgs} args - Arguments to find a CallLog
+     * @example
+     * // Get one CallLog
+     * const callLog = await prisma.callLog.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CallLogFindUniqueOrThrowArgs>(args: SelectSubset<T, CallLogFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CallLogClient<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CallLog that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CallLogFindFirstArgs} args - Arguments to find a CallLog
+     * @example
+     * // Get one CallLog
+     * const callLog = await prisma.callLog.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CallLogFindFirstArgs>(args?: SelectSubset<T, CallLogFindFirstArgs<ExtArgs>>): Prisma__CallLogClient<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CallLog that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CallLogFindFirstOrThrowArgs} args - Arguments to find a CallLog
+     * @example
+     * // Get one CallLog
+     * const callLog = await prisma.callLog.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CallLogFindFirstOrThrowArgs>(args?: SelectSubset<T, CallLogFindFirstOrThrowArgs<ExtArgs>>): Prisma__CallLogClient<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CallLogs that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CallLogFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CallLogs
+     * const callLogs = await prisma.callLog.findMany()
+     * 
+     * // Get first 10 CallLogs
+     * const callLogs = await prisma.callLog.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const callLogWithIdOnly = await prisma.callLog.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CallLogFindManyArgs>(args?: SelectSubset<T, CallLogFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CallLog.
+     * @param {CallLogCreateArgs} args - Arguments to create a CallLog.
+     * @example
+     * // Create one CallLog
+     * const CallLog = await prisma.callLog.create({
+     *   data: {
+     *     // ... data to create a CallLog
+     *   }
+     * })
+     * 
+     */
+    create<T extends CallLogCreateArgs>(args: SelectSubset<T, CallLogCreateArgs<ExtArgs>>): Prisma__CallLogClient<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CallLogs.
+     * @param {CallLogCreateManyArgs} args - Arguments to create many CallLogs.
+     * @example
+     * // Create many CallLogs
+     * const callLog = await prisma.callLog.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CallLogCreateManyArgs>(args?: SelectSubset<T, CallLogCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CallLogs and returns the data saved in the database.
+     * @param {CallLogCreateManyAndReturnArgs} args - Arguments to create many CallLogs.
+     * @example
+     * // Create many CallLogs
+     * const callLog = await prisma.callLog.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CallLogs and only return the `id`
+     * const callLogWithIdOnly = await prisma.callLog.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CallLogCreateManyAndReturnArgs>(args?: SelectSubset<T, CallLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CallLog.
+     * @param {CallLogDeleteArgs} args - Arguments to delete one CallLog.
+     * @example
+     * // Delete one CallLog
+     * const CallLog = await prisma.callLog.delete({
+     *   where: {
+     *     // ... filter to delete one CallLog
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CallLogDeleteArgs>(args: SelectSubset<T, CallLogDeleteArgs<ExtArgs>>): Prisma__CallLogClient<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CallLog.
+     * @param {CallLogUpdateArgs} args - Arguments to update one CallLog.
+     * @example
+     * // Update one CallLog
+     * const callLog = await prisma.callLog.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CallLogUpdateArgs>(args: SelectSubset<T, CallLogUpdateArgs<ExtArgs>>): Prisma__CallLogClient<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CallLogs.
+     * @param {CallLogDeleteManyArgs} args - Arguments to filter CallLogs to delete.
+     * @example
+     * // Delete a few CallLogs
+     * const { count } = await prisma.callLog.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CallLogDeleteManyArgs>(args?: SelectSubset<T, CallLogDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CallLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CallLogUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CallLogs
+     * const callLog = await prisma.callLog.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CallLogUpdateManyArgs>(args: SelectSubset<T, CallLogUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CallLogs and returns the data updated in the database.
+     * @param {CallLogUpdateManyAndReturnArgs} args - Arguments to update many CallLogs.
+     * @example
+     * // Update many CallLogs
+     * const callLog = await prisma.callLog.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CallLogs and only return the `id`
+     * const callLogWithIdOnly = await prisma.callLog.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CallLogUpdateManyAndReturnArgs>(args: SelectSubset<T, CallLogUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CallLog.
+     * @param {CallLogUpsertArgs} args - Arguments to update or create a CallLog.
+     * @example
+     * // Update or create a CallLog
+     * const callLog = await prisma.callLog.upsert({
+     *   create: {
+     *     // ... data to create a CallLog
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CallLog we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CallLogUpsertArgs>(args: SelectSubset<T, CallLogUpsertArgs<ExtArgs>>): Prisma__CallLogClient<$Result.GetResult<Prisma.$CallLogPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CallLogs.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CallLogCountArgs} args - Arguments to filter CallLogs to count.
+     * @example
+     * // Count the number of CallLogs
+     * const count = await prisma.callLog.count({
+     *   where: {
+     *     // ... the filter for the CallLogs we want to count
+     *   }
+     * })
+    **/
+    count<T extends CallLogCountArgs>(
+      args?: Subset<T, CallLogCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CallLogCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CallLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CallLogAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CallLogAggregateArgs>(args: Subset<T, CallLogAggregateArgs>): Prisma.PrismaPromise<GetCallLogAggregateType<T>>
+
+    /**
+     * Group by CallLog.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CallLogGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CallLogGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CallLogGroupByArgs['orderBy'] }
+        : { orderBy?: CallLogGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CallLogGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCallLogGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CallLog model
+   */
+  readonly fields: CallLogFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CallLog.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CallLogClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CallLog model
+   */
+  interface CallLogFieldRefs {
+    readonly id: FieldRef<"CallLog", 'String'>
+    readonly callId: FieldRef<"CallLog", 'String'>
+    readonly callType: FieldRef<"CallLog", 'String'>
+    readonly employeeId: FieldRef<"CallLog", 'String'>
+    readonly employeeName: FieldRef<"CallLog", 'String'>
+    readonly contactId: FieldRef<"CallLog", 'String'>
+    readonly contactName: FieldRef<"CallLog", 'String'>
+    readonly phoneNumber: FieldRef<"CallLog", 'String'>
+    readonly leadId: FieldRef<"CallLog", 'String'>
+    readonly duration: FieldRef<"CallLog", 'String'>
+    readonly status: FieldRef<"CallLog", 'String'>
+    readonly callDate: FieldRef<"CallLog", 'String'>
+    readonly callTime: FieldRef<"CallLog", 'String'>
+    readonly description: FieldRef<"CallLog", 'String'>
+    readonly createdAt: FieldRef<"CallLog", 'DateTime'>
+    readonly updatedAt: FieldRef<"CallLog", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CallLog findUnique
+   */
+  export type CallLogFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * Filter, which CallLog to fetch.
+     */
+    where: CallLogWhereUniqueInput
+  }
+
+  /**
+   * CallLog findUniqueOrThrow
+   */
+  export type CallLogFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * Filter, which CallLog to fetch.
+     */
+    where: CallLogWhereUniqueInput
+  }
+
+  /**
+   * CallLog findFirst
+   */
+  export type CallLogFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * Filter, which CallLog to fetch.
+     */
+    where?: CallLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CallLogs to fetch.
+     */
+    orderBy?: CallLogOrderByWithRelationInput | CallLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CallLogs.
+     */
+    cursor?: CallLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CallLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CallLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CallLogs.
+     */
+    distinct?: CallLogScalarFieldEnum | CallLogScalarFieldEnum[]
+  }
+
+  /**
+   * CallLog findFirstOrThrow
+   */
+  export type CallLogFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * Filter, which CallLog to fetch.
+     */
+    where?: CallLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CallLogs to fetch.
+     */
+    orderBy?: CallLogOrderByWithRelationInput | CallLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CallLogs.
+     */
+    cursor?: CallLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CallLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CallLogs.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CallLogs.
+     */
+    distinct?: CallLogScalarFieldEnum | CallLogScalarFieldEnum[]
+  }
+
+  /**
+   * CallLog findMany
+   */
+  export type CallLogFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * Filter, which CallLogs to fetch.
+     */
+    where?: CallLogWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CallLogs to fetch.
+     */
+    orderBy?: CallLogOrderByWithRelationInput | CallLogOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CallLogs.
+     */
+    cursor?: CallLogWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CallLogs from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CallLogs.
+     */
+    skip?: number
+    distinct?: CallLogScalarFieldEnum | CallLogScalarFieldEnum[]
+  }
+
+  /**
+   * CallLog create
+   */
+  export type CallLogCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * The data needed to create a CallLog.
+     */
+    data: XOR<CallLogCreateInput, CallLogUncheckedCreateInput>
+  }
+
+  /**
+   * CallLog createMany
+   */
+  export type CallLogCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CallLogs.
+     */
+    data: CallLogCreateManyInput | CallLogCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CallLog createManyAndReturn
+   */
+  export type CallLogCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * The data used to create many CallLogs.
+     */
+    data: CallLogCreateManyInput | CallLogCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CallLog update
+   */
+  export type CallLogUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * The data needed to update a CallLog.
+     */
+    data: XOR<CallLogUpdateInput, CallLogUncheckedUpdateInput>
+    /**
+     * Choose, which CallLog to update.
+     */
+    where: CallLogWhereUniqueInput
+  }
+
+  /**
+   * CallLog updateMany
+   */
+  export type CallLogUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CallLogs.
+     */
+    data: XOR<CallLogUpdateManyMutationInput, CallLogUncheckedUpdateManyInput>
+    /**
+     * Filter which CallLogs to update
+     */
+    where?: CallLogWhereInput
+    /**
+     * Limit how many CallLogs to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CallLog updateManyAndReturn
+   */
+  export type CallLogUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * The data used to update CallLogs.
+     */
+    data: XOR<CallLogUpdateManyMutationInput, CallLogUncheckedUpdateManyInput>
+    /**
+     * Filter which CallLogs to update
+     */
+    where?: CallLogWhereInput
+    /**
+     * Limit how many CallLogs to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CallLog upsert
+   */
+  export type CallLogUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * The filter to search for the CallLog to update in case it exists.
+     */
+    where: CallLogWhereUniqueInput
+    /**
+     * In case the CallLog found by the `where` argument doesn't exist, create a new CallLog with this data.
+     */
+    create: XOR<CallLogCreateInput, CallLogUncheckedCreateInput>
+    /**
+     * In case the CallLog was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CallLogUpdateInput, CallLogUncheckedUpdateInput>
+  }
+
+  /**
+   * CallLog delete
+   */
+  export type CallLogDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+    /**
+     * Filter which CallLog to delete.
+     */
+    where: CallLogWhereUniqueInput
+  }
+
+  /**
+   * CallLog deleteMany
+   */
+  export type CallLogDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CallLogs to delete
+     */
+    where?: CallLogWhereInput
+    /**
+     * Limit how many CallLogs to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CallLog without action
+   */
+  export type CallLogDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CallLog
+     */
+    select?: CallLogSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CallLog
+     */
+    omit?: CallLogOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -13979,6 +15208,28 @@ export namespace Prisma {
   };
 
   export type ProjectScalarFieldEnum = (typeof ProjectScalarFieldEnum)[keyof typeof ProjectScalarFieldEnum]
+
+
+  export const CallLogScalarFieldEnum: {
+    id: 'id',
+    callId: 'callId',
+    callType: 'callType',
+    employeeId: 'employeeId',
+    employeeName: 'employeeName',
+    contactId: 'contactId',
+    contactName: 'contactName',
+    phoneNumber: 'phoneNumber',
+    leadId: 'leadId',
+    duration: 'duration',
+    status: 'status',
+    callDate: 'callDate',
+    callTime: 'callTime',
+    description: 'description',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type CallLogScalarFieldEnum = (typeof CallLogScalarFieldEnum)[keyof typeof CallLogScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -15306,6 +16557,113 @@ export namespace Prisma {
     createdBy?: StringNullableWithAggregatesFilter<"Project"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Project"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Project"> | Date | string
+  }
+
+  export type CallLogWhereInput = {
+    AND?: CallLogWhereInput | CallLogWhereInput[]
+    OR?: CallLogWhereInput[]
+    NOT?: CallLogWhereInput | CallLogWhereInput[]
+    id?: StringFilter<"CallLog"> | string
+    callId?: StringFilter<"CallLog"> | string
+    callType?: StringFilter<"CallLog"> | string
+    employeeId?: StringNullableFilter<"CallLog"> | string | null
+    employeeName?: StringFilter<"CallLog"> | string
+    contactId?: StringNullableFilter<"CallLog"> | string | null
+    contactName?: StringFilter<"CallLog"> | string
+    phoneNumber?: StringFilter<"CallLog"> | string
+    leadId?: StringNullableFilter<"CallLog"> | string | null
+    duration?: StringFilter<"CallLog"> | string
+    status?: StringFilter<"CallLog"> | string
+    callDate?: StringFilter<"CallLog"> | string
+    callTime?: StringFilter<"CallLog"> | string
+    description?: StringNullableFilter<"CallLog"> | string | null
+    createdAt?: DateTimeFilter<"CallLog"> | Date | string
+    updatedAt?: DateTimeFilter<"CallLog"> | Date | string
+  }
+
+  export type CallLogOrderByWithRelationInput = {
+    id?: SortOrder
+    callId?: SortOrder
+    callType?: SortOrder
+    employeeId?: SortOrderInput | SortOrder
+    employeeName?: SortOrder
+    contactId?: SortOrderInput | SortOrder
+    contactName?: SortOrder
+    phoneNumber?: SortOrder
+    leadId?: SortOrderInput | SortOrder
+    duration?: SortOrder
+    status?: SortOrder
+    callDate?: SortOrder
+    callTime?: SortOrder
+    description?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CallLogWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    callId?: string
+    AND?: CallLogWhereInput | CallLogWhereInput[]
+    OR?: CallLogWhereInput[]
+    NOT?: CallLogWhereInput | CallLogWhereInput[]
+    callType?: StringFilter<"CallLog"> | string
+    employeeId?: StringNullableFilter<"CallLog"> | string | null
+    employeeName?: StringFilter<"CallLog"> | string
+    contactId?: StringNullableFilter<"CallLog"> | string | null
+    contactName?: StringFilter<"CallLog"> | string
+    phoneNumber?: StringFilter<"CallLog"> | string
+    leadId?: StringNullableFilter<"CallLog"> | string | null
+    duration?: StringFilter<"CallLog"> | string
+    status?: StringFilter<"CallLog"> | string
+    callDate?: StringFilter<"CallLog"> | string
+    callTime?: StringFilter<"CallLog"> | string
+    description?: StringNullableFilter<"CallLog"> | string | null
+    createdAt?: DateTimeFilter<"CallLog"> | Date | string
+    updatedAt?: DateTimeFilter<"CallLog"> | Date | string
+  }, "id" | "callId">
+
+  export type CallLogOrderByWithAggregationInput = {
+    id?: SortOrder
+    callId?: SortOrder
+    callType?: SortOrder
+    employeeId?: SortOrderInput | SortOrder
+    employeeName?: SortOrder
+    contactId?: SortOrderInput | SortOrder
+    contactName?: SortOrder
+    phoneNumber?: SortOrder
+    leadId?: SortOrderInput | SortOrder
+    duration?: SortOrder
+    status?: SortOrder
+    callDate?: SortOrder
+    callTime?: SortOrder
+    description?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: CallLogCountOrderByAggregateInput
+    _max?: CallLogMaxOrderByAggregateInput
+    _min?: CallLogMinOrderByAggregateInput
+  }
+
+  export type CallLogScalarWhereWithAggregatesInput = {
+    AND?: CallLogScalarWhereWithAggregatesInput | CallLogScalarWhereWithAggregatesInput[]
+    OR?: CallLogScalarWhereWithAggregatesInput[]
+    NOT?: CallLogScalarWhereWithAggregatesInput | CallLogScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CallLog"> | string
+    callId?: StringWithAggregatesFilter<"CallLog"> | string
+    callType?: StringWithAggregatesFilter<"CallLog"> | string
+    employeeId?: StringNullableWithAggregatesFilter<"CallLog"> | string | null
+    employeeName?: StringWithAggregatesFilter<"CallLog"> | string
+    contactId?: StringNullableWithAggregatesFilter<"CallLog"> | string | null
+    contactName?: StringWithAggregatesFilter<"CallLog"> | string
+    phoneNumber?: StringWithAggregatesFilter<"CallLog"> | string
+    leadId?: StringNullableWithAggregatesFilter<"CallLog"> | string | null
+    duration?: StringWithAggregatesFilter<"CallLog"> | string
+    status?: StringWithAggregatesFilter<"CallLog"> | string
+    callDate?: StringWithAggregatesFilter<"CallLog"> | string
+    callTime?: StringWithAggregatesFilter<"CallLog"> | string
+    description?: StringNullableWithAggregatesFilter<"CallLog"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"CallLog"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"CallLog"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -16801,6 +18159,139 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type CallLogCreateInput = {
+    id?: string
+    callId: string
+    callType: string
+    employeeId?: string | null
+    employeeName: string
+    contactId?: string | null
+    contactName: string
+    phoneNumber: string
+    leadId?: string | null
+    duration: string
+    status: string
+    callDate: string
+    callTime: string
+    description?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CallLogUncheckedCreateInput = {
+    id?: string
+    callId: string
+    callType: string
+    employeeId?: string | null
+    employeeName: string
+    contactId?: string | null
+    contactName: string
+    phoneNumber: string
+    leadId?: string | null
+    duration: string
+    status: string
+    callDate: string
+    callTime: string
+    description?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CallLogUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    callId?: StringFieldUpdateOperationsInput | string
+    callType?: StringFieldUpdateOperationsInput | string
+    employeeId?: NullableStringFieldUpdateOperationsInput | string | null
+    employeeName?: StringFieldUpdateOperationsInput | string
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: StringFieldUpdateOperationsInput | string
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    duration?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    callDate?: StringFieldUpdateOperationsInput | string
+    callTime?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CallLogUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    callId?: StringFieldUpdateOperationsInput | string
+    callType?: StringFieldUpdateOperationsInput | string
+    employeeId?: NullableStringFieldUpdateOperationsInput | string | null
+    employeeName?: StringFieldUpdateOperationsInput | string
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: StringFieldUpdateOperationsInput | string
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    duration?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    callDate?: StringFieldUpdateOperationsInput | string
+    callTime?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CallLogCreateManyInput = {
+    id?: string
+    callId: string
+    callType: string
+    employeeId?: string | null
+    employeeName: string
+    contactId?: string | null
+    contactName: string
+    phoneNumber: string
+    leadId?: string | null
+    duration: string
+    status: string
+    callDate: string
+    callTime: string
+    description?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CallLogUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    callId?: StringFieldUpdateOperationsInput | string
+    callType?: StringFieldUpdateOperationsInput | string
+    employeeId?: NullableStringFieldUpdateOperationsInput | string | null
+    employeeName?: StringFieldUpdateOperationsInput | string
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: StringFieldUpdateOperationsInput | string
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    duration?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    callDate?: StringFieldUpdateOperationsInput | string
+    callTime?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CallLogUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    callId?: StringFieldUpdateOperationsInput | string
+    callType?: StringFieldUpdateOperationsInput | string
+    employeeId?: NullableStringFieldUpdateOperationsInput | string | null
+    employeeName?: StringFieldUpdateOperationsInput | string
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: StringFieldUpdateOperationsInput | string
+    phoneNumber?: StringFieldUpdateOperationsInput | string
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    duration?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    callDate?: StringFieldUpdateOperationsInput | string
+    callTime?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -17700,6 +19191,63 @@ export namespace Prisma {
     _sum?: NestedFloatNullableFilter<$PrismaModel>
     _min?: NestedFloatNullableFilter<$PrismaModel>
     _max?: NestedFloatNullableFilter<$PrismaModel>
+  }
+
+  export type CallLogCountOrderByAggregateInput = {
+    id?: SortOrder
+    callId?: SortOrder
+    callType?: SortOrder
+    employeeId?: SortOrder
+    employeeName?: SortOrder
+    contactId?: SortOrder
+    contactName?: SortOrder
+    phoneNumber?: SortOrder
+    leadId?: SortOrder
+    duration?: SortOrder
+    status?: SortOrder
+    callDate?: SortOrder
+    callTime?: SortOrder
+    description?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CallLogMaxOrderByAggregateInput = {
+    id?: SortOrder
+    callId?: SortOrder
+    callType?: SortOrder
+    employeeId?: SortOrder
+    employeeName?: SortOrder
+    contactId?: SortOrder
+    contactName?: SortOrder
+    phoneNumber?: SortOrder
+    leadId?: SortOrder
+    duration?: SortOrder
+    status?: SortOrder
+    callDate?: SortOrder
+    callTime?: SortOrder
+    description?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CallLogMinOrderByAggregateInput = {
+    id?: SortOrder
+    callId?: SortOrder
+    callType?: SortOrder
+    employeeId?: SortOrder
+    employeeName?: SortOrder
+    contactId?: SortOrder
+    contactName?: SortOrder
+    phoneNumber?: SortOrder
+    leadId?: SortOrder
+    duration?: SortOrder
+    status?: SortOrder
+    callDate?: SortOrder
+    callTime?: SortOrder
+    description?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
   }
 
   export type RoleCreateNestedOneWithoutUsersInput = {

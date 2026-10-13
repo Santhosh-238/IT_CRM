@@ -17,6 +17,7 @@ import {
   IconShieldLock,
   IconCalendarEvent,
   IconFolders,
+  IconPhoneCall,
 } from '@tabler/icons-react';
 import { useCRM } from '../../context/CRMContext';
 import { usePermissions } from '../../context/AccessControlContext';
@@ -157,6 +158,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
               active={activeNav === 'scheduled-meetings' || activeNav === 'meetings'}
               onClick={() => onSelectNav('scheduled-meetings')}
               className={activeNav === 'scheduled-meetings' || activeNav === 'meetings' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+              style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+            />
+            {/* Call Logs Item */}
+            <NavLink
+              label="Call Logs"
+              leftSection={<IconPhoneCall size={18} stroke={2} />}
+              active={activeNav === 'call-logs' || activeNav === 'calls'}
+              onClick={() => onSelectNav('call-logs')}
+              className={activeNav === 'call-logs' || activeNav === 'calls' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
               style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
             />
             {/* Projects Management Item */}
