@@ -479,13 +479,17 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
                   </Text>
                 </div>
 
-                {/* Annual Turnover */}
+                {/* Budget */}
                 <div>
                   <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Annual Turnover
+                    Budget
                   </Text>
                   <Text size="sm" fw={600} style={{ color: headingColor }} mt={4}>
-                    {contact.annualTurnover || contact.annualRevenue || '—'}
+                    {contact.annualTurnover
+                      ? !isNaN(Number(contact.annualTurnover)) && String(contact.annualTurnover).trim() !== ''
+                        ? `₹ ${Number(contact.annualTurnover).toLocaleString('en-IN')}`
+                        : contact.annualTurnover
+                      : contact.annualRevenue || '—'}
                   </Text>
                 </div>
 

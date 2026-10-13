@@ -47,6 +47,7 @@ interface ContactTableViewProps {
   onDelete: (contact: Contact) => void;
   onAddNew: () => void;
   loading?: boolean;
+  onTabChange?: (tab: 'NEW' | 'ASSIGNED') => void;
 }
 
 export const ContactTableView: React.FC<ContactTableViewProps> = ({
@@ -57,6 +58,7 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
   onDelete,
   onAddNew,
   loading = false,
+  onTabChange,
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
@@ -729,7 +731,10 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                             onClick={async () => {
                               try {
                                 setAssigningId(contact.id);
-                                await assignContact(contact.id, emp.id);
+                                const res = await assignContact(contact.id, emp.id);
+                                if (res?.success && activeTab === 'NEW' && onTabChange) {
+                                  onTabChange('ASSIGNED');
+                                }
                               } finally {
                                 setAssigningId(null);
                               }

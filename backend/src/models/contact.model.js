@@ -14,7 +14,7 @@ export class ContactModel {
       where,
       skip,
       take,
-      orderBy: orderBy || { createdAt: 'desc' },
+      orderBy: orderBy || [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
       select,
     });
   }

@@ -11,7 +11,7 @@ import { generateContactId, buildContactFilterQuery, formatContactResponse } fro
  */
 export async function getContactsService(queryParams = {}) {
   const {
-    sortBy = 'createdAt',
+    sortBy = 'updatedAt',
     sortOrder = 'desc',
     page = 1,
     limit = 10,
@@ -24,14 +24,21 @@ export async function getContactsService(queryParams = {}) {
   const where = buildContactFilterQuery(queryParams);
 
   const validSortFields = ['createdAt', 'updatedAt', 'name', 'companyName', 'status', 'stage'];
-  const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+  const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'updatedAt';
   const finalSortOrder = sortOrder.toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+  const orderBy = [
+    { [finalSortBy]: finalSortOrder },
+  ];
+  if (finalSortBy !== 'createdAt') {
+    orderBy.push({ createdAt: 'desc' });
+  }
 
   const [total, contacts] = await Promise.all([
     prisma.contact.count({ where }),
     prisma.contact.findMany({
       where,
-      orderBy: { [finalSortBy]: finalSortOrder },
+      orderBy,
       skip,
       take: limitNum,
     }),
@@ -571,6 +578,7 @@ export async function assignContactService(id, body, user) {
       assignedTo: assignedToName ? targetEmpId : null,
       assignedToName,
       assignmentStatus,
+      updatedAt: new Date(),
     },
   });
 

@@ -440,13 +440,17 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
               </Text>
             </div>
 
-            {/* Annual Turnover */}
+            {/* Budget */}
             <div>
               <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Annual Turnover
+                Budget
               </Text>
               <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.annualTurnover || '—'}
+                {contact.annualTurnover
+                  ? !isNaN(Number(contact.annualTurnover)) && String(contact.annualTurnover).trim() !== ''
+                    ? `₹ ${Number(contact.annualTurnover).toLocaleString('en-IN')}`
+                    : contact.annualTurnover
+                  : '—'}
               </Text>
             </div>
 

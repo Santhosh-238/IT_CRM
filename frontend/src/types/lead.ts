@@ -125,7 +125,7 @@ export interface ScheduledMeeting {
   agenda?: string;
   purpose?: string;
   stageAfterMeeting?: string;
-  status: 'Scheduled' | 'Completed' | 'Cancelled' | 'In Progress' | 'Rescheduled' | string;
+  status: 'Scheduled' | 'Completed' | 'Cancelled' | 'In Progress' | string;
   meetingStatus?: string;
   requirements?: string;
   requirementFileName?: string;

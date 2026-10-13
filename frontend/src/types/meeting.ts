@@ -1,4 +1,4 @@
-export type MeetingStatus = 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled' | 'Rescheduled';
+export type MeetingStatus = 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled';
 export type MeetingType = 'Virtual' | 'In-person' | 'Phone Call';
 
 export interface ScheduledMeeting {
