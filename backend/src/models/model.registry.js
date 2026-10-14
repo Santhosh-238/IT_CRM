@@ -55,6 +55,13 @@ export const SYSTEM_MODULES = [
     description: 'Client project delivery, sprints, milestones, and task SLAs.',
   },
 
+  {
+    id: 'billing',
+    name: 'Billing & Invoicing',
+    category: 'Main Navigation',
+    description: 'Quotations, sales orders, contracts, projects, milestones, invoices, and payments.',
+  },
+
   // 2. Administration & Security
   {
     id: 'access_control',

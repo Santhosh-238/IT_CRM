@@ -1,6 +1,6 @@
 export type CallType = 'Incoming' | 'Outgoing';
 
-export type CallStatus = 'Completed' | 'Missed' | 'Busy' | 'No Answer';
+export type CallStatus = 'Completed' | 'Follow-up' | 'Missed' | 'Busy' | 'No Answer' | 'Not Interested';
 
 export interface CallLog {
   id: string;
@@ -29,6 +29,8 @@ export interface CallLogStats {
   missed: number;
   busy: number;
   noAnswer: number;
+  notInterested?: number;
+  followUp?: number;
 }
 
 export interface CallLogFilters {

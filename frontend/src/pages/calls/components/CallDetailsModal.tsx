@@ -60,6 +60,10 @@ export const CallDetailsModal: React.FC<CallDetailsModalProps> = ({
       bg = isDark ? 'rgba(16, 185, 129, 0.16)' : '#ECFDF5';
       color = isDark ? '#6EE7B7' : '#047857';
       border = isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0';
+    } else if (s.includes('follow')) {
+      bg = isDark ? 'rgba(139, 92, 246, 0.16)' : '#F5F3FF';
+      color = isDark ? '#C4B5FD' : '#7C3AED';
+      border = isDark ? 'rgba(139, 92, 246, 0.35)' : '#DDD6FE';
     } else if (s.includes('miss')) {
       bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
       color = isDark ? '#FCA5A5' : '#B91C1C';
@@ -72,6 +76,10 @@ export const CallDetailsModal: React.FC<CallDetailsModalProps> = ({
       bg = isDark ? 'rgba(245, 158, 11, 0.14)' : '#FFFBEB';
       color = isDark ? '#FCD34D' : '#B45309';
       border = isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A';
+    } else if (s.includes('interest') || s.includes('intrest')) {
+      bg = isDark ? 'rgba(244, 63, 94, 0.16)' : '#FFF1F2';
+      color = isDark ? '#FDA4AF' : '#E11D48';
+      border = isDark ? 'rgba(244, 63, 94, 0.35)' : '#FECDD3';
     }
 
     return (
