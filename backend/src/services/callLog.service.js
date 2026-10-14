@@ -29,7 +29,24 @@ export async function getCallLogsService(queryParams = {}) {
   }
 
   if (status && status !== 'ALL' && status !== 'All') {
-    where.status = { equals: status, mode: 'insensitive' };
+    const sLower = status.toLowerCase();
+    if (sLower.includes('not') && (sLower.includes('interest') || sLower.includes('intrest'))) {
+      where.OR = [
+        ...(where.OR || []),
+        { status: { equals: 'Not Interested', mode: 'insensitive' } },
+        { status: { contains: 'interest', mode: 'insensitive' } },
+        { status: { contains: 'intrest', mode: 'insensitive' } },
+      ];
+    } else if (sLower.includes('follow')) {
+      where.OR = [
+        ...(where.OR || []),
+        { status: { equals: 'Follow-up', mode: 'insensitive' } },
+        { status: { equals: 'Follow Up', mode: 'insensitive' } },
+        { status: { contains: 'follow', mode: 'insensitive' } },
+      ];
+    } else {
+      where.status = { equals: status, mode: 'insensitive' };
+    }
   }
 
   if (employeeId && employeeId !== 'ALL') {
@@ -149,7 +166,7 @@ export async function getCallLogsService(queryParams = {}) {
  * 2. Get Overview KPI Statistics for Call Logs
  */
 export async function getCallLogStatsService() {
-  const [total, incoming, outgoing, completed, missed, busy, noAnswer] = await Promise.all([
+  const [total, incoming, outgoing, completed, missed, busy, noAnswer, notInterested, followUp] = await Promise.all([
     prisma.callLog.count(),
     prisma.callLog.count({ where: { callType: { equals: 'Incoming', mode: 'insensitive' } } }),
     prisma.callLog.count({ where: { callType: { equals: 'Outgoing', mode: 'insensitive' } } }),
@@ -157,6 +174,24 @@ export async function getCallLogStatsService() {
     prisma.callLog.count({ where: { status: { equals: 'Missed', mode: 'insensitive' } } }),
     prisma.callLog.count({ where: { status: { equals: 'Busy', mode: 'insensitive' } } }),
     prisma.callLog.count({ where: { status: { equals: 'No Answer', mode: 'insensitive' } } }),
+    prisma.callLog.count({
+      where: {
+        OR: [
+          { status: { equals: 'Not Interested', mode: 'insensitive' } },
+          { status: { contains: 'interest', mode: 'insensitive' } },
+          { status: { contains: 'intrest', mode: 'insensitive' } },
+        ],
+      },
+    }),
+    prisma.callLog.count({
+      where: {
+        OR: [
+          { status: { equals: 'Follow-up', mode: 'insensitive' } },
+          { status: { equals: 'Follow Up', mode: 'insensitive' } },
+          { status: { contains: 'follow', mode: 'insensitive' } },
+        ],
+      },
+    }),
   ]);
 
   return {
@@ -167,6 +202,8 @@ export async function getCallLogStatsService() {
     missed,
     busy,
     noAnswer,
+    notInterested,
+    followUp,
   };
 }
 
@@ -253,10 +290,19 @@ export async function createCallLogService(data) {
     throw error;
   }
 
-  const validStatuses = ['Completed', 'Missed', 'Busy', 'No Answer'];
-  const normalizedStatus = validStatuses.find(
+  const validStatuses = ['Completed', 'Follow-up', 'Missed', 'Busy', 'No Answer', 'Not Interested'];
+  let normalizedStatus = validStatuses.find(
     (s) => s.toLowerCase() === status.trim().toLowerCase()
-  ) || 'Completed';
+  );
+  if (!normalizedStatus) {
+    const sLower = status.trim().toLowerCase();
+    if (sLower.includes('not') && (sLower.includes('interest') || sLower.includes('intrest'))) {
+      normalizedStatus = 'Not Interested';
+    } else if (sLower.includes('follow')) {
+      normalizedStatus = 'Follow-up';
+    }
+  }
+  normalizedStatus = normalizedStatus || 'Completed';
 
   // Generate unique Call ID
   const callId = await generateCallId();
@@ -313,8 +359,16 @@ export async function updateCallLogService(id, data) {
   if (data.leadId !== undefined || data.lead_id !== undefined) updateData.leadId = data.leadId || data.lead_id || null;
   if (data.duration !== undefined) updateData.duration = data.duration.trim();
   if (data.status) {
-    const validStatuses = ['Completed', 'Missed', 'Busy', 'No Answer'];
-    const matched = validStatuses.find((s) => s.toLowerCase() === data.status.trim().toLowerCase());
+    const validStatuses = ['Completed', 'Follow-up', 'Missed', 'Busy', 'No Answer', 'Not Interested'];
+    let matched = validStatuses.find((s) => s.toLowerCase() === data.status.trim().toLowerCase());
+    if (!matched) {
+      const sLower = data.status.trim().toLowerCase();
+      if (sLower.includes('not') && (sLower.includes('interest') || sLower.includes('intrest'))) {
+        matched = 'Not Interested';
+      } else if (sLower.includes('follow')) {
+        matched = 'Follow-up';
+      }
+    }
     if (matched) updateData.status = matched;
   }
   if (data.callDate) updateData.callDate = data.callDate;

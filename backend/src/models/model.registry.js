@@ -29,6 +29,7 @@ export const SYSTEM_MODULES = [
   { id: 'companies', name: 'Companies & Accounts', category: 'Sales & CRM', description: 'Enterprise client organizations, domains, and contracts.' },
   { id: 'leads', name: 'Sales Leads', category: 'Sales & CRM', description: 'Prospect pipeline, lead stages, and qualification workflows.' },
   { id: 'deals', name: 'Deals & Revenue', category: 'Sales & CRM', description: 'Sales opportunities, closing probabilities, and forecasts.' },
+  { id: 'billing', name: 'Billing & Invoicing', category: 'Sales & CRM', description: 'Quotations, sales orders, contracts, projects, milestones, invoices, and payments.' },
 
   // 5. Field Operations
   { id: 'projects', name: 'IT Projects', category: 'Field Operations', description: 'Client project delivery, sprints, and task SLA.' },

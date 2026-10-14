@@ -251,6 +251,10 @@ model Project {
   githubUrl          String?
   liveUrl            String?
   
+  // Link to Billing Module
+  salesOrderId       String?   // Reference to SalesOrder
+  contractRef        String?   // Sales Order / Contract Number
+  
   // Metadata
   createdBy          String?
   createdAt          DateTime  @default(now())
@@ -268,12 +272,284 @@ model CallLog {
   phoneNumber  String   // Contact Phone Number (Receiver Number)
   leadId       String?  @map("lead_id") // Reference to Lead id / leadId
   duration     String   // Duration (e.g. "02:30" or "2m 30s")
-  status       String   // "Completed" | "Missed" | "Busy" | "No Answer"
+  status       String   // "Completed" | "Follow-up" | "Missed" | "Busy" | "No Answer" | "Not Interested"
   callDate     String   // YYYY-MM-DD
   callTime     String   // e.g. "10:30 AM"
   description  String?  // Notes / discussion summary
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+// =============================================================================
+// BILLING MODULE ENTITIES
+// =============================================================================
+
+model BillingProduct {
+  id          String   @id @default(uuid())
+  itemCode    String   @unique // e.g. "PRD-HRMS", "SRV-WEBDEV"
+  name        String
+  type        String   @default("Product") // "Product" | "Service"
+  description String?
+  unitPrice   Float    @default(0)
+  taxRate     Float    @default(18.0) // Percentage (e.g. 18 for 18% GST)
+  unit        String   @default("Unit") // "Unit", "Month", "Hour", "Project"
+  status      String   @default("Active") // "Active" | "Inactive"
+  modules     Json?    @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Quotation {
+  id                 String          @id @default(uuid())
+  quotationNumber    String          @unique // e.g. "QUO-2026-1001"
+  contactId          String?         // Reference to CRM Contact
+  contactName        String
+  contactEmail       String?
+  contactPhone       String?
+  companyName        String?
+  clientGst          String?
+  clientAddress      String?
+  leadId             String?         // Reference to CRM Lead
+  quotationDate      String          // YYYY-MM-DD
+  validUntil         String          // YYYY-MM-DD
+  status             String          @default("Draft") // "Draft" | "Sent" | "Accepted" | "Rejected" | "Expired"
+  currency           String          @default("INR")
+  subtotal           Float           @default(0)
+  discountType       String          @default("percentage") // "percentage" | "fixed"
+  discountValue      Float           @default(0)
+  discountAmount     Float           @default(0)
+  taxAmount          Float           @default(0)
+  grandTotal         Float           @default(0)
+  paymentTerms       String?         @default("Net 30")
+  notes              String?
+  termsConditions    String?
+  salesOwnerId       String?
+  salesOwnerName     String?
+  convertedToOrderId String?         // ID of SalesOrder converted to
+  convertedAt        DateTime?
+  items              QuotationItem[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+}
+
+model QuotationItem {
+  id          String    @id @default(uuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  productId   String?   // Reference to BillingProduct
+  itemCode    String?
+  itemName    String
+  itemType    String    @default("Product") // "Product" | "Service"
+  description String?
+  quantity    Float     @default(1)
+  unitPrice   Float     @default(0)
+  discount    Float     @default(0)
+  taxRate     Float     @default(18.0)
+  taxAmount   Float     @default(0)
+  totalAmount Float     @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model SalesOrder {
+  id              String             @id @default(uuid())
+  orderNumber     String             @unique // e.g. "SO-2026-1001"
+  quotationId     String?            // Ref to accepted quotation
+  contactId       String?            // Ref to Contact
+  contactName     String
+  contactEmail    String?
+  contactPhone    String?
+  companyName     String?
+  clientGst       String?
+  clientAddress   String?
+  leadId          String?            // Ref to Lead
+  dealId          String?
+  billingMethod   String             @default("Milestone") // "Milestone" | "Fixed Price" | "Product"
+  contractValue   Float              @default(0)
+  currency        String             @default("INR")
+  orderDate       String             // YYYY-MM-DD
+  startDate       String?            // YYYY-MM-DD
+  endDate         String?            // YYYY-MM-DD
+  paymentTerms    String?            @default("Net 30")
+  status          String             @default("Confirmed") // "Draft" | "Confirmed" | "In Progress" | "Completed" | "Cancelled"
+  notes           String?
+  termsConditions String?
+  projectId       String?            // Linked Project
+  items           SalesOrderItem[]
+  milestones      BillingMilestone[]
+  invoices        Invoice[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model SalesOrderItem {
+  id           String     @id @default(uuid())
+  salesOrderId String
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  productId    String?
+  itemCode     String?
+  itemName     String
+  itemType     String     @default("Product")
+  description  String?
+  quantity     Float      @default(1)
+  unitPrice    Float      @default(0)
+  taxRate      Float      @default(18.0)
+  taxAmount    Float      @default(0)
+  totalAmount  Float      @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model BillingMilestone {
+  id                String      @id @default(uuid())
+  salesOrderId      String?
+  salesOrder        SalesOrder? @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  projectId         String?     // Linked Project ID
+  projectName       String?
+  milestoneNumber   Int         @default(1)
+  name              String      // e.g. "Milestone 1: Discovery & Architecture"
+  description       String?
+  percentage        Float?      // e.g. 25 (%)
+  amount            Float       @default(0) // Fixed amount (INR)
+  dueDate           String?     // YYYY-MM-DD
+  status            String      @default("Pending") // "Pending" | "In Progress" | "Completed" | "Cancelled"
+  isApproved        Boolean     @default(false)
+  approvedBy        String?
+  approvedAt        DateTime?
+  isInvoiceEligible Boolean     @default(false)
+  invoiceId         String?     // ID of invoice generated for this milestone
+  invoicedAmount    Float       @default(0)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model Invoice {
+  id                 String              @id @default(uuid())
+  invoiceNumber      String              @unique // e.g. "INV-2026-000001"
+  contactId          String?             // Reference to Contact
+  contactName        String
+  contactEmail       String?
+  contactPhone       String?
+  companyName        String?
+  clientGst          String?
+  clientAddress      String?
+  leadId             String?
+  salesOrderId       String?
+  salesOrder         SalesOrder?         @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  projectId          String?
+  projectName        String?
+  milestoneId        String?
+  milestoneName      String?
+  invoiceDate        String              // YYYY-MM-DD
+  dueDate            String              // YYYY-MM-DD
+  subtotal           Float               @default(0)
+  discountAmount     Float               @default(0)
+  taxAmount          Float               @default(0)
+  grandTotal         Float               @default(0)
+  amountPaid         Float               @default(0)
+  outstandingBalance Float               @default(0)
+  status             String              @default("Draft") // "Draft" | "Issued" | "Partially Paid" | "Paid" | "Overdue" | "Cancelled"
+  paymentTerms       String?             @default("Net 30")
+  notes              String?
+  termsConditions    String?
+  bankDetails        Json?               // Bank name, account number, IFSC, UPI ID
+  cancellationReason String?
+  issuedAt           DateTime?
+  paidAt             DateTime?
+  createdBy          String?
+  items              InvoiceItem[]
+  allocations        PaymentAllocation[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   String?
+  itemCode    String?
+  itemName    String
+  itemType    String   @default("Product")
+  description String?
+  quantity    Float    @default(1)
+  unitPrice   Float    @default(0)
+  discount    Float    @default(0)
+  taxRate     Float    @default(18.0)
+  taxAmount   Float    @default(0)
+  totalAmount Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Payment {
+  id                   String              @id @default(uuid())
+  paymentNumber        String              @unique // e.g. "PAY-2026-1001"
+  contactId            String?             // Ref to Contact
+  clientName           String
+  paymentDate          String              // YYYY-MM-DD
+  amountReceived       Float               @default(0)
+  paymentMethod        String              @default("Bank Transfer") // "Bank Transfer" | "UPI" | "Cheque" | "Cash" | "Payment Gateway"
+  transactionReference String?             // UTR / Cheque / UPI Ref
+  bankName             String?
+  notes                String?
+  recordedBy           String?             // User who recorded payment
+  status               String              @default("Completed") // "Completed" | "Refunded" | "Void"
+  allocations          PaymentAllocation[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+}
+
+model PaymentAllocation {
+  id              String   @id @default(uuid())
+  paymentId       String
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoiceId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amountAllocated Float    @default(0)
+  createdAt       DateTime @default(now())
+}
+
+model BillingAuditLog {
+  id           String   @id @default(uuid())
+  entityType   String   // "Quotation" | "SalesOrder" | "Milestone" | "Invoice" | "Payment" | "Settings"
+  entityId     String
+  entityNumber String?  // e.g. "INV-2026-000001", "QUO-2026-1001"
+  action       String   // "CREATED" | "UPDATED" | "STATUS_CHANGED" | "CONVERTED" | "PAYMENT_RECORDED" | "CANCELLED"
+  performedBy  String?  // User Name / Email
+  details      String?
+  createdAt    DateTime @default(now())
+}
+
+model BillingSettings {
+  id                     String   @id @default("default_billing_settings")
+  companyName            String   @default("OmniTech Solutions Pvt Ltd")
+  companyAddress         String?  @default("Tidel Park, Rajiv Gandhi Salai, Taramani, Chennai, Tamil Nadu 600113")
+  companyGst             String?  @default("33AAAAA0000A1Z5")
+  companyPan             String?  @default("AAAAA0000A")
+  companyPhone           String?  @default("+91 98765 43210")
+  companyEmail           String?  @default("billing@omnitech.io")
+  companyWebsite         String?  @default("https://omnitech.io")
+  companyLogoUrl         String?
+  bankName               String?  @default("HDFC Bank")
+  accountNumber          String?  @default("50200012345678")
+  accountHolderName      String?  @default("OmniTech Solutions Pvt Ltd")
+  ifscCode               String?  @default("HDFC0001234")
+  branchName             String?  @default("Tidel Park Branch")
+  upiId                  String?  @default("omnitech@hdfcbank")
+  invoicePrefix          String   @default("INV-2026-")
+  invoiceNextNumber      Int      @default(1)
+  quotationPrefix        String   @default("QUO-2026-")
+  quotationNextNumber    Int      @default(1001)
+  orderPrefix            String   @default("SO-2026-")
+  orderNextNumber        Int      @default(1001)
+  paymentPrefix          String   @default("PAY-2026-")
+  paymentNextNumber      Int      @default(1001)
+  defaultTaxRate         Float    @default(18.0)
+  defaultPaymentTerms    String   @default("Net 30")
+  defaultTermsConditions String?  @default("1. Payment is due within the stipulated credit term from invoice date.\n2. In case of delayed payment, interest @ 18% per annum will be charged.\n3. Goods or services once delivered/rendered are not refundable.")
+  updatedAt              DateTime @updatedAt
+}
+
 
 
