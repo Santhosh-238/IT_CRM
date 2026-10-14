@@ -171,7 +171,9 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
         setContactName(editingCall.contactName || '');
         setPhoneNumber(editingCall.phoneNumber || '');
         setDuration(editingCall.duration || '02:30');
-        setStatus(editingCall.status || 'Completed');
+        const rawSt = (editingCall.status || 'Completed').trim();
+        const normSt = rawSt.toLowerCase().includes('follow') ? 'Follow-up' : (rawSt as CallStatus);
+        setStatus(normSt);
         setCallDate(editingCall.callDate || new Date().toISOString().split('T')[0]);
         setCallTime(editingCall.callTime || '10:00 AM');
         setDescription(editingCall.description || '');
@@ -520,9 +522,11 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
             placeholder="Select Status"
             data={[
               { value: 'Completed', label: 'Completed' },
+              { value: 'Follow-up', label: 'Follow-up' },
               { value: 'Missed', label: 'Missed' },
               { value: 'Busy', label: 'Busy' },
               { value: 'No Answer', label: 'No Answer' },
+              { value: 'Not Interested', label: 'Not Interested' },
             ]}
             value={status}
             onChange={(val) => setStatus((val as CallStatus) || 'Completed')}

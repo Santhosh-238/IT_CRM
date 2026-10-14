@@ -40,7 +40,7 @@ import { CallLogTableView } from './components/CallLogTableView';
 import { CallLogModal } from './components/CallLogModal';
 import { CallDetailsModal } from './components/CallDetailsModal';
 
-type ActiveCallTabType = 'ALL' | 'INCOMING' | 'OUTGOING' | 'COMPLETED' | 'MISSED';
+type ActiveCallTabType = 'ALL' | 'INCOMING' | 'OUTGOING' | 'COMPLETED' | 'FOLLOW_UP' | 'MISSED';
 
 export const CallLogsPage: React.FC = () => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
@@ -121,11 +121,20 @@ export const CallLogsPage: React.FC = () => {
       if (callTab === 'INCOMING' && call.callType.toLowerCase() !== 'incoming') return false;
       if (callTab === 'OUTGOING' && call.callType.toLowerCase() !== 'outgoing') return false;
       if (callTab === 'COMPLETED' && call.status.toLowerCase() !== 'completed') return false;
+      if (callTab === 'FOLLOW_UP' && !call.status.toLowerCase().includes('follow')) return false;
       if (callTab === 'MISSED' && call.status.toLowerCase() !== 'missed') return false;
 
       // 2. Status dropdown filter
       if (statusFilter !== 'All') {
-        if (call.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
+        const sFilter = statusFilter.toLowerCase();
+        const cStatus = (call.status || '').toLowerCase();
+        if (sFilter.includes('interest') || sFilter.includes('intrest')) {
+          if (!cStatus.includes('interest') && !cStatus.includes('intrest')) return false;
+        } else if (sFilter.includes('follow')) {
+          if (!cStatus.includes('follow')) return false;
+        } else if (cStatus !== sFilter) {
+          return false;
+        }
       }
 
       // 3. Search query
@@ -158,6 +167,7 @@ export const CallLogsPage: React.FC = () => {
   const incomingCount = useMemo(() => calls.filter((c) => c.callType.toLowerCase() === 'incoming').length, [calls]);
   const outgoingCount = useMemo(() => calls.filter((c) => c.callType.toLowerCase() === 'outgoing').length, [calls]);
   const completedCount = useMemo(() => calls.filter((c) => c.status.toLowerCase() === 'completed').length, [calls]);
+  const followUpCount = useMemo(() => calls.filter((c) => c.status.toLowerCase().includes('follow')).length, [calls]);
   const missedCount = useMemo(() => calls.filter((c) => c.status.toLowerCase() === 'missed').length, [calls]);
 
   // Handlers
@@ -230,9 +240,11 @@ export const CallLogsPage: React.FC = () => {
   const statusDropdownOptions = [
     { value: 'All', label: 'All Statuses' },
     { value: 'Completed', label: 'Completed' },
+    { value: 'Follow-up', label: 'Follow-up' },
     { value: 'Missed', label: 'Missed' },
     { value: 'Busy', label: 'Busy' },
     { value: 'No Answer', label: 'No Answer' },
+    { value: 'Not Interested', label: 'Not Interested' },
   ];
 
   return (
@@ -267,6 +279,7 @@ export const CallLogsPage: React.FC = () => {
               { id: 'INCOMING' as ActiveCallTabType, label: 'Incoming', count: incomingCount },
               { id: 'OUTGOING' as ActiveCallTabType, label: 'Outgoing', count: outgoingCount },
               { id: 'COMPLETED' as ActiveCallTabType, label: 'Completed', count: completedCount },
+              { id: 'FOLLOW_UP' as ActiveCallTabType, label: 'Follow-up', count: followUpCount },
               { id: 'MISSED' as ActiveCallTabType, label: 'Missed', count: missedCount },
             ].map((tab) => {
               const active = callTab === tab.id;
