@@ -103,7 +103,7 @@ export const EmployeesPage: React.FC = () => {
   };
 
   return (
-    <Box p={{ base: 'md', md: 'xl' }} style={{ maxWidth: 1400, margin: '0 auto' }}>
+    <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ width: '100%', maxWidth: '100%' }}>
       {/* 1. Top Segmented Status Filter Tabs */}
       <Group gap="xs" mb="lg">
         <Paper

@@ -3,7 +3,6 @@ import {
   Box,
   Paper,
   Stack,
-  Grid,
   SimpleGrid,
   TextInput,
   Select,
@@ -11,103 +10,46 @@ import {
   Button,
   Group,
   Text,
-  ActionIcon,
   Badge,
   useComputedColorScheme,
-  UnstyledButton,
-  CopyButton,
-  Tooltip,
+  Avatar,
   Divider,
+  Center,
+  Loader,
+  Grid,
+  ActionIcon,
+  Tooltip,
+  ThemeIcon,
+  Autocomplete,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import {
   IconArrowLeft,
-  IconUser,
-  IconBriefcase,
-  IconMail,
-  IconPhone,
-  IconBrandWhatsapp,
-  IconBuilding,
-  IconBox,
-  IconLayersSubtract,
-  IconPlus,
-  IconClock,
   IconCheck,
+  IconBuilding,
+  IconPhone,
+  IconMail,
+  IconTargetArrow,
   IconCalendar,
-  IconTag,
-  IconUserCheck,
-  IconShieldCheck,
-  IconShieldX,
-  IconUsers,
-  IconReceiptTax,
-  IconCreditCard,
-  IconFileCertificate,
-  IconMapPin,
   IconCoin,
-  IconWorld,
-  IconBrandLinkedin,
-  IconExternalLink,
-  IconCopy,
-  IconIdBadge,
+  IconClock,
   IconAlertCircle,
+  IconBriefcase,
+  IconIdBadge,
+  IconUserCheck,
+  IconUsers,
+  IconArrowRight,
+  IconPhoneCall,
+  IconTag,
+  IconBox,
+  IconBrandWhatsapp,
+  IconChevronDown,
 } from '@tabler/icons-react';
-import { Contact } from '../../types/contact';
+import { Contact, QualificationStatus } from '../../types/contact';
+import { contactService } from '../../services/contactService';
 import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
 import { useCRM } from '../../context/CRMContext';
-// Business Identification Validation Regex Patterns
-const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-const CIN_REGEX = /^[LU][0-9]{5}[A-Z]{2}[0-9]{4}[A-Z]{3}[0-9]{6}$/;
-const URL_REGEX = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(\/.*)?$/i;
-const LINKEDIN_REGEX = /^(https?:\/\/)?([a-zA-Z0-9-]+\.)*linkedin\.com(\/.*)?$/i;
-
-const INDIAN_STATES = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
-  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
-  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
-  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
-  'Delhi', 'Puducherry', 'Chandigarh', 'Jammu and Kashmir', 'Ladakh'
-];
-
-const GST_STATE_MAP: Record<string, string> = {
-  '01': 'Jammu and Kashmir',
-  '02': 'Himachal Pradesh',
-  '03': 'Punjab',
-  '04': 'Chandigarh',
-  '05': 'Uttarakhand',
-  '06': 'Haryana',
-  '07': 'Delhi',
-  '08': 'Rajasthan',
-  '09': 'Uttar Pradesh',
-  '10': 'Bihar',
-  '11': 'Sikkim',
-  '12': 'Arunachal Pradesh',
-  '13': 'Nagaland',
-  '14': 'Manipur',
-  '15': 'Mizoram',
-  '16': 'Tripura',
-  '17': 'Meghalaya',
-  '18': 'Assam',
-  '19': 'West Bengal',
-  '20': 'Jharkhand',
-  '21': 'Odisha',
-  '22': 'Chhattisgarh',
-  '23': 'Madhya Pradesh',
-  '24': 'Gujarat',
-  '27': 'Maharashtra',
-  '29': 'Karnataka',
-  '30': 'Goa',
-  '32': 'Kerala',
-  '33': 'Tamil Nadu',
-  '34': 'Puducherry',
-  '36': 'Telangana',
-  '37': 'Andhra Pradesh',
-  '38': 'Ladakh',
-};
-
-
 
 interface ContactQualificationPageProps {
   contact?: Contact | null;
@@ -124,10 +66,9 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
   const isDark = computedColorScheme === 'dark';
 
   const { currentUser } = useCRM();
-  const { contacts, updateContact, assignContact, metadata, loading } = useContact();
+  const { contacts, updateContact, metadata, loading } = useContact();
   const { fetchLeads, fetchStats } = useLead();
 
-  // If no contact passed via props, check sessionStorage or default to the first contact
   const [activeContact, setActiveContact] = useState<Contact | null>(() => {
     if (propContact) return propContact;
     try {
@@ -137,1416 +78,1210 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
     return contacts.length > 0 ? contacts[0] : null;
   });
 
+  // 1. Fetch live contact from server on mount to ensure fresh database data
   useEffect(() => {
-    if (propContact) {
+    const targetId =
+      propContact?.id ||
+      propContact?.contactId ||
+      (() => {
+        try {
+          const saved = sessionStorage.getItem('crm_qualifying_contact');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            return parsed?.id || parsed?.contactId;
+          }
+        } catch (e) {}
+        return contacts.length > 0 ? (contacts[0].id || contacts[0].contactId) : null;
+      })();
+
+    if (targetId) {
+      contactService
+        .getContactById(targetId)
+        .then((res) => {
+          if (res?.success && res.data) {
+            setActiveContact(res.data);
+            try {
+              sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(res.data));
+            } catch (e) {}
+          }
+        })
+        .catch((err) => {
+          console.error('Error fetching live contact details on mount:', err);
+        });
+    }
+  }, []);
+
+  // 2. Only switch activeContact if propContact explicitly targets a different contact ID
+  useEffect(() => {
+    if (propContact && propContact.id && propContact.id !== activeContact?.id) {
       setActiveContact(propContact);
-    } else {
-      try {
-        const saved = sessionStorage.getItem('crm_qualifying_contact');
-        if (saved) setActiveContact(JSON.parse(saved));
-      } catch (e) {}
     }
-  }, [propContact]);
+  }, [propContact?.id]);
 
-  const [status, setStatus] = useState<string>(activeContact?.status === 'Disqualified' ? 'Disqualified' : activeContact?.status || 'Qualified');
-  const [qualifiedBy, setQualifiedBy] = useState<string>(activeContact?.qualifiedBy || activeContact?.assignedToName || currentUser?.name || 'Admin');
-  const [qualificationDate, setQualificationDate] = useState<string>(activeContact?.qualificationDate || new Date().toISOString().split('T')[0]);
-  const [nextFollowDate, setNextFollowDate] = useState<string>(activeContact?.nextFollowDate || '');
-  const [followUpNotes, setFollowUpNotes] = useState<string>(activeContact?.remarks || activeContact?.notes || '');
-  const [disqualificationReason, setDisqualificationReason] = useState<string>(activeContact?.disqualificationReason || '');
+  const todayStr = new Date().toISOString().split('T')[0];
 
-  // Assignment & Company Verification states
-  const [assignedTo, setAssignedTo] = useState<string>(activeContact?.assignedTo || '');
-  const [gstNumber, setGstNumber] = useState<string>(activeContact?.gstNumber || '');
-  const [employeeCount, setEmployeeCount] = useState<string>(activeContact?.employeeCount || '');
-  const [companyPan, setCompanyPan] = useState<string>(activeContact?.companyPan || '');
-  const [cinNumber, setCinNumber] = useState<string>(activeContact?.cinNumber || '');
-  const [companyWebsite, setCompanyWebsite] = useState<string>(activeContact?.companyWebsite || '');
-  const [linkedinUrl, setLinkedinUrl] = useState<string>(activeContact?.linkedinUrl || '');
-  const [annualTurnover, setAnnualTurnover] = useState<string>(activeContact?.annualTurnover || '');
-  const [verificationStatus, setVerificationStatus] = useState<string>(activeContact?.verificationStatus || 'Unverified');
-  const [registeredState, setRegisteredState] = useState<string>(activeContact?.registeredState || '');
+  // Form State
+  const [qualificationStatus, setQualificationStatus] = useState<QualificationStatus>('Pending');
+  const [category, setCategory] = useState<'Product' | 'Service' | ''>('');
+  const [productCode, setProductCode] = useState<string>('');
+  const [budgetRange, setBudgetRange] = useState<string>('');
+  const [interestedService, setInterestedService] = useState<string>('');
+  const [employeeCount, setEmployeeCount] = useState<string>('');
+  const [expectedCloseDate, setExpectedCloseDate] = useState<string>('');
+  const [nextFollowDate, setNextFollowDate] = useState<string>('');
+  const [remarks, setRemarks] = useState<string>('');
+  const [qualifiedBy, setQualifiedBy] = useState<string>('');
+  const [qualificationDate, setQualificationDate] = useState<string>(todayStr);
+  const [unqualifiedReason, setUnqualifiedReason] = useState<string>('');
+  const [saving, setSaving] = useState<boolean>(false);
 
-  // Tags
-  const [tags, setTags] = useState<string[]>(() => {
-    const initialTags: string[] = [];
-    if (activeContact?.productList && activeContact.productList.length > 0) {
-      initialTags.push(...activeContact.productList);
-    }
-    if (activeContact?.serviceList && activeContact.serviceList.length > 0) {
-      initialTags.push(...activeContact.serviceList);
-    }
-    return initialTags;
-  });
-  const [newTagInput, setNewTagInput] = useState<string>('');
-  const [showTagInput, setShowTagInput] = useState<boolean>(false);
+  const normalizeStatus = (status?: string | null): 'Qualified' | 'Follow-up Required' | 'Unqualified' | 'Pending' => {
+    if (!status) return 'Pending';
+    const s = status.trim().toLowerCase();
+    if (s === 'qualified') return 'Qualified';
+    if (s === 'follow-up required' || s === 'follow-up' || s === 'followup' || s === 'in progress') return 'Follow-up Required';
+    if (s === 'unqualified' || s === 'disqualified') return 'Unqualified';
+    return 'Pending';
+  };
 
-  // Sync state whenever activeContact changes
+  // 3. Populate form fields when activeContact loads or updates
   useEffect(() => {
     if (activeContact) {
-      setStatus(activeContact.status === 'Disqualified' ? 'Disqualified' : activeContact.status || 'Qualified');
-      setQualifiedBy(activeContact.qualifiedBy || activeContact.assignedToName || currentUser?.name || 'Admin');
-      setQualificationDate(activeContact.qualificationDate || new Date().toISOString().split('T')[0]);
-      setNextFollowDate(activeContact.nextFollowDate || '');
-      setFollowUpNotes(activeContact.remarks || activeContact.notes || '');
-      setDisqualificationReason(activeContact.disqualificationReason || '');
+      // Category only if explicitly saved, otherwise empty
+      const initialCat: 'Product' | 'Service' | '' =
+        activeContact.category === 'Product' || activeContact.category === 'Service'
+          ? activeContact.category
+          : '';
+      setCategory(initialCat);
 
-      setAssignedTo(activeContact.assignedTo || '');
-      setGstNumber(activeContact.gstNumber || '');
+      setProductCode(activeContact.productCode || activeContact.customProduct || activeContact.internalReference || '');
+      setBudgetRange(activeContact.budgetRange || '');
+
+      // Check interestedService -> serviceList -> productList (NO fallback auto-filling)
+      const savedService =
+        activeContact.interestedService && activeContact.interestedService.trim() !== ''
+          ? activeContact.interestedService.trim()
+          : activeContact.serviceList && activeContact.serviceList.length > 0 && activeContact.serviceList[0]?.trim() !== ''
+          ? activeContact.serviceList[0].trim()
+          : activeContact.productList && activeContact.productList.length > 0 && activeContact.productList[0]?.trim() !== ''
+          ? activeContact.productList[0].trim()
+          : '';
+
+      setInterestedService(savedService);
+
       setEmployeeCount(activeContact.employeeCount || '');
-      setCompanyPan(activeContact.companyPan || '');
-      setCinNumber(activeContact.cinNumber || '');
-      setCompanyWebsite(activeContact.companyWebsite || '');
-      setLinkedinUrl(activeContact.linkedinUrl || '');
-      setAnnualTurnover(activeContact.annualTurnover || '');
-      setVerificationStatus(activeContact.verificationStatus || 'Unverified');
-      setRegisteredState(activeContact.registeredState || '');
+      setExpectedCloseDate(activeContact.expectedCloseDate || '');
+      setNextFollowDate(activeContact.nextFollowDate || '');
+      setRemarks(activeContact.remarks || activeContact.notes || '');
 
-      const initialTags: string[] = [];
-      if (activeContact.productList && activeContact.productList.length > 0) {
-        initialTags.push(...activeContact.productList);
-      }
-      if (activeContact.serviceList && activeContact.serviceList.length > 0) {
-        initialTags.push(...activeContact.serviceList);
-      }
-      setTags(initialTags);
+      const initialStatus = normalizeStatus(activeContact.qualificationStatus || activeContact.status);
+      setQualificationStatus(initialStatus);
+
+      // Default empty if not already set on contact
+      setQualifiedBy(activeContact.qualifiedBy || '');
+      setQualificationDate(activeContact.qualificationDate || todayStr);
+      setUnqualifiedReason(activeContact.unqualifiedReason || activeContact.disqualificationReason || '');
     }
-  }, [activeContact, currentUser]);
+  }, [activeContact?.id, activeContact?.updatedAt]);
 
-  const [saving, setSaving] = useState<boolean>(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const clearError = (field: string) => {
-    if (errors[field]) {
-      setErrors((prev) => {
-        const copy = { ...prev };
-        delete copy[field];
-        return copy;
-      });
-    }
-  };
-
-  const handleGstChange = (val: string) => {
-    const upper = val.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15);
-    setGstNumber(upper);
-    clearError('gstNumber');
-    clearError('verificationStatus');
-
-    // Smart auto-fill PAN and State from GST if 15 chars and valid
-    if (upper.length === 15 && GST_REGEX.test(upper)) {
-      const extractedPan = upper.slice(2, 12);
-      if (!companyPan || companyPan !== extractedPan) {
-        setCompanyPan(extractedPan);
-        clearError('companyPan');
-      }
-      const stateCode = upper.slice(0, 2);
-      if (GST_STATE_MAP[stateCode] && !registeredState) {
-        setRegisteredState(GST_STATE_MAP[stateCode]);
-        clearError('registeredState');
-      }
-    }
-  };
-
-  const handlePanChange = (val: string) => {
-    const upper = val.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 10);
-    setCompanyPan(upper);
-    clearError('companyPan');
-    clearError('verificationStatus');
-  };
-
-  const handleCinChange = (val: string) => {
-    const upper = val.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 21);
-    setCinNumber(upper);
-    clearError('cinNumber');
-  };
-
-  const handleWebsiteChange = (val: string) => {
-    setCompanyWebsite(val);
-    clearError('companyWebsite');
-  };
-
-  const handleLinkedinChange = (val: string) => {
-    setLinkedinUrl(val);
-    clearError('linkedinUrl');
-  };
-
-  const handleVerificationStatusChange = (val: string | null) => {
-    const nextStatus = val || 'Unverified';
-    setVerificationStatus(nextStatus);
-    if (nextStatus === 'Verified') {
-      const cleanGst = (gstNumber || '').trim().toUpperCase();
-      const cleanPan = (companyPan || '').trim().toUpperCase();
-      if (!cleanGst && !cleanPan) {
-        setErrors((prev) => ({
-          ...prev,
-          verificationStatus: 'GST or PAN is required to mark company as Verified',
-        }));
-      } else {
-        clearError('verificationStatus');
-      }
-    } else {
-      clearError('verificationStatus');
-    }
-  };
-
-  const handleBlurField = (field: string) => {
-    const newErr = { ...errors };
-
-    if (field === 'gstNumber' && gstNumber) {
-      if (!GST_REGEX.test(gstNumber)) {
-        newErr.gstNumber = 'Invalid GST format (15 characters, e.g. 33AAAAA0000A1Z5)';
-      } else {
-        delete newErr.gstNumber;
-      }
-    }
-
-    if (field === 'employeeCount') {
-      if (!employeeCount || !employeeCount.trim()) {
-        newErr.employeeCount = 'Employee Count is required';
-      } else {
-        delete newErr.employeeCount;
-      }
-    }
-
-    if (field === 'companyPan') {
-      const cleanPan = (companyPan || '').trim().toUpperCase();
-      if (!cleanPan) {
-        newErr.companyPan = 'Company PAN is required';
-      } else if (!PAN_REGEX.test(cleanPan)) {
-        newErr.companyPan = 'Invalid PAN format (5 letters, 4 digits, 1 letter, e.g. ABCDE1234F)';
-      } else if (gstNumber && GST_REGEX.test(gstNumber) && cleanPan !== gstNumber.slice(2, 12)) {
-        newErr.companyPan = `PAN must match GST (${gstNumber.slice(2, 12)})`;
-      } else {
-        delete newErr.companyPan;
-      }
-    }
-
-    if (field === 'registeredState') {
-      if (!registeredState || !registeredState.trim()) {
-        newErr.registeredState = 'Registered State is required';
-      } else {
-        delete newErr.registeredState;
-      }
-    }
-
-    if (field === 'cinNumber' && cinNumber) {
-      if (!CIN_REGEX.test(cinNumber)) {
-        newErr.cinNumber = 'Invalid CIN format (21 characters, e.g. U72900TN2020PTC123456)';
-      } else {
-        delete newErr.cinNumber;
-      }
-    }
-
-    if (field === 'companyWebsite' && companyWebsite) {
-      if (!URL_REGEX.test(companyWebsite)) {
-        newErr.companyWebsite = 'Invalid website URL (e.g. https://company.com)';
-      } else {
-        delete newErr.companyWebsite;
-      }
-    }
-
-    if (field === 'linkedinUrl' && linkedinUrl) {
-      if (!LINKEDIN_REGEX.test(linkedinUrl)) {
-        newErr.linkedinUrl = 'Invalid LinkedIn URL (e.g. https://linkedin.com/company/xyz)';
-      } else {
-        delete newErr.linkedinUrl;
-      }
-    }
-
-    if (field === 'verificationStatus' && verificationStatus === 'Verified') {
-      const cleanGst = (gstNumber || '').trim().toUpperCase();
-      const cleanPan = (companyPan || '').trim().toUpperCase();
-      if (!cleanGst && !cleanPan) {
-        newErr.verificationStatus = 'GST or PAN is required to mark company as Verified';
-      } else {
-        delete newErr.verificationStatus;
-      }
-    }
-
-    setErrors(newErr);
-  };
-
-  const validateForm = (): boolean => {
-    const errs: Record<string, string> = {};
-
-    if (!qualificationDate) {
-      errs.qualificationDate = 'Date is required';
-    }
-
-    if (status === 'Follow-up Required') {
-      if (!nextFollowDate) {
-        errs.nextFollowDate = 'Next Follow-up Date is required';
-      }
-      if (!followUpNotes?.trim()) {
-        errs.followUpNotes = 'Follow-up Note / Agenda is required';
-      }
-    }
-
-    if (status === 'Disqualified') {
-      if (!disqualificationReason?.trim()) {
-        errs.disqualificationReason = 'Disqualification Reason is required';
-      }
-    }
-
-    // Company Verification Validation
-    const cleanGst = (gstNumber || '').trim().toUpperCase();
-    const cleanPan = (companyPan || '').trim().toUpperCase();
-    const cleanCin = (cinNumber || '').trim().toUpperCase();
-    const cleanWeb = (companyWebsite || '').trim();
-    const cleanLinkedIn = (linkedinUrl || '').trim();
-
-    // 1. Mandatory Fields: Employee Count, Company PAN, Registered State
-    if (!employeeCount || !employeeCount.trim()) {
-      errs.employeeCount = 'Employee Count is required';
-    }
-
-    if (!cleanPan) {
-      errs.companyPan = 'Company PAN is required';
-    } else if (!PAN_REGEX.test(cleanPan)) {
-      errs.companyPan = 'Invalid PAN format (5 letters, 4 digits, 1 letter, e.g. ABCDE1234F)';
-    } else if (cleanGst && GST_REGEX.test(cleanGst) && cleanPan !== cleanGst.slice(2, 12)) {
-      errs.companyPan = `PAN must match GST (${cleanGst.slice(2, 12)})`;
-    }
-
-    if (!registeredState || !registeredState.trim()) {
-      errs.registeredState = 'Registered State is required';
-    }
-
-    // If marked Verified, at least GST or PAN must be provided and valid
-    if (verificationStatus === 'Verified') {
-      if (!cleanGst && !cleanPan) {
-        errs.verificationStatus = 'GST or PAN is required to mark company as Verified';
-        errs.gstNumber = 'Provide GST or PAN for verification';
-      }
-    }
-
-    if (cleanGst && !GST_REGEX.test(cleanGst)) {
-      errs.gstNumber = 'Invalid GST format (15 characters, e.g. 33AAAAA0000A1Z5)';
-    }
-
-    if (cleanCin && !CIN_REGEX.test(cleanCin)) {
-      errs.cinNumber = 'Invalid CIN format (21 characters, e.g. U72900TN2020PTC123456)';
-    }
-
-    if (cleanWeb && !URL_REGEX.test(cleanWeb)) {
-      errs.companyWebsite = 'Invalid website URL (e.g. https://company.com)';
-    }
-
-    if (cleanLinkedIn && !LINKEDIN_REGEX.test(cleanLinkedIn)) {
-      errs.linkedinUrl = 'Invalid LinkedIn URL (e.g. https://linkedin.com/company/xyz)';
-    }
-
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  const handleAddTag = () => {
-    if (newTagInput.trim() && !tags.includes(newTagInput.trim())) {
-      setTags([...tags, newTagInput.trim()]);
-      setNewTagInput('');
-      setShowTagInput(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeContact?.id) return;
-
-    if (!validateForm()) {
+  const handleSaveQualification = async () => {
+    if (!activeContact) {
       notifications.show({
-        title: 'Validation Error',
-        message: 'Please resolve the highlighted errors in Company Verification.',
+        title: 'Error',
+        message: 'No contact selected for qualification.',
         color: 'red',
-        icon: <IconAlertCircle size={16} />,
       });
       return;
     }
 
-    setSaving(true);
+    try {
+      setSaving(true);
 
-    const res = await updateContact(activeContact.id, {
-      stage: status === 'Qualified' ? 'Qualification' : 'Initialization',
-      status: status,
-      qualificationStatus:
-        status === 'Disqualified'
-          ? 'Disqualified'
-          : status === 'Follow-up Required'
-          ? 'Follow-up Required'
-          : status === 'In Progress'
-          ? 'In Progress'
-          : 'Qualified',
-      qualifiedBy: qualifiedBy,
-      qualificationDate: qualificationDate,
-      nextFollowDate: status === 'Follow-up Required' ? nextFollowDate : undefined,
-      remarks: status === 'Follow-up Required' ? followUpNotes : (status === 'Disqualified' ? disqualificationReason : undefined),
-      notes: status === 'Follow-up Required' ? followUpNotes : undefined,
-      disqualificationReason: status === 'Disqualified' ? disqualificationReason : undefined,
-      productList: activeContact.category === 'Product' ? tags : activeContact.productList,
-      serviceList: activeContact.category === 'Service' ? tags : activeContact.serviceList,
-      assignedTo: assignedTo && assignedTo !== 'none' ? assignedTo : undefined,
-      gstNumber: gstNumber || undefined,
-      employeeCount: employeeCount || undefined,
-      companyPan: companyPan || undefined,
-      cinNumber: cinNumber || undefined,
-      companyWebsite: companyWebsite || undefined,
-      linkedinUrl: linkedinUrl || undefined,
-      annualTurnover: annualTurnover || undefined,
-      verificationStatus: verificationStatus || undefined,
-      registeredState: registeredState || undefined,
-    });
+      let statusValue: string = currentStatus;
+      if (currentStatus === 'Qualified') statusValue = 'Qualified';
+      else if (currentStatus === 'Unqualified') statusValue = 'Disqualified';
+      else if (currentStatus === 'Follow-up Required') statusValue = 'Follow-up Required';
+      else if (currentStatus === 'Pending') statusValue = 'Pending';
 
-    setSaving(false);
-    if (res.success) {
-      if (status === 'Qualified') {
-        await Promise.all([fetchLeads(), fetchStats()]);
+      const trimmedService = interestedService?.trim() || '';
+
+      const payload: any = {
+        category: category || (trimmedService ? 'Service' : (activeContact.category || 'Service')),
+        productList: category === 'Product' && trimmedService ? [trimmedService] : [],
+        serviceList: category === 'Service' && trimmedService ? [trimmedService] : (category !== 'Product' && trimmedService ? [trimmedService] : []),
+        qualificationStatus: currentStatus,
+        status: statusValue,
+        budgetRange: budgetRange?.trim() || '',
+        interestedService: trimmedService,
+        // Employee count & Product code only saved for Qualified
+        employeeCount: currentStatus === 'Qualified' ? employeeCount?.trim() || '' : '',
+        productCode: currentStatus === 'Qualified' ? productCode?.trim() || '' : '',
+        customProduct: currentStatus === 'Qualified' ? (productCode?.trim() || trimmedService) : (category === 'Product' ? (productCode?.trim() || trimmedService) : ''),
+        internalReference: currentStatus === 'Qualified' ? productCode?.trim() || '' : '',
+        expectedCloseDate: currentStatus === 'Qualified' ? expectedCloseDate || '' : '',
+        nextFollowDate: (currentStatus === 'Follow-up Required' || currentStatus === 'Pending') ? nextFollowDate?.trim() || '' : '',
+        remarks: remarks?.trim() || '',
+        qualifiedBy: qualifiedBy?.trim() || activeContact.qualifiedBy || currentUser?.name || '',
+        qualificationDate: qualificationDate || todayStr,
+        unqualifiedReason: currentStatus === 'Unqualified' ? unqualifiedReason?.trim() || '' : '',
+        disqualificationReason: currentStatus === 'Unqualified' ? unqualifiedReason?.trim() || '' : '',
+      };
+
+      const res = await updateContact(activeContact.id, payload);
+
+      if (res?.success) {
+        const savedData = res.data || { ...activeContact, ...payload };
+        setActiveContact(savedData);
+        setInterestedService(savedData.interestedService || savedData.serviceList?.[0] || trimmedService);
+        try {
+          sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(savedData));
+        } catch (e) {}
+
+        if (currentStatus === 'Qualified') {
+          notifications.show({
+            title: 'Contact Qualified Successfully!',
+            message: `Contact '${activeContact.name}' has been qualified and synced to Leads pipeline.`,
+            color: 'teal',
+            icon: <IconCheck size={16} />,
+          });
+          await fetchLeads();
+          await fetchStats();
+        } else if (currentStatus === 'Follow-up Required') {
+          notifications.show({
+            title: 'Follow-up Scheduled',
+            message: `Follow-up updated for '${activeContact.name}'${nextFollowDate ? ` on ${nextFollowDate}` : ''}.`,
+            color: 'blue',
+            icon: <IconPhoneCall size={16} />,
+          });
+          // Desktop Browser Web Notification
+          if ('Notification' in window && Notification.permission === 'granted' && nextFollowDate) {
+            try {
+              new Notification(`CRM Follow-up: ${activeContact.name}`, {
+                body: `Follow-up scheduled for ${nextFollowDate}.`,
+                icon: '/favicon.ico',
+              });
+            } catch (e) {}
+          }
+        } else if (currentStatus === 'Pending') {
+          notifications.show({
+            title: 'Pending Review Scheduled',
+            message: `Contact '${activeContact.name}' marked as Pending${nextFollowDate ? ` with date on ${nextFollowDate}` : ''}.`,
+            color: 'orange',
+            icon: <IconClock size={16} />,
+          });
+          // Desktop Browser Web Notification
+          if ('Notification' in window && Notification.permission === 'granted' && nextFollowDate) {
+            try {
+              new Notification(`CRM Pending Review: ${activeContact.name}`, {
+                body: `Review scheduled for ${nextFollowDate}.`,
+                icon: '/favicon.ico',
+              });
+            } catch (e) {}
+          }
+        } else if (currentStatus === 'Unqualified') {
+          notifications.show({
+            title: 'Contact Marked Unqualified',
+            message: `Contact '${activeContact.name}' has been marked as disqualified.`,
+            color: 'red',
+            icon: <IconAlertCircle size={16} />,
+          });
+        } else {
+          notifications.show({
+            title: 'Qualification Updated',
+            message: `Qualification details saved successfully.`,
+            color: 'teal',
+            icon: <IconCheck size={16} />,
+          });
+        }
+
+        // Notify notification bell and other components across the CRM
+        window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
+
+        if (onSuccess) {
+          onSuccess(currentStatus);
+        } else {
+          onBack();
+        }
       }
-      if (onSuccess) onSuccess(status);
-      else onBack();
+    } catch (err: any) {
+      console.error('Error updating qualification:', err);
+      notifications.show({
+        title: 'Save Failed',
+        message: err.message || 'Failed to save qualification details.',
+        color: 'red',
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
-  const getInitial = (name?: string) => {
-    if (!name) return 'C';
-    return name.trim().charAt(0).toUpperCase();
+  const getInitials = (name?: string) => {
+    if (!name) return 'CT';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.slice(0, 2).toUpperCase();
   };
 
-  const getDateLabel = () => {
-    switch (status) {
-      case 'Qualified':
-        return 'Qualification Date';
-      case 'In Progress':
-        return 'In Progress Date';
-      case 'Follow-up Required':
-        return 'Follow-up Date';
-      case 'Disqualified':
-        return 'Disqualification Date';
-      default:
-        return 'Status Date';
-    }
-  };
+  // Employees List
+  const employeeMap = new Map<string, { value: string; label: string }>();
+  if (currentUser?.name) {
+    employeeMap.set(currentUser.name, {
+      value: currentUser.name,
+      label: `${currentUser.name} (Current User)`,
+    });
+  }
+  if (metadata?.employees && Array.isArray(metadata.employees)) {
+    metadata.employees.forEach((emp) => {
+      if (emp.name && !employeeMap.has(emp.name)) {
+        employeeMap.set(emp.name, {
+          value: emp.name,
+          label: `${emp.name}${emp.empCode ? ` (${emp.empCode})` : ''}`,
+        });
+      }
+    });
+  }
+  const employeeOptions = Array.from(employeeMap.values());
+  const currentUserOnlyOptions = currentUser?.name
+    ? [{ value: currentUser.name, label: `${currentUser.name} (Current User)` }]
+    : employeeOptions.slice(0, 1);
 
-  const getSubmitButtonLabel = () => {
-    switch (status) {
-      case 'Qualified':
-        return 'Complete Qualification';
-      case 'In Progress':
-        return 'Save In Progress';
-      case 'Follow-up Required':
-        return 'Schedule Follow-up';
-      case 'Disqualified':
-        return 'Disqualify Contact';
-      default:
-        return 'Save Status';
-    }
-  };
-
-  const contactName = activeContact?.name || '—';
-  const designation = activeContact?.designation || activeContact?.profession || '—';
-  const email = activeContact?.email || '—';
-  const phone = activeContact?.phone || '—';
-  const contactType = activeContact?.contactType || '—';
-  const companyName = activeContact?.companyName || activeContact?.profession || '—';
-  const requirementType = activeContact?.category || '—';
-  const product = activeContact?.productList && activeContact.productList.length > 0
-    ? activeContact.productList.join(', ')
-    : activeContact?.serviceList && activeContact.serviceList.length > 0
-    ? activeContact.serviceList.join(', ')
-    : '—';
-
-  const employeeOptions = metadata?.employees?.map((emp) => ({
-    value: emp.name,
-    label: emp.name,
-  })) || [
-    { value: 'Admin', label: 'Admin' },
+  const budgetOptions = [
+    { value: '< ₹50,000', label: '< ₹50,000' },
+    { value: '₹50,000 - ₹1,00,000', label: '₹50,000 - ₹1,00,000' },
+    { value: '₹1,00,000 - ₹3,00,000', label: '₹1,00,000 - ₹3,00,000' },
+    { value: '₹3,00,000 - ₹5,00,000', label: '₹3,00,000 - ₹5,00,000' },
+    { value: '₹5,00,000 - ₹10,00,000', label: '₹5,00,000 - ₹10,00,000' },
+    { value: '₹10,00,000 - ₹25,00,000', label: '₹10,00,000 - ₹25,00,000' },
+    { value: '₹25,00,000+', label: '₹25,00,000+' },
+    { value: 'Flexible / Undisclosed', label: 'Flexible / Undisclosed' },
   ];
 
-  const employeeAssignOptions = [
-    { value: 'none', label: '— Unassigned —' },
-    ...(metadata?.employees?.map((emp) => ({
-      value: emp.id,
-      label: `${emp.name} (${emp.empCode})`,
-    })) || []),
+  const productOptions = [
+    { value: 'OneAssist CRM Platform', label: 'OneAssist CRM Platform' },
+    { value: 'Enterprise HRMS Software', label: 'Enterprise HRMS Software' },
+    { value: 'Cloud ERP Software Suite', label: 'Cloud ERP Software Suite' },
+    { value: 'Billing & POS Software', label: 'Billing & POS Software' },
+    { value: 'Inventory Management System', label: 'Inventory Management System' },
+    { value: 'Mobile Application Product', label: 'Mobile Application Product' },
+    { value: 'Custom Software Product', label: 'Custom Enterprise Product' },
+    { value: 'Other Product', label: 'Other Product' },
   ];
+
+  const serviceOptions = [
+    { value: 'Web Application Development', label: 'Web Application Development' },
+    { value: 'Mobile App (iOS / Android)', label: 'Mobile App (iOS / Android)' },
+    { value: 'Cloud ERP Implementation', label: 'Cloud ERP Implementation' },
+    { value: 'Enterprise CRM Setup', label: 'Enterprise CRM Setup' },
+    { value: 'Custom Enterprise Software', label: 'Custom Enterprise Software' },
+    { value: 'Cloud Migration & DevOps', label: 'Cloud Migration & DevOps' },
+    { value: 'AI / Machine Learning Solutions', label: 'AI / Machine Learning Solutions' },
+    { value: 'UI/UX Design & Consulting', label: 'UI/UX Design & Consulting' },
+    { value: 'IT Staff Augmentation', label: 'IT Staff Augmentation' },
+    { value: 'Other Service', label: 'Other Service' },
+  ];
+
+  const availableOptions = React.useMemo(() => {
+    const baseOptions =
+      category === 'Product'
+        ? productOptions
+        : category === 'Service'
+        ? serviceOptions
+        : [...productOptions, ...serviceOptions];
+    if (
+      interestedService &&
+      !baseOptions.some((o) => o.value.toLowerCase() === interestedService.trim().toLowerCase())
+    ) {
+      return [{ value: interestedService, label: `${interestedService} (Custom)` }, ...baseOptions];
+    }
+    return baseOptions;
+  }, [category, interestedService]);
+
+  const handleAutocompleteFilter = ({ options, search }: { options: any[]; search: string }) => {
+    const q = (search || '').trim().toLowerCase();
+    const currentVal = (interestedService || '').trim().toLowerCase();
+    if (!q || q === currentVal) {
+      return options;
+    }
+    return options.filter((item: any) =>
+      (item.label || item.value || '').toLowerCase().includes(q)
+    );
+  };
+
+  const handleReasonFilter = ({ options, search }: { options: any[]; search: string }) => {
+    const q = (search || '').trim().toLowerCase();
+    const currentVal = (unqualifiedReason || '').trim().toLowerCase();
+    if (!q || q === currentVal) {
+      return options;
+    }
+    return options.filter((item: any) =>
+      (item.label || item.value || (typeof item === 'string' ? item : '')).toLowerCase().includes(q)
+    );
+  };
+
+  const employeeCountOptions = [
+    { value: '1 - 10 Employees', label: '1 - 10 Employees' },
+    { value: '11 - 50 Employees', label: '11 - 50 Employees' },
+    { value: '51 - 200 Employees', label: '51 - 200 Employees' },
+    { value: '201 - 500 Employees', label: '201 - 500 Employees' },
+    { value: '500+ Employees', label: '500+ Employees' },
+  ];
+
+  const statusDropdownOptions = [
+    { value: 'Qualified', label: 'Qualified' },
+    { value: 'Follow-up Required', label: 'Follow-up Required' },
+    { value: 'Pending', label: 'Pending Review' },
+    { value: 'Unqualified', label: 'Unqualified' },
+  ];
+
+  const unqualifiedReasonOptions = [
+    { value: 'Budget issue / Customer budget too low', label: 'Budget issue / Budget too low' },
+    { value: 'No immediate business need / Not required', label: 'No immediate business need' },
+    { value: 'Wrong contact / Not the decision maker', label: 'Wrong contact / Not decision maker' },
+    { value: 'Already using competitor software', label: 'Already using competitor software' },
+    { value: 'Feature mismatch / Out of technical scope', label: 'Feature mismatch / Out of scope' },
+    { value: 'Did not respond / Invalid contact info', label: 'Did not respond / Invalid contact' },
+    { value: 'Other reason', label: 'Other reason' },
+  ];
+
+  if (loading && !activeContact) {
+    return (
+      <Center style={{ minHeight: 400 }}>
+        <Stack align="center" gap="sm">
+          <Loader size="lg" color="blue" />
+          <Text size="sm" c="dimmed">Loading contact details...</Text>
+        </Stack>
+      </Center>
+    );
+  }
+
+  const inputStyles = {
+    label: {
+      fontSize: 12.5,
+      fontWeight: 600,
+      marginBottom: 5,
+      color: isDark ? '#E2E8F0' : '#334155',
+    },
+    input: {
+      height: 42,
+      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+      border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #CBD5E1',
+      borderRadius: 8,
+      fontSize: 13.5,
+      fontWeight: 500,
+      color: isDark ? '#F8FAFC' : '#0F172A',
+      boxShadow: isDark ? '0 1px 2px rgba(0,0,0,0.15)' : '0 1px 2px rgba(0,0,0,0.02)',
+      transition: 'border-color 0.15s ease',
+    },
+  };
+
+  const textareaStyles = {
+    label: inputStyles.label,
+    input: {
+      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+      border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #CBD5E1',
+      borderRadius: 8,
+      fontSize: 13.5,
+      fontWeight: 500,
+      color: isDark ? '#F8FAFC' : '#0F172A',
+      padding: '10px 12px',
+      minHeight: 84,
+    },
+  };
+
+  const currentStatus: 'Qualified' | 'Follow-up Required' | 'Unqualified' | 'Pending' =
+    normalizeStatus(qualificationStatus);
 
   return (
-    <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ maxWidth: 1560, margin: '0 auto' }}>
-      {/* 2-Column Split View matching Screenshot */}
-      <Grid gutter="lg" style={{ alignItems: 'flex-start' }}>
-        
-        {/* ========================================================================= */}
-        {/* LEFT COLUMN: Contact Summary Panel (Span 4)                               */}
-        {/* ========================================================================= */}
-        <Grid.Col span={{ base: 12, md: 5, lg: 4 }}>
-          <Paper
-            p={{ base: 'md', sm: 'xl' }}
-            radius="20px"
-            style={{
-              backgroundColor: isDark ? '#111827' : '#FFFFFF',
-              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #EAECEF',
-              boxShadow: isDark ? '0 10px 30px rgba(0,0,0,0.4)' : '0 4px 20px rgba(0, 0, 0, 0.03)',
-            }}
-          >
-            {/* Header: Back Button + Contact Summary Title */}
-            <Group gap="xs" mb={{ base: 'md', sm: 'xl' }} align="center">
-              <ActionIcon
-                variant="subtle"
-                color="gray"
-                radius="md"
-                size="md"
-                onClick={onBack}
-                style={{
-                  backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
-                }}
-              >
-                <IconArrowLeft size={16} />
-              </ActionIcon>
-              <Text fw={800} size="16px" style={{ color: isDark ? '#F8FAFC' : '#1F2937' }}>
-                Contact Summary
-              </Text>
-            </Group>
+    <Box p={{ base: 'xs', sm: 'sm', md: 'md', lg: 'lg' }} style={{ width: '100%', maxWidth: '100%' }}>
+      {/* Top Header & Back Button */}
+      <Group justify="space-between" align="center" mb="md">
+        <Button
+          variant="subtle"
+          color="gray"
+          leftSection={<IconArrowLeft size={16} />}
+          onClick={onBack}
+          radius="md"
+          size="sm"
+          styles={{ root: { fontWeight: 600 } }}
+        >
+          Back to Contacts
+        </Button>
+      </Group>
 
-            {/* Contact Large Avatar */}
-            <Group justify="center" mb={{ base: 'md', sm: 'xl' }}>
-              <Box
-                style={{
-                  width: 64,
-                  height: 64,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 24,
-                  fontWeight: 800,
-                  boxShadow: '0 6px 20px rgba(79, 70, 229, 0.35)',
-                }}
-              >
-                {getInitial(contactName)}
-              </Box>
-            </Group>
-
-            {/* Summary Field Rows matching Screenshot */}
-            <Stack gap="md">
-              {/* Contact Person */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
-                  <IconUser size={16} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                    Contact Person
-                  </Text>
-                </Group>
-                <Text size="13px" fw={600} truncate style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
-                  {contactName}
-                </Text>
-              </Group>
-
-              {/* Designation */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
-                  <IconBriefcase size={16} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                    Designation
-                  </Text>
-                </Group>
-                <Text size="13px" fw={600} truncate style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
-                  {designation}
-                </Text>
-              </Group>
-
-              {/* Email */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
-                  <IconMail size={16} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                    Email
-                  </Text>
-                </Group>
-                <Text
-                  size="13px"
-                  fw={600}
-                  truncate
-                  component="a"
-                  href={`mailto:${email}`}
-                  style={{ color: '#2563EB', textDecoration: 'none', textAlign: 'right', maxWidth: '60%' }}
-                >
-                  {email}
-                </Text>
-              </Group>
-
-              {/* Phone */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
-                  <IconPhone size={16} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                    Phone
-                  </Text>
-                </Group>
-                <Group gap={6} align="center" wrap="nowrap">
-                  <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-                    {phone}
-                  </Text>
-                  <Box
-                    style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: '50%',
-                      backgroundColor: '#22C55E',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#FFFFFF',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <IconBrandWhatsapp size={12} stroke={2.5} />
-                  </Box>
-                </Group>
-              </Group>
-
-              {/* Contact Type */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
-                  <IconUserCheck size={16} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                    Contact Type
-                  </Text>
-                </Group>
-                <Text size="13px" fw={700} truncate style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
-                  {contactType}
-                </Text>
-              </Group>
-
-              {/* Company Name */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
-                  <IconBuilding size={16} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                    Company Name
-                  </Text>
-                </Group>
-                <Text size="13px" fw={700} truncate style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
-                  {companyName}
-                </Text>
-              </Group>
-
-              {/* Requirement Type */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
-                  <IconBox size={16} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                    Requirement Type
-                  </Text>
-                </Group>
-                <Group gap={6} align="center" wrap="nowrap">
-                  <Box
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      backgroundColor: '#F97316',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <Text size="13px" fw={600} style={{ color: '#F97316' }}>
-                    {requirementType}
-                  </Text>
-                </Group>
-              </Group>
-
-              {/* Product */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0 }}>
-                  <IconLayersSubtract size={16} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                    Product
-                  </Text>
-                </Group>
-                <Text size="13px" fw={700} truncate style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
-                  {product}
-                </Text>
-              </Group>
-            </Stack>
-
-            {/* Tags Section matching screenshot */}
-            <Box mt="xl" pt="md" style={{ borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #F1F5F9' }}>
-              <Group justify="space-between" align="center" mb="xs">
-                <Group gap={6}>
-                  <IconTag size={15} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" fw={700} style={{ color: isDark ? '#F8FAFC' : '#1E293B' }}>
-                    Tags
-                  </Text>
-                </Group>
-                <UnstyledButton
-                  onClick={() => setShowTagInput(!showTagInput)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: isDark ? '#94A3B8' : '#64748B',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <IconPlus size={13} />
-                  <span>Add Tag</span>
-                </UnstyledButton>
-              </Group>
-
-              {showTagInput && (
-                <Group gap="xs" mb="sm">
-                  <TextInput
-                    size="xs"
-                    placeholder="New tag..."
-                    value={newTagInput}
-                    onChange={(e) => setNewTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddTag();
-                      }
-                    }}
-                    style={{ flex: 1 }}
-                  />
-                  <Button size="xs" variant="light" onClick={handleAddTag}>
-                    Add
-                  </Button>
-                </Group>
-              )}
-
-              <Group gap={6} wrap="wrap">
-                {tags.map((tag, idx) => (
-                  <Badge
-                    key={idx}
-                    radius="md"
-                    size="md"
-                    styles={{
-                      root: {
-                        backgroundColor:
-                          idx === 0
-                            ? isDark
-                              ? 'rgba(79, 70, 229, 0.18)'
-                              : '#EEF2FF'
-                            : isDark
-                            ? 'rgba(6, 182, 212, 0.18)'
-                            : '#ECFEFF',
-                        color:
-                          idx === 0
-                            ? isDark
-                              ? '#A5B4FC'
-                              : '#4338CA'
-                            : isDark
-                            ? '#67E8F9'
-                            : '#0891B2',
-                        border:
-                          idx === 0
-                            ? isDark
-                              ? '1px solid rgba(99, 102, 241, 0.3)'
-                              : '1px solid #C7D2FE'
-                            : isDark
-                            ? '1px solid rgba(6, 182, 212, 0.3)'
-                            : '1px solid #A5F3FC',
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        fontSize: 12,
-                        padding: '4px 10px',
-                      },
-                    }}
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-              </Group>
-            </Box>
-          </Paper>
-        </Grid.Col>
-
-        {/* ========================================================================= */}
-        {/* RIGHT COLUMN: Qualification Form & Stepper (Span 8)                       */}
-        {/* ========================================================================= */}
-        <Grid.Col span={{ base: 12, md: 7, lg: 8 }}>
-          <Paper
-            p={{ base: 'md', sm: 'xl' }}
-            radius="20px"
-            style={{
-              backgroundColor: isDark ? '#111827' : '#FFFFFF',
-              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #EAECEF',
-              boxShadow: isDark ? '0 10px 30px rgba(0,0,0,0.4)' : '0 4px 20px rgba(79, 70, 229, 0.04)',
-            }}
-          >
-            {/* Top Bar: Title + Stepper Badge matching Screenshot */}
-            <Group justify="space-between" align="center" mb={{ base: 'md', sm: 'xl' }} wrap="wrap" gap="sm">
-              <Group gap="sm" align="center">
+      <Grid gutter={{ base: 'md', md: 'xl' }} align="stretch">
+        {/* Left Column: Contact Profile Card */}
+        <Grid.Col span={{ base: 12, md: 4.5, lg: 3.8, xl: 3.2 }}>
+          {activeContact && (
+            <Paper
+              p="xl"
+              radius="16px"
+              style={{
+                background: isDark ? '#0F172A' : '#FFFFFF',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+                boxShadow: isDark ? '0 8px 24px rgba(0, 0, 0, 0.28)' : '0 2px 12px rgba(0, 0, 0, 0.04)',
+                minHeight: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <Stack gap="md" align="center">
+                {/* Modern Sleek Avatar */}
                 <Box
                   style={{
-                    width: 32,
-                    height: 32,
+                    width: 66,
+                    height: 66,
                     borderRadius: '50%',
-                    backgroundColor: isDark ? 'rgba(79, 70, 229, 0.2)' : '#EEF2FF',
+                    background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: isDark ? '#A5B4FC' : '#4F46E5',
+                    boxShadow: isDark
+                      ? '0 0 0 4px rgba(59, 130, 246, 0.2), 0 8px 20px rgba(0, 0, 0, 0.4)'
+                      : '0 0 0 4px #EFF6FF, 0 8px 20px rgba(37, 99, 235, 0.22)',
                   }}
                 >
-                  <IconClock size={18} stroke={2.2} />
-                </Box>
-                <Text fw={800} size="20px" style={{ color: isDark ? '#F8FAFC' : '#111827', letterSpacing: '-0.02em' }}>
-                  Qualification
-                </Text>
-              </Group>
-
-              {/* 2-Step Stepper Capsule */}
-              <Group gap={6} align="center" wrap="nowrap">
-                {/* Step 1: Initialization */}
-                <Box
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '4px 10px',
-                    borderRadius: 100,
-                    backgroundColor: isDark ? 'rgba(16, 185, 129, 0.18)' : '#ECFDF5',
-                    color: isDark ? '#34D399' : '#047857',
-                    border: isDark ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #BBF7D0',
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                  }}
-                >
-                  <IconCheck size={12} stroke={2.5} />
-                  <span>Initialization</span>
+                  <Text fw={800} size="22px" style={{ color: '#FFFFFF', letterSpacing: '0.5px' }}>
+                    {getInitials(activeContact.name)}
+                  </Text>
                 </Box>
 
-                <Text size="11px" style={{ color: isDark ? '#64748B' : '#94A3B8' }}>
-                  ➔
-                </Text>
-
-                {/* Step 2: Qualification (Active) */}
-                <Box
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '4px 12px',
-                    borderRadius: 100,
-                    background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-                    color: '#FFFFFF',
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    boxShadow: '0 2px 10px rgba(79, 70, 229, 0.35)',
-                  }}
-                >
-                  <Box
-                    style={{
-                      width: 15,
-                      height: 15,
-                      borderRadius: '50%',
-                      backgroundColor: 'rgba(255, 255, 255, 0.25)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 9.5,
-                      fontWeight: 800,
-                    }}
-                  >
-                    2
-                  </Box>
-                  <span>Qualification</span>
-                </Box>
-              </Group>
-            </Group>
-
-            {/* Form Fields matching Screenshot */}
-            <form onSubmit={handleSubmit}>
-              <Stack gap="lg">
-                {/* Clean 2-Field Form: Status & Qualification Date */}
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                  <Select
-                    label="Status"
-                    required
-                    placeholder="Select Status"
-                    data={[
-                      { value: 'Qualified', label: 'Qualified' },
-                      { value: 'In Progress', label: 'In Progress' },
-                      { value: 'Follow-up Required', label: 'Follow-up Required' },
-                      { value: 'Disqualified', label: 'Disqualified' },
-                    ]}
-                    value={status}
-                    onChange={(val) => {
-                      setStatus(val || 'Qualified');
-                      clearError('status');
-                    }}
-                    radius="md"
-                    size="md"
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-
-                  {status === 'Follow-up Required' ? (
-                    <TextInput
-                      label="Next Follow-up Date"
-                      required
-                      placeholder="YYYY-MM-DD"
-                      type="date"
-                      value={nextFollowDate}
-                      onChange={(e) => {
-                        setNextFollowDate(e.target.value);
-                        clearError('nextFollowDate');
-                      }}
-                      error={errors.nextFollowDate}
-                      radius="md"
-                      size="md"
-                      styles={{
-                        input: {
-                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                        },
-                      }}
-                    />
-                  ) : (
-                    <TextInput
-                      label={getDateLabel()}
-                      required
-                      placeholder="YYYY-MM-DD"
-                      type="date"
-                      value={qualificationDate}
-                      onChange={(e) => {
-                        setQualificationDate(e.target.value);
-                        clearError('qualificationDate');
-                      }}
-                      error={errors.qualificationDate}
-                      radius="md"
-                      size="md"
-                      styles={{
-                        input: {
-                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                        },
-                      }}
-                    />
-                  )}
-                </SimpleGrid>
-
-                {/* Employee Assignment Row */}
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                  <Select
-                    label="Assign to Employee"
-                    placeholder="Select employee to assign"
-                    data={employeeAssignOptions}
-                    value={assignedTo || 'none'}
-                    onChange={(val) => setAssignedTo(val === 'none' ? '' : val || '')}
-                    radius="md"
-                    size="md"
-                    leftSection={<IconIdBadge size={16} />}
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-
-                  <Select
-                    label="Qualified / Reviewed By"
-                    placeholder="Select who qualified"
-                    data={employeeOptions}
-                    value={qualifiedBy}
-                    onChange={(val) => setQualifiedBy(val || 'Admin')}
-                    radius="md"
-                    size="md"
-                    leftSection={<IconUserCheck size={16} />}
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-                </SimpleGrid>
-
-                {/* Company Verification Inputs */}
-                <Paper
-                  p={{ base: 'md', sm: 'lg' }}
-                  radius="18px"
-                  style={{
-                    backgroundColor: isDark ? '#141E2E' : '#F8FAFC',
-                    border: isDark ? '1px solid rgba(255, 255, 255, 0.09)' : '1px solid #E2E8F0',
-                    boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 2px 12px rgba(0, 0, 0, 0.03)',
-                  }}
-                >
-                  {/* Card Header: Simple & Clean */}
-                  <Group justify="space-between" align="center" mb="md">
-                    <Group gap="sm" align="center">
-                      <Box
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 8,
-                          backgroundColor: isDark ? 'rgba(79, 70, 229, 0.15)' : '#EEF2FF',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: isDark ? '#A5B4FC' : '#4F46E5',
-                        }}
-                      >
-                        <IconShieldCheck size={18} stroke={2} />
-                      </Box>
-                      <Text fw={700} size="15px" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                        Company Verification
+                {/* Name & Headline */}
+                <Box style={{ textAlign: 'center', width: '100%' }}>
+                  <Text fw={800} size="18px" style={{ color: isDark ? '#F8FAFC' : '#0F172A', letterSpacing: '-0.3px', lineHeight: 1.25 }}>
+                    {activeContact.name}
+                  </Text>
+                  {(activeContact.companyName || activeContact.designation) ? (
+                    <Group gap={5} justify="center" mt={5}>
+                      <IconBuilding size={13} color={isDark ? '#94A3B8' : '#64748B'} stroke={1.8} />
+                      <Text size="xs" fw={550} c="dimmed">
+                        {activeContact.designation && activeContact.companyName
+                          ? `${activeContact.designation} • ${activeContact.companyName}`
+                          : activeContact.companyName || activeContact.designation}
                       </Text>
                     </Group>
-                  </Group>
+                  ) : (
+                    <Text size="xs" c="dimmed" mt={4} fw={500}>
+                      Business Contact
+                    </Text>
+                  )}
+                </Box>
 
-                  <Divider mb="md" color={isDark ? 'rgba(255, 255, 255, 0.06)' : '#EAECEF'} />
-
-                  {/* Form Grid: 3 Clean Rows of 3 Fields */}
-                  <Stack gap="md">
-                    {/* Row 1: GST Number, Employee Count, Verification Status */}
-                    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-                      <TextInput
-                        label="GST Number"
-                        placeholder="e.g. 33AAAAA0000A1Z5"
-                        maxLength={15}
-                        value={gstNumber}
-                        onChange={(e) => handleGstChange(e.target.value)}
-                        onBlur={() => handleBlurField('gstNumber')}
-                        error={errors.gstNumber}
-                        radius="md"
-                        leftSection={<IconBuilding size={16} />}
-                        rightSection={
-                          gstNumber ? (
-                            <CopyButton value={gstNumber} timeout={2000}>
-                              {({ copied, copy }) => (
-                                <Tooltip label={copied ? 'Copied' : 'Copy GST'}>
-                                  <ActionIcon size="sm" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
-                                    {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                                  </ActionIcon>
-                                </Tooltip>
-                              )}
-                            </CopyButton>
-                          ) : null
-                        }
-                        styles={{
-                          label: {
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            color: isDark ? '#E2E8F0' : '#334155',
-                            marginBottom: 6,
-                            whiteSpace: 'nowrap',
-                          },
-                          input: {
-                            height: 42,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: errors.gstNumber ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
-                            color: isDark ? '#F8FAFC' : '#0F172A',
-                            borderRadius: 10,
-                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
-                          },
+                {/* Quick Action Buttons (Call, WhatsApp, Email) */}
+                <Group gap="sm" justify="center">
+                  {activeContact.phone && (
+                    <Tooltip label={`Call ${activeContact.phone}`} withArrow position="top">
+                      <ActionIcon
+                        component="a"
+                        href={`tel:${activeContact.phone}`}
+                        size={38}
+                        radius="xl"
+                        variant="light"
+                        color="blue"
+                        style={{
+                          background: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EFF6FF',
+                          color: '#2563EB',
+                          border: isDark ? '1px solid rgba(37, 99, 235, 0.3)' : '1px solid #DBEAFE',
+                          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                         }}
-                      />
-
-                      <Select
-                        label="Employee Count"
-                        required
-                        placeholder="Select employee range"
-                        data={[
-                          { value: '1-10 Employees', label: '1 - 10 Employees' },
-                          { value: '11-50 Employees', label: '11 - 50 Employees' },
-                          { value: '51-200 Employees', label: '51 - 200 Employees' },
-                          { value: '201-500 Employees', label: '201 - 500 Employees' },
-                          { value: '500+ Employees', label: '500+ Employees' },
-                        ]}
-                        value={employeeCount || null}
-                        onChange={(val) => {
-                          setEmployeeCount(val || '');
-                          clearError('employeeCount');
+                      >
+                        <IconPhone size={17} stroke={2} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
+                  {activeContact.phone && (
+                    <Tooltip label="Message on WhatsApp" withArrow position="top">
+                      <ActionIcon
+                        component="a"
+                        href={`https://wa.me/${activeContact.phone.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        size={38}
+                        radius="xl"
+                        variant="light"
+                        color="teal"
+                        style={{
+                          background: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
+                          color: '#059669',
+                          border: isDark ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #D1FAE5',
+                          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                         }}
-                        onBlur={() => handleBlurField('employeeCount')}
-                        error={errors.employeeCount}
-                        radius="md"
-                        leftSection={<IconUsers size={16} />}
-                        styles={{
-                          label: {
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            color: isDark ? '#E2E8F0' : '#334155',
-                            marginBottom: 6,
-                            whiteSpace: 'nowrap',
-                          },
-                          input: {
-                            height: 42,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: errors.employeeCount ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
-                            color: isDark ? '#F8FAFC' : '#0F172A',
-                            borderRadius: 10,
-                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
-                          },
+                      >
+                        <IconBrandWhatsapp size={17} stroke={2} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
+                  {activeContact.email && (
+                    <Tooltip label={`Email ${activeContact.email}`} withArrow position="top">
+                      <ActionIcon
+                        component="a"
+                        href={`mailto:${activeContact.email}`}
+                        size={38}
+                        radius="xl"
+                        variant="light"
+                        color="indigo"
+                        style={{
+                          background: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
+                          color: '#4F46E5',
+                          border: isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #E0E7FF',
+                          transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                         }}
-                      />
-
-                      <Select
-                        label="Verification Status"
-                        placeholder="Select status"
-                        data={[
-                          { value: 'Verified', label: 'Verified' },
-                          { value: 'Pending', label: 'Pending' },
-                          { value: 'Unverified', label: 'Unverified' },
-                        ]}
-                        value={verificationStatus}
-                        onChange={handleVerificationStatusChange}
-                        onBlur={() => handleBlurField('verificationStatus')}
-                        error={errors.verificationStatus}
-                        radius="md"
-                        leftSection={<IconShieldCheck size={16} />}
-                        styles={{
-                          label: {
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            color: isDark ? '#E2E8F0' : '#334155',
-                            marginBottom: 6,
-                            whiteSpace: 'nowrap',
-                          },
-                          input: {
-                            height: 42,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: errors.verificationStatus ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
-                            color: isDark ? '#F8FAFC' : '#0F172A',
-                            borderRadius: 10,
-                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
-                          },
-                        }}
-                      />
-                    </SimpleGrid>
-
-                    {/* Row 2: Company PAN, CIN Number, Registered State */}
-                    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-                      <TextInput
-                        label="Company PAN"
-                        required
-                        placeholder="e.g. ABCDE1234F"
-                        maxLength={10}
-                        value={companyPan}
-                        onChange={(e) => handlePanChange(e.target.value)}
-                        onBlur={() => handleBlurField('companyPan')}
-                        error={errors.companyPan}
-                        radius="md"
-                        leftSection={<IconCreditCard size={16} />}
-                        styles={{
-                          label: {
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            color: isDark ? '#E2E8F0' : '#334155',
-                            marginBottom: 6,
-                            whiteSpace: 'nowrap',
-                          },
-                          input: {
-                            height: 42,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: errors.companyPan ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
-                            color: isDark ? '#F8FAFC' : '#0F172A',
-                            borderRadius: 10,
-                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
-                          },
-                        }}
-                      />
-
-                      <TextInput
-                        label="CIN Number"
-                        placeholder="e.g. U72900TN2020PTC123456"
-                        maxLength={21}
-                        value={cinNumber}
-                        onChange={(e) => handleCinChange(e.target.value)}
-                        onBlur={() => handleBlurField('cinNumber')}
-                        error={errors.cinNumber}
-                        radius="md"
-                        leftSection={<IconFileCertificate size={16} />}
-                        styles={{
-                          label: {
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            color: isDark ? '#E2E8F0' : '#334155',
-                            marginBottom: 6,
-                            whiteSpace: 'nowrap',
-                          },
-                          input: {
-                            height: 42,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: errors.cinNumber ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
-                            color: isDark ? '#F8FAFC' : '#0F172A',
-                            borderRadius: 10,
-                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
-                          },
-                        }}
-                      />
-
-                      <Select
-                        label="Registered State"
-                        required
-                        placeholder="Select or search state"
-                        data={Array.from(new Set([...INDIAN_STATES, ...(registeredState ? [registeredState] : [])]))}
-                        searchable
-                        clearable
-                        value={registeredState || null}
-                        onChange={(val) => {
-                          setRegisteredState(val || '');
-                          clearError('registeredState');
-                        }}
-                        onBlur={() => handleBlurField('registeredState')}
-                        error={errors.registeredState}
-                        radius="md"
-                        leftSection={<IconMapPin size={16} />}
-                        styles={{
-                          label: {
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            color: isDark ? '#E2E8F0' : '#334155',
-                            marginBottom: 6,
-                            whiteSpace: 'nowrap',
-                          },
-                          input: {
-                            height: 42,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: errors.registeredState ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
-                            color: isDark ? '#F8FAFC' : '#0F172A',
-                            borderRadius: 10,
-                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
-                          },
-                        }}
-                      />
-                    </SimpleGrid>
-
-                    {/* Row 3: Budget, Website, LinkedIn */}
-                    <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-                      <TextInput
-                        label="Budget"
-                        placeholder="Enter budget (e.g. 500000)"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={annualTurnover || ''}
-                        onKeyDown={(e) => {
-                          if (
-                            [
-                              'Backspace',
-                              'Delete',
-                              'Tab',
-                              'Escape',
-                              'Enter',
-                              'ArrowLeft',
-                              'ArrowRight',
-                              'Home',
-                              'End',
-                            ].includes(e.key) ||
-                            e.ctrlKey ||
-                            e.metaKey
-                          ) {
-                            return;
-                          }
-                          if (!/^[0-9]$/.test(e.key)) {
-                            e.preventDefault();
-                          }
-                        }}
-                        onPaste={(e) => {
-                          e.preventDefault();
-                          const pasteData = e.clipboardData.getData('text').replace(/\D/g, '');
-                          if (pasteData) {
-                            const target = e.currentTarget;
-                            const start = target.selectionStart ?? (annualTurnover || '').length;
-                            const end = target.selectionEnd ?? (annualTurnover || '').length;
-                            const current = annualTurnover || '';
-                            const updated = current.slice(0, start) + pasteData + current.slice(end);
-                            setAnnualTurnover(updated);
-                            clearError('annualTurnover');
-                          }
-                        }}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, '');
-                          setAnnualTurnover(val);
-                          clearError('annualTurnover');
-                        }}
-                        radius="md"
-                        leftSection={<IconCoin size={16} />}
-                        styles={{
-                          label: {
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            color: isDark ? '#E2E8F0' : '#334155',
-                            marginBottom: 6,
-                            whiteSpace: 'nowrap',
-                          },
-                          input: {
-                            height: 42,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
-                            color: isDark ? '#F8FAFC' : '#0F172A',
-                            borderRadius: 10,
-                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
-                          },
-                        }}
-                      />
-
-                      <TextInput
-                        label="Website"
-                        placeholder="https://company.com"
-                        value={companyWebsite}
-                        onChange={(e) => handleWebsiteChange(e.target.value)}
-                        onBlur={() => handleBlurField('companyWebsite')}
-                        error={errors.companyWebsite}
-                        radius="md"
-                        leftSection={<IconWorld size={16} />}
-                        styles={{
-                          label: {
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            color: isDark ? '#E2E8F0' : '#334155',
-                            marginBottom: 6,
-                            whiteSpace: 'nowrap',
-                          },
-                          input: {
-                            height: 42,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: errors.companyWebsite ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
-                            color: isDark ? '#F8FAFC' : '#0F172A',
-                            borderRadius: 10,
-                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
-                          },
-                        }}
-                      />
-
-                      <TextInput
-                        label="LinkedIn"
-                        placeholder="https://linkedin.com/company/..."
-                        value={linkedinUrl}
-                        onChange={(e) => handleLinkedinChange(e.target.value)}
-                        onBlur={() => handleBlurField('linkedinUrl')}
-                        error={errors.linkedinUrl}
-                        radius="md"
-                        leftSection={<IconBrandLinkedin size={16} />}
-                        styles={{
-                          label: {
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            color: isDark ? '#E2E8F0' : '#334155',
-                            marginBottom: 6,
-                            whiteSpace: 'nowrap',
-                          },
-                          input: {
-                            height: 42,
-                            fontSize: 13,
-                            fontWeight: 500,
-                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                            borderColor: errors.linkedinUrl ? '#FA5252' : isDark ? 'rgba(255, 255, 255, 0.12)' : '#CBD5E1',
-                            color: isDark ? '#F8FAFC' : '#0F172A',
-                            borderRadius: 10,
-                            boxShadow: isDark ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.04)',
-                          },
-                        }}
-                      />
-                    </SimpleGrid>
-                  </Stack>
-                </Paper>
-
-                {/* If Follow-up Required, prompt Follow-up Note / Agenda */}
-                {status === 'Follow-up Required' && (
-                  <Textarea
-                    label="Follow-up Note / Agenda (Enna follow pannanum)"
-                    placeholder="Specify what to follow up on (e.g. Client requested callback on Friday to discuss product demo and pricing)..."
-                    required
-                    value={followUpNotes}
-                    onChange={(e) => {
-                      setFollowUpNotes(e.target.value);
-                      clearError('followUpNotes');
-                    }}
-                    error={errors.followUpNotes}
-                    radius="md"
-                    size="md"
-                    minRows={3}
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-                )}
-
-                {/* If Disqualified, prompt reason */}
-                {status === 'Disqualified' && (
-                  <Textarea
-                    label="Disqualification Reason"
-                    placeholder="Please specify why this contact is disqualified (e.g. Budget mismatch, Timeline mismatch, No active requirement)..."
-                    required
-                    value={disqualificationReason}
-                    onChange={(e) => {
-                      setDisqualificationReason(e.target.value);
-                      clearError('disqualificationReason');
-                    }}
-                    error={errors.disqualificationReason}
-                    radius="md"
-                    size="md"
-                    minRows={2}
-                    styles={{
-                      input: {
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      },
-                    }}
-                  />
-                )}
-
-                {/* Footer Navigation Bar */}
-                <Group justify="space-between" align="center" mt="xl" pt="md" wrap="wrap" gap="sm">
-                  <Button
-                    variant="default"
-                    radius="md"
-                    onClick={onBack}
-                    leftSection={<IconArrowLeft size={14} />}
-                    style={{
-                      fontWeight: 600,
-                      fontSize: 13,
-                    }}
-                  >
-                    Back to Initialization
-                  </Button>
-
-                  <Text size="xs" fw={600} style={{ color: isDark ? '#94A3B8' : '#94A3B8' }}>
-                    Step 2 of 2
-                  </Text>
-
-                  <Button
-                    type="submit"
-                    radius="md"
-                    loading={saving || loading}
-                    rightSection={<IconCheck size={15} stroke={2.5} />}
-                    style={{
-                      background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-                      color: '#FFFFFF',
-                      fontWeight: 700,
-                      fontSize: 13,
-                      padding: '0 20px',
-                      border: 'none',
-                      boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)',
-                    }}
-                  >
-                    {getSubmitButtonLabel()}
-                  </Button>
+                      >
+                        <IconMail size={17} stroke={2} />
+                      </ActionIcon>
+                    </Tooltip>
+                  )}
                 </Group>
+
+                {/* Status & Offering Badges */}
+                <Group gap={8} justify="center" wrap="nowrap" mt={2}>
+                  <Badge
+                    size="sm"
+                    variant="light"
+                    color={
+                      qualificationStatus === 'Qualified'
+                        ? 'teal'
+                        : qualificationStatus === 'Follow-up Required'
+                        ? 'blue'
+                        : qualificationStatus === 'Unqualified'
+                        ? 'red'
+                        : 'yellow'
+                    }
+                    radius="xl"
+                    leftSection={
+                      qualificationStatus === 'Qualified' ? (
+                        <IconCheck size={12} stroke={2.5} />
+                      ) : qualificationStatus === 'Follow-up Required' ? (
+                        <IconClock size={12} stroke={2} />
+                      ) : (
+                        <IconAlertCircle size={12} stroke={2} />
+                      )
+                    }
+                    styles={{
+                      root: {
+                        textTransform: 'none',
+                        fontWeight: 650,
+                        padding: '0 12px',
+                        height: 26,
+                      },
+                    }}
+                  >
+                    {qualificationStatus}
+                  </Badge>
+                  <Badge
+                    size="sm"
+                    variant="light"
+                    color={category === 'Product' ? 'indigo' : 'violet'}
+                    radius="xl"
+                    leftSection={
+                      category === 'Product' ? (
+                        <IconBox size={12} stroke={2} />
+                      ) : (
+                        <IconBriefcase size={12} stroke={2} />
+                      )
+                    }
+                    styles={{
+                      root: {
+                        textTransform: 'none',
+                        fontWeight: 650,
+                        padding: '0 12px',
+                        height: 26,
+                      },
+                    }}
+                  >
+                    {category === 'Product' ? 'Product' : 'Service'}
+                  </Badge>
+                </Group>
+
+                {/* 2-Card Metadata Tile: Contact ID & Assigned Owner */}
+                <SimpleGrid cols={2} spacing="xs" w="100%">
+                  <Box
+                    p="8px 12px"
+                    style={{
+                      borderRadius: 10,
+                      background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
+                      border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #E2E8F0',
+                    }}
+                  >
+                    <Text size="10px" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.5px' }}>
+                      Contact ID
+                    </Text>
+                    <Text size="12.5px" fw={700} mt={2} style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
+                      {activeContact.contactId || 'CNT-NEW'}
+                    </Text>
+                  </Box>
+
+                  <Box
+                    p="8px 12px"
+                    style={{
+                      borderRadius: 10,
+                      background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
+                      border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #E2E8F0',
+                    }}
+                  >
+                    <Text size="10px" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.5px' }}>
+                      Assigned Owner
+                    </Text>
+                    <Text size="12.5px" fw={700} mt={2} style={{ color: isDark ? '#93C5FD' : '#2563EB' }} truncate>
+                      {activeContact.assignedToName || 'Unassigned'}
+                    </Text>
+                  </Box>
+                </SimpleGrid>
               </Stack>
-            </form>
+
+              <Divider my="md" color={isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9'} />
+
+              {/* UNIFIED CONTACT DETAILS PANEL */}
+              <Stack gap="xs">
+                <Text size="11px" fw={700} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.6px', marginBottom: 2 }}>
+                  Contact Information
+                </Text>
+
+                <Paper
+                  radius="12px"
+                  style={{
+                    background: isDark ? 'rgba(255, 255, 255, 0.02)' : '#F8FAFC',
+                    border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #E2E8F0',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* 1. Phone */}
+                  {activeContact.phone && (
+                    <Box
+                      p="9px 12px"
+                      style={{
+                        borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #EEF2F6',
+                      }}
+                    >
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <Group gap={10} wrap="nowrap">
+                          <ThemeIcon size={26} radius="md" variant="light" color="blue">
+                            <IconPhone size={13} stroke={2} />
+                          </ThemeIcon>
+                          <Text size="11.5px" fw={500} c="dimmed">
+                            Phone
+                          </Text>
+                        </Group>
+                        <Text
+                          component="a"
+                          href={`tel:${activeContact.phone}`}
+                          size="xs"
+                          fw={650}
+                          style={{
+                            color: isDark ? '#93C5FD' : '#2563EB',
+                            textDecoration: 'none',
+                          }}
+                        >
+                          {activeContact.phone}
+                        </Text>
+                      </Group>
+                    </Box>
+                  )}
+
+                  {/* 2. Email */}
+                  {activeContact.email && (
+                    <Box
+                      p="9px 12px"
+                      style={{
+                        borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #EEF2F6',
+                      }}
+                    >
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <Group gap={10} wrap="nowrap">
+                          <ThemeIcon size={26} radius="md" variant="light" color="gray">
+                            <IconMail size={13} stroke={2} />
+                          </ThemeIcon>
+                          <Text size="11.5px" fw={500} c="dimmed">
+                            Email
+                          </Text>
+                        </Group>
+                        <Text
+                          component="a"
+                          href={`mailto:${activeContact.email}`}
+                          size="xs"
+                          fw={550}
+                          truncate
+                          maw={150}
+                          style={{
+                            color: isDark ? '#E2E8F0' : '#334155',
+                            textDecoration: 'none',
+                          }}
+                        >
+                          {activeContact.email}
+                        </Text>
+                      </Group>
+                    </Box>
+                  )}
+
+                  {/* 3. Company */}
+                  {activeContact.companyName && (
+                    <Box
+                      p="9px 12px"
+                      style={{
+                        borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #EEF2F6',
+                      }}
+                    >
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <Group gap={10} wrap="nowrap">
+                          <ThemeIcon size={26} radius="md" variant="light" color="grape">
+                            <IconBuilding size={13} stroke={2} />
+                          </ThemeIcon>
+                          <Text size="11.5px" fw={500} c="dimmed">
+                            Company
+                          </Text>
+                        </Group>
+                        <Text size="xs" fw={600} truncate maw={150} style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
+                          {activeContact.companyName}
+                        </Text>
+                      </Group>
+                    </Box>
+                  )}
+
+                  {/* 4. Lead Source */}
+                  {activeContact.source && (
+                    <Box p="9px 12px">
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <Group gap={10} wrap="nowrap">
+                          <ThemeIcon size={26} radius="md" variant="light" color="teal">
+                            <IconIdBadge size={13} stroke={2} />
+                          </ThemeIcon>
+                          <Text size="11.5px" fw={500} c="dimmed">
+                            Lead Source
+                          </Text>
+                        </Group>
+                        <Badge size="xs" variant="light" color="teal" radius="sm">
+                          {activeContact.source}
+                        </Badge>
+                      </Group>
+                    </Box>
+                  )}
+                </Paper>
+              </Stack>
+            </Paper>
+          )}
+        </Grid.Col>
+
+        {/* Right Column: Clean Form Card */}
+        <Grid.Col span={{ base: 12, md: 7.5, lg: 8.2, xl: 8.8 }}>
+          <Paper
+            p={{ base: 'md', sm: 'xl' }}
+            radius="16px"
+            style={{
+              background: isDark ? '#0F172A' : '#FFFFFF',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              boxShadow: isDark ? '0 4px 16px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
+              minHeight: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
+            {/* Clean Header */}
+            <Group justify="space-between" align="center" mb="lg">
+              <Group gap="xs">
+                <Box
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 8,
+                    background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#FFFFFF',
+                  }}
+                >
+                  <IconTargetArrow size={18} />
+                </Box>
+                <Text fw={700} size="16.5px" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                  Lead Qualification
+                </Text>
+              </Group>
+
+              <Badge
+                size="md"
+                radius="md"
+                variant="light"
+                color={
+                  currentStatus === 'Qualified'
+                    ? 'teal'
+                    : currentStatus === 'Follow-up Required'
+                    ? 'blue'
+                    : currentStatus === 'Unqualified'
+                    ? 'red'
+                    : 'yellow'
+                }
+              >
+                {currentStatus}
+              </Badge>
+            </Group>
+
+            <Divider mb="lg" color={isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9'} />
+
+            {/* FORM FIELDS */}
+            <Stack gap="md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              {/* Row 1: Always Visible Status, Category (Product/Service), & Evaluated/Qualified By */}
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                <Select
+                  label="Qualification Status"
+                  placeholder="Select status..."
+                  leftSection={
+                    currentStatus === 'Qualified' ? (
+                      <IconCheck size={16} color="#059669" />
+                    ) : currentStatus === 'Follow-up Required' ? (
+                      <IconPhoneCall size={16} color="#2563EB" />
+                    ) : currentStatus === 'Unqualified' ? (
+                      <IconAlertCircle size={16} color="#DC2626" />
+                    ) : (
+                      <IconClock size={16} color="#D97706" />
+                    )
+                  }
+                  data={statusDropdownOptions}
+                  value={currentStatus}
+                  onChange={(val) => setQualificationStatus((val as QualificationStatus) || 'Pending')}
+                  styles={inputStyles}
+                />
+
+                <Select
+                  label="Product or Service"
+                  placeholder="Select type..."
+                  leftSection={
+                    category === 'Product' ? (
+                      <IconBox size={16} color="#4F46E5" />
+                    ) : category === 'Service' ? (
+                      <IconBriefcase size={16} color="#7C3AED" />
+                    ) : (
+                      <IconTag size={16} color="#64748B" />
+                    )
+                  }
+                  data={[
+                    { value: 'Product', label: 'Product' },
+                    { value: 'Service', label: 'Service' },
+                  ]}
+                  value={category || null}
+                  onChange={(val) => {
+                    setCategory((val as 'Product' | 'Service') || '');
+                  }}
+                  styles={inputStyles}
+                  clearable
+                />
+
+                <Select
+                  label={
+                    currentStatus === 'Qualified'
+                      ? 'Qualified By'
+                      : currentStatus === 'Follow-up Required'
+                      ? 'Follow-up Assigned To'
+                      : currentStatus === 'Unqualified'
+                      ? 'Disqualified By'
+                      : 'Assigned Reviewer'
+                  }
+                  placeholder="Select employee..."
+                  leftSection={<IconUserCheck size={16} color="#059669" stroke={1.8} />}
+                  data={currentStatus === 'Follow-up Required' ? employeeOptions : currentUserOnlyOptions}
+                  value={qualifiedBy || null}
+                  onChange={(val) => setQualifiedBy(val || '')}
+                  styles={inputStyles}
+                  clearable
+                />
+              </SimpleGrid>
+
+              {/* STATUS 1: QUALIFIED */}
+              {currentStatus === 'Qualified' && (
+                <>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    {/* Row 2: Interested Item & Budget Range */}
+                    <Autocomplete
+                      label={
+                        category === 'Product'
+                          ? 'Interested Product'
+                          : category === 'Service'
+                          ? 'Interested Service'
+                          : 'Interested Product / Service'
+                      }
+                      placeholder={
+                        category === 'Product'
+                          ? 'Select or type custom product...'
+                          : category === 'Service'
+                          ? 'Select or type custom service...'
+                          : 'Select or type product or service...'
+                      }
+                      leftSection={
+                        category === 'Product' ? (
+                          <IconBox size={16} color="#4F46E5" stroke={1.8} />
+                        ) : category === 'Service' ? (
+                          <IconBriefcase size={16} color="#7C3AED" stroke={1.8} />
+                        ) : (
+                          <IconTag size={16} color="#64748B" stroke={1.8} />
+                        )
+                      }
+                      data={availableOptions}
+                      value={interestedService}
+                      onChange={(val) => setInterestedService(val)}
+                      filter={handleAutocompleteFilter}
+                      styles={inputStyles}
+                      clearable
+                    />
+
+                    <Select
+                      label="Budget Range"
+                      placeholder="Select budget..."
+                      leftSection={<IconCoin size={16} color="#2563EB" stroke={1.8} />}
+                      data={budgetOptions}
+                      value={budgetRange || null}
+                      onChange={(val) => setBudgetRange(val || '')}
+                      styles={inputStyles}
+                      clearable
+                    />
+
+                    {/* Row 3: Employee Count & Qualification Date */}
+                    <Select
+                      label="Employee Count"
+                      placeholder="Select employee count..."
+                      leftSection={<IconUsers size={16} color="#0D9488" stroke={1.8} />}
+                      data={employeeCountOptions}
+                      value={employeeCount || null}
+                      onChange={(val) => setEmployeeCount(val || '')}
+                      styles={inputStyles}
+                      clearable
+                    />
+
+                    <TextInput
+                      type="date"
+                      label="Qualification Date"
+                      value={qualificationDate}
+                      onChange={(e) => setQualificationDate(e.target.value)}
+                      styles={inputStyles}
+                      onClick={(e) => (e.target as any).showPicker?.()}
+                    />
+                  </SimpleGrid>
+
+                  {/* Notes (Full width) */}
+                  <Textarea
+                    label="Qualification Notes"
+                    placeholder="Enter any client requirements or discussion notes..."
+                    minRows={3}
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    styles={textareaStyles}
+                  />
+                </>
+              )}
+
+              {/* STATUS 2: FOLLOW-UP REQUIRED */}
+              {currentStatus === 'Follow-up Required' && (
+                <>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <TextInput
+                      type="date"
+                      label="Next Follow-up Date"
+                      value={nextFollowDate}
+                      onChange={(e) => setNextFollowDate(e.target.value)}
+                      styles={inputStyles}
+                      onClick={(e) => (e.target as any).showPicker?.()}
+                    />
+
+                    <Autocomplete
+                      label={
+                        category === 'Product'
+                          ? 'Interested Product'
+                          : category === 'Service'
+                          ? 'Interested Service'
+                          : 'Interested Product / Service'
+                      }
+                      placeholder={
+                        category === 'Product'
+                          ? 'Select or type custom product...'
+                          : category === 'Service'
+                          ? 'Select or type custom service...'
+                          : 'Select or type product or service...'
+                      }
+                      leftSection={
+                        category === 'Product' ? (
+                          <IconBox size={16} color="#4F46E5" stroke={1.8} />
+                        ) : category === 'Service' ? (
+                          <IconBriefcase size={16} color="#7C3AED" stroke={1.8} />
+                        ) : (
+                          <IconTag size={16} color="#64748B" stroke={1.8} />
+                        )
+                      }
+                      data={availableOptions}
+                      value={interestedService}
+                      onChange={(val) => setInterestedService(val)}
+                      filter={handleAutocompleteFilter}
+                      styles={inputStyles}
+                      clearable
+                    />
+                  </SimpleGrid>
+
+                  <Textarea
+                    label="Follow-up Remarks"
+                    placeholder="Enter discussion notes or required action points for next call..."
+                    minRows={3}
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    styles={textareaStyles}
+                  />
+                </>
+              )}
+
+              {/* STATUS 3: UNQUALIFIED */}
+              {currentStatus === 'Unqualified' && (
+                <>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <Autocomplete
+                      label="Disqualification Reason"
+                      placeholder="Select or type reason..."
+                      leftSection={<IconAlertCircle size={16} color="#DC2626" stroke={1.8} />}
+                      rightSection={!unqualifiedReason ? <IconChevronDown size={15} color="#94A3B8" /> : undefined}
+                      data={unqualifiedReasonOptions}
+                      value={unqualifiedReason}
+                      onChange={(val) => setUnqualifiedReason(val)}
+                      filter={handleReasonFilter}
+                      styles={inputStyles}
+                      clearable
+                    />
+
+                    <TextInput
+                      type="date"
+                      label="Date"
+                      value={qualificationDate}
+                      onChange={(e) => setQualificationDate(e.target.value)}
+                      styles={inputStyles}
+                      onClick={(e) => (e.target as any).showPicker?.()}
+                    />
+                  </SimpleGrid>
+
+                  <Textarea
+                    label="Detailed Explanation"
+                    placeholder="Explain why this contact is not qualified..."
+                    minRows={5}
+                    value={unqualifiedReason}
+                    onChange={(e) => setUnqualifiedReason(e.target.value)}
+                    styles={textareaStyles}
+                  />
+                </>
+              )}
+
+              {/* STATUS 4: PENDING */}
+              {currentStatus === 'Pending' && (
+                <>
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <Autocomplete
+                      label={
+                        category === 'Product'
+                          ? 'Interested Product'
+                          : category === 'Service'
+                          ? 'Interested Service'
+                          : 'Interested Product / Service'
+                      }
+                      placeholder={
+                        category === 'Product'
+                          ? 'Select or type custom product...'
+                          : category === 'Service'
+                          ? 'Select or type custom service...'
+                          : 'Select or type product or service...'
+                      }
+                      leftSection={
+                        category === 'Product' ? (
+                          <IconBox size={16} color="#4F46E5" stroke={1.8} />
+                        ) : category === 'Service' ? (
+                          <IconBriefcase size={16} color="#7C3AED" stroke={1.8} />
+                        ) : (
+                          <IconTag size={16} color="#64748B" stroke={1.8} />
+                        )
+                      }
+                      data={availableOptions}
+                      value={interestedService}
+                      onChange={(val) => setInterestedService(val)}
+                      filter={handleAutocompleteFilter}
+                      styles={inputStyles}
+                      clearable
+                    />
+
+                    <TextInput
+                      type="date"
+                      label="Pending Follow-up / Review Date"
+                      value={nextFollowDate}
+                      onChange={(e) => setNextFollowDate(e.target.value)}
+                      styles={inputStyles}
+                      onClick={(e) => (e.target as any).showPicker?.()}
+                    />
+                  </SimpleGrid>
+
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <Select
+                      label="Budget Range"
+                      placeholder="Select budget..."
+                      leftSection={<IconCoin size={16} color="#2563EB" stroke={1.8} />}
+                      data={budgetOptions}
+                      value={budgetRange || null}
+                      onChange={(val) => setBudgetRange(val || '')}
+                      styles={inputStyles}
+                      clearable
+                    />
+
+                    <TextInput
+                      type="date"
+                      label="Qualification Date"
+                      value={qualificationDate}
+                      onChange={(e) => setQualificationDate(e.target.value)}
+                      styles={inputStyles}
+                      onClick={(e) => (e.target as any).showPicker?.()}
+                    />
+                  </SimpleGrid>
+
+                  <Textarea
+                    label="Pending Notes"
+                    placeholder="Enter notes on missing information or follow-up needed..."
+                    minRows={3}
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    styles={textareaStyles}
+                  />
+                </>
+              )}
+
+              {/* Action Buttons */}
+              <Group justify="flex-end" gap="sm" mt="auto" pt="lg" style={{ borderTop: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #F1F5F9' }}>
+                <Button
+                  variant="subtle"
+                  color="gray"
+                  radius="md"
+                  size="sm"
+                  onClick={onBack}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  radius="md"
+                  size="sm"
+                  loading={saving}
+                  onClick={handleSaveQualification}
+                  rightSection={<IconArrowRight size={15} />}
+                  color={
+                    currentStatus === 'Qualified'
+                      ? 'teal'
+                      : currentStatus === 'Follow-up Required'
+                      ? 'blue'
+                      : currentStatus === 'Unqualified'
+                      ? 'red'
+                      : 'dark'
+                  }
+                  style={{
+                    fontWeight: 600,
+                    paddingLeft: 20,
+                    paddingRight: 20,
+                  }}
+                >
+                  {currentStatus === 'Qualified'
+                    ? 'Save & Convert to Lead'
+                    : currentStatus === 'Follow-up Required'
+                    ? 'Save Follow-up'
+                    : currentStatus === 'Unqualified'
+                    ? 'Save as Unqualified'
+                    : 'Save Qualification'}
+                </Button>
+              </Group>
+            </Stack>
           </Paper>
         </Grid.Col>
       </Grid>

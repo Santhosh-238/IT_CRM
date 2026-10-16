@@ -5,6 +5,7 @@ import {
   getRoles,
   getRoleById,
   getSystemModules,
+  createModule,
   createRole,
   updateRole,
   cloneRole,
@@ -23,6 +24,12 @@ router.get('/my-permissions', requireAuth, getMyPermissions);
 
 // 2. System modules catalogue
 router.get('/modules', requireAuth, getSystemModules);
+router.post(
+  '/modules',
+  requireAuth,
+  authorizePermission('access_control', 'create'),
+  createModule
+);
 
 // 3. Roles management
 router.get(

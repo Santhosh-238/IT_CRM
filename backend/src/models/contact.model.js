@@ -126,6 +126,11 @@ export class ContactModel {
         'Staff Augmentation',
         'UI/UX Design',
       ],
+      // Verified Odoo Dropdown Options
+      titles: ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.'],
+      odooTags: ['VIP', 'Prospect', 'Customer', 'Enterprise', 'SME', 'Vendor', 'Consulting', 'Technology', 'Partner'],
+      paymentTermOptions: ['Immediate Payment', '15 Days', '30 Days', '45 Days', '60 Days', 'End of Following Month'],
+      countries: ['India', 'United States', 'United Arab Emirates', 'United Kingdom', 'Singapore', 'Canada', 'Australia', 'Germany', 'Saudi Arabia'],
     };
   }
 }

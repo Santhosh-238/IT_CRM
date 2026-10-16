@@ -27,6 +27,7 @@ import {
 } from '@tabler/icons-react';
 import { useCRM } from '../../context/CRMContext';
 import { CRM_COLORS } from '../../theme/colors';
+import { NotificationBell } from './NotificationBell';
 
 interface HeaderProps {}
 
@@ -105,8 +106,11 @@ export const Header: React.FC<HeaderProps> = () => {
         />
       </Group>
 
-      {/* 2. Right: Dark/Light, User Avatar Menu */}
+      {/* 2. Right: Notifications, Dark/Light, User Avatar Menu */}
       <Group gap="xs" wrap="nowrap">
+        {/* Notification Bell */}
+        <NotificationBell />
+
         {/* Dark / Light Toggle */}
         <Tooltip label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'} withArrow position="bottom">
           <ActionIcon

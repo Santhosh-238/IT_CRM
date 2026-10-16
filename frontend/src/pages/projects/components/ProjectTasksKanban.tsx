@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -26,146 +26,57 @@ import {
   IconCheck,
   IconFlag,
   IconTarget,
+  IconLayoutList,
+  IconLayoutKanban,
+  IconChartBar,
+  IconLock,
+  IconChecklist,
+  IconStar,
+  IconChevronDown,
 } from '@tabler/icons-react';
 import { Project, ProjectTask } from '../../../types/project';
+import { taskService, INITIAL_DYNAMIC_TASKS } from '../../../services/taskService';
+import { notifications } from '@mantine/notifications';
 
 interface ProjectTasksKanbanProps {
-  projects: Project[];
+  projects?: Project[];
   onAddNewProject?: () => void;
+  activeView?: 'list' | 'board' | 'table';
+  onViewChange?: (view: 'list' | 'board' | 'table') => void;
 }
 
-export const ProjectTasksKanban: React.FC<ProjectTasksKanbanProps> = ({ projects }) => {
+export const ProjectTasksKanban: React.FC<ProjectTasksKanbanProps> = ({
+  projects = [],
+  activeView = 'board',
+  onViewChange,
+}) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>('All');
   const [modalOpened, setModalOpened] = useState<boolean>(false);
 
-  // Initial rich task data connected to the seeded projects
-  const [tasks, setTasks] = useState<ProjectTask[]>([
-    {
-      id: 'task-1',
-      taskId: 'TSK-101',
-      projectId: 'P001',
-      projectName: 'E-commerce Website',
-      title: 'Design Stripe & Razorpay Checkout Flow',
-      description: 'Implement secure multi-currency payment gateway and webhook handlers.',
-      status: 'In Progress',
-      priority: 'High',
-      assignedTo: 'Santhosh C',
-      dueDate: '12-10-2025',
-      estimatedHours: 16,
-      tags: ['Payment', 'Backend'],
-    },
-    {
-      id: 'task-2',
-      taskId: 'TSK-102',
-      projectId: 'P001',
-      projectName: 'E-commerce Website',
-      title: 'Cart & Inventory Stock Synchronization',
-      description: 'Real-time Redis inventory locking to prevent double booking of items.',
-      status: 'In Progress',
-      priority: 'Urgent',
-      assignedTo: 'Priya S',
-      dueDate: '14-10-2025',
-      estimatedHours: 12,
-      tags: ['Database', 'Redis'],
-    },
-    {
-      id: 'task-3',
-      taskId: 'TSK-103',
-      projectId: 'P001',
-      projectName: 'E-commerce Website',
-      title: 'Product Catalog Filters & Algolia Search',
-      description: 'Elastic/Algolia search integration with facets for brands and price ranges.',
-      status: 'Completed',
-      priority: 'Medium',
-      assignedTo: 'Rahul K',
-      dueDate: '08-10-2025',
-      estimatedHours: 20,
-      tags: ['Search', 'Frontend'],
-    },
-    {
-      id: 'task-4',
-      taskId: 'TSK-104',
-      projectId: 'P002',
-      projectName: 'Mobile App',
-      title: 'Push Notifications & Deep Linking Setup',
-      description: 'Firebase Cloud Messaging integration for iOS APNs and Android.',
-      status: 'To Do',
-      priority: 'Medium',
-      assignedTo: 'Arjun M',
-      dueDate: '18-10-2025',
-      estimatedHours: 8,
-      tags: ['Mobile', 'FCM'],
-    },
-    {
-      id: 'task-5',
-      taskId: 'TSK-105',
-      projectId: 'P003',
-      projectName: 'CRM Integration',
-      title: 'OAuth2 Token Refresh & Webhook Dispatcher',
-      description: 'Handle 2-way lead sync between Zoho/Salesforce and internal CRM.',
-      status: 'In Review',
-      priority: 'High',
-      assignedTo: 'Vikram S',
-      dueDate: '22-10-2025',
-      estimatedHours: 14,
-      tags: ['API', 'Auth'],
-    },
-    {
-      id: 'task-6',
-      taskId: 'TSK-106',
-      projectId: 'P004',
-      projectName: 'Website Redesign',
-      title: 'Figma UI Component System & Tokens',
-      description: 'Design system review and Tailwind typography scale approval.',
-      status: 'In Review',
-      priority: 'Medium',
-      assignedTo: 'Sneha R',
-      dueDate: '28-10-2025',
-      estimatedHours: 10,
-      tags: ['UI/UX', 'Figma'],
-    },
-    {
-      id: 'task-7',
-      taskId: 'TSK-107',
-      projectId: 'P005',
-      projectName: 'ERP Module',
-      title: 'PostgreSQL Schema & Role Permission Matrix',
-      description: 'Define relational models for warehouse inventory and purchase orders.',
-      status: 'To Do',
-      priority: 'Urgent',
-      assignedTo: 'Arjun M',
-      dueDate: '30-10-2025',
-      estimatedHours: 24,
-      tags: ['Architecture', 'SQL'],
-    },
-    {
-      id: 'task-8',
-      taskId: 'TSK-108',
-      projectId: 'P006',
-      projectName: 'AI Chatbot',
-      title: 'RAG Pipeline & Embeddings Storage',
-      description: 'LangChain pipeline with vector database for customer support FAQ docs.',
-      status: 'To Do',
-      priority: 'Medium',
-      assignedTo: 'Vikram S',
-      dueDate: '05-11-2025',
-      estimatedHours: 30,
-      tags: ['AI/ML', 'VectorDB'],
-    },
-  ]);
+  // Dynamic task data from taskService (shared with List View)
+  const [tasks, setTasks] = useState<ProjectTask[]>(INITIAL_DYNAMIC_TASKS);
+
+  const loadTasks = async () => {
+    const data = await taskService.getTasks();
+    setTasks(data);
+  };
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
 
   // Form state for creating new task
   const [newTaskForm, setNewTaskForm] = useState({
     title: '',
     description: '',
-    projectId: projects[0]?.projectId || 'P001',
-    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Urgent',
-    assignedTo: 'Santhosh C',
+    projectId: projects?.[0]?.projectId || 'PRJ-1001',
+    priority: 'High' as 'Low' | 'Medium' | 'High' | 'Urgent',
+    assignedTo: 'Rahul V',
     dueDate: '',
-    tags: 'Frontend, Feature',
+    tags: 'Backend, Rules Engine',
   });
 
   const columns: Array<{ id: 'To Do' | 'In Progress' | 'In Review' | 'Completed'; title: string; color: string; bg: string }> = [
@@ -176,7 +87,7 @@ export const ProjectTasksKanban: React.FC<ProjectTasksKanbanProps> = ({ projects
   ];
 
   // Move task status
-  const moveTask = (taskId: string, direction: 'next' | 'prev') => {
+  const moveTask = async (taskId: string, direction: 'next' | 'prev') => {
     const colOrder: Array<'To Do' | 'In Progress' | 'In Review' | 'Completed'> = [
       'To Do',
       'In Progress',
@@ -184,44 +95,53 @@ export const ProjectTasksKanban: React.FC<ProjectTasksKanbanProps> = ({ projects
       'Completed',
     ];
 
-    setTasks((prev) =>
-      prev.map((t) => {
-        if (t.id !== taskId) return t;
-        const curIdx = colOrder.indexOf(t.status);
-        const nextIdx = direction === 'next' ? Math.min(curIdx + 1, colOrder.length - 1) : Math.max(curIdx - 1, 0);
-        return { ...t, status: colOrder[nextIdx] };
-      })
-    );
+    const currentTask = tasks.find((t) => t.id === taskId);
+    if (!currentTask) return;
+    const curIdx = colOrder.indexOf(currentTask.status);
+    const nextIdx = direction === 'next' ? Math.min(curIdx + 1, colOrder.length - 1) : Math.max(curIdx - 1, 0);
+    const newStatus = colOrder[nextIdx];
+
+    try {
+      const updated = await taskService.updateTask(taskId, { status: newStatus });
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+    } catch (e) {
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id !== taskId) return t;
+          return { ...t, status: newStatus };
+        })
+      );
+    }
   };
 
-  const deleteTask = (taskId: string) => {
+  const deleteTask = async (taskId: string) => {
+    await taskService.deleteTask(taskId);
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
   };
 
-  const handleCreateTask = () => {
+  const handleCreateTask = async () => {
     if (!newTaskForm.title.trim()) return;
-    const proj = projects.find((p) => p.projectId === newTaskForm.projectId || p.id === newTaskForm.projectId);
-    const newTask: ProjectTask = {
-      id: `task-${Date.now()}`,
-      taskId: `TSK-${100 + tasks.length + 1}`,
+    const proj = (projects || []).find((p) => p.projectId === newTaskForm.projectId || p.id === newTaskForm.projectId);
+    const created = await taskService.createTask({
       projectId: proj?.projectId || newTaskForm.projectId,
-      projectName: proj?.name || 'Project',
+      projectName: proj?.name || 'Loan Eligibility & Recommendation System',
       title: newTaskForm.title,
       description: newTaskForm.description,
       status: 'To Do',
       priority: newTaskForm.priority,
       assignedTo: newTaskForm.assignedTo,
-      dueDate: newTaskForm.dueDate || '15-10-2025',
+      assignedAvatar: newTaskForm.assignedTo === 'Rahul V' ? 'RV' : 'SC',
+      dueDate: newTaskForm.dueDate || '25-10-2026',
       tags: newTaskForm.tags.split(',').map((s) => s.trim()).filter(Boolean),
-    };
+    });
 
-    setTasks((prev) => [newTask, ...prev]);
+    setTasks((prev) => [created, ...prev]);
     setNewTaskForm({
       title: '',
       description: '',
-      projectId: projects[0]?.projectId || 'P001',
-      priority: 'Medium',
-      assignedTo: 'Santhosh C',
+      projectId: projects[0]?.projectId || 'PRJ-1001',
+      priority: 'High',
+      assignedTo: 'Rahul V',
       dueDate: '',
       tags: '',
     });
@@ -238,6 +158,82 @@ export const ProjectTasksKanban: React.FC<ProjectTasksKanbanProps> = ({ projects
 
   return (
     <Box>
+      {/* 0. Top Breadcrumb & Views Bar */}
+      <Box mb="md">
+        <Group justify="space-between" align="center" mb="xs">
+          <Group gap={8} align="center">
+            <Group
+              gap={5}
+              px={8}
+              py={3}
+              style={{
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0',
+                borderRadius: 6,
+                cursor: 'pointer',
+              }}
+            >
+              <Text size="12px" fw={700} style={{ color: isDark ? '#CBD5E1' : '#475569' }}>
+                crm
+              </Text>
+              <IconLock size={12} color={isDark ? '#94A3B8' : '#64748B'} />
+            </Group>
+            <Text size="13px" c="dimmed">
+              /
+            </Text>
+            <Group gap={5} align="center" style={{ cursor: 'pointer' }}>
+              <IconLayoutKanban size={16} color={isDark ? '#E2E8F0' : '#334155'} />
+              <Text size="13px" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                Board
+              </Text>
+              <IconChevronDown size={13} color="#94A3B8" />
+              <IconStar size={14} color="#94A3B8" style={{ marginLeft: 2 }} />
+            </Group>
+          </Group>
+        </Group>
+
+        {/* View Tabs */}
+        {onViewChange && (
+          <Group gap="xs" align="center" wrap="wrap" pb="xs" style={{ borderBottom: isDark ? '1px solid rgba(255,255,255,0.07)' : '1px solid #E2E8F0' }}>
+            <Button size="compact-xs" variant="subtle" color="gray" style={{ fontSize: 12 }}>
+              Add Channel
+            </Button>
+            <Button
+              size="compact-xs"
+              variant={activeView === 'board' ? 'filled' : 'subtle'}
+              color="indigo"
+              leftSection={<IconLayoutKanban size={13} color="#3B82F6" />}
+              onClick={() => onViewChange('board')}
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                backgroundColor: isDark ? 'rgba(99, 102, 241, 0.25)' : '#EEF2FF',
+                color: isDark ? '#A5B4FC' : '#4F46E5',
+                borderBottom: '2px solid #6366F1',
+                borderRadius: '6px 6px 0 0',
+              }}
+            >
+              Board
+            </Button>
+            <Button size="compact-xs" variant="subtle" color="gray" leftSection={<IconChartBar size={13} color="#EF4444" />} style={{ fontSize: 12 }}>
+              Gantt
+            </Button>
+            <Button
+              size="compact-xs"
+              variant={activeView === 'list' ? 'filled' : 'subtle'}
+              color="gray"
+              leftSection={<IconLayoutList size={13} color={isDark ? '#818CF8' : '#4F46E5'} />}
+              onClick={() => onViewChange('list')}
+              style={{ fontSize: 12, fontWeight: 500, color: isDark ? '#94A3B8' : '#64748B' }}
+            >
+              List
+            </Button>
+            <Button size="compact-xs" variant="subtle" color="gray" leftSection={<IconPlus size={12} />} onClick={() => onViewChange('table')} style={{ fontSize: 12 }}>
+              + View
+            </Button>
+          </Group>
+        )}
+      </Box>
+
       {/* 1. Top Milestones & Task Filter Bar */}
       <Paper
         p="md"
@@ -258,7 +254,7 @@ export const ProjectTasksKanban: React.FC<ProjectTasksKanbanProps> = ({ projects
                 radius="md"
                 data={[
                   { value: 'All', label: 'All Projects' },
-                  ...projects.map((p) => ({
+                  ...(projects || []).map((p) => ({
                     value: p.projectId,
                     label: `${p.projectId} - ${p.name}`,
                   })),

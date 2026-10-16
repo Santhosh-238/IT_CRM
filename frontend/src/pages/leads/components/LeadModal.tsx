@@ -61,6 +61,8 @@ export const LeadModal: React.FC<LeadModalProps> = ({
 
   const [formData, setFormData] = useState<LeadFormData>(initialFormState);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [productInputValue, setProductInputValue] = useState('');
+  const [serviceInputValue, setServiceInputValue] = useState('');
 
   useEffect(() => {
     if (lead) {
@@ -81,8 +83,12 @@ export const LeadModal: React.FC<LeadModalProps> = ({
         status: lead.status || 'New',
         stage: lead.stage || 'Initialization',
       });
+      setProductInputValue(Array.isArray(lead.productList) ? lead.productList.join(', ') : (lead.productList || ''));
+      setServiceInputValue(Array.isArray(lead.serviceList) ? lead.serviceList.join(', ') : (lead.serviceList || ''));
     } else {
       setFormData(initialFormState);
+      setProductInputValue('');
+      setServiceInputValue('');
     }
     setErrors({});
   }, [lead, opened]);
@@ -301,24 +307,28 @@ export const LeadModal: React.FC<LeadModalProps> = ({
 
           {/* Row 6: Product / Service Selection */}
           {formData.category === 'Product' ? (
-            <MultiSelect
+            <TextInput
               label="Product List"
-              placeholder="Select products"
-              data={metadata?.productOptions || ['HRMS', 'IT CRM', 'Fintech CRM', 'Cloud ERP']}
-              value={formData.productList || []}
-              onChange={(vals) => handleFieldChange('productList', vals)}
-              searchable
-              clearable
+              placeholder="Enter Product Name (e.g. IT CRM, HRMS, Cloud ERP)"
+              value={productInputValue}
+              onChange={(e) => {
+                const text = e.target.value;
+                setProductInputValue(text);
+                const items = text.split(',').map((s) => s.trim()).filter(Boolean);
+                handleFieldChange('productList', items.length > 0 ? items : (text.trim() ? [text.trim()] : []));
+              }}
             />
           ) : (
-            <MultiSelect
+            <TextInput
               label="Service List"
-              placeholder="Select services"
-              data={metadata?.serviceOptions || ['Cloud Migration & DevOps', 'Full-Stack Web Development', 'Cybersecurity']}
-              value={formData.serviceList || []}
-              onChange={(vals) => handleFieldChange('serviceList', vals)}
-              searchable
-              clearable
+              placeholder="Enter Service Name (e.g. Cloud Migration, Web Development, DevOps)"
+              value={serviceInputValue}
+              onChange={(e) => {
+                const text = e.target.value;
+                setServiceInputValue(text);
+                const items = text.split(',').map((s) => s.trim()).filter(Boolean);
+                handleFieldChange('serviceList', items.length > 0 ? items : (text.trim() ? [text.trim()] : []));
+              }}
             />
           )}
 

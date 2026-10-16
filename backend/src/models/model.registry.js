@@ -1,55 +1,101 @@
 import { prisma } from '../config/prisma.js';
 
 /**
- * System Base Modules Registry with Dynamic Database Synchronization
+ * Exact System Modules Registry for this IT CRM Application
+ * Matches the sidebar navigation 1:1
  */
 export const SYSTEM_MODULES = [
-  // 1. Core
-  { id: 'dashboard', name: 'Dashboard', category: 'Core', description: 'Executive analytics, revenue, KPIs, and overview charts.' },
-  { id: 'employee_dashboard', name: 'Employee Dashboard', category: 'Core', description: 'Individual employee stats, tasks, and activity feeds.' },
-  { id: 'distributor_dashboard', name: 'Distributor Dashboard', category: 'Core', description: 'Partner and distribution network metrics.' },
-  { id: 'calendar', name: 'Calendar & Reminders', category: 'Core', description: 'Enterprise scheduling, deadlines, and alerts.' },
-  { id: 'daily_working_plan', name: 'Daily Working Plan', category: 'Core', description: 'Daily agenda, target commitments, and schedules.' },
+  // 1. Main Navigation
+  {
+    id: 'dashboard',
+    name: 'Dashboard',
+    category: 'Main Navigation',
+    description: 'Executive analytics, revenue, KPIs, and overview charts.',
+  },
+  {
+    id: 'employee_management',
+    name: 'Employee Management',
+    category: 'Main Navigation',
+    description: 'Staff directory, onboarding, designations, and employee records.',
+  },
+  {
+    id: 'contacts',
+    name: 'Contacts',
+    category: 'Main Navigation',
+    description: 'Customer profiles, contact details, and account ownership.',
+  },
+  {
+    id: 'leads',
+    name: 'Leads',
+    category: 'Main Navigation',
+    description: 'Prospect pipeline, lead stages, and qualification workflows.',
+  },
+  {
+    id: 'scheduled_meetings',
+    name: 'Scheduled Meetings',
+    category: 'Main Navigation',
+    description: 'Date-wise scheduled client and team meetings, employee creator tracking, and timings.',
+  },
+  {
+    id: 'call_logs',
+    name: 'Call Logs',
+    category: 'Main Navigation',
+    description: 'Telephony records, call durations, notes, and follow-ups.',
+  },
+  {
+    id: 'customers',
+    name: 'Customers',
+    category: 'Main Navigation',
+    description: 'Client company directories, accounts, and relationship history.',
+  },
+  {
+    id: 'projects',
+    name: 'Projects Management',
+    category: 'Main Navigation',
+    description: 'Client project delivery, sprints, milestones, and task SLAs.',
+  },
 
-  // 2. Administration
-  { id: 'scheduled_meetings', name: 'Scheduled Meetings', category: 'Administration', description: 'Date-wise scheduled client and team meetings, employee creator tracking, purpose and timings.' },
-  { id: 'access_control', name: 'Access Control', category: 'Administration', description: 'Role-Based Access Control, permissions matrix, and role hierarchy.' },
-  { id: 'settings', name: 'System Settings', category: 'Administration', description: 'Global platform preferences, branding, and integrations.' },
-  { id: 'audit_logs', name: 'Audit Trail', category: 'Administration', description: 'Security audit logs, user actions, and change tracking.' },
-
-  // 3. Management
-  { id: 'employee_management', name: 'Employee Management', category: 'Management', description: 'Staff directory, onboarding, designations, and profiles.' },
-  { id: 'attendance', name: 'Attendance', category: 'Management', description: 'Check-in/out logs, working hours, and presence records.' },
-  { id: 'shift_details', name: 'Shift Details', category: 'Management', description: 'Shift rosters, timing configurations, and rotations.' },
-  { id: 'area_dashboard', name: 'Area Dashboard', category: 'Management', description: 'Regional performance, territory KPIs, and branch metrics.' },
-  { id: 'leave_management', name: 'Leave Management', category: 'Management', description: 'Leave requests, quota balances, and manager approvals.' },
-
-  // 4. Sales & CRM
-  { id: 'contacts', name: 'Contacts Directory', category: 'Sales & CRM', description: 'Customer profiles, contact details, and account ownership.' },
-  { id: 'companies', name: 'Companies & Accounts', category: 'Sales & CRM', description: 'Enterprise client organizations, domains, and contracts.' },
-  { id: 'leads', name: 'Sales Leads', category: 'Sales & CRM', description: 'Prospect pipeline, lead stages, and qualification workflows.' },
-  { id: 'deals', name: 'Deals & Revenue', category: 'Sales & CRM', description: 'Sales opportunities, closing probabilities, and forecasts.' },
-
-  // 5. Field Operations
-  { id: 'projects', name: 'IT Projects', category: 'Field Operations', description: 'Client project delivery, sprints, and task SLA.' },
-  { id: 'client_visits', name: 'Client Visits', category: 'Field Operations', description: 'On-site client meetings, field logs, and geo-tracking.' },
-  { id: 'daily_reports', name: 'Daily Reports', category: 'Field Operations', description: 'End-of-day operational summaries and submissions.' },
-  { id: 'beat_planning', name: 'Beat Planning', category: 'Field Operations', description: 'Field route optimization and scheduled client routes.' },
+  // 2. Administration & Security
+  {
+    id: 'access_control',
+    name: 'Access Control & RBAC',
+    category: 'Administration & Security',
+    description: 'Role-Based Access Control, permissions matrix, and role hierarchy.',
+  },
 ];
 
 export const MODULE_CATEGORIES = [
-  'Core',
-  'Administration',
-  'Management',
-  'Sales & CRM',
-  'Field Operations',
-  'Human Resources',
-  'Communication',
-  'Analytics',
+  'Main Navigation',
+  'Administration & Security',
+  'Custom Modules',
 ];
 
+// Obsolete / legacy template module IDs to exclude from display
+const EXCLUDED_LEGACY_MODULES = new Set([
+  'calendar',
+  'daily_working_plan',
+  'employee_dashboard',
+  'distributor_dashboard',
+  'client_visits',
+  'daily_reports',
+  'beat_planning',
+  'attendance',
+  'shift_details',
+  'area_dashboard',
+  'leave_management',
+  'deals',
+  'companies',
+  'settings',
+  'audit_logs',
+  'employees', // aliased to employee_management
+  'calls', // aliased to call_logs
+  'projects_management', // aliased to projects
+  'meetings', // aliased to scheduled_meetings
+  'rbac', // aliased to access_control
+]);
+
 /**
- * Dynamically fetch all modules (System + DB Custom Modules)
+ * Fetch active IT CRM modules (System Modules + any user-created Custom Modules)
  */
 export async function getDynamicModules() {
   const dbPermissions = await prisma.rolePermission.findMany({
@@ -62,14 +108,15 @@ export async function getDynamicModules() {
   });
 
   const modulesMap = new Map();
-  SYSTEM_MODULES.forEach(m => modulesMap.set(m.id, { ...m, isSystem: true }));
+  SYSTEM_MODULES.forEach((m) => modulesMap.set(m.id, { ...m, isSystem: true }));
 
-  dbPermissions.forEach(p => {
-    if (!modulesMap.has(p.moduleId)) {
+  // Only include user-created custom modules, ignore obsolete legacy template modules
+  dbPermissions.forEach((p) => {
+    if (!modulesMap.has(p.moduleId) && !EXCLUDED_LEGACY_MODULES.has(p.moduleId)) {
       modulesMap.set(p.moduleId, {
         id: p.moduleId,
         name: p.moduleName || p.moduleId,
-        category: p.category || 'Custom',
+        category: p.category || 'Custom Modules',
         description: `Custom module: ${p.moduleName || p.moduleId}`,
         isSystem: false,
       });
@@ -83,11 +130,8 @@ export async function getDynamicModules() {
  * Dynamically fetch all distinct categories
  */
 export async function getDynamicCategories() {
-  const dbCats = await prisma.rolePermission.findMany({
-    select: { category: true },
-    distinct: ['category'],
-  });
-  return Array.from(new Set([...MODULE_CATEGORIES, ...dbCats.map(c => c.category).filter(Boolean)])).sort();
+  const modules = await getDynamicModules();
+  return Array.from(new Set(modules.map((m) => m.category))).filter(Boolean);
 }
 
 export const getSystemModules = () => SYSTEM_MODULES;

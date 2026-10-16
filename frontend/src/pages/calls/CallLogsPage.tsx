@@ -38,6 +38,12 @@ import { contactService } from '../../services/contactService';
 import { Contact } from '../../types/contact';
 import { CallLogTableView } from './components/CallLogTableView';
 import { CallLogModal } from './components/CallLogModal';
+import {
+  DateFilterControl,
+  DateFilterValue,
+  DEFAULT_DATE_FILTER,
+  isDateMatchingFilter,
+} from '../../components/common/DateFilterControl';
 import { CallDetailsModal } from './components/CallDetailsModal';
 
 type ActiveCallTabType = 'ALL' | 'INCOMING' | 'OUTGOING' | 'COMPLETED' | 'MISSED';
@@ -61,6 +67,7 @@ export const CallLogsPage: React.FC = () => {
   const [callTab, setCallTab] = useState<ActiveCallTabType>('ALL');
   const [searchInput, setSearchInput] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>(DEFAULT_DATE_FILTER);
   const [page, setPage] = useState<number>(1);
   const pageSize = 10;
 
@@ -128,7 +135,12 @@ export const CallLogsPage: React.FC = () => {
         if (call.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
       }
 
-      // 3. Search query
+      // 3. Date filter (Day-wise & Month-wise)
+      if (!isDateMatchingFilter(call.callDate || call.createdAt, dateFilter)) {
+        return false;
+      }
+
+      // 4. Search query
       if (searchInput.trim()) {
         const query = searchInput.toLowerCase();
         const matchEmp = (call.employeeName || '').toLowerCase().includes(query);
@@ -144,7 +156,7 @@ export const CallLogsPage: React.FC = () => {
 
       return true;
     });
-  }, [calls, callTab, statusFilter, searchInput]);
+  }, [calls, callTab, statusFilter, dateFilter, searchInput]);
 
   // Pagination for Calls list
   const totalPages = Math.ceil(filteredCalls.length / pageSize) || 1;
@@ -236,7 +248,7 @@ export const CallLogsPage: React.FC = () => {
   ];
 
   return (
-    <Box p={{ base: 'md', md: 'lg' }} style={{ maxWidth: 1520, margin: '0 auto' }}>
+    <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ width: '100%', maxWidth: '100%' }}>
       {/* ========================================================================= */}
       {/* TOP CONTROLS BAR - Exact Meetings Module Aesthetics                       */}
       {/* ========================================================================= */}
@@ -371,6 +383,16 @@ export const CallLogsPage: React.FC = () => {
               }}
               style={{ width: 140 }}
               allowDeselect={false}
+            />
+
+            {/* Date Filter: Day-wise & Month-wise */}
+            <DateFilterControl
+              value={dateFilter}
+              onChange={(val) => {
+                setDateFilter(val);
+                setPage(1);
+              }}
+              width={135}
             />
 
             <Button

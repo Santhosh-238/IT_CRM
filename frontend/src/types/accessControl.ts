@@ -5,8 +5,9 @@ export type PermissionAction = 'view' | 'create' | 'edit' | 'delete' | 'export' 
 export interface SystemModule {
   id: string;
   name: string;
-  category: 'Core' | 'Sales & CRM' | 'Human Resources' | 'Operations' | 'Administration';
+  category: string;
   description: string;
+  isSystem?: boolean;
 }
 
 export interface RolePermission {

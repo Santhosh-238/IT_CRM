@@ -70,6 +70,8 @@ export function buildLeadFilterQuery(queryParams = {}) {
         { leadId: { contains: q, mode: 'insensitive' } },
         { profession: { contains: q, mode: 'insensitive' } },
         { designation: { contains: q, mode: 'insensitive' } },
+        { address: { contains: q, mode: 'insensitive' } },
+        { category: { contains: q, mode: 'insensitive' } },
       ],
     });
   }

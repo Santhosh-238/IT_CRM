@@ -7,20 +7,24 @@ import { verifyToken, COOKIE_NAME } from '../utils/jwt.js';
  * Middleware: Verify Authentication from HttpOnly Cookie (UUID Session / JWT) or Bearer Header
  */
 export async function requireAuth(req, res, next) {
-  let token = req.cookies ? req.cookies[COOKIE_NAME] : null;
+  let token = null;
 
-  if (!token && req.headers.authorization) {
+  if (req.headers.authorization) {
     const parts = req.headers.authorization.split(' ');
     if (parts.length === 2 && parts[0] === 'Bearer') {
       token = parts[1];
     }
   }
 
+  if (!token && req.cookies) {
+    token = req.cookies[COOKIE_NAME];
+  }
+
   if (!token) {
     if (env.NODE_ENV !== 'production' && !req.headers['x-strict-auth']) {
       try {
         const firstUser = (await prisma.user.findFirst({
-          where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] } },
+          where: { role: 'SUPER_ADMIN' },
           select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
         })) || (await prisma.user.findFirst({
           select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
@@ -82,7 +86,7 @@ export async function requireAuth(req, res, next) {
     if (env.NODE_ENV !== 'production' && !req.headers['x-strict-auth']) {
       try {
         const devUser = (await prisma.user.findFirst({
-          where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] } },
+          where: { role: 'SUPER_ADMIN' },
           select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
         })) || (await prisma.user.findFirst({
           select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
@@ -100,7 +104,7 @@ export async function requireAuth(req, res, next) {
     if (env.NODE_ENV !== 'production' && !req.headers['x-strict-auth']) {
       try {
         const devUser = (await prisma.user.findFirst({
-          where: { role: { in: ['SUPER_ADMIN', 'ADMIN'] } },
+          where: { role: 'SUPER_ADMIN' },
           select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
         })) || (await prisma.user.findFirst({
           select: { id: true, email: true, name: true, role: true, department: true, avatar: true },
@@ -126,9 +130,9 @@ export function requireRole(allowedRoles) {
 
     const rolesList = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
     const userRole = (req.user.role || '').toUpperCase();
-    const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+    const isSuperAdmin = userRole === 'SUPER_ADMIN' || userRole === 'SUPER ADMIN';
 
-    if (isSuperOrAdmin || rolesList.map((r) => r.toUpperCase()).includes(userRole)) {
+    if (isSuperAdmin || rolesList.map((r) => r.toUpperCase()).includes(userRole)) {
       return next();
     }
 

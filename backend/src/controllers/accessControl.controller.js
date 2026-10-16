@@ -40,6 +40,28 @@ export async function getSystemModules(_req, res) {
 }
 
 /**
+ * 2b. Create a new custom module
+ * POST /api/access-control/modules
+ */
+export async function createModule(req, res) {
+  try {
+    const ip = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
+    const data = await accessControlService.createModuleService(req.body, req.user, ip);
+    return res.status(201).json({
+      success: true,
+      message: `Module '${data.module.name}' created successfully.`,
+      module: data.module,
+    });
+  } catch (error) {
+    console.error('[Create Module Error]', error);
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+/**
  * 3. Get all roles with permissions and user count
  * GET /api/access-control/roles
  */

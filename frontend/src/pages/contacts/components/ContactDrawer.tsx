@@ -14,7 +14,6 @@ import {
   ActionIcon,
   useComputedColorScheme,
   CopyButton,
-  Tooltip,
   Select,
 } from '@mantine/core';
 import {
@@ -23,22 +22,15 @@ import {
   IconMail,
   IconPhone,
   IconBuildingSkyscraper,
-  IconMapPin,
   IconUser,
   IconCheck,
   IconCopy,
   IconCalendar,
   IconFileText,
-  IconBox,
-  IconTargetArrow,
-  IconIdBadge,
   IconFolders,
-  IconShieldCheck,
-  IconReceiptTax,
-  IconUsers,
-  IconWorld,
-  IconBrandLinkedin,
-  IconExternalLink,
+  IconCash,
+  IconIdBadge,
+  IconTargetArrow,
 } from '@tabler/icons-react';
 import { Contact } from '../../../types/contact';
 import { useContact } from '../../../context/ContactContext';
@@ -62,8 +54,9 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
   const { metadata, assignContact } = useContact();
-
-  const { setActiveNav } = useCRM();
+  const { setActiveNav, currentUser } = useCRM();
+  const roleUpper = (currentUser?.role || '').toUpperCase();
+  const isAdmin = roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPER ADMIN';
 
   if (!contact) return null;
 
@@ -72,36 +65,6 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
     const parts = name.trim().split(' ');
     if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     return name.slice(0, 2).toUpperCase();
-  };
-
-  const getStatusBadgeColor = (status?: string) => {
-    switch ((status || '').toLowerCase()) {
-      case 'new':
-        return 'blue';
-      case 'active':
-        return 'green';
-      case 'qualified':
-        return 'teal';
-      case 'inactive':
-        return 'gray';
-      case 'disqualified':
-        return 'red';
-      default:
-        return 'blue';
-    }
-  };
-
-  const getPriorityBadgeColor = (priority?: string) => {
-    switch ((priority || '').toLowerCase()) {
-      case 'high':
-        return 'red';
-      case 'medium':
-        return 'orange';
-      case 'low':
-        return 'gray';
-      default:
-        return 'blue';
-    }
   };
 
   const formatDateTime = (dateStr?: string) => {
@@ -125,17 +88,22 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
   const labelColor = isDark ? '#94A3B8' : '#64748B';
   const valueColor = isDark ? '#F8FAFC' : '#0F172A';
 
+  const assignedOwnerName =
+    contact.assignedToName ||
+    metadata?.employees?.find((e) => e.id === contact.assignedTo || e.empCode === contact.assignedTo)?.name ||
+    'Unassigned';
+
   return (
     <Drawer
       opened={opened}
       onClose={onClose}
       position="right"
-      size="600px"
+      size="560px"
       padding="xl"
       title={
         <Group gap="xs">
-          <Badge variant="filled" color={contact.contactType === 'Individual' ? 'violet' : 'blue'} radius="sm" size="sm">
-            {contact.contactType || 'Company Representative'}
+          <Badge variant="filled" color="blue" radius="sm" size="sm">
+            Contact
           </Badge>
           <Text fw={700} size="sm" c="dimmed">
             {contact.contactId}
@@ -155,40 +123,27 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
     >
       <Stack gap="lg">
         {/* Profile Header Card */}
-        <Paper p="lg" radius="20px" style={{ background: cardBg, border: cardBorder }}>
-          <Group align="flex-start" justify="space-between">
-            <Group gap="md">
-              <Avatar
-                size={64}
-                radius="16px"
-                color={contact.contactType === 'Individual' ? 'violet' : 'blue'}
-              >
-                {getInitials(contact.name)}
-              </Avatar>
-              <div>
-                <Text fw={800} size="lg" style={{ color: valueColor, lineHeight: 1.2 }}>
-                  {contact.name}
-                </Text>
-                <Text size="xs" fw={500} c="dimmed" mt={2}>
-                  {contact.designation || contact.profession || 'Representative'} {contact.companyName ? `• ${contact.companyName}` : ''}
-                </Text>
-                <Group gap="xs" mt="xs">
-                  <Badge size="sm" variant="outline" color={getPriorityBadgeColor(contact.priority || 'Medium')}>
-                    {contact.priority || 'Medium'} Priority
-                  </Badge>
-                  <Badge size="sm" variant="light" color="indigo">
-                    Stage: {contact.stage || 'New Lead'}
-                  </Badge>
-                </Group>
-              </div>
-            </Group>
+        <Paper p="lg" radius="16px" style={{ background: cardBg, border: cardBorder }}>
+          <Group align="center" gap="md">
+            <Avatar size={60} radius="14px" color="blue">
+              {getInitials(contact.name)}
+            </Avatar>
+            <Box style={{ flex: 1 }}>
+              <Text fw={800} size="xl" style={{ color: valueColor, lineHeight: 1.2 }}>
+                {contact.name}
+              </Text>
+              <Text size="sm" fw={600} c="dimmed" mt={3}>
+                {contact.companyName || 'Independent'}
+                {contact.contactPerson ? ` • Contact: ${contact.contactPerson}` : ''}
+              </Text>
+            </Box>
           </Group>
         </Paper>
 
         {/* Action Buttons */}
         <Group grow gap="xs">
           <Button
-            radius="100px"
+            radius="md"
             variant="filled"
             color="indigo"
             leftSection={<IconFolders size={15} />}
@@ -211,7 +166,22 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
             Create Project
           </Button>
           <Button
-            radius="100px"
+            radius="md"
+            variant="filled"
+            color="teal"
+            leftSection={<IconTargetArrow size={15} />}
+            onClick={() => {
+              onClose();
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(contact));
+              }
+              setActiveNav('contact-qualification');
+            }}
+          >
+            Qualify
+          </Button>
+          <Button
+            radius="md"
             variant="light"
             color="blue"
             leftSection={<IconEdit size={15} />}
@@ -220,7 +190,7 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
             Edit
           </Button>
           <Button
-            radius="100px"
+            radius="md"
             variant="light"
             color="red"
             leftSection={<IconTrash size={15} />}
@@ -230,138 +200,57 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
           </Button>
         </Group>
 
-        {/* 1. Basic Contact Information */}
-        <Paper p="lg" radius="20px" style={{ background: cardBg, border: cardBorder }}>
-          <Group gap="xs" mb="sm">
+        {/* Essential Contact Details Card */}
+        <Paper p="lg" radius="16px" style={{ background: cardBg, border: cardBorder }}>
+          <Group gap="xs" mb="md">
             <IconUser size={16} color={isDark ? '#60A5FA' : '#2563EB'} />
             <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#60A5FA' : '#2563EB', letterSpacing: '0.05em' }}>
-              1. Basic Contact Information
+              Essential Details
             </Text>
           </Group>
 
-          <Stack gap="xs">
-            <Group justify="space-between">
-              <Text size="xs" fw={600} style={{ color: labelColor }}>
-                Mobile / Phone
-              </Text>
-              <Text size="xs" fw={700} style={{ color: valueColor }}>
-                {contact.phone}
-              </Text>
-            </Group>
-
-            {contact.email && (
-              <>
-                <Divider color={isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9'} />
-                <Group justify="space-between">
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Email Address
-                  </Text>
-                  <Group gap={4}>
-                    <Text size="xs" fw={600} style={{ color: isDark ? '#93C5FD' : '#2563EB' }}>
-                      {contact.email}
-                    </Text>
-                    <CopyButton value={contact.email} timeout={2000}>
-                      {({ copied, copy }) => (
-                        <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
-                          {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
-                        </ActionIcon>
-                      )}
-                    </CopyButton>
-                  </Group>
-                </Group>
-              </>
-            )}
-
-            <Divider color={isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9'} />
-
-            <Group justify="space-between">
-              <Text size="xs" fw={600} style={{ color: labelColor }}>
-                Source
-              </Text>
-              <Badge variant="light" color="blue" size="sm">
-                {contact.source === 'Other' && contact.customSource ? `${contact.source} (${contact.customSource})` : contact.source || 'Website'}
-              </Badge>
-            </Group>
-
-            {contact.address && (
-              <>
-                <Divider color={isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9'} />
-                <Group justify="space-between" align="flex-start">
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Address
-                  </Text>
-                  <Text size="xs" fw={500} style={{ color: valueColor, maxWidth: 300, textAlign: 'right' }}>
-                    {contact.address}
-                  </Text>
-                </Group>
-              </>
-            )}
-          </Stack>
-        </Paper>
-
-        {/* 2. Professional & Company Information */}
-        <Paper p="lg" radius="20px" style={{ background: cardBg, border: cardBorder }}>
-          <Group justify="space-between" align="center" mb="sm">
-            <Group gap="xs">
-              <IconBuildingSkyscraper size={16} color={isDark ? '#34D399' : '#059669'} />
-              <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#34D399' : '#059669', letterSpacing: '0.05em' }}>
-                2. Professional & Company Details
-              </Text>
-            </Group>
-            <Badge
-              size="xs"
-              variant="light"
-              color={
-                contact.verificationStatus === 'Verified'
-                  ? 'green'
-                  : contact.verificationStatus === 'Pending'
-                  ? 'orange'
-                  : 'gray'
-              }
-            >
-              {contact.verificationStatus === 'Verified' ? '✓ Verified' : contact.verificationStatus === 'Pending' ? '⏳ Pending' : '⚠️ Unverified'}
-            </Badge>
-          </Group>
-
-          <SimpleGrid cols={2} spacing="xs">
+          <SimpleGrid cols={2} spacing="md">
+            {/* Name */}
             <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Contact Type
+              <Text size="11.5px" fw={600} style={{ color: labelColor }}>
+                Name
               </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.contactType || 'Company Representative'}
+              <Text size="sm" fw={700} style={{ color: valueColor }} mt={2}>
+                {contact.name}
               </Text>
             </div>
 
+            {/* Company */}
             <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Company Name
+              <Text size="11.5px" fw={600} style={{ color: labelColor }}>
+                Company
               </Text>
-              <Text size="xs" fw={700} style={{ color: valueColor }} mt={2}>
+              <Text size="sm" fw={700} style={{ color: valueColor }} mt={2}>
                 {contact.companyName || '—'}
               </Text>
             </div>
 
-            <div style={{ gridColumn: 'span 2' }}>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Designation / Profession
+            {/* Contact person */}
+            <div>
+              <Text size="11.5px" fw={600} style={{ color: labelColor }}>
+                Contact person
               </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.designation || contact.profession || '—'}
+              <Text size="sm" fw={600} style={{ color: valueColor }} mt={2}>
+                {contact.contactPerson || '—'}
               </Text>
             </div>
 
-            {/* GST Number */}
+            {/* Email */}
             <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                GST Number (GSTIN)
+              <Text size="11.5px" fw={600} style={{ color: labelColor }}>
+                Email
               </Text>
-              {contact.gstNumber ? (
+              {contact.email ? (
                 <Group gap={4} mt={2}>
-                  <Text size="xs" fw={700} style={{ color: isDark ? '#93C5FD' : '#2563EB', fontFamily: 'monospace' }}>
-                    {contact.gstNumber}
+                  <Text size="sm" fw={600} style={{ color: isDark ? '#93C5FD' : '#2563EB' }}>
+                    {contact.email}
                   </Text>
-                  <CopyButton value={contact.gstNumber} timeout={2000}>
+                  <CopyButton value={contact.email} timeout={2000}>
                     {({ copied, copy }) => (
                       <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
                         {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
@@ -370,336 +259,137 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
                   </CopyButton>
                 </Group>
               ) : (
-                <Text size="xs" c="dimmed" mt={2}>—</Text>
+                <Text size="sm" c="dimmed" mt={2}>
+                  —
+                </Text>
               )}
             </div>
 
-            {/* Employee Count */}
+            {/* Phone number */}
             <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Employees / Size
+              <Text size="11.5px" fw={600} style={{ color: labelColor }}>
+                Phone number
               </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.employeeCount || '—'}
+              <Text size="sm" fw={700} style={{ color: valueColor }} mt={2}>
+                {contact.phone || '—'}
               </Text>
             </div>
 
-            {/* Company PAN */}
+            {/* Assigned owner */}
             <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Company PAN
+              <Text size="11.5px" fw={600} style={{ color: labelColor }}>
+                Assigned owner
               </Text>
-              {contact.companyPan ? (
-                <Group gap={4} mt={2}>
-                  <Text size="xs" fw={600} style={{ color: valueColor, fontFamily: 'monospace' }}>
-                    {contact.companyPan}
-                  </Text>
-                  <CopyButton value={contact.companyPan} timeout={2000}>
-                    {({ copied, copy }) => (
-                      <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
-                        {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
-                      </ActionIcon>
-                    )}
-                  </CopyButton>
-                </Group>
-              ) : (
-                <Text size="xs" c="dimmed" mt={2}>—</Text>
-              )}
+              <Badge variant="light" color={assignedOwnerName === 'Unassigned' ? 'gray' : 'blue'} size="sm" mt={4}>
+                {assignedOwnerName}
+              </Badge>
             </div>
 
-            {/* CIN Number */}
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                CIN (MCA)
-              </Text>
-              {contact.cinNumber ? (
-                <Group gap={4} mt={2}>
-                  <Text size="xs" fw={600} truncate style={{ color: valueColor, fontFamily: 'monospace', maxWidth: 100 }}>
-                    {contact.cinNumber}
-                  </Text>
-                  <CopyButton value={contact.cinNumber} timeout={2000}>
-                    {({ copied, copy }) => (
-                      <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
-                        {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
-                      </ActionIcon>
-                    )}
-                  </CopyButton>
-                </Group>
-              ) : (
-                <Text size="xs" c="dimmed" mt={2}>—</Text>
-              )}
-            </div>
+            {/* Estimated value (if present) */}
+            {contact.estimatedValue && (
+              <div>
+                <Text size="11.5px" fw={600} style={{ color: labelColor }}>
+                  Estimated value
+                </Text>
+                <Text size="sm" fw={700} style={{ color: valueColor }} mt={2}>
+                  {!isNaN(Number(contact.estimatedValue))
+                    ? `₹ ${Number(contact.estimatedValue).toLocaleString('en-IN')}`
+                    : contact.estimatedValue}
+                </Text>
+              </div>
+            )}
 
-            {/* Registered State */}
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Registered State
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.registeredState || '—'}
-              </Text>
-            </div>
-
-            {/* Budget */}
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Budget
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.annualTurnover
-                  ? !isNaN(Number(contact.annualTurnover)) && String(contact.annualTurnover).trim() !== ''
-                    ? `₹ ${Number(contact.annualTurnover).toLocaleString('en-IN')}`
-                    : contact.annualTurnover
-                  : '—'}
-              </Text>
-            </div>
-
-            {/* Website & LinkedIn */}
-            {(contact.companyWebsite || contact.linkedinUrl) && (
-              <div style={{ gridColumn: 'span 2' }}>
-                <Divider my={6} color={isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9'} />
-                <Group gap="xs">
-                  {contact.companyWebsite && (
-                    <Button
-                      size="xs"
-                      variant="subtle"
-                      color="blue"
-                      component="a"
-                      href={contact.companyWebsite.startsWith('http') ? contact.companyWebsite : `https://${contact.companyWebsite}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      leftSection={<IconWorld size={12} />}
-                      rightSection={<IconExternalLink size={10} />}
-                    >
-                      Website
-                    </Button>
-                  )}
-                  {contact.linkedinUrl && (
-                    <Button
-                      size="xs"
-                      variant="subtle"
-                      color="indigo"
-                      component="a"
-                      href={contact.linkedinUrl.startsWith('http') ? contact.linkedinUrl : `https://${contact.linkedinUrl}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      leftSection={<IconBrandLinkedin size={12} />}
-                      rightSection={<IconExternalLink size={10} />}
-                    >
-                      LinkedIn
-                    </Button>
-                  )}
-                </Group>
+            {/* Expected close date (if present) */}
+            {contact.expectedCloseDate && (
+              <div>
+                <Text size="11.5px" fw={600} style={{ color: labelColor }}>
+                  Expected close date
+                </Text>
+                <Text size="sm" fw={600} style={{ color: valueColor }} mt={2}>
+                  {contact.expectedCloseDate}
+                </Text>
               </div>
             )}
           </SimpleGrid>
         </Paper>
 
-        {/* 3. Requirement Details */}
-        <Paper p="lg" radius="20px" style={{ background: cardBg, border: cardBorder }}>
-          <Group gap="xs" mb="sm">
-            <IconBox size={16} color={isDark ? '#FB923C' : '#EA580C'} />
-            <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#FB923C' : '#EA580C', letterSpacing: '0.05em' }}>
-              3. Requirement Details
+
+        {/* Description Card */}
+        <Paper p="lg" radius="16px" style={{ background: cardBg, border: cardBorder }}>
+          <Group gap="xs" mb="xs">
+            <IconFileText size={16} color={isDark ? '#A78BFA' : '#7C3AED'} />
+            <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#A78BFA' : '#7C3AED', letterSpacing: '0.05em' }}>
+              Description
             </Text>
           </Group>
 
-          <Stack gap="xs">
-            <Group justify="space-between">
-              <Text size="xs" fw={600} style={{ color: labelColor }}>
-                Category
-              </Text>
-              <Badge variant="light" color={contact.category === 'Service' ? 'teal' : 'indigo'} size="sm">
-                {contact.category || 'Product'}
-              </Badge>
-            </Group>
-
-            <Box>
-              <Text size="11px" fw={600} style={{ color: labelColor }} mb={4}>
-                Selected {contact.category === 'Service' ? 'Services' : 'Products'}
-              </Text>
-              <Group gap={6}>
-                {(contact.category === 'Service' ? contact.serviceList : contact.productList)?.length ? (
-                  (contact.category === 'Service' ? contact.serviceList : contact.productList).map((item, idx) => (
-                    <Badge key={idx} variant="outline" color="blue" size="sm">
-                      {item}
-                    </Badge>
-                  ))
-                ) : (
-                  <Text size="xs" c="dimmed">
-                    None selected
-                  </Text>
-                )}
-              </Group>
-            </Box>
-
-            {contact.customProduct && (
-              <Box mt={4}>
-                <Text size="11px" fw={600} style={{ color: labelColor }}>
-                  Custom Requirements
-                </Text>
-                <Text size="xs" style={{ color: valueColor, background: isDark ? '#0F172A' : '#F8FAFC', padding: 8, borderRadius: 8 }} mt={2}>
-                  {contact.customProduct}
-                </Text>
-              </Box>
-            )}
-          </Stack>
+          <Text
+            size="sm"
+            style={{
+              color: valueColor,
+              whiteSpace: 'pre-wrap',
+              background: isDark ? '#1F2937' : '#F8FAFC',
+              padding: '12px 14px',
+              borderRadius: 10,
+              minHeight: 60,
+              border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #F1F5F9',
+            }}
+          >
+            {contact.description || contact.notes || 'No description provided.'}
+          </Text>
         </Paper>
 
-        {/* 4. Interaction & Follow-up Details */}
-        <Paper p="lg" radius="20px" style={{ background: cardBg, border: cardBorder }}>
-          <Group gap="xs" mb="sm">
-            <IconCalendar size={16} color={isDark ? '#C084FC' : '#9333EA'} />
-            <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#C084FC' : '#9333EA', letterSpacing: '0.05em' }}>
-              4. Interaction & Follow-up Details
-            </Text>
-          </Group>
-
-          <Box>
-            <Text size="11px" fw={600} style={{ color: labelColor }}>
-              Next Follow-up Date
-            </Text>
-            <Badge variant="filled" color="orange" size="sm" mt={2}>
-              {contact.nextFollowDate || 'Not Scheduled'}
-            </Badge>
-          </Box>
-
-          {contact.remarks && (
-            <Box mt="xs">
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Remarks / Comments
-              </Text>
-              <Text size="xs" style={{ color: valueColor }} mt={2}>
-                {contact.remarks}
-              </Text>
-            </Box>
-          )}
-
-          {contact.notes && (
-            <Box mt="xs">
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Detailed Notes
-              </Text>
-              <Text size="xs" style={{ color: valueColor, whiteSpace: 'pre-wrap', background: isDark ? '#0F172A' : '#F8FAFC', padding: 8, borderRadius: 8 }} mt={2}>
-                {contact.notes}
-              </Text>
-            </Box>
-          )}
-        </Paper>
-
-        {/* 5. Qualification & Project Details */}
-        <Paper p="lg" radius="20px" style={{ background: cardBg, border: cardBorder }}>
-          <Group gap="xs" mb="sm">
-            <IconTargetArrow size={16} color={isDark ? '#F472B6' : '#DB2777'} />
-            <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#F472B6' : '#DB2777', letterSpacing: '0.05em' }}>
-              5. Qualification & Priority Details
-            </Text>
-          </Group>
-
-          <SimpleGrid cols={2} spacing="xs">
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Qualification Status
-              </Text>
-              <Badge variant="light" color={contact.qualificationStatus === 'Qualified' ? 'teal' : 'blue'} size="sm" mt={2}>
-                {contact.qualificationStatus || 'In Progress'}
-              </Badge>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Priority
-              </Text>
-              <Badge
-                variant="light"
-                color={contact.priority === 'High' ? 'red' : contact.priority === 'Medium' ? 'orange' : 'teal'}
-                size="sm"
-                mt={2}
-              >
-                {contact.priority || 'Medium'}
-              </Badge>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Qualified By
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.qualifiedBy || '—'}
-              </Text>
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Qualification Date
-              </Text>
-              <Text size="xs" fw={600} style={{ color: valueColor }} mt={2}>
-                {contact.qualificationDate || '—'}
-              </Text>
-            </div>
-          </SimpleGrid>
-
-          {contact.disqualificationReason && (
-            <Box mt="xs" p="xs" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)', borderRadius: 8 }}>
-              <Text size="11px" fw={700} c="red">
-                Disqualification Reason:
-              </Text>
-              <Text size="xs" c="red" mt={2}>
-                {contact.disqualificationReason}
-              </Text>
-            </Box>
-          )}
-        </Paper>
-
-        {/* 6. Assignment & System Metadata */}
-        <Paper p="lg" radius="20px" style={{ background: cardBg, border: cardBorder }}>
+        {/* Quick Assign & System Metadata */}
+        <Paper p="lg" radius="16px" style={{ background: cardBg, border: cardBorder }}>
           <Group gap="xs" mb="sm">
             <IconIdBadge size={16} color={isDark ? '#818CF8' : '#4F46E5'} />
             <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#818CF8' : '#4F46E5', letterSpacing: '0.05em' }}>
-              6. Assignment & Metadata
+              Quick Assign & Status
             </Text>
           </Group>
 
-          <SimpleGrid cols={2} spacing="xs">
-            <div style={{ gridColumn: 'span 2' }}>
-              <Text size="11px" fw={600} style={{ color: labelColor }} mb={4}>
-                Quick Assign Employee
+          <Stack gap="sm">
+            {isAdmin ? (
+              <Box>
+                <Text size="11.5px" fw={600} style={{ color: labelColor }} mb={4}>
+                  Change Assigned Owner
+                </Text>
+                <Select
+                  placeholder="Assign owner"
+                  data={[
+                    { value: 'none', label: '— Unassigned —' },
+                    ...(metadata?.employees?.map((emp) => ({ value: emp.id, label: `${emp.name} (${emp.empCode})` })) || []),
+                  ]}
+                  value={contact.assignedTo || 'none'}
+                  onChange={async (val) => {
+                    await assignContact(contact.id, val === 'none' ? null : val);
+                  }}
+                  radius="md"
+                  size="sm"
+                />
+              </Box>
+            ) : (
+              <Box>
+                <Text size="11.5px" fw={600} style={{ color: labelColor }} mb={4}>
+                  Assigned Owner
+                </Text>
+                <Text size="13px" fw={600} style={{ color: isDark ? '#E2E8F0' : '#1E293B' }}>
+                  {contact.assignedToName || 'Unassigned'}
+                </Text>
+              </Box>
+            )}
+
+            <Divider my={4} color={isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9'} />
+
+            <Group justify="space-between">
+              <Text size="11px" c="dimmed">
+                Created: {formatDateTime(contact.createdAt)}
               </Text>
-              <Select
-                placeholder="Assign employee"
-                data={[
-                  { value: 'none', label: '— Unassigned —' },
-                  ...(metadata?.employees?.map((emp) => ({ value: emp.id, label: `${emp.name} (${emp.empCode})` })) || []),
-                ]}
-                value={contact.assignedTo || 'none'}
-                onChange={async (val) => {
-                  await assignContact(contact.id, val === 'none' ? null : val);
-                }}
-                radius="md"
-                size="xs"
-              />
-            </div>
-
-            <div>
-              <Text size="11px" fw={600} style={{ color: labelColor }}>
-                Assignment Status
+              <Text size="11px" c="dimmed">
+                Updated: {formatDateTime(contact.updatedAt)}
               </Text>
-              <Badge variant="light" color={contact.assignmentStatus === 'Assigned' ? 'teal' : 'gray'} size="sm" mt={2}>
-                {contact.assignmentStatus || 'Unassigned'}
-              </Badge>
-            </div>
-          </SimpleGrid>
-
-          <Divider my="sm" color={isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9'} />
-
-          <Group justify="space-between">
-            <Text size="11px" c="dimmed">
-              Created: {formatDateTime(contact.createdAt)}
-            </Text>
-            <Text size="11px" c="dimmed">
-              Updated: {formatDateTime(contact.updatedAt)}
-            </Text>
-          </Group>
+            </Group>
+          </Stack>
         </Paper>
       </Stack>
     </Drawer>

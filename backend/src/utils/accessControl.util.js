@@ -45,6 +45,7 @@ export function formatRoleResponse(role) {
     description: role.description,
     isSystem: Boolean(role.isSystem),
     appType: role.appType,
+    parentRoleId: role.parentRoleId || role.parentRole?.id || null,
     userCount: users.length,
     users: users,
     activePermissionsCount,

@@ -60,6 +60,8 @@ import {
   IconInfoCircle,
   IconFileDescription,
   IconPaperclip,
+  IconFilter,
+  IconFolder,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { Lead, ScheduledMeeting } from '../../types/lead';
@@ -69,6 +71,7 @@ import { useEmployee } from '../../context/EmployeeContext';
 import { useContact } from '../../context/ContactContext';
 import { createMeetingApi, fetchMeetingsApi } from '../../services/meetingService';
 import { MeetingDatePicker } from '../meetings/components/MeetingDatePicker';
+import { MeetingTimePicker } from '../meetings/components/MeetingTimePicker';
 import { CallLogModal } from '../calls/components/CallLogModal';
 import { CallLog } from '../../types/callLog';
 import { fetchCallLogsApi, createCallLogApi, deleteCallLogApi } from '../../services/callLogService';
@@ -79,6 +82,16 @@ interface LeadSchedulePageProps {
   onSuccess?: () => void;
 }
 
+
+const generateGoogleMeetLink = (): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz';
+  const r = (len: number) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `https://meet.google.com/${r(3)}-${r(4)}-${r(3)}`;
+};
+
+const generateZoomLink = (): string => {
+  return `https://zoom.us/j/${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+};
 
 export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
   lead: propLead,
@@ -216,6 +229,57 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     return scheduledMeetings.length > 0;
   }, [scheduledMeetings]);
 
+  // Extract all distinct projects / services for this lead
+  const leadProjects = useMemo(() => {
+    const list: string[] = [];
+    if (activeLead?.serviceList && activeLead.serviceList.length > 0) {
+      list.push(...activeLead.serviceList);
+    }
+    if (activeLead?.productList && activeLead.productList.length > 0) {
+      list.push(...activeLead.productList);
+    }
+    tags.forEach((t) => {
+      if (t && t !== 'Service' && t !== 'Product' && !list.includes(t)) {
+        list.push(t);
+      }
+    });
+    return Array.from(new Set(list.map((item) => item.trim()))).filter(Boolean);
+  }, [activeLead?.serviceList, activeLead?.productList, tags]);
+
+  // Selected project filter for the Activity Pipeline (default: first project, NO 'all' option)
+  const [selectedProjectFilter, setSelectedProjectFilter] = useState<string>(() => leadProjects[0] || '');
+  const [selectedMeetingProject, setSelectedMeetingProject] = useState<string>('');
+
+  useEffect(() => {
+    if (leadProjects.length > 0) {
+      if (!selectedProjectFilter || selectedProjectFilter === 'all' || !leadProjects.includes(selectedProjectFilter)) {
+        setSelectedProjectFilter(leadProjects[0]);
+      }
+    }
+  }, [leadProjects, selectedProjectFilter]);
+
+  // Filter meetings and activities strictly based on selected project
+  const filteredScheduledMeetings = useMemo(() => {
+    const targetProject = selectedProjectFilter || (leadProjects.length > 0 ? leadProjects[0] : '');
+    if (!targetProject) return scheduledMeetings;
+    return scheduledMeetings.filter((m) => {
+      if (m.project && m.project === targetProject) return true;
+      if (!m.project && leadProjects.length > 0 && targetProject === leadProjects[0]) return true;
+      if (m.title && m.title.toLowerCase().includes(targetProject.toLowerCase())) return true;
+      if (m.requirements && m.requirements.toLowerCase().includes(targetProject.toLowerCase())) return true;
+      return false;
+    });
+  }, [scheduledMeetings, selectedProjectFilter, leadProjects]);
+
+  const filteredCustomActivities = useMemo(() => {
+    const targetProject = selectedProjectFilter || (leadProjects.length > 0 ? leadProjects[0] : '');
+    if (!targetProject) return customActivities;
+    return customActivities.filter((act) => {
+      const txt = `${act.title || ''} ${act.text || ''}`.toLowerCase();
+      return txt.includes(targetProject.toLowerCase());
+    });
+  }, [customActivities, selectedProjectFilter, leadProjects]);
+
   // Sync scheduled meetings from backend API for this lead
   const fetchLeadBackendMeetings = useCallback(async () => {
     if (!activeLead) return;
@@ -237,6 +301,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           employeeName: m.assignedTo || m.employeeName || 'Host',
           meetingLink: m.meetingLink || m.meetingLocation || m.location || '',
           stageAfterMeeting: m.stageAfterMeeting || activeLead.stage || '',
+          project: (m as any).project || '',
           status: (m.meetingStatus || m.status as any) || 'Scheduled',
           requirements: m.requirements || '',
           requirementFileName: m.requirementFileName || '',
@@ -580,18 +645,23 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
       return;
     }
 
-    if (!meetingLink.trim()) {
+    let finalMeetingLink = meetingLink.trim();
+    if (isVirtualMeeting) {
+      if (!finalMeetingLink) {
+        finalMeetingLink = meetingType.toLowerCase().includes('zoom') ? generateZoomLink() : generateGoogleMeetLink();
+      } else if (!finalMeetingLink.startsWith('http://') && !finalMeetingLink.startsWith('https://')) {
+        if (meetingType.toLowerCase().includes('zoom')) {
+          finalMeetingLink = `https://zoom.us/j/${finalMeetingLink.replace(/\D/g, '') || Math.floor(1000000000 + Math.random() * 9000000000)}`;
+        } else {
+          finalMeetingLink = `https://meet.google.com/${finalMeetingLink}`;
+        }
+      }
+    }
+
+    if (!finalMeetingLink && isInPersonMeeting) {
       notifications.show({
-        title: isVirtualMeeting
-          ? 'Meeting Link Required'
-          : isInPersonMeeting
-          ? 'Meeting Location Required'
-          : 'Link / Location Required',
-        message: isVirtualMeeting
-          ? 'Please enter the virtual meeting link (Google Meet or Zoom URL).'
-          : isInPersonMeeting
-          ? 'Please enter the in-person meeting location or office address.'
-          : 'Please enter the meeting link or location address.',
+        title: 'Meeting Location Required',
+        message: 'Please enter the in-person meeting location or office address.',
         color: 'red',
       });
       return;
@@ -628,9 +698,9 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           meetingTime: finalTime,
           endTime: computedEndTime,
           meetingType: meetingType || 'Virtual (Google Meet)',
-          meetingLocation: meetingLink.trim(),
-          meetingLink: meetingLink.trim(),
-          location: meetingLink.trim(),
+          meetingLocation: finalMeetingLink,
+          meetingLink: finalMeetingLink,
+          location: finalMeetingLink,
           employeeName: hostName.trim() || currentUser?.name || 'Assigned Host',
           assignedTo: hostName.trim() || currentUser?.name || 'Assigned Host',
           clientName: activeLead.companyName ? `${activeLead.name} (${activeLead.companyName})` : activeLead.name,
@@ -657,8 +727,9 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
         time: finalTime,
         duration: duration || '30 Minutes',
         hostName: hostName.trim() || currentUser?.name || 'Assigned Host',
-        meetingLink: meetingLink.trim(),
+        meetingLink: finalMeetingLink,
         stageAfterMeeting: stageAfterMeeting || activeLead.stage || 'Discovery',
+        project: selectedMeetingProject || (leadProjects.length > 0 ? leadProjects[0] : ''),
         status: 'Scheduled',
         createdAt: new Date().toISOString(),
       };
@@ -767,17 +838,28 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
   const contactType = activeLead?.contactType || 'Individual';
   const companyName = activeLead?.companyName || activeLead?.profession || '—';
   const requirementType = activeLead?.category || 'Service';
-  const offerings =
-    requirementType === 'Product'
-      ? activeLead?.productList && activeLead.productList.length > 0
-        ? activeLead.productList.join(', ')
-        : '—'
-      : activeLead?.serviceList && activeLead.serviceList.length > 0
-      ? activeLead.serviceList.join(', ')
-      : '—';
+  const offeringList = useMemo(() => {
+    const list: string[] = [];
+    if (requirementType === 'Product') {
+      if (Array.isArray(activeLead?.productList) && activeLead.productList.length > 0) {
+        list.push(...activeLead.productList);
+      } else if (activeLead?.product) {
+        list.push(activeLead.product);
+      }
+    } else {
+      if (Array.isArray(activeLead?.serviceList) && activeLead.serviceList.length > 0) {
+        list.push(...activeLead.serviceList);
+      } else if (activeLead?.service) {
+        list.push(activeLead.service);
+      }
+    }
+    return Array.from(new Set(list.map((s) => (typeof s === 'string' ? s.trim() : String(s))))).filter(Boolean);
+  }, [requirementType, activeLead?.serviceList, activeLead?.productList, activeLead?.service, activeLead?.product]);
+
+  const offerings = offeringList.length > 0 ? offeringList.join(', ') : '—';
 
   return (
-    <Box p={{ base: 'xs', sm: 'md' }} style={{ maxWidth: 1560, margin: '0 auto' }}>
+    <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ width: '100%', maxWidth: '100%' }}>
       <Grid gutter={{ base: 'md', sm: 'lg' }} align="flex-start">
         
         {/* ========================================================================= */}
@@ -838,34 +920,34 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
             {/* Summary Details Rows */}
             <Stack gap="lg">
               {/* Contact Person */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+              <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0, minWidth: 125 }}>
                   <IconUser size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Contact Person
                   </Text>
                 </Group>
-                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right', wordBreak: 'break-word', flex: 1 }}>
                   {leadName}
                 </Text>
               </Group>
 
               {/* Designation */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+              <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0, minWidth: 125 }}>
                   <IconBriefcase size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Designation
                   </Text>
                 </Group>
-                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right', wordBreak: 'break-word', flex: 1 }}>
                   {designation}
                 </Text>
               </Group>
 
               {/* Email */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+              <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0, minWidth: 125 }}>
                   <IconMail size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Email
@@ -876,21 +958,21 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                   fw={600}
                   component="a"
                   href={email !== '—' ? `mailto:${email}` : undefined}
-                  style={{ color: '#2563EB', textDecoration: 'none' }}
+                  style={{ color: '#2563EB', textDecoration: 'none', textAlign: 'right', wordBreak: 'break-all', flex: 1 }}
                 >
                   {email}
                 </Text>
               </Group>
 
               {/* Phone */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+              <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0, minWidth: 125 }}>
                   <IconPhone size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Phone
                   </Text>
                 </Group>
-                <Group gap={6} align="center">
+                <Group gap={6} align="center" justify="flex-end" style={{ flex: 1 }}>
                   <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
                     {phone}
                   </Text>
@@ -910,6 +992,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                         justifyContent: 'center',
                         color: '#FFFFFF',
                         textDecoration: 'none',
+                        flexShrink: 0,
                       }}
                     >
                       <IconBrandWhatsapp size={12} stroke={2.5} />
@@ -919,46 +1002,47 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
               </Group>
 
               {/* Contact Type */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+              <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0, minWidth: 125 }}>
                   <IconUserCheck size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Contact Type
                   </Text>
                 </Group>
-                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right', wordBreak: 'break-word', flex: 1 }}>
                   {contactType}
                 </Text>
               </Group>
 
               {/* Company Name */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+              <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0, minWidth: 125 }}>
                   <IconBuilding size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Company Name
                   </Text>
                 </Group>
-                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right', wordBreak: 'break-word', flex: 1 }}>
                   {companyName}
                 </Text>
               </Group>
 
               {/* Requirement Type */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
+              <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                <Group gap={8} wrap="nowrap" style={{ flexShrink: 0, minWidth: 125 }}>
                   <IconBox size={16} color={isDark ? '#94A3B8' : '#64748B'} />
                   <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
                     Requirement Type
                   </Text>
                 </Group>
-                <Group gap={6} align="center">
+                <Group gap={6} align="center" justify="flex-end" style={{ flex: 1 }}>
                   <Box
                     style={{
                       width: 6,
                       height: 6,
                       borderRadius: '50%',
                       backgroundColor: requirementType === 'Product' ? '#F97316' : '#8B5CF6',
+                      flexShrink: 0,
                     }}
                   />
                   <Text size="13px" fw={600} style={{ color: requirementType === 'Product' ? '#F97316' : '#8B5CF6' }}>
@@ -967,108 +1051,146 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                 </Group>
               </Group>
 
-              {/* Product / Service Offering */}
-              <Group justify="space-between" align="center" wrap="nowrap">
-                <Group gap={8} wrap="nowrap">
-                  <IconLayersSubtract size={16} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                    {requirementType}
-                  </Text>
-                </Group>
-                <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827', textAlign: 'right' }}>
-                  {offerings}
-                </Text>
-              </Group>
-            </Stack>
-
-            {/* Tags Section */}
-            <Box mt="xl" pt="md" style={{ borderTop: isDark ? '1px solid #1F2937' : '1px solid #F1F5F9' }}>
-              <Group justify="space-between" align="center" mb="xs">
-                <Group gap={6}>
-                  <IconTag size={15} color={isDark ? '#94A3B8' : '#64748B'} />
-                  <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#1F2937' }}>
-                    Tags
-                  </Text>
-                </Group>
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  color="gray"
-                  leftSection={<IconPlus size={12} />}
-                  onClick={() => setShowTagInput(!showTagInput)}
-                  styles={{ root: { padding: '0 6px', height: 24, fontSize: 11 } }}
-                >
-                  Add Tag
-                </Button>
-              </Group>
-
-              {showTagInput && (
-                <Group gap="xs" mb="sm">
-                  <TextInput
-                    size="xs"
-                    placeholder="Enter tag name..."
-                    value={newTagInput}
-                    onChange={(e) => setNewTagInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
-                    style={{ flex: 1 }}
-                  />
-                  <Button
-                    size="xs"
-                    onClick={handleAddTag}
+              {/* Product / Service Offering(s) */}
+              {offeringList.length <= 1 ? (
+                <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                  <Group gap={8} wrap="nowrap" style={{ flexShrink: 0, minWidth: 125 }}>
+                    <IconLayersSubtract size={16} color={isDark ? '#94A3B8' : '#64748B'} />
+                    <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                      {requirementType}
+                    </Text>
+                  </Group>
+                  <Text
+                    size="13px"
+                    fw={600}
                     style={{
-                      background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-                      color: '#FFFFFF',
+                      color: isDark ? '#F8FAFC' : '#111827',
+                      textAlign: 'right',
+                      wordBreak: 'break-word',
+                      lineHeight: 1.4,
+                      flex: 1,
                     }}
                   >
-                    Add
-                  </Button>
+                    {offeringList[0] || '—'}
+                  </Text>
+                </Group>
+              ) : (
+                <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
+                  <Group gap={8} wrap="nowrap" style={{ flexShrink: 0, minWidth: 125 }}>
+                    <IconLayersSubtract size={16} color={isDark ? '#94A3B8' : '#64748B'} />
+                    <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                      {requirementType}
+                    </Text>
+                  </Group>
+
+                  <Stack gap={4} align="flex-end" style={{ flex: 1, minWidth: 0 }}>
+                    <Tooltip label="Click to view this project pipeline" withArrow>
+                      <Text
+                        size="13px"
+                        fw={700}
+                        onClick={() => {
+                          const activePrj = (selectedProjectFilter && offeringList.includes(selectedProjectFilter))
+                            ? selectedProjectFilter
+                            : offeringList[0];
+                          if (activePrj) {
+                            setSelectedProjectFilter(activePrj);
+                            setRightViewMode('pipeline');
+                          }
+                        }}
+                        style={{
+                          color: '#4F46E5',
+                          textAlign: 'right',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.35,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {selectedProjectFilter && offeringList.includes(selectedProjectFilter)
+                          ? selectedProjectFilter
+                          : offeringList[0]}
+                      </Text>
+                    </Tooltip>
+
+                    <Menu shadow="md" width={280} position="bottom-end">
+                      <Menu.Target>
+                        <Button
+                          size="compact-xs"
+                          variant="light"
+                          color="indigo"
+                          radius="md"
+                          rightSection={<IconChevronDown size={12} />}
+                          styles={{
+                            root: {
+                              height: 22,
+                              padding: '0 8px',
+                              fontSize: 11,
+                              fontWeight: 600,
+                            },
+                          }}
+                        >
+                          +{offeringList.length - 1} More Option{offeringList.length - 1 > 1 ? 's' : ''}
+                        </Button>
+                      </Menu.Target>
+
+                      <Menu.Dropdown
+                        style={{
+                          backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+                          borderColor: isDark ? '#374151' : '#E2E8F0',
+                          padding: 6,
+                          borderRadius: 10,
+                        }}
+                      >
+                        <Menu.Label style={{ fontSize: 11, fontWeight: 700, color: isDark ? '#94A3B8' : '#64748B', letterSpacing: '0.04em' }}>
+                          ALL {requirementType.toUpperCase()}S ({offeringList.length})
+                        </Menu.Label>
+                        {offeringList.map((item, idx) => {
+                          const isSelected = (selectedProjectFilter || offeringList[0]) === item;
+                          return (
+                            <Menu.Item
+                              key={idx}
+                              onClick={() => {
+                                setSelectedProjectFilter(item);
+                                setRightViewMode('pipeline');
+                              }}
+                              leftSection={
+                                <Box
+                                  style={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: '50%',
+                                    backgroundColor: isSelected
+                                      ? '#6366F1'
+                                      : requirementType === 'Product'
+                                      ? '#F97316'
+                                      : '#8B5CF6',
+                                    flexShrink: 0,
+                                  }}
+                                />
+                              }
+                              rightSection={
+                                isSelected ? (
+                                  <Badge size="xs" color="indigo" variant="filled">
+                                    Active
+                                  </Badge>
+                                ) : null
+                              }
+                              style={{
+                                fontWeight: isSelected ? 700 : 500,
+                                fontSize: 12.5,
+                                borderRadius: 6,
+                                backgroundColor: isSelected ? (isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF') : undefined,
+                              }}
+                            >
+                              {item}
+                            </Menu.Item>
+                          );
+                        })}
+                      </Menu.Dropdown>
+                    </Menu>
+                  </Stack>
                 </Group>
               )}
-
-              <Group gap={6} wrap="wrap">
-                {tags.map((tag, idx) => (
-                  <Badge
-                    key={idx}
-                    radius="md"
-                    size="md"
-                    styles={{
-                      root: {
-                        backgroundColor:
-                          idx === 0
-                            ? isDark
-                              ? 'rgba(79, 70, 229, 0.18)'
-                              : '#EEF2FF'
-                            : isDark
-                            ? 'rgba(6, 182, 212, 0.18)'
-                            : '#ECFEFF',
-                        color:
-                          idx === 0
-                            ? isDark
-                              ? '#A5B4FC'
-                              : '#4338CA'
-                            : isDark
-                            ? '#67E8F9'
-                            : '#0891B2',
-                        border:
-                          idx === 0
-                            ? isDark
-                              ? '1px solid rgba(99, 102, 241, 0.3)'
-                              : '1px solid #C7D2FE'
-                            : isDark
-                            ? '1px solid rgba(6, 182, 212, 0.3)'
-                            : '1px solid #A5F3FC',
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        fontSize: 12,
-                        padding: '4px 10px',
-                      },
-                    }}
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-              </Group>
-            </Box>
+            </Stack>
           </Paper>
         </Grid.Col>
 
@@ -1093,112 +1215,163 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           >
             {/* Top Bar: Title, Subtitle & View Mode Switcher */}
             <Box style={{ flexShrink: 0 }} mb="md">
-              <Group justify="space-between" align="center" wrap="wrap" gap="md">
-              <Group gap="sm" align="center">
-                <Box
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: '50%',
-                    backgroundColor: isDark ? 'rgba(79, 70, 229, 0.2)' : '#EEF2FF',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: isDark ? '#A5B4FC' : '#4F46E5',
-                  }}
-                >
-                  <IconCalendar size={19} stroke={2.2} />
-                </Box>
-                <div>
-                  <Text fw={800} size="20px" style={{ color: isDark ? '#F8FAFC' : '#111827', letterSpacing: '-0.02em' }}>
-                    {rightViewMode === 'schedule' ? 'Schedule Meeting' : 'Activity Pipeline'}
-                  </Text>
-                  <Text size="xs" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                    {rightViewMode === 'schedule'
-                      ? `Set up a discovery call or presentation with ${leadName}`
-                      : `Track activity progress and history for ${leadName}`}
-                  </Text>
-                </div>
-              </Group>
-
-              <Group gap="xs">
-                {/* View Switcher Pills */}
-                <Group
-                  gap={4}
-                  p={4}
-                  style={{
-                    backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
-                    borderRadius: 10,
-                    border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0',
-                  }}
-                >
-                  <Button
-                    size="xs"
-                    leftSection={<IconCalendar size={13} />}
-                    onClick={() => {
-                      setRightViewMode('schedule');
-                      sessionStorage.setItem('crm_schedule_tab', 'schedule');
-                    }}
+              <Group justify="space-between" align="center" wrap="nowrap" gap="sm">
+                {/* Left Side: Icon, Title, Active Project Badge & Subtitle */}
+                <Group gap="xs" align="center" wrap="nowrap" style={{ flex: '1 1 auto', minWidth: 0 }}>
+                  <Box
                     style={{
-                      borderRadius: 8,
-                      fontWeight: 700,
-                      background: rightViewMode === 'schedule' ? 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)' : 'transparent',
-                      color: rightViewMode === 'schedule' ? '#FFFFFF' : (isDark ? '#94A3B8' : '#64748B'),
-                      boxShadow: rightViewMode === 'schedule' ? '0 2px 8px rgba(79, 70, 229, 0.35)' : 'none',
-                      border: 'none',
+                      width: 34,
+                      height: 34,
+                      borderRadius: '50%',
+                      backgroundColor: isDark ? 'rgba(79, 70, 229, 0.2)' : '#EEF2FF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: isDark ? '#A5B4FC' : '#4F46E5',
+                      flexShrink: 0,
                     }}
                   >
-                    Schedule Meeting
-                  </Button>
-
-                  <Tooltip
-                    label={!isFirstMeetingScheduled ? "Schedule the first meeting to unlock the Activity Pipeline" : undefined}
-                    withArrow
-                  >
-                    <Box component="span">
-                      <Button
-                        size="xs"
-                        leftSection={!isFirstMeetingScheduled ? <IconLock size={13} /> : <IconLayersSubtract size={13} />}
-                        disabled={!isFirstMeetingScheduled}
-                        onClick={() => {
-                          if (!isFirstMeetingScheduled) return;
-                          setRightViewMode('pipeline');
-                          sessionStorage.setItem('crm_schedule_tab', 'pipeline');
-                        }}
+                    <IconCalendar size={18} stroke={2.2} />
+                  </Box>
+                  <Box style={{ minWidth: 0, flex: 1 }}>
+                    <Group gap={6} align="center" wrap="nowrap">
+                      <Text
+                        fw={800}
+                        size="17px"
                         style={{
-                          borderRadius: 8,
-                          fontWeight: 700,
-                          background: rightViewMode === 'pipeline' ? 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)' : 'transparent',
-                          color: rightViewMode === 'pipeline' ? '#FFFFFF' : (isDark ? '#94A3B8' : '#64748B'),
-                          boxShadow: rightViewMode === 'pipeline' ? '0 2px 8px rgba(79, 70, 229, 0.35)' : 'none',
-                          border: 'none',
-                          opacity: !isFirstMeetingScheduled ? 0.6 : 1,
-                          cursor: !isFirstMeetingScheduled ? 'not-allowed' : 'pointer',
+                          color: isDark ? '#F8FAFC' : '#111827',
+                          letterSpacing: '-0.02em',
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        Activity Pipeline
-                      </Button>
-                    </Box>
-                  </Tooltip>
+                        {rightViewMode === 'schedule' ? 'Schedule Meeting' : 'Activity Pipeline'}
+                      </Text>
+                      {rightViewMode === 'pipeline' && selectedProjectFilter && (
+                        <Badge
+                          size="sm"
+                          variant="light"
+                          color="indigo"
+                          radius="sm"
+                          style={{
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            maxWidth: 180,
+                            flexShrink: 1,
+                          }}
+                        >
+                          <Text truncate size="11px">{selectedProjectFilter}</Text>
+                        </Badge>
+                      )}
+                    </Group>
+                    <Text size="xs" truncate style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                      {rightViewMode === 'schedule'
+                        ? `Set up a discovery call or presentation with ${leadName}`
+                        : `Track activity progress and history for ${leadName}`}
+                    </Text>
+                  </Box>
                 </Group>
 
-                {rightViewMode === 'pipeline' && (
-                  <Menu shadow="md" width={220} position="bottom-end">
-                    <Menu.Target>
-                      <Button
-                        size="sm"
-                        variant="default"
-                        rightSection={<IconChevronDown size={14} />}
-                        style={{
-                          borderRadius: 10,
-                          fontWeight: 600,
-                          borderColor: isDark ? '#374151' : '#E2E8F0',
-                          color: isDark ? '#F8FAFC' : '#1F2937',
-                        }}
-                      >
-                        + New
-                      </Button>
-                    </Menu.Target>
+                {/* Right Side: View Switcher Pills + "+ New" Button */}
+                <Group gap="xs" align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
+                  {/* View Switcher Pills */}
+                  <Group
+                    gap={2}
+                    p={3}
+                    wrap="nowrap"
+                    style={{
+                      backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                      borderRadius: 10,
+                      border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0',
+                    }}
+                  >
+                    <Button
+                      size="xs"
+                      leftSection={<IconCalendar size={13} />}
+                      onClick={() => {
+                        setRightViewMode('schedule');
+                        sessionStorage.setItem('crm_schedule_tab', 'schedule');
+                      }}
+                      styles={{
+                        root: {
+                          height: 28,
+                          padding: '0 10px',
+                          fontSize: 12,
+                        },
+                      }}
+                      style={{
+                        borderRadius: 8,
+                        fontWeight: 700,
+                        background: rightViewMode === 'schedule' ? 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)' : 'transparent',
+                        color: rightViewMode === 'schedule' ? '#FFFFFF' : (isDark ? '#94A3B8' : '#64748B'),
+                        boxShadow: rightViewMode === 'schedule' ? '0 2px 8px rgba(79, 70, 229, 0.35)' : 'none',
+                        border: 'none',
+                      }}
+                    >
+                      Schedule Meeting
+                    </Button>
+
+                    <Tooltip
+                      label={!isFirstMeetingScheduled ? "Schedule the first meeting to unlock the Activity Pipeline" : undefined}
+                      withArrow
+                    >
+                      <Box component="span">
+                        <Button
+                          size="xs"
+                          leftSection={!isFirstMeetingScheduled ? <IconLock size={13} /> : <IconLayersSubtract size={13} />}
+                          disabled={!isFirstMeetingScheduled}
+                          onClick={() => {
+                            if (!isFirstMeetingScheduled) return;
+                            setRightViewMode('pipeline');
+                            sessionStorage.setItem('crm_schedule_tab', 'pipeline');
+                          }}
+                          styles={{
+                            root: {
+                              height: 28,
+                              padding: '0 10px',
+                              fontSize: 12,
+                            },
+                          }}
+                          style={{
+                            borderRadius: 8,
+                            fontWeight: 700,
+                            background: rightViewMode === 'pipeline' ? 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)' : 'transparent',
+                            color: rightViewMode === 'pipeline' ? '#FFFFFF' : (isDark ? '#94A3B8' : '#64748B'),
+                            boxShadow: rightViewMode === 'pipeline' ? '0 2px 8px rgba(79, 70, 229, 0.35)' : 'none',
+                            border: 'none',
+                            opacity: !isFirstMeetingScheduled ? 0.6 : 1,
+                            cursor: !isFirstMeetingScheduled ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          Activity Pipeline
+                        </Button>
+                      </Box>
+                    </Tooltip>
+                  </Group>
+
+                  {rightViewMode === 'pipeline' && (
+                    <Menu shadow="md" width={220} position="bottom-end">
+                      <Menu.Target>
+                        <Button
+                          size="xs"
+                          variant="default"
+                          rightSection={<IconChevronDown size={13} />}
+                          styles={{
+                            root: {
+                              height: 32,
+                              padding: '0 10px',
+                              fontSize: 12,
+                            },
+                          }}
+                          style={{
+                            borderRadius: 8,
+                            fontWeight: 600,
+                            borderColor: isDark ? '#374151' : '#E2E8F0',
+                            color: isDark ? '#F8FAFC' : '#1F2937',
+                          }}
+                        >
+                          + New
+                        </Button>
+                      </Menu.Target>
 
                     <Menu.Dropdown style={{ backgroundColor: isDark ? '#1F2937' : '#FFFFFF', border: isDark ? '1px solid #374151' : '1px solid #E2E8F0' }}>
                       <Menu.Item
@@ -1247,6 +1420,8 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
             </Group>
           </Box>
 
+
+
             {/* Scrollable Middle Pipeline / Schedule Content Area */}
             <ScrollArea
               style={{ flex: 1, minHeight: 0, width: '100%' }}
@@ -1287,336 +1462,215 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                       </Group>
                     </Paper>
                   )}
-                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                    <TextInput
-                      label="Meeting Title / Subject"
-                      withAsterisk
-                      placeholder={activeLead ? `e.g. Discovery & Requirement Call with ${activeLead.name}` : 'e.g. Discovery & Requirement Call'}
-                      value={meetingTitle}
-                      onChange={(e) => setMeetingTitle(e.target.value)}
-                      required
-                      styles={{
-                        label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
-                        input: {
-                          height: 44,
-                          borderRadius: 10,
-                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                          borderColor: isDark ? '#334155' : '#E2E8F0',
-                        },
-                      }}
-                    />
+                  <Grid gutter="lg">
+                    {/* Row 1: Meeting Title & Project (or Meeting Type if no projects) */}
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
+                      <TextInput
+                        label="Meeting Title / Subject"
+                        withAsterisk
+                        placeholder={activeLead ? `e.g. Discovery Call with ${activeLead.name}` : 'e.g. Discovery & Requirement Call'}
+                        value={meetingTitle}
+                        onChange={(e) => setMeetingTitle(e.target.value)}
+                        required
+                        styles={{
+                          label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
+                          input: {
+                            height: 44,
+                            borderRadius: 10,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? '#334155' : '#CBD5E1',
+                            fontSize: 14,
+                            color: isDark ? '#F8FAFC' : '#1E293B',
+                          },
+                        }}
+                      />
+                    </Grid.Col>
 
-                    <Select
-                      label="Meeting Type"
-                      withAsterisk
-                      placeholder="Select Meeting Type"
-                      clearable
-                      data={[
-                        'Virtual (Google Meet)',
-                        'Virtual (Zoom)',
-                        'In-Person (Client Office)',
-                        'In-Person (Our Office)',
-                      ]}
-                      value={meetingType}
-                      onChange={(val) => setMeetingType(val || '')}
-                      required
-                      styles={{
-                        label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
-                        input: {
-                          height: 44,
-                          borderRadius: 10,
-                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                          borderColor: isDark ? '#334155' : '#E2E8F0',
-                        },
-                      }}
-                    />
-                  </SimpleGrid>
+                    {leadProjects.length > 0 ? (
+                      <Grid.Col span={{ base: 12, sm: 6 }}>
+                        <Select
+                          label="Project / Service Pipeline"
+                          placeholder="Select which project this meeting is for"
+                          data={leadProjects}
+                          value={selectedMeetingProject || leadProjects[0]}
+                          onChange={(val) => setSelectedMeetingProject(val || '')}
+                          clearable
+                          styles={{
+                            label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
+                            input: {
+                              height: 44,
+                              borderRadius: 10,
+                              backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                              borderColor: isDark ? '#334155' : '#CBD5E1',
+                              fontSize: 14,
+                              color: isDark ? '#F8FAFC' : '#1E293B',
+                            },
+                          }}
+                        />
+                      </Grid.Col>
+                    ) : null}
 
-                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                    <MeetingDatePicker
-                      label="Meeting Date"
-                      placeholder="Select Meeting Date"
-                      required
-                      value={meetingDate}
-                      onChange={(val) => setMeetingDate(val)}
-                    />
-
-                    {/* 12-Hour Time Picker with Popover */}
-                    <Box>
-                      <Popover
-                        opened={timePickerOpened}
-                        onChange={setTimePickerOpened}
-                        position="bottom-start"
-                        shadow="xl"
-                        radius="md"
-                        width={310}
-                        withArrow
-                      >
-                        <Popover.Target>
-                          <TextInput
-                            label="Meeting Time"
-                            placeholder="Select Meeting Time (e.g. 11:00 AM)"
-                            required
-                            withAsterisk
-                            value={meetingTime}
-                            onChange={handleManualTimeChange}
-                            onClick={() => setTimePickerOpened(true)}
-                            leftSection={<IconClock size={16} color="#64748B" />}
-                            rightSection={
-                              <ActionIcon
-                                variant="subtle"
-                                color="gray"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTimePickerOpened((o) => !o);
-                                }}
-                              >
-                                <IconClock size={16} />
-                              </ActionIcon>
+                    {/* Row 2: Meeting Type & Duration */}
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
+                      <Select
+                        label="Meeting Type"
+                        withAsterisk
+                        placeholder="Select Meeting Type"
+                        clearable
+                        data={[
+                          'Virtual (Google Meet)',
+                          'Virtual (Zoom)',
+                          'In-Person (Client Office)',
+                          'In-Person (Our Office)',
+                        ]}
+                        value={meetingType}
+                        onChange={(val) => {
+                          const newType = val || '';
+                          setMeetingType(newType);
+                          if (newType.toLowerCase().includes('google meet')) {
+                            if (!meetingLink || meetingLink.startsWith('https://zoom') || !meetingLink.startsWith('http')) {
+                              setMeetingLink(generateGoogleMeetLink());
                             }
-                            styles={{
-                              label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
-                              input: {
-                                height: 44,
-                                borderRadius: 10,
-                                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                                borderColor: isDark ? '#334155' : '#E2E8F0',
-                              },
-                            }}
-                          />
-                        </Popover.Target>
+                          } else if (newType.toLowerCase().includes('zoom')) {
+                            if (!meetingLink || meetingLink.startsWith('https://meet') || !meetingLink.startsWith('http')) {
+                              setMeetingLink(generateZoomLink());
+                            }
+                          } else if (newType.toLowerCase().includes('in-person')) {
+                            if (meetingLink.startsWith('https://meet.google.com') || meetingLink.startsWith('https://zoom.us')) {
+                              setMeetingLink('');
+                            }
+                          }
+                        }}
+                        required
+                        styles={{
+                          label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
+                          input: {
+                            height: 44,
+                            borderRadius: 10,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? '#334155' : '#CBD5E1',
+                            fontSize: 14,
+                            color: isDark ? '#F8FAFC' : '#1E293B',
+                          },
+                        }}
+                      />
+                    </Grid.Col>
 
-                        <Popover.Dropdown p="sm">
-                          {/* Header */}
-                          <Group justify="space-between" align="center" mb={8}>
-                            <Text size="xs" fw={700} c="dimmed" style={{ letterSpacing: '0.05em' }}>
-                              12-HOUR TIME
-                            </Text>
-                            <Badge
-                              size="md"
-                              radius="sm"
-                              variant="outline"
-                              styles={{
-                                root: {
-                                  borderColor: isDark ? '#475569' : '#D1D5DB',
-                                  color: isDark ? '#F1F5F9' : '#1F2937',
-                                  fontWeight: 700,
-                                  backgroundColor: isDark ? '#1E293B' : '#F3F4F6',
-                                },
-                              }}
-                            >
-                              {meetingTime || 'Select Time'}
-                            </Badge>
-                          </Group>
-                          <Divider mb={8} />
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
+                      <Select
+                        label="Duration"
+                        placeholder="Select Duration"
+                        clearable
+                        data={['15 Minutes', '30 Minutes', '45 Minutes', '1 Hour', '1.5 Hours', '2 Hours']}
+                        value={duration}
+                        onChange={(val) => setDuration(val || '')}
+                        styles={{
+                          label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
+                          input: {
+                            height: 44,
+                            borderRadius: 10,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? '#334155' : '#CBD5E1',
+                            fontSize: 14,
+                            color: isDark ? '#F8FAFC' : '#1E293B',
+                          },
+                        }}
+                      />
+                    </Grid.Col>
 
-                          {/* Period (AM / PM) */}
-                          <Text size="xs" fw={700} c="dimmed" mb={4} style={{ letterSpacing: '0.03em' }}>
-                            PERIOD (AM / PM)
-                          </Text>
-                          <SimpleGrid cols={2} spacing={6} mb={10}>
-                            {['AM', 'PM'].map((p) => (
-                              <Button
-                                key={p}
-                                size="xs"
-                                radius="md"
-                                onClick={() => handlePeriodSelect(p)}
-                                style={{
-                                  backgroundColor: meetingPeriod === p ? '#4B5563' : (isDark ? '#1E293B' : '#F3F4F6'),
-                                  color: meetingPeriod === p ? '#FFFFFF' : (isDark ? '#94A3B8' : '#4B5563'),
-                                  fontWeight: 700,
-                                  height: 30,
-                                  border: meetingPeriod === p ? 'none' : isDark ? '1px solid #334155' : '1px solid #E5E7EB',
-                                  transition: 'all 150ms ease',
-                                }}
-                              >
-                                {p}
-                              </Button>
-                            ))}
-                          </SimpleGrid>
+                    {/* Row 3: Meeting Date & Meeting Time (Balanced 50/50 side by side) */}
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
+                      <MeetingDatePicker
+                        label="Meeting Date"
+                        placeholder="Select Meeting Date"
+                        required
+                        value={meetingDate}
+                        onChange={(val) => setMeetingDate(val)}
+                        styles={{
+                          label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
+                          input: {
+                            height: 44,
+                            borderRadius: 10,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? '#334155' : '#CBD5E1',
+                            fontSize: 14,
+                            color: isDark ? '#F8FAFC' : '#1E293B',
+                          },
+                        }}
+                      />
+                    </Grid.Col>
 
-                          {/* Hour (01 - 12) */}
-                          <Text size="xs" fw={700} c="dimmed" mb={4} style={{ letterSpacing: '0.03em' }}>
-                            HOUR (01 – 12)
-                          </Text>
-                          <SimpleGrid cols={6} spacing={4} mb={10}>
-                            {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'].map((hr) => (
-                              <Button
-                                key={hr}
-                                size="xs"
-                                radius="sm"
-                                p={0}
-                                onClick={() => handleHourSelect(hr)}
-                                style={{
-                                  backgroundColor: meetingHours === hr ? '#4B5563' : (isDark ? '#1E293B' : '#FFFFFF'),
-                                  color: meetingHours === hr ? '#FFFFFF' : (isDark ? '#F1F5F9' : '#1F2937'),
-                                  height: 28,
-                                  fontSize: 12,
-                                  fontWeight: meetingHours === hr ? 700 : 500,
-                                  border: meetingHours === hr ? 'none' : isDark ? '1px solid #334155' : '1px solid #E5E7EB',
-                                  transition: 'all 150ms ease',
-                                }}
-                              >
-                                {hr}
-                              </Button>
-                            ))}
-                          </SimpleGrid>
+                    <Grid.Col span={{ base: 12, sm: 6 }}>
+                      <MeetingTimePicker
+                        label="Meeting Time"
+                        placeholder="e.g. 11:00 AM"
+                        required
+                        value={meetingTime}
+                        onChange={(val) => setMeetingTime(val)}
+                        styles={{
+                          label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
+                          input: {
+                            height: 44,
+                            borderRadius: 10,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? '#334155' : '#CBD5E1',
+                            fontSize: 14,
+                            color: isDark ? '#F8FAFC' : '#1E293B',
+                          },
+                        }}
+                      />
+                    </Grid.Col>
 
-                          {/* Minute */}
-                          <Group justify="space-between" align="center" mb={4}>
-                            <Text size="xs" fw={700} c="dimmed" style={{ letterSpacing: '0.03em' }}>
-                              MINUTE
-                            </Text>
-                            <Text size="xs" c="dimmed" fw={600}>
-                              :{meetingMinutes}
-                            </Text>
-                          </Group>
-                          <SimpleGrid cols={6} spacing={4} mb={10}>
-                            {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map((min) => (
-                              <Button
-                                key={min}
-                                size="xs"
-                                radius="sm"
-                                p={0}
-                                onClick={() => handleMinuteSelect(min)}
-                                style={{
-                                  backgroundColor: meetingMinutes === min ? '#4B5563' : (isDark ? '#1E293B' : '#FFFFFF'),
-                                  color: meetingMinutes === min ? '#FFFFFF' : (isDark ? '#F1F5F9' : '#1F2937'),
-                                  height: 28,
-                                  fontSize: 12,
-                                  fontWeight: meetingMinutes === min ? 700 : 500,
-                                  border: meetingMinutes === min ? 'none' : isDark ? '1px solid #334155' : '1px solid #E5E7EB',
-                                  transition: 'all 150ms ease',
-                                }}
-                              >
-                                {min}
-                              </Button>
-                            ))}
-                          </SimpleGrid>
+                    {/* Row 4: Host / Assigned Rep & Meeting Link / Location */}
+                    <Grid.Col span={{ base: 12, sm: leadProjects.length > 0 ? 6 : 6 }}>
+                      <TextInput
+                        label="Host / Assigned Rep"
+                        placeholder={currentUser?.name ? `e.g. ${currentUser.name}` : 'e.g. Santhosh C'}
+                        value={hostName}
+                        onChange={(e) => setHostName(e.target.value)}
+                        styles={{
+                          label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
+                          input: {
+                            height: 44,
+                            borderRadius: 10,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? '#334155' : '#CBD5E1',
+                            fontSize: 14,
+                            color: isDark ? '#F8FAFC' : '#1E293B',
+                          },
+                        }}
+                      />
+                    </Grid.Col>
 
-                          <Divider my={8} />
-
-                          {/* Footer */}
-                          <Group justify="space-between" align="center">
-                            <Button
-                              variant="subtle"
-                              size="xs"
-                              p={0}
-                              onClick={handleClearTime}
-                              style={{
-                                color: '#0078D4',
-                                fontWeight: 600,
-                                fontSize: 13,
-                              }}
-                            >
-                              Clear Time
-                            </Button>
-
-                            <Group gap={4} align="center">
-                              <Text size="xs" c="dimmed" fw={500}>Exact Min:</Text>
-                              <input
-                                type="text"
-                                inputMode="numeric"
-                                maxLength={2}
-                                value={exactMinInput}
-                                onChange={(e) => handleExactMinChange(e.target.value)}
-                                placeholder="0"
-                                style={{
-                                  width: 38,
-                                  height: 26,
-                                  borderRadius: 4,
-                                  border: isDark ? '1px solid #374151' : '1px solid #D1D5DB',
-                                  background: isDark ? '#1E293B' : '#FFFFFF',
-                                  color: isDark ? '#FFFFFF' : '#1F2937',
-                                  textAlign: 'center',
-                                  fontSize: 12,
-                                  fontWeight: 600,
-                                  outline: 'none',
-                                }}
-                              />
-                            </Group>
-
-                            <Button
-                              size="xs"
-                              radius="sm"
-                              onClick={() => setTimePickerOpened(false)}
-                              style={{
-                                backgroundColor: '#374151',
-                                color: '#FFFFFF',
-                                fontWeight: 700,
-                                height: 26,
-                                padding: '0 14px',
-                              }}
-                            >
-                              Done
-                            </Button>
-                          </Group>
-                        </Popover.Dropdown>
-                      </Popover>
-                    </Box>
-                  </SimpleGrid>
-
-                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                    <Select
-                      label="Duration"
-                      placeholder="Select Duration"
-                      clearable
-                      data={['15 Minutes', '30 Minutes', '45 Minutes', '1 Hour', '1.5 Hours', '2 Hours']}
-                      value={duration}
-                      onChange={(val) => setDuration(val || '')}
-                      styles={{
-                        label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
-                        input: {
-                          height: 44,
-                          borderRadius: 10,
-                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                          borderColor: isDark ? '#334155' : '#E2E8F0',
-                        },
-                      }}
-                    />
-
-                    <TextInput
-                      label="Host / Assigned Rep"
-                      placeholder={currentUser?.name ? `e.g. ${currentUser.name}` : 'e.g. Host / Assigned Rep'}
-                      value={hostName}
-                      onChange={(e) => setHostName(e.target.value)}
-                      styles={{
-                        label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
-                        input: {
-                          height: 44,
-                          borderRadius: 10,
-                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                          borderColor: isDark ? '#334155' : '#E2E8F0',
-                        },
-                      }}
-                    />
-                  </SimpleGrid>
-
-                  <TextInput
-                    label={locationFieldLabel}
-                    withAsterisk
-                    required
-                    value={meetingLink}
-                    onChange={(e) => setMeetingLink(e.target.value)}
-                    placeholder={locationFieldPlaceholder}
-                    leftSection={
-                      isInPersonMeeting ? (
-                        <IconMapPin size={16} color="#64748B" />
-                      ) : (
-                        <IconVideo size={16} color="#64748B" />
-                      )
-                    }
-                    styles={{
-                      label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
-                      input: {
-                        height: 44,
-                        borderRadius: 10,
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                        borderColor: isDark ? '#334155' : '#E2E8F0',
-                      },
-                    }}
-                  />
+                    <Grid.Col span={{ base: 12, sm: leadProjects.length > 0 ? 6 : 12 }}>
+                      <TextInput
+                        label={locationFieldLabel}
+                        withAsterisk
+                        required
+                        value={meetingLink}
+                        onChange={(e) => setMeetingLink(e.target.value)}
+                        placeholder={locationFieldPlaceholder}
+                        leftSection={
+                          isInPersonMeeting ? (
+                            <IconMapPin size={16} color="#64748B" />
+                          ) : (
+                            <IconVideo size={16} color="#64748B" />
+                          )
+                        }
+                        styles={{
+                          label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
+                          input: {
+                            height: 44,
+                            borderRadius: 10,
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            borderColor: isDark ? '#334155' : '#CBD5E1',
+                            fontSize: 14,
+                            color: isDark ? '#F8FAFC' : '#1E293B',
+                          },
+                        }}
+                      />
+                    </Grid.Col>
+                  </Grid>
 
                   <Group justify="flex-end" mt="xl" gap="md">
                     {isFirstMeetingScheduled && (
@@ -1727,7 +1781,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                       />
 
                       {/* Custom Activities (Calls, Emails, Notes) */}
-                      {customActivities.map((act) => {
+                      {filteredCustomActivities.map((act) => {
                         if (act.type === 'call') {
                           return (
                             <Box key={act.id} mb="28px" style={{ position: 'relative' }}>
@@ -1967,398 +2021,320 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                         );
                       })}
 
-                      {/* Loop through all scheduled meetings */}
-                      {scheduledMeetings.map((meet, meetIdx) => {
-                        const prevMeet = meetIdx > 0 ? scheduledMeetings[meetIdx - 1] : null;
-                        const shouldShowAgenda = (() => {
-                          if (meetIdx === 0) return true;
-                          if (!prevMeet) return false;
+                      {/* Loop through filtered scheduled meetings: Render each meeting as ONE single comprehensive card */}
+                      {filteredScheduledMeetings.map((meet) => {
+                        const rawLoc = (meet.meetingLink || '').trim();
+                        const meetTypeLower = (meet.meetingType || '').toLowerCase();
+                        const isVirtual =
+                          meetTypeLower.includes('virtual') ||
+                          meetTypeLower.includes('online') ||
+                          meetTypeLower.includes('meet') ||
+                          meetTypeLower.includes('zoom');
 
-                          const currentStage = meet.stageAfterMeeting || activeLead?.stage || 'Discovery';
-                          const prevStage = prevMeet.stageAfterMeeting || activeLead?.stage || 'Discovery';
-                          if (currentStage !== prevStage) return true;
+                        const isMeetInPerson =
+                          meetTypeLower.includes('in-person') ||
+                          meetTypeLower.includes('client office') ||
+                          meetTypeLower.includes('our office');
 
-                          const currentAgenda = (meet.agenda || meet.purpose || '').trim();
-                          const prevAgenda = (prevMeet.agenda || prevMeet.purpose || '').trim();
-                          if (currentAgenda && currentAgenda !== prevAgenda) return true;
+                        // Resolve effective link
+                        let effectiveLink = rawLoc;
+                        if (!effectiveLink && isVirtual) {
+                          const meetSuffix = meet.id ? String(meet.id).replace(/\D/g, '').slice(-8) || 'online' : 'online';
+                          effectiveLink = `https://meet.google.com/crm-${meetSuffix}`;
+                        } else if (isVirtual && !effectiveLink.startsWith('http://') && !effectiveLink.startsWith('https://')) {
+                          if (effectiveLink.toLowerCase().includes('zoom')) {
+                            effectiveLink = `https://zoom.us/j/${effectiveLink.replace(/\D/g, '') || '1234567890'}`;
+                          } else {
+                            effectiveLink = `https://meet.google.com/${effectiveLink}`;
+                          }
+                        }
 
-                          const currentHost = (meet.hostName || '').trim();
-                          const prevHost = (prevMeet.hostName || '').trim();
-                          if (currentHost && prevHost && currentHost !== prevHost) return true;
-
-                          const currentReq = (meet.requirements || '').trim();
-                          const prevReq = (prevMeet.requirements || '').trim();
-                          if (currentReq && currentReq !== prevReq) return true;
-
-                          return false;
-                        })();
+                        const isOnlineMeet = isVirtual || effectiveLink.startsWith('http://') || effectiveLink.startsWith('https://');
+                        const joinUrl = effectiveLink.startsWith('http://') || effectiveLink.startsWith('https://')
+                          ? effectiveLink
+                          : `https://${effectiveLink}`;
 
                         return (
-                          <Box key={meet.id} mb="xl">
-                  {/* ========================================================= */}
-                  {/* STAGE 1: MEETING SCHEDULED                                */}
-                  {/* ========================================================= */}
-                  <Box mb="28px" style={{ position: 'relative' }}>
-                    {/* Node 1 Marker Icon */}
-                    <Box
-                      style={{
-                        position: 'absolute',
-                        left: '-52px',
-                        top: '0px',
-                        width: '38px',
-                        height: '38px',
-                        borderRadius: '50%',
-                        backgroundColor: isDark ? 'rgba(79, 70, 229, 0.2)' : '#EEF2FF',
-                        border: isDark ? '2px solid #6366F1' : '2px solid #4F46E5',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: isDark ? '#A5B4FC' : '#4F46E5',
-                        zIndex: 2,
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                      }}
-                    >
-                      <IconCalendar size={18} stroke={2.2} />
-                    </Box>
-
-                    {/* Stage 1 Header */}
-                    <Group justify="space-between" align="center" mb={8}>
-                      <Group gap="xs" align="center">
-                        <Avatar size={24} radius="xl" color="green">
-                          {meet.hostName ? meet.hostName.charAt(0) : 'S'}
-                        </Avatar>
-                        <Text fw={700} size="14px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-                          {meet.hostName} scheduled a meeting with {leadName}
-                        </Text>
-                      </Group>
-                      <Badge
-                        size="sm"
-                        variant="light"
-                        color={getMeetingStatusColor(meet.status)}
-                        style={{
-                          fontWeight: 700,
-                          textTransform: 'none',
-                        }}
-                      >
-                        {meet.status || 'Scheduled'}
-                      </Badge>
-                    </Group>
-
-                    {/* Stage 1 Card: Meeting Info */}
-                    <Box
-                      p="16px 20px"
-                      style={{
-                        backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                        border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-                        borderRadius: '14px',
-                      }}
-                    >
-                      <Group justify="space-between" align="center" wrap="wrap">
-                        <Box>
-                          <Text fw={700} size="15px" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                            {meet.title}
-                          </Text>
-                          <Group gap="xs" mt={8} wrap="wrap">
-                            <Badge
-                              variant="light"
-                              color="teal"
-                              size="md"
-                              leftSection={<IconCalendar size={13} />}
-                              style={{ textTransform: 'none', fontWeight: 600 }}
+                          <Box key={meet.id} mb="28px" style={{ position: 'relative' }}>
+                            {/* Single Timeline Node Marker */}
+                            <Box
+                              style={{
+                                position: 'absolute',
+                                left: '-52px',
+                                top: '0px',
+                                width: '38px',
+                                height: '38px',
+                                borderRadius: '50%',
+                                backgroundColor: isDark ? 'rgba(79, 70, 229, 0.2)' : '#EEF2FF',
+                                border: isDark ? '2px solid #6366F1' : '2px solid #4F46E5',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: isDark ? '#A5B4FC' : '#4F46E5',
+                                zIndex: 2,
+                                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                              }}
                             >
-                              {meet.date} at {formatDisplayTime(meet.time)}
-                            </Badge>
-                            <Badge
-                              variant="outline"
-                              color="blue"
-                              size="md"
-                              leftSection={<IconClock size={13} />}
-                              style={{ textTransform: 'none', fontWeight: 600 }}
-                            >
-                              {meet.duration}
-                            </Badge>
-                            <Badge
-                              variant="subtle"
-                              color="gray"
-                              size="md"
-                              style={{ textTransform: 'none', fontWeight: 600 }}
-                            >
-                              {meet.meetingType}
-                            </Badge>
-                            <Badge
-                              variant="light"
-                              color={getMeetingStatusColor(meet.status)}
-                              size="md"
-                              style={{ textTransform: 'none', fontWeight: 600 }}
-                            >
-                              Status: {meet.status || 'Scheduled'}
-                            </Badge>
-                            <Text size="xs" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                              Host: {meet.hostName}
-                            </Text>
-                          </Group>
-                        </Box>
+                              <IconCalendar size={18} stroke={2.2} />
+                            </Box>
 
-                        <Group gap="xs">
-                          {(() => {
-                            const isCompleted =
-                              (meet.status?.toLowerCase() === 'completed') ||
-                              ((meet.meetingStatus as string)?.toLowerCase() === 'completed');
-                            const hasRequirement = Boolean(meet.requirements && meet.requirements.trim());
-                            if (isCompleted || hasRequirement) {
-                              return (
-                                <Button
-                                  size="xs"
-                                  leftSection={<IconExternalLink size={13} />}
-                                  onClick={() => handleViewOutcome(meet)}
-                                  style={{
-                                    background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-                                    color: '#FFFFFF',
-                                    fontWeight: 600,
-                                    borderRadius: 8,
-                                    boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)',
-                                    border: 'none',
-                                  }}
-                                >
-                                  View Outcome
-                                </Button>
-                              );
-                            }
-                            return null;
-                          })()}
-
-                          <ActionIcon
-                            size="md"
-                            variant="subtle"
-                            color="red"
-                            onClick={() => handleDeleteMeeting(meet.id)}
-                            title="Cancel Meeting"
-                          >
-                            <IconTrash size={16} />
-                          </ActionIcon>
-                        </Group>
-                      </Group>
-                    </Box>
-                  </Box>
-
-                  {/* ========================================================= */}
-                  {/* ========================================================= */}
-                  {/* STAGE 2: MEETING VENUE / LOCATION & DETAILS                */}
-                  {/* ========================================================= */}
-                  {(() => {
-                    const meetTypeLower = (meet.meetingType || '').toLowerCase();
-                    const rawLoc = (meet.meetingLink || '').trim();
-                    const isLinkUrl =
-                      rawLoc.startsWith('http://') ||
-                      rawLoc.startsWith('https://') ||
-                      rawLoc.includes('meet.google.com') ||
-                      rawLoc.includes('zoom.us');
-                    const isMeetInPerson =
-                      meetTypeLower.includes('in-person') ||
-                      meetTypeLower.includes('in person') ||
-                      meetTypeLower.includes('physical') ||
-                      meetTypeLower.includes('client office') ||
-                      meetTypeLower.includes('our office') ||
-                      (!isLinkUrl && Boolean(rawLoc));
-
-                    return (
-                      <Box mb="28px" style={{ position: 'relative' }}>
-                        {/* Node 2 Marker Icon */}
-                        <Box
-                          style={{
-                            position: 'absolute',
-                            left: '-52px',
-                            top: '0px',
-                            width: '38px',
-                            height: '38px',
-                            borderRadius: '50%',
-                            backgroundColor: isMeetInPerson
-                              ? (isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5')
-                              : (isDark ? '#1E3A8A' : '#EFF6FF'),
-                            border: isMeetInPerson
-                              ? (isDark ? '2px solid #10B981' : '2px solid #059669')
-                              : (isDark ? '2px solid #3B82F6' : '2px solid #2563EB'),
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: isMeetInPerson
-                              ? (isDark ? '#6EE7B7' : '#047857')
-                              : (isDark ? '#93C5FD' : '#1D4ED8'),
-                            zIndex: 2,
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                          }}
-                        >
-                          {isMeetInPerson ? (
-                            <IconMapPin size={18} stroke={2} />
-                          ) : (
-                            <IconVideo size={18} />
-                          )}
-                        </Box>
-
-                        {/* Stage 2 Header */}
-                        <Group justify="space-between" align="center" mb={8}>
-                          <Group gap="xs" align="center">
-                            <Text fw={700} size="14px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-                              {isMeetInPerson ? 'Meeting Location & Venue Details' : 'Meeting Access Link & Calendar Invite'}
-                            </Text>
-                          </Group>
-                        </Group>
-
-                        {/* Stage 2 Card */}
-                        <Box
-                          p="16px 20px"
-                          style={{
-                            backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-                            borderRadius: '14px',
-                          }}
-                        >
-                          <Group justify="space-between" align="center" wrap="wrap">
-                            <div>
-                              <Text size="xs" fw={700} c="dimmed" mb={4} style={{ letterSpacing: '0.04em' }}>
-                                {isMeetInPerson ? 'IN-PERSON VENUE' : (meet.meetingType ? `${meet.meetingType.toUpperCase()} VENUE` : 'VIRTUAL VENUE')}
-                              </Text>
-                              <Text
-                                fw={600}
-                                size="13px"
+                            {/* Meeting Header */}
+                            <Group justify="space-between" align="center" mb={10}>
+                              <Group gap="xs" align="center">
+                                <Avatar size={26} radius="xl" color="indigo" style={{ fontWeight: 700 }}>
+                                  {meet.hostName ? meet.hostName.charAt(0).toUpperCase() : 'S'}
+                                </Avatar>
+                                <Text size="14px" style={{ color: isDark ? '#F8FAFC' : '#1E293B', lineHeight: 1.4 }}>
+                                  <strong>{meet.hostName || 'Representative'}</strong> scheduled a{' '}
+                                  <Text span fw={600} style={{ color: isDark ? '#818CF8' : '#4F46E5' }}>
+                                    {meet.meetingType?.toLowerCase().includes('virtual') && !meet.meetingType?.toLowerCase().includes('meeting')
+                                      ? `${meet.meetingType} Meeting`
+                                      : (meet.meetingType || 'Meeting')}
+                                  </Text>{' '}
+                                  with <strong>{leadName}</strong>
+                                </Text>
+                              </Group>
+                              <Badge
+                                size="sm"
+                                variant="light"
+                                color={getMeetingStatusColor(meet.status)}
                                 style={{
-                                  color: meet.meetingLink ? (isMeetInPerson ? (isDark ? '#F8FAFC' : '#0F172A') : '#0078D4') : (isDark ? '#94A3B8' : '#64748B'),
-                                  fontFamily: isMeetInPerson ? 'inherit' : (meet.meetingLink ? 'monospace' : 'inherit'),
-                                  wordBreak: 'break-all',
+                                  fontWeight: 700,
+                                  textTransform: 'none',
+                                  borderRadius: 6,
                                 }}
                               >
-                                {meet.meetingLink || (isMeetInPerson ? 'Meeting venue/location not specified' : 'Meeting venue/link not specified')}
-                              </Text>
-                              <Text size="xs" mt={4} style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-                                {meet.meetingLink
-                                  ? (isMeetInPerson
-                                      ? 'In-person meeting venue address for client and team.'
-                                      : 'Calendar invite & dial-in credentials shared with client.')
-                                  : 'Location or meeting link can be updated anytime.'}
-                              </Text>
-                            </div>
+                                {meet.status || 'Scheduled'}
+                              </Badge>
+                            </Group>
 
-                            {meet.meetingLink ? (
-                              <Group gap="xs">
-                                <Button
-                                  size="xs"
-                                  variant="default"
-                                  leftSection={isMeetInPerson ? <IconMapPin size={13} /> : <IconCopy size={13} />}
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(meet.meetingLink || '');
-                                    notifications.show({
-                                      title: isMeetInPerson ? 'Location Copied' : 'Link Copied',
-                                      message: isMeetInPerson ? 'Meeting venue address copied to clipboard.' : 'Meeting link copied to clipboard.',
-                                      color: 'teal',
-                                    });
-                                  }}
-                                  style={{ borderRadius: 8, fontWeight: 600 }}
-                                >
-                                  {isMeetInPerson ? 'Copy Location' : 'Copy Link'}
-                                </Button>
+                            {/* Single Comprehensive Meeting Card */}
+                            <Box
+                              p="18px 20px"
+                              style={{
+                                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                                border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
+                                borderRadius: '14px',
+                                boxShadow: isDark ? '0 4px 14px rgba(0,0,0,0.25)' : '0 2px 8px rgba(0,0,0,0.04)',
+                              }}
+                            >
+                              {/* Row 1: Title and Top Action Buttons */}
+                              <Group justify="space-between" align="center" wrap="nowrap" mb={10}>
+                                <Text fw={700} size="16px" style={{ color: isDark ? '#F8FAFC' : '#0F172A', lineHeight: 1.3 }}>
+                                  {meet.title}
+                                </Text>
+                                <Group gap="xs" wrap="nowrap" align="center">
+                                  {(() => {
+                                    const isCompleted =
+                                      meet.status?.toLowerCase() === 'completed' ||
+                                      (meet.meetingStatus as string)?.toLowerCase() === 'completed';
+                                    const hasRequirement = Boolean(meet.requirements && meet.requirements.trim());
+                                    if (isCompleted || hasRequirement) {
+                                      return (
+                                        <Button
+                                          size="xs"
+                                          leftSection={<IconExternalLink size={13} />}
+                                          onClick={() => handleViewOutcome(meet)}
+                                          style={{
+                                            background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                                            color: '#FFFFFF',
+                                            fontWeight: 600,
+                                            borderRadius: 8,
+                                            boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)',
+                                            border: 'none',
+                                            height: 32,
+                                          }}
+                                        >
+                                          View Outcome
+                                        </Button>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
 
-                                {!isMeetInPerson && meet.meetingLink.startsWith('http') && (
-                                  <Button
-                                    component="a"
-                                    href={meet.meetingLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    size="xs"
-                                    leftSection={<IconExternalLink size={13} />}
-                                    style={{
-                                      background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-                                      color: '#FFFFFF',
-                                      borderRadius: 8,
-                                      fontWeight: 600,
-                                      boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)',
-                                      border: 'none',
-                                    }}
+                                  <ActionIcon
+                                    size="md"
+                                    variant="subtle"
+                                    color="red"
+                                    onClick={() => handleDeleteMeeting(meet.id)}
+                                    title="Cancel Meeting"
+                                    radius="md"
                                   >
-                                    Join Meet
-                                  </Button>
-                                )}
+                                    <IconTrash size={16} />
+                                  </ActionIcon>
+                                </Group>
                               </Group>
-                            ) : null}
-                          </Group>
-                        </Box>
-                      </Box>
-                    );
-                  })()}
 
-                  {/* ========================================================= */}
-                  {/* STAGE 3: DISCUSSION & REQUIREMENTS PHASE                  */}
-                  {/* ========================================================= */}
-                  {shouldShowAgenda && (
-                    <Box mb="28px" style={{ position: 'relative' }}>
-                      {/* Node 3 Marker Icon */}
-                      <Box
-                        style={{
-                          position: 'absolute',
-                          left: '-52px',
-                          top: '0px',
-                          width: '38px',
-                          height: '38px',
-                          borderRadius: '50%',
-                          backgroundColor: isDark ? '#4C1D95' : '#F5F3FF',
-                          border: isDark ? '2px solid #8B5CF6' : '2px solid #7C3AED',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: isDark ? '#C4B5FD' : '#6D28D9',
-                          zIndex: 2,
-                          boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
-                        }}
-                      >
-                        <IconUsers size={18} />
-                      </Box>
+                              {/* Row 2: Metadata Chips Row (Spans full width so badges never wrap awkwardly!) */}
+                              <Group gap="xs" wrap="wrap" mb={meet.purpose && meet.purpose !== meet.title ? 10 : 0}>
+                                <Badge
+                                  variant="light"
+                                  color="blue"
+                                  size="md"
+                                  leftSection={<IconCalendar size={13} />}
+                                  style={{ textTransform: 'none', fontWeight: 600, borderRadius: 8 }}
+                                >
+                                  {meet.date} • {formatDisplayTime(meet.time)}
+                                </Badge>
+                                <Badge
+                                  variant="outline"
+                                  color="gray"
+                                  size="md"
+                                  leftSection={<IconClock size={13} />}
+                                  style={{ textTransform: 'none', fontWeight: 600, borderRadius: 8 }}
+                                >
+                                  {meet.duration}
+                                </Badge>
+                                {meet.project && (
+                                  <Badge
+                                    variant="light"
+                                    color="violet"
+                                    size="md"
+                                    leftSection={<IconLayersSubtract size={12} />}
+                                    style={{ textTransform: 'none', fontWeight: 600, borderRadius: 8 }}
+                                  >
+                                    {meet.project}
+                                  </Badge>
+                                )}
+                                <Badge
+                                  variant="light"
+                                  color={isOnlineMeet ? 'indigo' : 'teal'}
+                                  size="md"
+                                  leftSection={isOnlineMeet ? <IconVideo size={13} /> : <IconMapPin size={13} />}
+                                  style={{ textTransform: 'none', fontWeight: 600, borderRadius: 8 }}
+                                >
+                                  {meet.meetingType?.toLowerCase().includes('virtual') && !meet.meetingType?.toLowerCase().includes('meeting')
+                                    ? `${meet.meetingType} Meeting`
+                                    : (meet.meetingType || (isOnlineMeet ? 'Virtual Meeting' : 'In-Person Meeting'))}
+                                </Badge>
+                                <Badge
+                                  variant="subtle"
+                                  color="gray"
+                                  size="md"
+                                  leftSection={<IconUser size={13} />}
+                                  style={{ textTransform: 'none', fontWeight: 600, borderRadius: 8 }}
+                                >
+                                  Host: {meet.hostName || 'Host'}
+                                </Badge>
+                              </Group>
 
-                      {/* Stage 3 Header */}
-                      <Group justify="space-between" align="center" mb={8}>
-                        <Group gap="xs" align="center">
-                          <Text fw={700} size="14px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-                            Discovery Agenda & Discussion Topics
-                          </Text>
-                        </Group>
-                        <Badge
-                          size="xs"
-                          variant="outline"
-                          color="violet"
-                          style={{ textTransform: 'none', fontWeight: 600 }}
-                        >
-                          Target Stage: {meet.stageAfterMeeting || activeLead?.stage || '—'}
-                        </Badge>
-                      </Group>
+                              {(meet.purpose && meet.purpose !== meet.title) && (
+                                <Text size="13px" c="dimmed" mt={8} style={{ fontStyle: 'italic', lineHeight: 1.4 }}>
+                                  "{meet.purpose}"
+                                </Text>
+                              )}
 
-                      {/* Stage 3 Card */}
-                      <Box
-                        p="16px 20px"
-                        style={{
-                          backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                          border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-                          borderRadius: '14px',
-                        }}
-                      >
-                        <Text size="13px" style={{ color: isDark ? '#E2E8F0' : '#334155', lineHeight: 1.6 }}>
-                          • <strong>Lead Interest:</strong> {offerings && offerings !== '—' ? offerings : '—'}.
-                          <br />
-                          • <strong>Organization:</strong> {companyName && companyName !== '—' ? companyName : '—'} ({contactType || 'Individual'}).
-                          <br />
-                          • <strong>Representative:</strong> {meet.hostName || 'Host'}
-                          {Boolean(meet.agenda || meet.purpose) && (
-                            <>
-                              <br />
-                              • <strong>Agenda / Focus:</strong> {meet.agenda || meet.purpose}.
-                            </>
-                          )}
-                        </Text>
-                      </Box>
-                    </Box>
-                  )}
+                              {/* Sleek Integrated Meeting Room & Action Bar */}
+                              <Box
+                                mt="14px"
+                                p="12px 16px"
+                                style={{
+                                  backgroundColor: isDark ? 'rgba(15, 23, 42, 0.6)' : '#F8FAFC',
+                                  border: `1px solid ${isDark ? '#334155' : '#E2E8F0'}`,
+                                  borderRadius: '10px',
+                                }}
+                              >
+                                <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+                                  <Group gap="sm" align="center" style={{ flex: 1, minWidth: 220 }}>
+                                    <ThemeIcon
+                                      size={38}
+                                      radius="md"
+                                      variant="light"
+                                      color={isOnlineMeet ? 'blue' : 'teal'}
+                                    >
+                                      {isOnlineMeet ? <IconVideo size={18} /> : <IconMapPin size={18} />}
+                                    </ThemeIcon>
+                                    <Box style={{ flex: 1, minWidth: 0 }}>
+                                      <Group gap={6} align="center">
+                                        <Text
+                                          size="10px"
+                                          fw={700}
+                                          c="dimmed"
+                                          style={{ letterSpacing: '0.05em', textTransform: 'uppercase' }}
+                                        >
+                                          {isOnlineMeet
+                                            ? (meetTypeLower.includes('zoom') ? 'Zoom Meeting' : 'Google Meet')
+                                            : (isMeetInPerson ? 'In-Person Venue' : 'Location')}
+                                        </Text>
+                                        {isOnlineMeet && (
+                                          <Badge size="xs" color="teal" variant="dot" style={{ fontWeight: 600 }}>
+                                            Ready
+                                          </Badge>
+                                        )}
+                                      </Group>
+                                      <Text
+                                        size="13px"
+                                        fw={600}
+                                        truncate
+                                        component={isOnlineMeet ? 'a' : 'div'}
+                                        href={isOnlineMeet ? joinUrl : undefined}
+                                        target={isOnlineMeet ? '_blank' : undefined}
+                                        rel={isOnlineMeet ? 'noopener noreferrer' : undefined}
+                                        style={{
+                                          color: isOnlineMeet ? (isDark ? '#60A5FA' : '#2563EB') : (isDark ? '#F1F5F9' : '#0F172A'),
+                                          textDecoration: 'none',
+                                          display: 'block',
+                                        }}
+                                      >
+                                        {effectiveLink || (isMeetInPerson ? 'Venue address specified' : 'Online meeting link')}
+                                      </Text>
+                                    </Box>
+                                  </Group>
 
-                  {/* End of meeting pipeline stages */}
-                </Box>
-              );
-            })}
+                                  {/* Action Buttons: Join Meet & Copy */}
+                                  <Group gap="xs" wrap="nowrap">
+                                    {isOnlineMeet && (
+                                      <Button
+                                        component="a"
+                                        href={joinUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        size="sm"
+                                        leftSection={<IconVideo size={15} />}
+                                        style={{
+                                          background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                                          color: '#FFFFFF',
+                                          borderRadius: 8,
+                                          fontWeight: 700,
+                                          boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)',
+                                          border: 'none',
+                                          height: 34,
+                                          padding: '0 16px',
+                                          textDecoration: 'none',
+                                        }}
+                                      >
+                                        Join Meet
+                                      </Button>
+                                    )}
+
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      leftSection={isOnlineMeet ? <IconCopy size={13} /> : <IconMapPin size={13} />}
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(effectiveLink || joinUrl);
+                                        notifications.show({
+                                          title: isOnlineMeet ? 'Link Copied' : 'Location Copied',
+                                          message: isOnlineMeet ? 'Meeting link copied to clipboard.' : 'Venue address copied to clipboard.',
+                                          color: 'teal',
+                                        });
+                                      }}
+                                      style={{
+                                        borderRadius: 8,
+                                        fontWeight: 600,
+                                        height: 34,
+                                        borderColor: isDark ? '#334155' : '#CBD5E1',
+                                      }}
+                                    >
+                                      {isOnlineMeet ? 'Copy Link' : 'Copy Location'}
+                                    </Button>
+                                  </Group>
+                                </Group>
+                              </Box>
+                            </Box>
+                          </Box>
+                        );
+                      })}
             </Box>
                   </>
                 )}

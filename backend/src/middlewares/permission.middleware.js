@@ -23,35 +23,34 @@ export async function getUserPermissions(user) {
   });
 
   if (!dbUser?.roleRelation) {
-    const adminRole = await prisma.role.findFirst({
-      where: {
-        OR: [
-          { slug: 'admin' },
-          { slug: 'super_admin' },
-          { name: { equals: 'Admin', mode: 'insensitive' } },
-        ],
-      },
-      include: { permissions: true },
-    });
-
-    const isUserAdmin =
+    const isUserSuperAdmin =
       dbUser?.role === 'SUPER_ADMIN' ||
-      dbUser?.role === 'ADMIN' ||
-      user.role === 'SUPER_ADMIN' ||
-      user.role === 'ADMIN';
+      user.role === 'SUPER_ADMIN';
 
-    if (adminRole && isUserAdmin) {
-      const permsMap = {};
-      adminRole.permissions.forEach((p) => {
-        permsMap[p.moduleId] = {
-          view: true,
-          create: true,
-          edit: true,
-          delete: true,
-          export: true,
-          approve: true,
-        };
+    if (isUserSuperAdmin) {
+      const adminRole = await prisma.role.findFirst({
+        where: {
+          OR: [
+            { slug: 'super_admin' },
+            { name: { equals: 'Super Admin', mode: 'insensitive' } },
+          ],
+        },
+        include: { permissions: true },
       });
+
+      const permsMap = {};
+      if (adminRole?.permissions) {
+        adminRole.permissions.forEach((p) => {
+          permsMap[p.moduleId] = {
+            view: true,
+            create: true,
+            edit: true,
+            delete: true,
+            export: true,
+            approve: true,
+          };
+        });
+      }
 
       const result = {
         role: {
@@ -73,11 +72,8 @@ export async function getUserPermissions(user) {
   const permsMap = {};
   const isSuperAdmin =
     role?.slug === 'super_admin' ||
-    role?.slug === 'admin' ||
     dbUser?.role === 'SUPER_ADMIN' ||
-    dbUser?.role === 'ADMIN' ||
-    user?.role === 'SUPER_ADMIN' ||
-    user?.role === 'ADMIN';
+    user?.role === 'SUPER_ADMIN';
 
   if (role?.permissions) {
     role.permissions.forEach((p) => {

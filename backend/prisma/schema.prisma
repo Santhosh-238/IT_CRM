@@ -5,7 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/client"
+  output   = "../src/generated/client_v2"
 }
 
 model User {
@@ -108,6 +108,10 @@ model Contact {
   // 2. Professional & Company Information
   contactType            String?   @default("Company Representative") // Individual / Company Representative
   companyName            String?
+  contactPerson          String?   // Contact person (Representative)
+  estimatedValue         String?   // Estimated Value
+  expectedCloseDate      String?   // Expected Close Date (YYYY-MM-DD)
+  description            String?   // Context, requirements, or notes
   designation            String?
   profession             String?   // when contactType is Individual
 
@@ -133,14 +137,20 @@ model Contact {
   remarks                String?
   notes                  String?
 
-  // 5. Qualification Details
-  status                 String?   @default("New") // New, Qualified, In Progress, Follow-up Required, Disqualified
-  stage                  String?   @default("Initialization") // Initialization, Qualification, Discovery, etc.
-  qualificationStatus    String?   @default("In Progress") // In Progress, Qualified, Disqualified
-  qualifiedBy            String?
-  qualificationDate      String?
-  priority               String?   @default("Medium") // High, Medium, Low
-  disqualificationReason String?
+  // 5. Streamlined Qualification Details
+  status                 String?   @default("New")
+  stage                  String?   @default("Initialization")
+  businessNeed           String?   // Business Need: Enna software/service thevai?
+  budgetRange            String?   // Budget Range: Customer budget evvalavu?
+  decisionMaker          String?   // Decision Maker: Purchase decision yaar eduppanga?
+  purchaseTimeline       String?   // Purchase Timeline: Eppo service vaanga plan pannuraanga?
+  interestedService      String?   // Interested Service: Web app, mobile app, ERP, CRM, etc.
+  priority               String?   @default("Medium") // Low / Medium / High
+  qualificationStatus    String?   @default("Pending") // Qualified / Unqualified / Pending
+  qualifiedBy            String?   // Endha employee qualify pannanga?
+  qualificationDate      String?   // Eppo qualify pannanga? (YYYY-MM-DD)
+  unqualifiedReason      String?   // Unqualified Reason: Budget illa, need illa, wrong contact, etc.
+  disqualificationReason String?   // Backward compatibility fallback
 
   // 6. Assignment & Metadata
   assignedTo             String?   // Employee ID
@@ -148,8 +158,19 @@ model Contact {
   assignmentStatus       String?   @default("Unassigned") // Assigned / Unassigned
   contactMode            String?
   createdBy              String?
-  meetingType            String?
-  uuid                   String?
+  // 7. Odoo ERP Contact Verified Fields
+  title                  String?   // Salutation: Mr., Mrs., Ms., Dr., Prof. (Odoo: res.partner.title)
+  mobile                 String?   // Direct Mobile Number (Odoo: mobile)
+  tags                   String[]  @default([]) // Tags / Categories (Odoo: category_id)
+  street                 String?   // Street Address 1 (Odoo: street)
+  street2                String?   // Street Address 2 / Landmark (Odoo: street2)
+  city                   String?   // City (Odoo: city)
+  zip                    String?   // ZIP / Postal Code (Odoo: zip)
+  country                String?   @default("India") // Country (Odoo: country_id)
+  paymentTerms           String?   @default("Immediate Payment") // Customer Payment Terms (Odoo: property_payment_term_id)
+  creditLimit            String?   // Credit Limit (Odoo: credit_limit)
+  internalReference      String?   // Internal Reference / Code (Odoo: ref)
+
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 }
@@ -274,6 +295,31 @@ model CallLog {
   description  String?  // Notes / discussion summary
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Customer {
+  id               String   @id @default(uuid())
+  customerId       String   @unique // e.g. CUST-1001
+  companyName      String
+  contactPerson    String
+  email            String?
+  phone            String
+  designation      String?
+  industry         String?  @default("Technology & IT Services")
+  customerTier     String?  @default("Mid-Market") // "Enterprise", "Mid-Market", "Startup", "Government"
+  status           String   @default("Active") // "Active", "Onboarding", "Inactive", "Churned"
+  address          String?
+  city             String?
+  state            String?
+  gstNumber        String?
+  panNumber        String?
+  website          String?
+  contractValue    Float?   @default(0)
+  accountManager   String?
+  accountManagerId String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 

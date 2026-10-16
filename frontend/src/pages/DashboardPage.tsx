@@ -39,7 +39,7 @@ interface DashboardPageProps {
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
   const { currentUser } = useCRM();
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, can } = usePermissions();
   const { employees, employeeStats } = useEmployee();
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
@@ -83,17 +83,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </Text>
         </div>
         <Group gap="xs">
-          <Button
-            size="sm"
-            variant="default"
-            radius="100px"
-            leftSection={<IconCalendarEvent size={16} />}
-            onClick={() => onNavigate('scheduled-meetings')}
-            style={{ fontWeight: 600 }}
-          >
-            Scheduled Meetings
-          </Button>
-          {isSuperAdmin && (
+          {can('scheduled_meetings', 'view') && (
+            <Button
+              size="sm"
+              variant="default"
+              radius="100px"
+              leftSection={<IconCalendarEvent size={16} />}
+              onClick={() => onNavigate('scheduled-meetings')}
+              style={{ fontWeight: 600 }}
+            >
+              Scheduled Meetings
+            </Button>
+          )}
+          {can('employee_management', 'view') && (
             <Button
               size="sm"
               radius="100px"
@@ -259,7 +261,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
       </Grid>
 
       {/* Date-Wise Scheduled Meetings Spotlight */}
-      <Paper p="xl" radius="24px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
+      {can('scheduled_meetings', 'view') && (
+        <Paper p="xl" radius="24px" className="crextio-card" style={{ background: cardBg, border: cardBorder }}>
         <Group justify="space-between" align="center" mb="lg">
           <div>
             <Group gap="xs" align="center">
@@ -362,6 +365,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
           </SimpleGrid>
         )}
       </Paper>
+      )}
     </Stack>
   );
 };

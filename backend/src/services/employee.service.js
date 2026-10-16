@@ -189,6 +189,21 @@ export async function createEmployeeService(body, user, ip = '127.0.0.1') {
   if (password) {
     try {
       const passwordHash = await bcrypt.hash(password, 10);
+      let roleId = null;
+      if (newEmployee.role) {
+        const matchingRole = await prisma.role.findFirst({
+          where: {
+            OR: [
+              { name: { equals: newEmployee.role, mode: 'insensitive' } },
+              { slug: { equals: newEmployee.role.toLowerCase().replace(/\s+/g, '_'), mode: 'insensitive' } },
+            ],
+          },
+        });
+        if (matchingRole) {
+          roleId = matchingRole.id;
+        }
+      }
+
       await prisma.user.create({
         data: {
           name: newEmployee.name,
@@ -196,6 +211,7 @@ export async function createEmployeeService(body, user, ip = '127.0.0.1') {
           phone: newEmployee.phone,
           passwordHash,
           role: newEmployee.role || 'STAFF',
+          roleId,
           department: newEmployee.department,
         },
       });

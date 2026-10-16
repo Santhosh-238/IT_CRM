@@ -3,5 +3,7 @@ export * from './AddContactPage';
 export * from './ContactDetailsPage';
 export * from './ContactQualificationPage';
 export * from './components/ContactTableView';
+export * from './components/ContactCardGridView';
 export * from './components/ContactDrawer';
 export * from './components/ContactModal';
+

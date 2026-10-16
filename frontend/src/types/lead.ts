@@ -45,10 +45,18 @@ export interface Lead {
   category?: LeadRequirementCategory | string | null;
   productList: string[];
   serviceList: string[];
+  product?: string | null;
+  service?: string | null;
 
   // Pipeline Status & Stage
   status: LeadStatus | string;
   stage?: LeadStage | string | null;
+
+  // Assignment & Additional Details
+  assignedTo?: string | null;
+  assignedToName?: string | null;
+  notes?: string | null;
+  agenda?: string | null;
 
   displayCompany?: string;
   createdAt: string;
@@ -125,6 +133,7 @@ export interface ScheduledMeeting {
   agenda?: string;
   purpose?: string;
   stageAfterMeeting?: string;
+  project?: string;
   status: 'Scheduled' | 'Completed' | 'Cancelled' | 'In Progress' | string;
   meetingStatus?: string;
   requirements?: string;

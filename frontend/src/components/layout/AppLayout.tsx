@@ -1,4 +1,6 @@
-import { Box, Container, Drawer } from '@mantine/core';
+import React, { useEffect } from 'react';
+import { Box, Container, Drawer, Paper, Text, Button } from '@mantine/core';
+import { IconShieldLock } from '@tabler/icons-react';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { useCRM } from '../../context/CRMContext';
@@ -11,17 +13,50 @@ import { ProjectsPage, AddProjectPage, ProjectDetailsPage } from '../../pages/pr
 import { AccessControlPage } from '../../pages/access-control/AccessControlPage';
 import { ScheduledMeetingsPage } from '../../pages/meetings';
 import { CallLogsPage } from '../../pages/calls';
+import { CustomersPage, CustomerDetailsPage } from '../../pages/customers';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
 import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
 import { useProject } from '../../context/ProjectContext';
+import { useCustomer } from '../../context/CustomerContext';
+
+const AccessRestrictedView: React.FC<{ moduleName: string; onGoAllowed: () => void }> = ({
+  moduleName,
+  onGoAllowed,
+}) => (
+  <Container size="sm" py={80}>
+    <Paper
+      p="xl"
+      radius="24px"
+      withBorder
+      style={{
+        textAlign: 'center',
+        background: 'rgba(255, 255, 255, 0.75)',
+        backdropFilter: 'blur(10px)',
+        boxShadow: '0 8px 30px rgba(0,0,0,0.06)',
+      }}
+    >
+      <IconShieldLock size={56} color="#EF4444" style={{ margin: '0 auto 16px', opacity: 0.85 }} />
+      <Text fw={800} size="xl">
+        Access Restricted
+      </Text>
+      <Text size="sm" c="dimmed" mt="xs" mb="lg">
+        You do not have permission to view the <b>{moduleName}</b> module. If you require access, please contact your administrator.
+      </Text>
+      <Button radius="100px" color="blue" onClick={onGoAllowed}>
+        Go to Available Screen
+      </Button>
+    </Paper>
+  </Container>
+);
 
 export const AppLayout: React.FC = () => {
   const { activeNav, setActiveNav, sidebarMobileOpened, setSidebarMobileOpened } = useCRM();
   const { selectedContact, deleteContact } = useContact();
-  const { isSuperAdmin } = usePermissions();
+  const { isSuperAdmin, can } = usePermissions();
   const { selectedLead } = useLead();
   const { selectedProject, setSelectedProject, deleteProject: deleteProj, projects } = useProject();
+  const { selectedCustomer, setSelectedCustomer, customers, deleteCustomer: deleteCust } = useCustomer();
 
   if (activeNav === 'signup') {
     return (
@@ -45,21 +80,57 @@ export const AppLayout: React.FC = () => {
     return <AuthPage onSuccess={() => setActiveNav('dashboard')} />;
   }
 
+  const findFirstAllowedNav = (): string => {
+    const candidateModules: { nav: string; id: string }[] = [
+      { nav: 'dashboard', id: 'dashboard' },
+      { nav: 'contacts', id: 'contacts' },
+      { nav: 'leads', id: 'leads' },
+      { nav: 'scheduled-meetings', id: 'scheduled_meetings' },
+      { nav: 'call-logs', id: 'call_logs' },
+      { nav: 'customers', id: 'customers' },
+      { nav: 'projects', id: 'projects' },
+      { nav: 'employees', id: 'employee_management' },
+      { nav: 'access-control', id: 'access_control' },
+    ];
+    for (const m of candidateModules) {
+      if (can(m.id, 'view')) return m.nav;
+    }
+    return 'dashboard';
+  };
+
   const renderActiveScreen = () => {
     switch (activeNav) {
       case 'dashboard':
+        if (!can('dashboard', 'view') && !isSuperAdmin) {
+          return (
+            <AccessRestrictedView
+              moduleName="Dashboard"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
       case 'employees':
-        if (!isSuperAdmin) {
-          return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
+        if (!can('employee_management', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Employee Management"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
         }
         return <EmployeesPage />;
       case 'add-employee':
       case 'add':
       case 'onboard-employee':
       case 'onboard': {
-        if (!isSuperAdmin) {
-          return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
+        if (!can('employee_management', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Employee Management"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
         }
         let editData = null;
         try {
@@ -78,9 +149,25 @@ export const AppLayout: React.FC = () => {
         );
       }
       case 'contacts':
+        if (!can('contacts', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Contacts"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <ContactsPage />;
       case 'leads':
       case 'lead':
+        if (!can('leads', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Leads"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <LeadsPage />;
       case 'lead-schedule':
       case 'lead-details':
@@ -120,17 +207,32 @@ export const AppLayout: React.FC = () => {
         );
       }
       case 'contact-details': {
-        if (selectedContact) {
+        let activeContact = selectedContact;
+        if (!activeContact && typeof window !== 'undefined') {
+          try {
+            const saved = sessionStorage.getItem('crm_selected_contact');
+            if (saved) activeContact = JSON.parse(saved);
+          } catch (e) {}
+        }
+        if (activeContact) {
           return (
             <ContactDetailsPage
-              contact={selectedContact}
-              onBack={() => setActiveNav('contacts')}
+              contact={activeContact}
+              onBack={() => {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.removeItem('crm_selected_contact');
+                }
+                setActiveNav('contacts');
+              }}
               onEdit={(c) => {
                 if (typeof window !== 'undefined') sessionStorage.setItem('crm_editing_contact', JSON.stringify(c));
                 setActiveNav('add-contact');
               }}
               onDelete={async (c) => {
                 await deleteContact(c.id);
+                if (typeof window !== 'undefined') {
+                  sessionStorage.removeItem('crm_selected_contact');
+                }
                 setActiveNav('contacts');
               }}
             />
@@ -142,18 +244,31 @@ export const AppLayout: React.FC = () => {
       case 'contacts/qualification':
       case 'contacts/qualify':
       case 'qualification': {
-        let qualifyContact = selectedContact;
-        if (!qualifyContact && typeof window !== 'undefined') {
+        let qualifyContact = null;
+        if (typeof window !== 'undefined') {
           try {
             const saved = sessionStorage.getItem('crm_qualifying_contact');
             if (saved) qualifyContact = JSON.parse(saved);
           } catch (e) {}
         }
+        if (!qualifyContact) {
+          qualifyContact = selectedContact;
+        }
         return (
           <ContactQualificationPage
             contact={qualifyContact}
-            onBack={() => setActiveNav('contacts')}
+            onBack={() => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('crm_qualifying_contact');
+                sessionStorage.removeItem('crm_selected_contact');
+              }
+              setActiveNav('contacts');
+            }}
             onSuccess={(resultStatus) => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('crm_qualifying_contact');
+                sessionStorage.removeItem('crm_selected_contact');
+              }
               if (resultStatus === 'Qualified') {
                 if (typeof window !== 'undefined') {
                   sessionStorage.setItem('crm_leads_tab', 'NEW');
@@ -170,10 +285,26 @@ export const AppLayout: React.FC = () => {
       case 'projects-management':
       case 'projects-all':
       case 'project':
+        if (!can('projects', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Projects Management"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <ProjectsPage initialSubNav="all" />;
       case 'project-details':
       case 'projects-details':
       case 'projects/details': {
+        if (!can('projects', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Projects Management"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         let viewProject = selectedProject;
         if (!viewProject && typeof window !== 'undefined') {
           try {
@@ -214,6 +345,14 @@ export const AppLayout: React.FC = () => {
       case 'projects/add':
       case 'projects/create':
       case 'create-project': {
+        if (!can('projects', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Projects Management"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         let editData = null;
         try {
           const savedEdit = typeof window !== 'undefined' ? sessionStorage.getItem('crm_editing_project') : null;
@@ -231,25 +370,138 @@ export const AppLayout: React.FC = () => {
         );
       }
       case 'projects-my':
+        if (!can('projects', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Projects Management"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <ProjectsPage initialSubNav="my" />;
       case 'projects-tasks':
       case 'projects-milestones':
+        if (!can('projects', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Projects Management"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <ProjectsPage initialSubNav="tasks" />;
       case 'projects-team':
+        if (!can('projects', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Projects Management"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <ProjectsPage initialSubNav="team" />;
       case 'projects-reports':
+        if (!can('projects', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Projects Management"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <ProjectsPage initialSubNav="reports" />;
       case 'access-control':
       case 'access-control-matrix':
       case 'rbac':
+        if (!can('access_control', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Access Control & RBAC"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <AccessControlPage />;
       case 'scheduled-meetings':
       case 'meetings':
+        if (!can('scheduled_meetings', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Scheduled Meetings"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <ScheduledMeetingsPage />;
       case 'call-logs':
       case 'calls':
       case 'call-log':
+        if (!can('call_logs', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Call Logs"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
         return <CallLogsPage />;
+      case 'customers':
+      case 'customer':
+      case 'customers-all':
+        if (!can('customers', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Customers"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
+        return <CustomersPage />;
+      case 'customer-details':
+      case 'customers/details': {
+        let viewCustomer = selectedCustomer;
+        let highlightedProjNum: number | null = null;
+        if (typeof window !== 'undefined') {
+          try {
+            const saved = sessionStorage.getItem('crm_selected_customer');
+            if (saved) viewCustomer = JSON.parse(saved);
+            const projStr = sessionStorage.getItem('crm_selected_customer_project');
+            if (projStr) highlightedProjNum = parseInt(projStr, 10);
+          } catch (e) {}
+        }
+        if (!viewCustomer && customers && customers.length > 0) {
+          viewCustomer = customers[0];
+        }
+        if (viewCustomer) {
+          return (
+            <CustomerDetailsPage
+              customer={viewCustomer}
+              highlightedProjectNumber={highlightedProjNum}
+              onBack={() => {
+                if (typeof window !== 'undefined') {
+                  sessionStorage.removeItem('crm_selected_customer');
+                  sessionStorage.removeItem('crm_selected_customer_project');
+                }
+                setSelectedCustomer(null);
+                setActiveNav('customers');
+              }}
+              onEdit={() => {}}
+              onDelete={async (id) => {
+                if (deleteCust) await deleteCust(id);
+                if (typeof window !== 'undefined') {
+                  sessionStorage.removeItem('crm_selected_customer');
+                  sessionStorage.removeItem('crm_selected_customer_project');
+                }
+                setSelectedCustomer(null);
+                setActiveNav('customers');
+              }}
+              onNavigateToProjects={() => setActiveNav('projects')}
+              onNavigateToLeads={() => setActiveNav('leads')}
+            />
+          );
+        }
+        return <CustomersPage />;
+      }
       default:
         return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
     }
@@ -283,8 +535,8 @@ export const AppLayout: React.FC = () => {
         <Header />
 
         {/* Main Content Workspace */}
-        <Box style={{ flex: 1, paddingBottom: 40 }}>
-          <Container fluid px={{ base: 'xs', sm: 'md', md: 'xl' }} py="lg" style={{ maxWidth: 1600 }}>
+        <Box style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, paddingBottom: 32 }}>
+          <Container fluid px={{ base: 'xs', sm: 'md', md: 'lg', xl: 'xl' }} py="md" style={{ width: '100%', maxWidth: '100%', flex: 1, display: 'flex', flexDirection: 'column' }}>
             {renderActiveScreen()}
           </Container>
         </Box>

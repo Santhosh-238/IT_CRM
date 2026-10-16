@@ -33,7 +33,7 @@ export type ContactStage =
   | 'Closed Won'
   | 'Closed Lost'
   | 'Initialization';
-export type QualificationStatus = 'In Progress' | 'Qualified' | 'Disqualified';
+export type QualificationStatus = 'Qualified' | 'Unqualified' | 'Pending' | 'In Progress' | 'Disqualified' | 'Follow-up Required' | 'Follow-up';
 export type ContactPriority = 'High' | 'Medium' | 'Low';
 export type AssignmentStatus = 'Assigned' | 'Unassigned';
 
@@ -77,6 +77,10 @@ export interface Contact {
   // 2. Professional & Company Information
   contactType?: ContactType | string | null;
   companyName?: string | null;
+  contactPerson?: string | null;
+  estimatedValue?: string | null;
+  expectedCloseDate?: string | null;
+  description?: string | null;
   designation?: string | null;
   profession?: string | null;
 
@@ -97,6 +101,7 @@ export interface Contact {
   productList: string[];
   serviceList: string[];
   customProduct?: string | null;
+  productCode?: string | null;
 
   // 4. Interaction & Follow-up Details
   contactMode?: ContactMode | string | null;
@@ -109,10 +114,16 @@ export interface Contact {
   // 5. Qualification Details
   status: ContactStatus | string;
   stage?: ContactStage | string | null;
+  businessNeed?: string | null;
+  budgetRange?: string | null;
+  decisionMaker?: string | null;
+  purchaseTimeline?: string | null;
+  interestedService?: string | null;
+  priority?: ContactPriority | string | null;
   qualificationStatus?: QualificationStatus | string | null;
   qualifiedBy?: string | null;
   qualificationDate?: string | null;
-  priority?: ContactPriority | string | null;
+  unqualifiedReason?: string | null;
   disqualificationReason?: string | null;
   estimatedBudget?: number | string | null;
   projectType?: string | null;
@@ -127,6 +138,20 @@ export interface Contact {
   assignedBy?: string | null;
   createdBy?: string | null;
   assignmentStatus?: AssignmentStatus | string | null;
+
+  // 7. Verified Odoo ERP Contact Fields
+  title?: string | null;
+  mobile?: string | null;
+  tags?: string[];
+  street?: string | null;
+  street2?: string | null;
+  city?: string | null;
+  zip?: string | null;
+  country?: string | null;
+  paymentTerms?: string | null;
+  creditLimit?: string | null;
+  internalReference?: string | null;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -146,6 +171,10 @@ export interface ContactFormData {
   // 2. Professional & Company Information
   contactType?: ContactType | string;
   companyName?: string;
+  contactPerson?: string;
+  estimatedValue?: string;
+  expectedCloseDate?: string;
+  description?: string;
   designation?: string;
   profession?: string;
 
@@ -178,10 +207,16 @@ export interface ContactFormData {
   // 5. Qualification & Status
   status?: ContactStatus | string;
   stage?: ContactStage | string;
+  businessNeed?: string;
+  budgetRange?: string;
+  decisionMaker?: string;
+  purchaseTimeline?: string;
+  interestedService?: string;
+  priority?: ContactPriority | string;
   qualificationStatus?: QualificationStatus | string;
   qualifiedBy?: string;
   qualificationDate?: string;
-  priority?: ContactPriority | string;
+  unqualifiedReason?: string;
   disqualificationReason?: string;
   estimatedBudget?: number | string;
   projectType?: string;
@@ -194,6 +229,19 @@ export interface ContactFormData {
   assignedTo?: string;
   assignedBy?: string;
   createdBy?: string;
+
+  // 7. Verified Odoo ERP Contact Fields
+  title?: string;
+  mobile?: string;
+  tags?: string[];
+  street?: string;
+  street2?: string;
+  city?: string;
+  zip?: string;
+  country?: string;
+  paymentTerms?: string;
+  creditLimit?: string;
+  internalReference?: string;
 }
 
 export interface ContactFilter {
@@ -251,4 +299,8 @@ export interface ContactMetadata {
   employees: EmployeeOption[];
   companies: CompanyOption[];
   leads: LeadOption[];
+  titles?: string[];
+  odooTags?: string[];
+  paymentTermOptions?: string[];
+  countries?: string[];
 }

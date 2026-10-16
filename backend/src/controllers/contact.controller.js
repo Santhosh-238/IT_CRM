@@ -6,7 +6,7 @@ import * as contactService from '../services/contact.service.js';
  */
 export async function getContacts(req, res) {
   try {
-    const result = await contactService.getContactsService(req.query);
+    const result = await contactService.getContactsService(req.query, req.user);
     return res.status(200).json({
       success: true,
       ...result,
@@ -37,9 +37,9 @@ export async function getContactById(req, res) {
  * 3. Get Contact KPI Stats
  * GET /api/contacts/stats
  */
-export async function getContactStats(_req, res) {
+export async function getContactStats(req, res) {
   try {
-    const result = await contactService.getContactStatsService();
+    const result = await contactService.getContactStatsService(req.user);
     return res.status(200).json({
       success: true,
       ...result,

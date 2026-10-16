@@ -193,6 +193,10 @@ export const ContactProvider: React.FC<{ children: ReactNode }> = ({ children })
           setContacts((prev) =>
             prev.map((c) => (c.id === id || c.contactId === id ? { ...c, ...res.data } : c))
           );
+          setSelectedContact(res.data);
+          try {
+            sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(res.data));
+          } catch (e) {}
         }
         await Promise.all([fetchContacts(), fetchStats(), fetchMetadata()]);
         return { success: true, data: res.data };
