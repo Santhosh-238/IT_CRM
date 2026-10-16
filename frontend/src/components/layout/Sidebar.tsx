@@ -18,6 +18,7 @@ import {
   IconCalendarEvent,
   IconFolders,
   IconPhoneCall,
+  IconBuilding,
 } from '@tabler/icons-react';
 import { useCRM } from '../../context/CRMContext';
 import { usePermissions } from '../../context/AccessControlContext';
@@ -103,15 +104,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
             Main Navigation
           </Text>
           <Stack gap={6}>
-            <NavLink
-              label="Dashboard"
-              leftSection={<IconDashboard size={18} stroke={2} />}
-              active={activeNav === 'dashboard'}
-              onClick={() => onSelectNav('dashboard')}
-              className={activeNav === 'dashboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-              style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-            />
-            {isSuperAdmin && (
+            {can('dashboard', 'view') && (
+              <NavLink
+                label="Dashboard"
+                leftSection={<IconDashboard size={18} stroke={2} />}
+                active={activeNav === 'dashboard'}
+                onClick={() => onSelectNav('dashboard')}
+                className={activeNav === 'dashboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
+            {can('employee_management', 'view') && (
               <NavLink
                 label="Employee Management"
                 leftSection={<IconUsersGroup size={18} stroke={2} />}
@@ -121,71 +124,104 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
-            <NavLink
-              label="Contacts"
-              leftSection={<IconAddressBook size={18} stroke={2} />}
-              active={
-                activeNav === 'contacts' ||
-                activeNav === 'add-contact' ||
-                activeNav === 'contact-details' ||
-                activeNav === 'contact-qualification' ||
-                activeNav === 'qualification'
-              }
-              onClick={() => onSelectNav('contacts')}
-              className={
-                activeNav === 'contacts' ||
-                activeNav === 'add-contact' ||
-                activeNav === 'contact-details' ||
-                activeNav === 'contact-qualification' ||
-                activeNav === 'qualification'
-                  ? 'crextio-pill-active'
-                  : 'crextio-pill-inactive'
-              }
-              style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-            />
-            <NavLink
-              label="Leads"
-              leftSection={<IconTarget size={18} stroke={2} />}
-              active={activeNav === 'leads' || activeNav === 'add-lead' || activeNav === 'lead-schedule' || activeNav === 'lead-details'}
-              onClick={() => onSelectNav('leads')}
-              className={activeNav === 'leads' || activeNav === 'add-lead' || activeNav === 'lead-schedule' || activeNav === 'lead-details' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-              style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-            />
+            {can('contacts', 'view') && (
+              <NavLink
+                label="Contacts"
+                leftSection={<IconAddressBook size={18} stroke={2} />}
+                active={
+                  activeNav === 'contacts' ||
+                  activeNav === 'add-contact' ||
+                  activeNav === 'contact-details' ||
+                  activeNav === 'contact-qualification' ||
+                  activeNav === 'qualification'
+                }
+                onClick={() => onSelectNav('contacts')}
+                className={
+                  activeNav === 'contacts' ||
+                  activeNav === 'add-contact' ||
+                  activeNav === 'contact-details' ||
+                  activeNav === 'contact-qualification' ||
+                  activeNav === 'qualification'
+                    ? 'crextio-pill-active'
+                    : 'crextio-pill-inactive'
+                }
+                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
+            {can('leads', 'view') && (
+              <NavLink
+                label="Leads"
+                leftSection={<IconTarget size={18} stroke={2} />}
+                active={activeNav === 'leads' || activeNav === 'add-lead' || activeNav === 'lead-schedule' || activeNav === 'lead-details'}
+                onClick={() => onSelectNav('leads')}
+                className={activeNav === 'leads' || activeNav === 'add-lead' || activeNav === 'lead-schedule' || activeNav === 'lead-details' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
             {/* Scheduled Meetings Item - Directly following Leads */}
-            <NavLink
-              label="Scheduled Meetings"
-              leftSection={<IconCalendarEvent size={18} stroke={2} />}
-              active={activeNav === 'scheduled-meetings' || activeNav === 'meetings'}
-              onClick={() => onSelectNav('scheduled-meetings')}
-              className={activeNav === 'scheduled-meetings' || activeNav === 'meetings' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-              style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-            />
+            {can('scheduled_meetings', 'view') && (
+              <NavLink
+                label="Scheduled Meetings"
+                leftSection={<IconCalendarEvent size={18} stroke={2} />}
+                active={activeNav === 'scheduled-meetings' || activeNav === 'meetings'}
+                onClick={() => onSelectNav('scheduled-meetings')}
+                className={activeNav === 'scheduled-meetings' || activeNav === 'meetings' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
             {/* Call Logs Item */}
-            <NavLink
-              label="Call Logs"
-              leftSection={<IconPhoneCall size={18} stroke={2} />}
-              active={activeNav === 'call-logs' || activeNav === 'calls'}
-              onClick={() => onSelectNav('call-logs')}
-              className={activeNav === 'call-logs' || activeNav === 'calls' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-              style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-            />
+            {can('call_logs', 'view') && (
+              <NavLink
+                label="Call Logs"
+                leftSection={<IconPhoneCall size={18} stroke={2} />}
+                active={activeNav === 'call-logs' || activeNav === 'calls'}
+                onClick={() => onSelectNav('call-logs')}
+                className={activeNav === 'call-logs' || activeNav === 'calls' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
+            {/* Customers Item */}
+            {can('customers', 'view') && (
+              <NavLink
+                label="Customers"
+                leftSection={<IconBuilding size={18} stroke={2} />}
+                active={
+                  activeNav === 'customers' ||
+                  activeNav === 'customer' ||
+                  activeNav === 'customer-details' ||
+                  activeNav === 'add-customer'
+                }
+                onClick={() => onSelectNav('customers')}
+                className={
+                  activeNav === 'customers' ||
+                  activeNav === 'customer' ||
+                  activeNav === 'customer-details' ||
+                  activeNav === 'add-customer'
+                    ? 'crextio-pill-active'
+                    : 'crextio-pill-inactive'
+                }
+                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
             {/* Projects Management Item */}
-            <NavLink
-              label="Projects Management"
-              leftSection={<IconFolders size={18} stroke={2} />}
-              active={
-                activeNav.startsWith('projects') ||
-                activeNav === 'project' ||
-                activeNav === 'add-project'
-              }
-              onClick={() => onSelectNav('projects')}
-              className={
-                activeNav.startsWith('projects') || activeNav === 'project' || activeNav === 'add-project'
-                  ? 'crextio-pill-active'
-                  : 'crextio-pill-inactive'
-              }
-              style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-            />
+            {can('projects', 'view') && (
+              <NavLink
+                label="Projects Management"
+                leftSection={<IconFolders size={18} stroke={2} />}
+                active={
+                  activeNav.startsWith('projects') ||
+                  activeNav === 'project' ||
+                  activeNav === 'add-project'
+                }
+                onClick={() => onSelectNav('projects')}
+                className={
+                  activeNav.startsWith('projects') || activeNav === 'project' || activeNav === 'add-project'
+                    ? 'crextio-pill-active'
+                    : 'crextio-pill-inactive'
+                }
+                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
           </Stack>
 
           {/* Administration & Security Section */}

@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { delCacheByPattern } from '../config/redis.js';
-import { SYSTEM_MODULES } from '../models/model.registry.js';
+import { SYSTEM_MODULES, getDynamicModules } from '../models/model.registry.js';
 import { getUserPermissions } from '../middlewares/permission.middleware.js';
 import {
   generateRoleSlug,
@@ -32,21 +32,81 @@ export async function getMyPermissionsService(user) {
 }
 
 /**
- * 2. Get system modules list
+ * 2. Get system modules list (System + Dynamic DB modules)
  */
 export async function getSystemModulesService() {
-  const modulesWithCategories = SYSTEM_MODULES.map((m) => ({
-    id: m.id,
-    name: m.name,
-    category: m.category,
-    description: m.description,
-  }));
-
-  return { modules: modulesWithCategories };
+  const dynamicModules = await getDynamicModules();
+  return { modules: dynamicModules };
 }
 
 /**
- * 3. Get all roles with permissions and user count
+ * 2b. Create a new custom module dynamically
+ */
+export async function createModuleService(data, currentUser = null, ipAddress = '127.0.0.1') {
+  const { name, category, description } = data;
+  if (!name || !name.trim()) {
+    throw { status: 400, message: 'Module name is required.' };
+  }
+
+  const cleanName = name.trim();
+  const moduleId = generateRoleSlug(cleanName);
+  const cleanCategory = category?.trim() || 'Custom Modules';
+
+  // Check if module already exists in RolePermission
+  const existing = await prisma.rolePermission.findFirst({
+    where: { moduleId },
+  });
+
+  if (existing) {
+    throw { status: 400, message: `Module '${cleanName}' already exists.` };
+  }
+
+  // Seed permissions entry for all existing roles
+  const roles = await prisma.role.findMany({ select: { id: true, slug: true } });
+  const permissionsData = roles.map((role) => ({
+    roleId: role.id,
+    moduleId,
+    moduleName: cleanName,
+    category: cleanCategory,
+    canView: role.slug === 'admin' || role.slug === 'super_admin',
+    canCreate: role.slug === 'admin' || role.slug === 'super_admin',
+    canEdit: role.slug === 'admin' || role.slug === 'super_admin',
+    canDelete: role.slug === 'admin' || role.slug === 'super_admin',
+    canExport: role.slug === 'admin' || role.slug === 'super_admin',
+    canApprove: role.slug === 'admin' || role.slug === 'super_admin',
+  }));
+
+  if (permissionsData.length > 0) {
+    await prisma.rolePermission.createMany({
+      data: permissionsData,
+    });
+  }
+
+  await delCacheByPattern('crm:perms:*');
+
+  await logAccessAudit({
+    userId: currentUser?.id || null,
+    userName: currentUser?.name || 'System Admin',
+    action: 'MODULE_CREATED',
+    targetType: 'Module',
+    targetName: cleanName,
+    details: { moduleId, category: cleanCategory },
+    ipAddress,
+  });
+
+  return {
+    module: {
+      id: moduleId,
+      name: cleanName,
+      category: cleanCategory,
+      description: description || `Custom module: ${cleanName}`,
+      isSystem: false,
+    },
+  };
+}
+
+/**
+ * 3. Get all roles with permissions, user count, and systemModules catalog
  */
 export async function getRolesService() {
   const roles = await prisma.role.findMany({
@@ -82,7 +142,8 @@ export async function getRolesService() {
   });
 
   const formattedRoles = roles.map(formatRoleResponse);
-  return { roles: formattedRoles };
+  const { modules: systemModules } = await getSystemModulesService();
+  return { roles: formattedRoles, systemModules };
 }
 
 /**
@@ -208,13 +269,47 @@ export async function updateRoleService(id, data, currentUser = null, ipAddress 
     updatedName = name.trim();
   }
 
+  let cleanParentRoleId = role.parentRoleId;
+  if (parentRoleId !== undefined) {
+    if (!parentRoleId || parentRoleId === 'none' || (typeof parentRoleId === 'string' && parentRoleId.trim() === '')) {
+      cleanParentRoleId = null;
+    } else {
+      cleanParentRoleId = parentRoleId;
+    }
+  }
+
+  // Prevent Super Admin from having a parent role
+  if (role.slug === 'super_admin' && cleanParentRoleId) {
+    throw { status: 400, message: 'Super Admin is the root organization head and cannot report to any role.' };
+  }
+
+  // Prevent circular hierarchy
+  if (cleanParentRoleId && cleanParentRoleId !== role.parentRoleId) {
+    if (cleanParentRoleId === id) {
+      throw { status: 400, message: 'A role cannot report to itself.' };
+    }
+    let curr = cleanParentRoleId;
+    const visited = new Set([id]);
+    while (curr) {
+      if (visited.has(curr)) {
+        throw { status: 400, message: 'Circular hierarchy detected: a role cannot report to one of its descendants.' };
+      }
+      visited.add(curr);
+      const parentRow = await prisma.role.findUnique({
+        where: { id: curr },
+        select: { parentRoleId: true },
+      });
+      curr = parentRow?.parentRoleId;
+    }
+  }
+
   const updatedRole = await prisma.role.update({
     where: { id },
     data: {
       name: updatedName,
       description: description !== undefined ? description : role.description,
       appType: appType || role.appType,
-      parentRoleId: parentRoleId !== undefined ? parentRoleId : role.parentRoleId,
+      parentRoleId: cleanParentRoleId,
     },
   });
 
@@ -273,6 +368,7 @@ export async function updateRoleService(id, data, currentUser = null, ipAddress 
     include: {
       permissions: { orderBy: [{ category: 'asc' }, { moduleId: 'asc' }] },
       parentRole: true,
+      childRoles: true,
       users: true,
     },
   });
@@ -357,7 +453,7 @@ export async function deleteRoleService(id, reassignToRoleId, currentUser = null
     throw { status: 404, message: 'Role not found' };
   }
 
-  if (role.isSystem) {
+  if (role.slug === 'super_admin') {
     throw { status: 400, message: `Protected system role '${role.name}' cannot be deleted.` };
   }
 

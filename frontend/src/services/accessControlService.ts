@@ -7,7 +7,17 @@ import {
   MyPermissionsResponse,
 } from '../types/accessControl';
 
-const API_BASE = '/api/access-control';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE = `${API_BASE_URL}/access-control`;
+
+const getAuthHeaders = (): Record<string, string> => {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('crm_token') : null;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+};
 
 export const accessControlService = {
   /**
@@ -16,7 +26,8 @@ export const accessControlService = {
   async getMyPermissions(): Promise<{ success: boolean; data?: MyPermissionsResponse; message?: string }> {
     try {
       const res = await fetch(`${API_BASE}/my-permissions`, {
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to fetch user permissions');
@@ -27,7 +38,47 @@ export const accessControlService = {
   },
 
   /**
-   * Get all roles with permissions and user count
+   * Get all system and dynamically created modules
+   */
+  async getModules(): Promise<{ success: boolean; modules?: SystemModule[]; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/modules`, {
+        credentials: 'include',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to fetch modules');
+      return { success: true, modules: data.modules || [] };
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  },
+
+  /**
+   * Create a new custom module
+   */
+  async createModule(data: {
+    name: string;
+    category?: string;
+    description?: string;
+  }): Promise<{ success: boolean; module?: SystemModule; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/modules`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.message || 'Failed to create module');
+      return { success: true, module: resData.module, message: resData.message };
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  },
+
+  /**
+   * Get all roles with permissions, user count, and system modules
    */
   async getRoles(): Promise<{
     success: boolean;
@@ -38,7 +89,8 @@ export const accessControlService = {
   }> {
     try {
       const res = await fetch(`${API_BASE}/roles`, {
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to fetch roles');
@@ -59,7 +111,8 @@ export const accessControlService = {
   async getRoleById(id: string): Promise<{ success: boolean; role?: Role; message?: string }> {
     try {
       const res = await fetch(`${API_BASE}/roles/${id}`, {
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to fetch role');
@@ -76,7 +129,8 @@ export const accessControlService = {
     try {
       const res = await fetch(`${API_BASE}/roles`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify(formData),
       });
       const data = await res.json();
@@ -97,7 +151,8 @@ export const accessControlService = {
     try {
       const res = await fetch(`${API_BASE}/roles/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify(formData),
       });
       const data = await res.json();
@@ -119,7 +174,8 @@ export const accessControlService = {
     try {
       const res = await fetch(`${API_BASE}/roles/${id}/clone`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify({ newName, description }),
       });
       const data = await res.json();
@@ -145,7 +201,8 @@ export const accessControlService = {
     try {
       const res = await fetch(`${API_BASE}/roles/${id}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify({ reassignToRoleId }),
       });
       const data = await res.json();
@@ -188,7 +245,8 @@ export const accessControlService = {
       if (params?.limit) query.append('limit', String(params.limit));
 
       const res = await fetch(`${API_BASE}/users?${query.toString()}`, {
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to fetch users');
@@ -213,7 +271,8 @@ export const accessControlService = {
     try {
       const res = await fetch(`${API_BASE}/users/${userId}/role`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify({ roleId }),
       });
       const data = await res.json();
@@ -234,7 +293,8 @@ export const accessControlService = {
     try {
       const res = await fetch(`${API_BASE}/users/bulk-role`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
         body: JSON.stringify({ userIds, roleId }),
       });
       const data = await res.json();
@@ -267,7 +327,8 @@ export const accessControlService = {
       if (params?.limit) query.append('limit', String(params.limit));
 
       const res = await fetch(`${API_BASE}/audit-logs?${query.toString()}`, {
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: getAuthHeaders(),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to fetch audit logs');

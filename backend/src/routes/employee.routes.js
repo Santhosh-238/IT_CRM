@@ -14,19 +14,19 @@ import {
 const router = Router();
 
 // Employee Statistics & KPI Metrics (<1ms Redis Cached)
-router.get('/stats', requireAuth, requireRole(['SUPER_ADMIN', 'ADMIN']), getEmployeeStats);
+router.get('/stats', requireAuth, authorizePermission('employee_management', 'view'), getEmployeeStats);
 
 // Employee List & Search
-router.get('/', requireAuth, requireRole(['SUPER_ADMIN', 'ADMIN']), getEmployees);
+router.get('/', requireAuth, authorizePermission('employee_management', 'view'), getEmployees);
 
 // Single Employee Profile by ID
-router.get('/:id', requireAuth, requireRole(['SUPER_ADMIN', 'ADMIN']), getEmployeeById);
+router.get('/:id', requireAuth, authorizePermission('employee_management', 'view'), getEmployeeById);
 
 // 4. Onboard / Create New Employee
 router.post(
   '/',
   requireAuth,
-  requireRole(['SUPER_ADMIN', 'ADMIN']),
+  authorizePermission('employee_management', 'create'),
   createEmployee
 );
 
@@ -34,7 +34,7 @@ router.post(
 router.put(
   '/:id',
   requireAuth,
-  requireRole(['SUPER_ADMIN', 'ADMIN']),
+  authorizePermission('employee_management', 'edit'),
   updateEmployee
 );
 
@@ -42,7 +42,7 @@ router.put(
 router.patch(
   '/:id/status',
   requireAuth,
-  requireRole(['SUPER_ADMIN', 'ADMIN']),
+  authorizePermission('employee_management', 'edit'),
   updateEmployeeStatus
 );
 
@@ -50,7 +50,7 @@ router.patch(
 router.delete(
   '/:id',
   requireAuth,
-  requireRole(['SUPER_ADMIN', 'ADMIN']),
+  authorizePermission('employee_management', 'delete'),
   deleteEmployee
 );
 

@@ -34,20 +34,27 @@ import {
   IconMail,
   IconBrandWhatsapp,
   IconShieldCheck,
+  IconTargetArrow,
+  IconUser,
+  IconCalendar,
+  IconArrowRight,
 } from '@tabler/icons-react';
 import { Contact } from '../../../types/contact';
 import { useContact } from '../../../context/ContactContext';
 import { useCRM } from '../../../context/CRMContext';
 
+export type ContactTableActiveTab = 'NEW' | 'ASSIGNED';
+
 interface ContactTableViewProps {
   contacts: Contact[];
-  activeTab?: 'NEW' | 'ASSIGNED';
+  activeTab?: ContactTableActiveTab;
   onView: (contact: Contact) => void;
   onEdit: (contact: Contact) => void;
   onDelete: (contact: Contact) => void;
   onAddNew: () => void;
+  onQualify?: (contact: Contact) => void;
   loading?: boolean;
-  onTabChange?: (tab: 'NEW' | 'ASSIGNED') => void;
+  onTabChange?: (tab: ContactTableActiveTab) => void;
 }
 
 export const ContactTableView: React.FC<ContactTableViewProps> = ({
@@ -57,15 +64,39 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
   onEdit,
   onDelete,
   onAddNew,
+  onQualify,
   loading = false,
   onTabChange,
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
   const isMobile = useMediaQuery('(max-width: 820px)');
-  const { setActiveNav } = useCRM();
+  const { setActiveNav, currentUser } = useCRM();
   const { setSelectedContact, metadata, assignContact } = useContact();
   const [assigningId, setAssigningId] = useState<string | null>(null);
+
+  const roleUpper = (currentUser?.role || '').toUpperCase();
+  const isSuperAdmin = roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPER ADMIN';
+  const isAdmin = isSuperAdmin;
+
+  const handleMoveToAssigned = async (contact: Contact) => {
+    try {
+      setAssigningId(contact.id);
+      const myEmp = metadata?.employees?.find(
+        (e) =>
+          (currentUser?.email && e.email?.toLowerCase() === currentUser.email?.toLowerCase()) ||
+          (currentUser?.name && e.name?.toLowerCase() === currentUser.name?.toLowerCase()) ||
+          (currentUser?.id && e.id === currentUser.id)
+      );
+      const targetEmpId = myEmp?.id || currentUser?.id || currentUser?.name || 'me';
+      const res = await assignContact(contact.id, targetEmpId);
+      if (res?.success && activeTab === 'NEW' && onTabChange) {
+        onTabChange('ASSIGNED');
+      }
+    } finally {
+      setAssigningId(null);
+    }
+  };
 
   const formatLastUpdate = (dateString?: string) => {
     if (!dateString) return '—';
@@ -152,7 +183,11 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
     let color = isDark ? '#93C5FD' : '#1D4ED8';
     let border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
 
-    if (sLow.includes('qualif')) {
+    if (sLow.includes('unqual') || sLow.includes('disqual') || sLow.includes('lost') || sLow.includes('cancel')) {
+      bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
+      color = isDark ? '#FCA5A5' : '#DC2626';
+      border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
+    } else if (sLow.includes('qualif')) {
       bg = isDark ? 'rgba(16, 185, 129, 0.16)' : '#ECFDF5';
       color = isDark ? '#6EE7B7' : '#047857';
       border = isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0';
@@ -164,10 +199,6 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
       bg = isDark ? 'rgba(14, 165, 233, 0.16)' : '#F0F9FF';
       color = isDark ? '#7DD3FC' : '#0284C7';
       border = isDark ? 'rgba(14, 165, 233, 0.35)' : '#BAE6FD';
-    } else if (sLow.includes('disqual') || sLow.includes('lost') || sLow.includes('cancel')) {
-      bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
-      color = isDark ? '#FCA5A5' : '#B91C1C';
-      border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
     } else if (sLow.includes('won') || sLow.includes('complete')) {
       bg = isDark ? 'rgba(34, 197, 94, 0.18)' : '#DCFCE7';
       color = isDark ? '#86EFAC' : '#15803D';
@@ -202,6 +233,31 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
         {st}
       </Box>
     );
+  };
+
+  // Determine canonical contact display status (Prioritizes 'New' for freshly created contacts)
+  const getContactDisplayStatus = (c: Contact) => {
+    if (c.status === 'New' || c.qualificationStatus === 'New' || (!c.status && !c.qualificationStatus)) {
+      return 'New';
+    }
+    if (c.qualificationStatus === 'Qualified' || c.status === 'Qualified') {
+      return 'Qualified';
+    }
+    if (
+      c.qualificationStatus === 'Unqualified' ||
+      c.qualificationStatus === 'Disqualified' ||
+      c.status === 'Unqualified' ||
+      c.status === 'Disqualified'
+    ) {
+      return 'Unqualified';
+    }
+    if (c.qualificationStatus === 'Follow-up Required' || c.status === 'Follow-up Required') {
+      return 'Follow-up Required';
+    }
+    if (c.qualificationStatus === 'Pending' || c.status === 'Pending') {
+      return 'Pending';
+    }
+    return c.status || c.qualificationStatus || 'New';
   };
 
 
@@ -254,13 +310,10 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
             key={contact.id}
             p="md"
             radius="16px"
-            onClick={() => handleOpenQualification(contact)}
             style={{
               backgroundColor: isDark ? '#111827' : '#FFFFFF',
               border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
               boxShadow: isDark ? '0 4px 14px rgba(0, 0, 0, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.03)',
-              cursor: 'pointer',
-              transition: 'transform 0.15s ease, border-color 0.15s ease',
             }}
           >
             {/* Header: Initial Avatar + Name + Designation + Status Badge */}
@@ -293,7 +346,7 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                 </Box>
               </Group>
               <Box style={{ flexShrink: 0 }}>
-                {renderStatusBadge(contact.status || contact.qualificationStatus, contact.stage)}
+                {renderStatusBadge(getContactDisplayStatus(contact), contact.stage)}
               </Box>
             </Group>
 
@@ -305,18 +358,13 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                   <Text size="xs" truncate style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
                     {contact.companyName}
                   </Text>
-                  {contact.verificationStatus === 'Verified' && (
-                    <Badge size="xs" variant="filled" color="green" radius="sm" style={{ padding: '0 3px', height: 14, fontSize: 8.5 }}>
-                      ✓
-                    </Badge>
-                  )}
                 </Group>
               )}
-              {contact.category && (
+              {contact.contactPerson && (
                 <Group gap={5} wrap="nowrap">
-                  <Box style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#F97316' }} />
-                  <Text size="xs" fw={600} style={{ color: '#F97316' }}>
-                    {contact.category}
+                  <IconUser size={14} color={isDark ? '#94A3B8' : '#64748B'} />
+                  <Text size="xs" truncate style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
+                    {contact.contactPerson}
                   </Text>
                 </Group>
               )}
@@ -336,6 +384,21 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                   </Text>
                 </Group>
               )}
+              {contact.estimatedValue && (
+                <Group gap={5} wrap="nowrap">
+                  <Text size="xs" fw={600} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                    Est: {contact.estimatedValue.startsWith('₹') ? contact.estimatedValue : `₹ ${contact.estimatedValue}`}
+                  </Text>
+                </Group>
+              )}
+              {contact.expectedCloseDate && (
+                <Group gap={5} wrap="nowrap">
+                  <IconCalendar size={14} color={isDark ? '#94A3B8' : '#64748B'} />
+                  <Text size="xs" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                    Close: {contact.expectedCloseDate}
+                  </Text>
+                </Group>
+              )}
             </SimpleGrid>
 
             {/* Footer: Assigned Employee + Source + Action Icons */}
@@ -345,6 +408,30 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                   <Badge size="xs" variant="light" color="blue">
                     👤 {contact.assignedToName}
                   </Badge>
+                ) : !isAdmin ? (
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="blue"
+                    radius="xl"
+                    loading={assigningId === contact.id}
+                    leftSection={<IconArrowRight size={11} stroke={2.2} />}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMoveToAssigned(contact);
+                    }}
+                    styles={{
+                      root: {
+                        height: 24,
+                        paddingLeft: 8,
+                        paddingRight: 8,
+                        fontSize: 10.5,
+                        fontWeight: 600,
+                      },
+                    }}
+                  >
+                    Move to Assigned
+                  </Button>
                 ) : (
                   <Badge size="xs" variant="outline" color="gray">
                     Unassigned
@@ -398,10 +485,11 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
       <Box style={{ overflowX: 'auto' }}>
         <Table
           verticalSpacing="md"
-          horizontalSpacing="lg"
+          horizontalSpacing="md"
           highlightOnHover
           style={{
-            minWidth: 1280,
+            minWidth: 960,
+            width: '100%',
             userSelect: 'none',
           }}
         >
@@ -412,31 +500,28 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
             }}
           >
             <Table.Tr>
-              <Table.Th style={{ minWidth: 200, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                CONTACT
+              <Table.Th style={{ minWidth: 130, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                NAME
               </Table.Th>
-              <Table.Th style={{ minWidth: 260, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+              <Table.Th style={{ minWidth: 125, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 COMPANY
               </Table.Th>
-              <Table.Th style={{ minWidth: 190, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+              <Table.Th style={{ minWidth: 125, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                CONTACT PERSON
+              </Table.Th>
+              <Table.Th style={{ minWidth: 150, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 EMAIL
               </Table.Th>
-              <Table.Th style={{ minWidth: 130, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                PHONE
+              <Table.Th style={{ minWidth: 115, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                PHONE NUMBER
               </Table.Th>
-              <Table.Th style={{ minWidth: 130, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                SOURCE
+              <Table.Th style={{ minWidth: 135, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                ASSIGNED OWNER
               </Table.Th>
               <Table.Th style={{ minWidth: 110, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                LAST UPDATE
-              </Table.Th>
-              <Table.Th style={{ minWidth: 160, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                ASSIGNED TO
-              </Table.Th>
-              <Table.Th style={{ minWidth: 140, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 STATUS
               </Table.Th>
-              <Table.Th style={{ width: 90, minWidth: 90, textAlign: 'center', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+              <Table.Th style={{ width: 75, minWidth: 75, textAlign: 'center', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                 ACTIONS
               </Table.Th>
             </Table.Tr>
@@ -447,414 +532,391 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                 contact.assignmentStatus === 'Assigned' ||
                 (contact.assignedTo && contact.assignedTo !== 'Unassigned') ||
                 Boolean(contact.assignedToName);
-              const isClickable = activeTab !== 'NEW' && isAssigned;
 
               return (
-                <Table.Tr
-                  key={contact.id}
-                  onClick={isClickable ? () => handleOpenQualification(contact) : undefined}
-                  style={{
-                    cursor: isClickable ? 'pointer' : 'default',
-                    transition: 'background 0.12s ease',
-                    borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
-                  }}
-                >
-                {/* 1. CONTACT: Name + Designation / Type */}
-                <Table.Td style={{ minWidth: 200 }}>
-                  <Box style={{ display: 'inline-block' }}>
-                    <Text
-                      fw={700}
-                      size="sm"
-                      style={{
-                        color: isDark ? '#F8FAFC' : '#0F172A',
-                        lineHeight: 1.2,
-                        whiteSpace: 'nowrap',
-                        transition: 'color 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = '#3B82F6';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = isDark ? '#F8FAFC' : '#0F172A';
-                      }}
-                    >
-                      {contact.name}
-                    </Text>
-                    <Text
-                      size="11px"
-                      style={{
-                        color: isDark ? '#94A3B8' : '#64748B',
-                        marginTop: 2,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {contact.designation || (contact.contactType === 'Individual' ? 'Individual' : 'Company Representative')}
-                    </Text>
-                  </Box>
-                </Table.Td>
+                <React.Fragment key={contact.id}>
+                  <Table.Tr
+                    onClick={() => {
+                      if (isAssigned && onQualify) {
+                        onQualify(contact);
+                      }
+                    }}
+                    style={{
+                      cursor: isAssigned ? 'pointer' : 'default',
+                      transition: 'background 0.12s ease',
+                      borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
+                    }}
+                  >
+                    {/* 1. NAME */}
+                    <Table.Td style={{ minWidth: 130 }}>
+                      <Text
+                        fw={700}
+                        size="sm"
+                        style={{
+                          color: isDark ? '#F8FAFC' : '#0F172A',
+                          lineHeight: 1.2,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {contact.name}
+                      </Text>
+                    </Table.Td>
 
-                {/* 2. COMPANY: Displays company name, GST, Employee count & verification badge */}
-                <Table.Td style={{ minWidth: 260 }}>
-                  <Box>
-                    <Group gap={6} align="center" wrap="nowrap">
+                    {/* 2. COMPANY */}
+                    <Table.Td style={{ minWidth: 125 }}>
                       <Text
                         size="13px"
-                        fw={700}
+                        fw={600}
                         style={{
                           color: isDark ? '#F8FAFC' : '#1E293B',
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {contact.companyName || contact.profession || '—'}
+                        {contact.companyName || '—'}
                       </Text>
-                      {contact.verificationStatus === 'Verified' ? (
-                        <Tooltip label="Verified Company (GST & MCA Validated)" withArrow position="top">
+                    </Table.Td>
+
+                    {/* 3. CONTACT PERSON */}
+                    <Table.Td style={{ minWidth: 125 }}>
+                      <Text
+                        size="13px"
+                        style={{
+                          color: isDark ? '#CBD5E1' : '#334155',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {contact.contactPerson || '—'}
+                      </Text>
+                    </Table.Td>
+
+                    {/* 4. EMAIL */}
+                    <Table.Td style={{ minWidth: 150, whiteSpace: 'nowrap' }}>
+                      <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B', whiteSpace: 'nowrap' }}>
+                        {contact.email || '—'}
+                      </Text>
+                    </Table.Td>
+
+                    {/* 5. PHONE NUMBER */}
+                    <Table.Td style={{ minWidth: 115, whiteSpace: 'nowrap' }}>
+                      <Text size="13px" fw={500} style={{ color: isDark ? '#CBD5E1' : '#334155', whiteSpace: 'nowrap' }}>
+                        {contact.phone || '—'}
+                      </Text>
+                    </Table.Td>
+
+                    {/* 6. ASSIGNED OWNER: Quick Assign (Super Admin / Admin Only) or Static Badge / Move Button (Employee) */}
+                    <Table.Td
+                      style={{ minWidth: 135, whiteSpace: 'nowrap' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {isAdmin ? (
+                        <Menu
+                          shadow="lg"
+                          width={230}
+                          position="bottom-start"
+                          radius="md"
+                          withinPortal
+                        >
+                          <Menu.Target>
+                            <Tooltip
+                              label={
+                                contact.assignedToName
+                                  ? `Assigned to ${contact.assignedToName} (Click to change)`
+                                  : 'Click to assign employee'
+                              }
+                              withArrow
+                              position="top"
+                            >
+                              <UnstyledButton
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  cursor: 'pointer',
+                                  transition: 'transform 0.12s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1.04)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                }}
+                              >
+                                {assigningId === contact.id ? (
+                                  <Badge
+                                    radius="xl"
+                                    styles={{
+                                      root: {
+                                        backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                                        color: isDark ? '#94A3B8' : '#64748B',
+                                        padding: '4px 10px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                      },
+                                    }}
+                                  >
+                                    <Loader size={12} color="blue" />
+                                    Assigning...
+                                  </Badge>
+                                ) : contact.assignedToName ? (
+                                  <Badge
+                                    radius="xl"
+                                    styles={{
+                                      root: {
+                                        backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+                                        color: isDark ? '#93C5FD' : '#1D4ED8',
+                                        border: isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #BFDBFE',
+                                        fontWeight: 600,
+                                        fontSize: 11,
+                                        textTransform: 'none',
+                                        padding: '4px 10px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 5,
+                                        cursor: 'pointer',
+                                      },
+                                    }}
+                                  >
+                                    <IconUserCheck size={12} stroke={2.2} />
+                                    {contact.assignedToName}
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    radius="xl"
+                                    styles={{
+                                      root: {
+                                        borderStyle: 'dashed',
+                                        borderColor: isDark ? '#60A5FA' : '#3B82F6',
+                                        color: isDark ? '#93C5FD' : '#2563EB',
+                                        backgroundColor: isDark ? 'rgba(59, 130, 246, 0.08)' : '#EFF6FF',
+                                        fontWeight: 600,
+                                        fontSize: 11,
+                                        textTransform: 'none',
+                                        padding: '4px 8px',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        cursor: 'pointer',
+                                      },
+                                    }}
+                                  >
+                                    <IconUserPlus size={11} />
+                                    + Assign
+                                  </Badge>
+                                )}
+                              </UnstyledButton>
+                            </Tooltip>
+                          </Menu.Target>
+
+                          <Menu.Dropdown p="xs" onClick={(e) => e.stopPropagation()}>
+                            <Menu.Label>Assign to Team Member</Menu.Label>
+                            {metadata?.employees && metadata.employees.length > 0 ? (
+                              metadata.employees.map((emp) => (
+                                <Menu.Item
+                                  key={emp.id}
+                                  leftSection={
+                                    <IconUserCheck
+                                      size={14}
+                                      color={contact.assignedTo === emp.id ? '#10B981' : undefined}
+                                    />
+                                  }
+                                  rightSection={
+                                    contact.assignedTo === emp.id ? (
+                                      <Badge size="xs" color="teal" variant="light">
+                                        Current
+                                      </Badge>
+                                    ) : undefined
+                                  }
+                                  onClick={async () => {
+                                    try {
+                                      setAssigningId(contact.id);
+                                      const res = await assignContact(contact.id, emp.id);
+                                      if (res?.success && activeTab === 'NEW' && onTabChange) {
+                                        onTabChange('ASSIGNED');
+                                      }
+                                    } finally {
+                                      setAssigningId(null);
+                                    }
+                                  }}
+                                >
+                                  <Box>
+                                    <Text size="13px" fw={contact.assignedTo === emp.id ? 700 : 500}>
+                                      {emp.name}
+                                    </Text>
+                                    {emp.designation && (
+                                      <Text size="10px" c="dimmed">
+                                        {emp.designation} {emp.empCode ? `(${emp.empCode})` : ''}
+                                      </Text>
+                                    )}
+                                  </Box>
+                                </Menu.Item>
+                              ))
+                            ) : (
+                              <Menu.Item disabled>No employees available</Menu.Item>
+                            )}
+
+                            {contact.assignedTo && (
+                              <>
+                                <Menu.Divider />
+                                <Menu.Item
+                                  color="red"
+                                  leftSection={<IconUserX size={14} />}
+                                  onClick={async () => {
+                                    try {
+                                      setAssigningId(contact.id);
+                                      await assignContact(contact.id, null);
+                                    } finally {
+                                      setAssigningId(null);
+                                    }
+                                  }}
+                                >
+                                  Unassign Contact
+                                </Menu.Item>
+                              </>
+                            )}
+                          </Menu.Dropdown>
+                        </Menu>
+                      ) : (
+                        /* Non-Admin Employee: Static assigned badge or Move to Assigned button */
+                        contact.assignedToName ? (
                           <Badge
+                            radius="xl"
+                            styles={{
+                              root: {
+                                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+                                color: isDark ? '#93C5FD' : '#1D4ED8',
+                                border: isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #BFDBFE',
+                                fontWeight: 600,
+                                fontSize: 11,
+                                textTransform: 'none',
+                                padding: '4px 10px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 5,
+                              },
+                            }}
+                          >
+                            <IconUserCheck size={12} stroke={2.2} />
+                            {contact.assignedToName}
+                          </Badge>
+                        ) : (
+                          <Button
                             size="xs"
                             variant="light"
-                            color="teal"
-                            radius="sm"
-                            leftSection={<IconShieldCheck size={11} stroke={2.5} />}
+                            color="blue"
+                            radius="xl"
+                            loading={assigningId === contact.id}
+                            leftSection={<IconArrowRight size={12} stroke={2.2} />}
+                            onClick={() => handleMoveToAssigned(contact)}
+                            styles={{
+                              root: {
+                                height: 26,
+                                paddingLeft: 10,
+                                paddingRight: 10,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+                                color: isDark ? '#93C5FD' : '#2563EB',
+                                border: isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #BFDBFE',
+                                '&:hover': {
+                                  backgroundColor: isDark ? 'rgba(59, 130, 246, 0.25)' : '#DBEAFE',
+                                },
+                              },
+                            }}
+                          >
+                            Move to Assigned
+                          </Button>
+                        )
+                      )}
+                    </Table.Td>
+
+
+
+                    {/* 7. STATUS */}
+                    <Table.Td style={{ minWidth: 110, whiteSpace: 'nowrap' }}>
+                      {isAssigned ? (
+                        <Tooltip label="Click to open Qualification Screen" withArrow position="top">
+                          <UnstyledButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onQualify?.(contact);
+                            }}
                             style={{
-                              textTransform: 'none',
-                              fontWeight: 700,
-                              height: 18,
-                              flexShrink: 0,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              cursor: 'pointer',
+                              transition: 'transform 0.12s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.04)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
                             }}
                           >
-                            Verified
-                          </Badge>
+                            {renderStatusBadge(getContactDisplayStatus(contact), contact.stage)}
+                          </UnstyledButton>
                         </Tooltip>
-                      ) : null}
-                    </Group>
-
-                    {/* Subtitle: GST Number, Employee Count, or Profession */}
-                    <Group gap={6} mt={3} align="center" wrap="nowrap">
-                      {contact.gstNumber ? (
-                        <Box
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            padding: '1px 6px',
-                            borderRadius: 4,
-                            backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EFF6FF',
-                            border: isDark ? '1px solid rgba(37, 99, 235, 0.25)' : '1px solid #DBEAFE',
-                            fontSize: 10.5,
-                            fontWeight: 600,
-                            fontFamily: 'monospace',
-                            color: isDark ? '#93C5FD' : '#1D4ED8',
-                            flexShrink: 0,
-                            letterSpacing: '0.03em',
-                          }}
-                        >
-                          <span style={{ fontSize: 9, opacity: 0.75, fontWeight: 700, fontFamily: 'sans-serif' }}>GST</span>
-                          <span>{contact.gstNumber}</span>
-                        </Box>
-                      ) : null}
-
-                      {contact.employeeCount ? (
-                        <Badge
-                          size="xs"
-                          variant="light"
-                          color="indigo"
-                          radius="sm"
-                          style={{
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            height: 18,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {contact.employeeCount}
-                        </Badge>
-                      ) : null}
-
-                      {!contact.gstNumber && !contact.employeeCount && (
-                        <Text size="11px" style={{ color: isDark ? '#64748B' : '#94A3B8', whiteSpace: 'nowrap' }}>
-                          {contact.profession || (contact.contactType === 'Individual' ? 'Individual' : '—')}
-                        </Text>
-                      )}
-                    </Group>
-                  </Box>
-                </Table.Td>
-
-                {/* 3. EMAIL */}
-                <Table.Td style={{ minWidth: 190, whiteSpace: 'nowrap' }}>
-                  <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B', whiteSpace: 'nowrap' }}>
-                    {contact.email || '—'}
-                  </Text>
-                </Table.Td>
-
-                {/* 4. PHONE */}
-                <Table.Td style={{ minWidth: 130, whiteSpace: 'nowrap' }}>
-                  <Text size="13px" fw={500} style={{ color: isDark ? '#CBD5E1' : '#334155', whiteSpace: 'nowrap' }}>
-                    {contact.phone || '—'}
-                  </Text>
-                </Table.Td>
-
-                {/* 5. SOURCE: Beautiful Styled Badge */}
-                <Table.Td style={{ minWidth: 130, whiteSpace: 'nowrap' }}>
-                  {renderSourceBadge(contact.source)}
-                </Table.Td>
-
-                {/* 6. LAST UPDATE */}
-                <Table.Td style={{ minWidth: 110, whiteSpace: 'nowrap' }}>
-                  <Text size="12px" fw={500} style={{ color: isDark ? '#94A3B8' : '#64748B', whiteSpace: 'nowrap' }}>
-                    {formatLastUpdate(contact.updatedAt || contact.createdAt)}
-                  </Text>
-                </Table.Td>
-
-                {/* 8. ASSIGNED TO: 1-Click Interactive Quick Assign Dropdown */}
-                <Table.Td
-                  style={{ minWidth: 160, whiteSpace: 'nowrap' }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Menu
-                    shadow="lg"
-                    width={230}
-                    position="bottom-start"
-                    radius="md"
-                    withinPortal
-                  >
-                    <Menu.Target>
-                      <Tooltip
-                        label={
-                          contact.assignedToName
-                            ? `Assigned to ${contact.assignedToName} (Click to change)`
-                            : 'Click to assign employee'
-                        }
-                        withArrow
-                        position="top"
-                      >
-                        <UnstyledButton
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            cursor: 'pointer',
-                            transition: 'transform 0.12s ease',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.04)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)';
-                          }}
-                        >
-                          {assigningId === contact.id ? (
-                            <Badge
-                              radius="xl"
-                              styles={{
-                                root: {
-                                  backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
-                                  color: isDark ? '#94A3B8' : '#64748B',
-                                  padding: '5px 12px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 6,
-                                },
-                              }}
-                            >
-                              <Loader size={12} color="blue" />
-                              Assigning...
-                            </Badge>
-                          ) : contact.assignedToName ? (
-                            <Badge
-                              radius="xl"
-                              styles={{
-                                root: {
-                                  backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
-                                  color: isDark ? '#93C5FD' : '#1D4ED8',
-                                  border: isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #BFDBFE',
-                                  fontWeight: 600,
-                                  fontSize: 11,
-                                  textTransform: 'none',
-                                  padding: '5px 12px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 5,
-                                  cursor: 'pointer',
-                                },
-                              }}
-                            >
-                              <IconUserCheck size={12} stroke={2.2} />
-                              {contact.assignedToName}
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              radius="xl"
-                              styles={{
-                                root: {
-                                  borderStyle: 'dashed',
-                                  borderColor: isDark ? '#60A5FA' : '#3B82F6',
-                                  color: isDark ? '#93C5FD' : '#2563EB',
-                                  backgroundColor: isDark ? 'rgba(59, 130, 246, 0.08)' : '#EFF6FF',
-                                  fontWeight: 600,
-                                  fontSize: 11,
-                                  textTransform: 'none',
-                                  padding: '5px 10px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: 5,
-                                  cursor: 'pointer',
-                                },
-                              }}
-                            >
-                              <IconUserPlus size={12} />
-                              + Assign
-                            </Badge>
-                          )}
-                        </UnstyledButton>
-                      </Tooltip>
-                    </Menu.Target>
-
-                    <Menu.Dropdown p="xs" onClick={(e) => e.stopPropagation()}>
-                      <Menu.Label>Assign to Team Member</Menu.Label>
-                      {metadata?.employees && metadata.employees.length > 0 ? (
-                        metadata.employees.map((emp) => (
-                          <Menu.Item
-                            key={emp.id}
-                            leftSection={
-                              <IconUserCheck
-                                size={14}
-                                color={contact.assignedTo === emp.id ? '#10B981' : undefined}
-                              />
-                            }
-                            rightSection={
-                              contact.assignedTo === emp.id ? (
-                                <Badge size="xs" color="teal" variant="light">
-                                  Current
-                                </Badge>
-                              ) : undefined
-                            }
-                            onClick={async () => {
-                              try {
-                                setAssigningId(contact.id);
-                                const res = await assignContact(contact.id, emp.id);
-                                if (res?.success && activeTab === 'NEW' && onTabChange) {
-                                  onTabChange('ASSIGNED');
-                                }
-                              } finally {
-                                setAssigningId(null);
-                              }
-                            }}
-                          >
-                            <Box>
-                              <Text size="13px" fw={contact.assignedTo === emp.id ? 700 : 500}>
-                                {emp.name}
-                              </Text>
-                              {emp.designation && (
-                                <Text size="10px" c="dimmed">
-                                  {emp.designation} {emp.empCode ? `(${emp.empCode})` : ''}
-                                </Text>
-                              )}
-                            </Box>
-                          </Menu.Item>
-                        ))
                       ) : (
-                        <Menu.Item disabled>No employees available</Menu.Item>
+                        renderStatusBadge(getContactDisplayStatus(contact), contact.stage)
                       )}
+                    </Table.Td>
 
-                      {contact.assignedTo && (
-                        <>
-                          <Menu.Divider />
-                          <Menu.Item
-                            color="red"
-                            leftSection={<IconUserX size={14} />}
-                            onClick={async () => {
-                              try {
-                                setAssigningId(contact.id);
-                                await assignContact(contact.id, null);
-                              } finally {
-                                setAssigningId(null);
-                              }
+                    {/* 8. ACTIONS */}
+                    <Table.Td style={{ width: 100, minWidth: 100, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                      <Group gap={4} justify="center" wrap="nowrap">
+                        {isAssigned && (
+                          <Tooltip label="Qualify Contact" withArrow>
+                            <ActionIcon
+                              variant="subtle"
+                              size="sm"
+                              radius="md"
+                              color="teal"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onQualify?.(contact);
+                              }}
+                            >
+                              <IconTargetArrow size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+
+                        <Tooltip label="Edit Contact" withArrow>
+                          <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            radius="md"
+                            color="indigo"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(contact);
                             }}
                           >
-                            Unassign Contact
-                          </Menu.Item>
-                        </>
-                      )}
-                    </Menu.Dropdown>
-                  </Menu>
-                </Table.Td>
+                            <IconEdit size={15} />
+                          </ActionIcon>
+                        </Tooltip>
 
-                {/* 9. STATUS: 1-Click to open Qualification Page */}
-                <Table.Td
-                  style={{ minWidth: 140, whiteSpace: 'nowrap' }}
-                  onClick={
-                    isClickable
-                      ? (e) => {
-                          e.stopPropagation();
-                          handleOpenQualification(contact);
-                        }
-                      : (e) => e.stopPropagation()
-                  }
-                >
-                  {isClickable ? (
-                    <Tooltip label="Click to open Qualification Page" withArrow position="top">
-                      <Box
-                        style={{
-                          display: 'inline-block',
-                          cursor: 'pointer',
-                          transition: 'transform 0.12s ease, opacity 0.12s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = 'scale(1.04)';
-                          e.currentTarget.style.opacity = '0.9';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = 'scale(1)';
-                          e.currentTarget.style.opacity = '1';
-                        }}
-                      >
-                        {renderStatusBadge(contact.status || contact.qualificationStatus, contact.stage)}
-                      </Box>
-                    </Tooltip>
-                  ) : (
-                    <Box style={{ display: 'inline-block' }}>
-                      {renderStatusBadge(contact.status || contact.qualificationStatus, contact.stage)}
-                    </Box>
-                  )}
-                </Table.Td>
-
-                {/* 10. ACTIONS (Direct Action Icons: Edit & Delete) */}
-                <Table.Td style={{ width: 80, minWidth: 80, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                  <Group gap={6} justify="center" wrap="nowrap">
-                    <Tooltip label="Edit Contact" withArrow>
-                      <ActionIcon
-                        variant="subtle"
-                        size="sm"
-                        radius="md"
-                        color="indigo"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEdit(contact);
-                        }}
-                      >
-                        <IconEdit size={16} />
-                      </ActionIcon>
-                    </Tooltip>
-
-                    <Tooltip label="Delete Contact" withArrow>
-                      <ActionIcon
-                        variant="subtle"
-                        size="sm"
-                        radius="md"
-                        color="red"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete(contact);
-                        }}
-                      >
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Tooltip>
-                  </Group>
-                </Table.Td>
-              </Table.Tr>
-            );
-          })}
+                        <Tooltip label="Delete Contact" withArrow>
+                          <ActionIcon
+                            variant="subtle"
+                            size="sm"
+                            radius="md"
+                            color="red"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete(contact);
+                            }}
+                          >
+                            <IconTrash size={15} />
+                          </ActionIcon>
+                        </Tooltip>
+                      </Group>
+                    </Table.Td>
+                  </Table.Tr>
+                </React.Fragment>
+              );
+            })}
           </Table.Tbody>
         </Table>
       </Box>

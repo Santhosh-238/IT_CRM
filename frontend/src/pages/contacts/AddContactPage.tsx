@@ -5,22 +5,20 @@ import {
   Stack,
   SimpleGrid,
   TextInput,
-  Select,
-  MultiSelect,
   Textarea,
   Button,
   Group,
   Text,
-  ActionIcon,
   Breadcrumbs,
   Anchor,
   useComputedColorScheme,
 } from '@mantine/core';
 import {
-  IconArrowLeft,
   IconUser,
-  IconX,
-  IconShieldCheck,
+  IconBuilding,
+  IconId,
+  IconMail,
+  IconPhone,
 } from '@tabler/icons-react';
 import { Contact, ContactFormData } from '../../types/contact';
 import { useContact } from '../../context/ContactContext';
@@ -35,36 +33,20 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
   const { setActiveNav } = useCRM();
-  const { metadata, createContact, updateContact, loading } = useContact();
+  const { createContact, updateContact, loading } = useContact();
 
   const isEditing = Boolean(initialData);
 
   const initialFormState: ContactFormData = {
     name: '',
+    companyName: '',
+    contactPerson: '',
     email: '',
     phone: '',
-    contactType: '',
-    profession: '',
-    companyName: '',
-    designation: '',
-    gstNumber: '',
-    employeeCount: '',
-    companyPan: '',
-    cinNumber: '',
-    companyWebsite: '',
-    linkedinUrl: '',
-    annualTurnover: '',
-    verificationStatus: 'Unverified',
-    registeredState: '',
-    address: '',
-    source: '',
-    customSource: '',
-    category: '',
-    productList: [],
-    serviceList: [],
-    status: 'New',
-    stage: 'Initialization',
-    qualificationStatus: 'In Progress',
+    assignedTo: '',
+    estimatedValue: '',
+    expectedCloseDate: '',
+    description: '',
   };
 
   const [formData, setFormData] = useState<ContactFormData>(initialFormState);
@@ -76,38 +58,24 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
         id: initialData.id,
         contactId: initialData.contactId,
         name: initialData.name || '',
+        companyName: initialData.companyName || '',
+        contactPerson: initialData.contactPerson || '',
         email: initialData.email || '',
         phone: initialData.phone || '',
-        contactType: initialData.contactType || '',
-        profession: initialData.profession || '',
-        companyName: initialData.companyName || '',
-        designation: initialData.designation || '',
-        gstNumber: initialData.gstNumber || '',
-        employeeCount: initialData.employeeCount || '',
-        companyPan: initialData.companyPan || '',
-        cinNumber: initialData.cinNumber || '',
-        companyWebsite: initialData.companyWebsite || '',
-        linkedinUrl: initialData.linkedinUrl || '',
-        annualTurnover: initialData.annualTurnover || '',
-        verificationStatus: initialData.verificationStatus || 'Unverified',
-        registeredState: initialData.registeredState || '',
-        address: initialData.address || '',
-        source: initialData.source || '',
-        customSource: initialData.customSource || '',
-        category: initialData.category || '',
-        productList: initialData.productList || [],
-        serviceList: initialData.serviceList || [],
-        status: initialData.status || 'New',
-        stage: initialData.stage || 'Initialization',
-        qualificationStatus: initialData.qualificationStatus || 'In Progress',
+        assignedTo: initialData.assignedTo || '',
+        estimatedValue: initialData.estimatedValue || '',
+        expectedCloseDate: initialData.expectedCloseDate || '',
+        description: initialData.description || initialData.notes || '',
       });
     } else {
       setFormData(initialFormState);
     }
+    setErrors({});
   }, [initialData]);
 
   const handleFieldChange = (field: keyof ContactFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+
     if (errors[field]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -122,67 +90,30 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
 
     // 1. Name validation
     if (!formData.name?.trim()) {
-      newErrors.name = 'Contact Name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Contact Name must be at least 2 characters';
+      newErrors.name = 'Name is required';
     }
 
-    // 2. Email validation
-    if (!formData.email?.trim()) {
-      newErrors.email = 'Email Address is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      newErrors.email = 'Please enter a valid email address';
+    // 2. Company validation
+    if (!formData.companyName?.trim()) {
+      newErrors.companyName = 'Company is required';
     }
 
-    // 3. Mobile Number validation (Fixed 10 digits)
-    const cleanPhone = (formData.phone || '').replace(/\D/g, '');
-    if (!cleanPhone) {
-      newErrors.phone = 'Mobile Number is required';
-    } else if (cleanPhone.length !== 10) {
-      newErrors.phone = 'Mobile number must be exactly 10 digits';
-    }
-
-    // 4. Contact Type validation
-    if (!formData.contactType) {
-      newErrors.contactType = 'Contact Type is required';
-    }
-
-    // 5. Profession / Company validation based on Contact Type
-    if (formData.contactType === 'Individual') {
-      if (!formData.profession?.trim()) {
-        newErrors.profession = 'Profession / Occupation is required';
-      } else if (formData.profession.trim().length < 2) {
-        newErrors.profession = 'Profession must be at least 2 characters';
-      }
-    } else if (formData.contactType === 'Company Representative') {
-      if (!formData.companyName?.trim()) {
-        newErrors.companyName = 'Company Name is required';
-      } else if (formData.companyName.trim().length < 2) {
-        newErrors.companyName = 'Company Name must be at least 2 characters';
+    // 3. Email validation
+    if (formData.email && formData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        newErrors.email = 'Invalid email address format';
       }
     }
 
-    // 6. Address validation
-    if (!formData.address?.trim()) {
-      newErrors.address = 'Address is required';
-    } else if (formData.address.trim().length < 3) {
-      newErrors.address = 'Address must be at least 3 characters';
-    }
-
-    // 7. Source validation
-    if (!formData.source) {
-      newErrors.source = 'Source is required';
-    } else if (formData.source === 'Other' && !formData.customSource?.trim()) {
-      newErrors.customSource = 'Please specify custom source';
-    }
-
-    // 8. Category validation & Product/Service selection
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
-    } else if (formData.category === 'Product' && (!formData.productList || formData.productList.length === 0)) {
-      newErrors.productList = 'Please select at least one product';
-    } else if (formData.category === 'Service' && (!formData.serviceList || formData.serviceList.length === 0)) {
-      newErrors.serviceList = 'Please select at least one service';
+    // 4. Phone validation (required)
+    if (!formData.phone || !formData.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else {
+      const digits = formData.phone.replace(/\D/g, '');
+      if (digits.length !== 10) {
+        newErrors.phone = 'Phone number must be exactly 10 digits';
+      }
     }
 
     setErrors(newErrors);
@@ -193,378 +124,238 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
     e.preventDefault();
     if (!validate()) return;
 
-    if (isEditing && initialData?.id) {
-      const res = await updateContact(initialData.id, formData);
-      if (res.success) {
+    try {
+      const payload: ContactFormData = {
+        name: formData.name.trim(),
+        companyName: formData.companyName?.trim(),
+        contactPerson: formData.contactPerson?.trim() || undefined,
+        email: formData.email?.trim() || undefined,
+        phone: formData.phone ? formData.phone.replace(/\D/g, '') : '',
+        assignedTo: formData.assignedTo && formData.assignedTo !== 'none' ? formData.assignedTo : undefined,
+        estimatedValue: formData.estimatedValue?.trim() || undefined,
+        expectedCloseDate: formData.expectedCloseDate?.trim() || undefined,
+        description: formData.description?.trim() || undefined,
+        status: initialData?.status || 'New',
+        stage: initialData?.stage || 'Initialization',
+        qualificationStatus: initialData?.qualificationStatus || 'New',
+      };
+
+      let res;
+      if (isEditing && initialData?.id) {
+        res = await updateContact(initialData.id, payload);
+      } else {
+        res = await createContact(payload);
+      }
+
+      if (res?.success) {
         if (onBack) onBack();
         else setActiveNav('contacts');
       }
-    } else {
-      const res = await createContact(formData);
-      if (res.success) {
-        if (onBack) onBack();
-        else setActiveNav('contacts');
-      }
+    } catch (err: any) {
+      console.error('Error saving contact:', err);
     }
   };
 
-  const handleCancel = () => {
-    if (onBack) onBack();
-    else setActiveNav('contacts');
+
+
+  const inputStyles = {
+    input: {
+      height: 44,
+      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+      border: isDark ? '1.5px solid rgba(255, 255, 255, 0.16)' : '1.5px solid #CBD5E1',
+      borderRadius: 10,
+      color: isDark ? '#F8FAFC' : '#0F172A',
+      fontSize: 14,
+      fontWeight: 500,
+      boxShadow: isDark ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.04)',
+      transition: 'border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease',
+    },
+    label: {
+      fontWeight: 600,
+      fontSize: 13,
+      marginBottom: 6,
+      color: isDark ? '#E2E8F0' : '#1E293B',
+      letterSpacing: '0.01em',
+    },
+    section: {
+      color: isDark ? '#94A3B8' : '#64748B',
+    },
   };
 
-  const cardBg = isDark ? '#111827' : '#FFFFFF';
-  const cardBorder = isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0';
-  const headingColor = isDark ? '#F8FAFC' : '#0F172A';
-
-  // Dynamic Options from backend metadata
-  const contactTypeOptions = [
-    { value: 'Individual', label: 'Individual' },
-    { value: 'Company Representative', label: 'Company Representative' },
-  ];
-
-  const sourceOptions = metadata?.sources || ['Website', 'Referral', 'Cold Call', 'LinkedIn', 'Other'];
-  const categoryOptions = [
-    { value: 'Product', label: 'Product' },
-    { value: 'Service', label: 'Service' },
-  ];
-
-  const productOptions = metadata?.productOptions || [
-    'HRMS',
-    'IT CRM',
-    'Fintech CRM',
-    'Cloud ERP',
-    'Custom Enterprise Software',
-    'AI & ML Assistant',
-    'Mobile Apps',
-  ];
-
-  const serviceOptions = metadata?.serviceOptions || [
-    'Cloud Migration & DevOps',
-    'Cybersecurity & Compliance',
-    'Custom API & Backend Integration',
-    'Full-Stack Web Development',
-    'Staff Augmentation',
-    'UI/UX Design',
-  ];
+  const textareaStyles = {
+    input: {
+      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+      border: isDark ? '1.5px solid rgba(255, 255, 255, 0.16)' : '1.5px solid #CBD5E1',
+      borderRadius: 10,
+      color: isDark ? '#F8FAFC' : '#0F172A',
+      fontSize: 14,
+      fontWeight: 500,
+      padding: '12px 14px',
+      boxShadow: isDark ? 'none' : '0 1px 3px rgba(0, 0, 0, 0.04)',
+      transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+    },
+    label: {
+      fontWeight: 600,
+      fontSize: 13,
+      marginBottom: 6,
+      color: isDark ? '#E2E8F0' : '#1E293B',
+      letterSpacing: '0.01em',
+    },
+  };
 
   return (
-    <Box p={{ base: 'md', md: 'xl' }} style={{ maxWidth: 720, margin: '0 auto' }}>
-      {/* Top Breadcrumb Navigation */}
-      <Box mb="md">
-        <Breadcrumbs separator="→" mb={6}>
-          <Anchor size="xs" c="dimmed" onClick={handleCancel} style={{ cursor: 'pointer', fontWeight: 600 }}>
-            Contacts
-          </Anchor>
-          <Text size="xs" fw={700} style={{ color: isDark ? '#60A5FA' : '#15803D' }}>
-            {isEditing ? `Edit Contact (${initialData?.contactId})` : 'Add Contact'}
-          </Text>
-        </Breadcrumbs>
-      </Box>
+    <Box p="lg" style={{ maxWidth: 840, margin: '0 auto' }}>
+      <style>{`
+        .contact-form-field input:focus,
+        .contact-form-field textarea:focus {
+          border-color: #3B82F6 !important;
+          box-shadow: 0 0 0 3.5px rgba(59, 130, 246, 0.18) !important;
+        }
+        .contact-form-field input:hover,
+        .contact-form-field textarea:hover {
+          border-color: ${isDark ? 'rgba(255, 255, 255, 0.3)' : '#94A3B8'} !important;
+        }
+      `}</style>
 
-      {/* Main Card Modal-Style Container */}
+      {/* Breadcrumb Navigation */}
+      <Breadcrumbs mb="md" separator="→">
+        <Anchor
+          component="button"
+          type="button"
+          size="sm"
+          onClick={() => {
+            if (onBack) onBack();
+            else setActiveNav('contacts');
+          }}
+          c="dimmed"
+        >
+          Contacts
+        </Anchor>
+        <Text size="sm" fw={600} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+          {isEditing ? 'Edit Contact' : 'Create Contact'}
+        </Text>
+      </Breadcrumbs>
+
       <Paper
         p="xl"
-        radius="24px"
+        radius="16px"
         style={{
-          background: cardBg,
-          border: cardBorder,
-          boxShadow: isDark ? '0 12px 32px rgba(0, 0, 0, 0.5)' : '0 8px 30px rgba(0, 0, 0, 0.06)',
+          background: isDark ? '#111827' : '#FFFFFF',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
         }}
       >
-        {/* Header matching the image */}
-        <Group justify="space-between" align="flex-start" mb="xl">
-          <Group gap="md">
-            <Box
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: isDark ? '#34D399' : '#059669',
-              }}
-            >
-              <IconUser size={22} stroke={1.8} />
-            </Box>
-            <div>
-              <Text fw={800} size="20px" style={{ color: headingColor, lineHeight: 1.2 }}>
-                {isEditing ? `Edit Contact: ${initialData?.name}` : 'Add Contact'}
-              </Text>
-              <Text size="xs" c="dimmed" mt={2}>
-                Enter contact details
-              </Text>
-            </div>
-          </Group>
+        <Box mb="xl">
+          <Text fw={700} size="22px" style={{ color: isDark ? '#F8FAFC' : '#111827', lineHeight: 1.2 }}>
+            {isEditing ? 'Edit contact' : 'Create contact'}
+          </Text>
+          <Text size="13.5px" c="dimmed" mt={4}>
+            Add the essential details. You can complete the record later.
+          </Text>
+        </Box>
 
-          <ActionIcon
-            variant="subtle"
-            color="gray"
-            size="lg"
-            radius="100px"
-            onClick={handleCancel}
-          >
-            <IconX size={18} />
-          </ActionIcon>
-        </Group>
-
-        {/* Form Fields exactly matching the image */}
         <form onSubmit={handleSubmit}>
-          <Stack gap="md">
-            {/* Row 1: Name * and Email Address * */}
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <Stack gap="lg">
+            {/* Row 1: Name | Company */}
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
               <TextInput
+                className="contact-form-field"
                 label="Name"
-                placeholder="Enter contact name"
+                placeholder="e.g. John Doe / Lead Name"
                 required
+                leftSection={<IconUser size={18} stroke={1.6} />}
                 value={formData.name}
                 onChange={(e) => handleFieldChange('name', e.target.value)}
                 error={errors.name}
-                radius="md"
+                styles={inputStyles}
               />
 
               <TextInput
-                label="Email Address"
-                placeholder="Enter email address"
+                className="contact-form-field"
+                label="Company"
+                placeholder="e.g. TechCorp Solutions"
                 required
-                type="email"
-                value={formData.email || ''}
-                onChange={(e) => handleFieldChange('email', e.target.value)}
-                error={errors.email}
-                radius="md"
+                leftSection={<IconBuilding size={18} stroke={1.6} />}
+                value={formData.companyName || ''}
+                onChange={(e) => handleFieldChange('companyName', e.target.value)}
+                error={errors.companyName}
+                styles={inputStyles}
               />
             </SimpleGrid>
 
-            {/* Row 2: Mobile Number * and Contact Type * */}
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            {/* Row 2: Contact person | Email */}
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
               <TextInput
-                label="Mobile Number"
-                placeholder="Enter 10-digit mobile number"
+                className="contact-form-field"
+                label="Contact person"
+                placeholder="e.g. Alex Morgan (Optional)"
+                leftSection={<IconId size={18} stroke={1.6} />}
+                value={formData.contactPerson || ''}
+                onChange={(e) => handleFieldChange('contactPerson', e.target.value)}
+                styles={inputStyles}
+              />
+
+              <TextInput
+                className="contact-form-field"
+                label="Email"
+                placeholder="e.g. alex@techcorp.com"
+                type="email"
+                leftSection={<IconMail size={18} stroke={1.6} />}
+                value={formData.email || ''}
+                onChange={(e) => handleFieldChange('email', e.target.value)}
+                error={errors.email}
+                styles={inputStyles}
+              />
+            </SimpleGrid>
+
+            {/* Row 3: Phone number */}
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+              <TextInput
+                className="contact-form-field"
+                label="Phone number"
+                placeholder="e.g. 9876543210"
                 required
                 maxLength={10}
+                leftSection={<IconPhone size={18} stroke={1.6} />}
                 value={formData.phone}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                   handleFieldChange('phone', val);
                 }}
                 error={errors.phone}
-                radius="md"
-              />
-
-              <Select
-                label="Contact Type"
-                placeholder="Select contact type"
-                required
-                data={contactTypeOptions}
-                value={formData.contactType || null}
-                onChange={(val) => {
-                  const nextType = val || '';
-                  setFormData((prev) => ({
-                    ...prev,
-                    contactType: nextType,
-                    ...(nextType === 'Individual' ? { companyName: '', designation: '' } : {}),
-                    ...(nextType === 'Company Representative' ? { profession: '' } : {}),
-                  }));
-                  setErrors((prev) => {
-                    const copy = { ...prev };
-                    delete copy.contactType;
-                    delete copy.profession;
-                    delete copy.companyName;
-                    return copy;
-                  });
-                }}
-                error={errors.contactType}
-                radius="md"
+                styles={inputStyles}
               />
             </SimpleGrid>
 
-            {/* Row 3: Profession / Occupation * and Optional Company Name (when Individual) OR Company Name * & Designation (when Company Rep) */}
-            {formData.contactType === 'Company Representative' ? (
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                <TextInput
-                  label="Company Name"
-                  placeholder="Enter company name"
-                  required
-                  value={formData.companyName || ''}
-                  onChange={(e) => handleFieldChange('companyName', e.target.value)}
-                  error={errors.companyName}
-                  radius="md"
-                />
-
-                <TextInput
-                  label="Designation"
-                  placeholder="Enter designation (e.g. CTO, Manager)"
-                  value={formData.designation || ''}
-                  onChange={(e) => handleFieldChange('designation', e.target.value)}
-                  radius="md"
-                />
-              </SimpleGrid>
-            ) : formData.contactType === 'Individual' ? (
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                <TextInput
-                  label="Profession / Occupation"
-                  placeholder="Enter profession (e.g. Software Engineer, Consultant)"
-                  required
-                  value={formData.profession || ''}
-                  onChange={(e) => handleFieldChange('profession', e.target.value)}
-                  error={errors.profession}
-                  radius="md"
-                />
-
-                <TextInput
-                  label="Company / Org Name (Optional)"
-                  placeholder="Enter company name if applicable"
-                  value={formData.companyName || ''}
-                  onChange={(e) => handleFieldChange('companyName', e.target.value)}
-                  radius="md"
-                />
-              </SimpleGrid>
-            ) : (
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                <TextInput
-                  label="Profession / Occupation"
-                  placeholder="Enter profession or select Contact Type"
-                  value={formData.profession || ''}
-                  onChange={(e) => handleFieldChange('profession', e.target.value)}
-                  error={errors.profession}
-                  radius="md"
-                />
-
-                <TextInput
-                  label="Company / Org Name (Optional)"
-                  placeholder="Enter company name if applicable"
-                  value={formData.companyName || ''}
-                  onChange={(e) => handleFieldChange('companyName', e.target.value)}
-                  radius="md"
-                />
-              </SimpleGrid>
-            )}
-
-            {/* Row 4: Address (MANDATORY) */}
-            <TextInput
-              label="Address"
-              placeholder="Enter address"
-              required
-              value={formData.address || ''}
-              onChange={(e) => handleFieldChange('address', e.target.value)}
-              error={errors.address}
-              radius="md"
+            {/* Row 4: Description */}
+            <Textarea
+              className="contact-form-field"
+              label="Description"
+              placeholder="Add context, requirements, or notes..."
+              minRows={3}
+              value={formData.description || ''}
+              onChange={(e) => handleFieldChange('description', e.target.value)}
+              styles={textareaStyles}
             />
 
-            {/* Row 5: Source * and Category * */}
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              <Select
-                label="Source"
-                placeholder="Select Source"
-                required
-                data={sourceOptions}
-                value={formData.source || null}
-                onChange={(val) => {
-                  const nextSource = val || '';
-                  setFormData((prev) => ({ ...prev, source: nextSource }));
-                  setErrors((prev) => {
-                    const copy = { ...prev };
-                    delete copy.source;
-                    if (nextSource !== 'Other') delete copy.customSource;
-                    return copy;
-                  });
-                }}
-                error={errors.source}
-                radius="md"
-              />
-
-              <Select
-                label="Category"
-                placeholder="Select Category"
-                required
-                data={categoryOptions}
-                value={formData.category || null}
-                onChange={(val) => {
-                  const nextCat = val || '';
-                  setFormData((prev) => ({
-                    ...prev,
-                    category: nextCat,
-                    ...(nextCat === 'Product' ? { serviceList: [] } : {}),
-                    ...(nextCat === 'Service' ? { productList: [] } : {}),
-                  }));
-                  setErrors((prev) => {
-                    const copy = { ...prev };
-                    delete copy.category;
-                    delete copy.productList;
-                    delete copy.serviceList;
-                    return copy;
-                  });
-                }}
-                error={errors.category}
-                radius="md"
-              />
-            </SimpleGrid>
-
-            {/* If Source === 'Other', custom source input */}
-            {formData.source === 'Other' && (
-              <TextInput
-                label="Custom Source"
-                placeholder="Enter custom source details"
-                required
-                value={formData.customSource || ''}
-                onChange={(e) => handleFieldChange('customSource', e.target.value)}
-                error={errors.customSource}
-                radius="md"
-              />
-            )}
-
-            {/* Row 6: Product List (if Product) OR Service List (if Service) */}
-            {formData.category === 'Service' ? (
-              <MultiSelect
-                label="Service List"
-                placeholder="Select Service"
-                required
-                data={serviceOptions}
-                searchable
-                clearable
-                value={formData.serviceList || []}
-                onChange={(val) => handleFieldChange('serviceList', val)}
-                error={errors.serviceList}
-                radius="md"
-              />
-            ) : formData.category === 'Product' ? (
-              <MultiSelect
-                label="Product List"
-                placeholder="Select Product"
-                required
-                data={productOptions}
-                searchable
-                clearable
-                value={formData.productList || []}
-                onChange={(val) => handleFieldChange('productList', val)}
-                error={errors.productList}
-                radius="md"
-              />
-            ) : (
-              <MultiSelect
-                label="Product List"
-                placeholder="Select Product"
-                data={productOptions}
-                searchable
-                clearable
-                value={[]}
-                onChange={(val) => handleFieldChange('productList', val)}
-                radius="md"
-              />
-            )}
-
-            {/* Row 7: Action Buttons matching the image */}
-            <Group justify="flex-end" gap="sm" mt="lg">
+            {/* Footer Buttons */}
+            <Group justify="flex-end" gap="sm" mt="md">
               <Button
                 variant="default"
                 radius="md"
-                onClick={handleCancel}
+                size="md"
+                onClick={() => {
+                  if (onBack) onBack();
+                  else setActiveNav('contacts');
+                }}
                 disabled={loading}
                 style={{
                   fontWeight: 600,
-                  minWidth: 100,
+                  paddingLeft: 20,
+                  paddingRight: 20,
+                  borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#D1D5DB',
+                  color: isDark ? '#E2E8F0' : '#374151',
+                  background: isDark ? '#1F2937' : '#FFFFFF',
                 }}
               >
                 Cancel
@@ -572,15 +363,19 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
               <Button
                 type="submit"
                 radius="md"
+                size="md"
                 loading={loading}
                 style={{
-                  background: isDark ? '#10B981' : '#15803D',
+                  background: '#2563EB',
                   color: '#FFFFFF',
                   fontWeight: 600,
-                  minWidth: 130,
+                  paddingLeft: 24,
+                  paddingRight: 24,
+                  border: 'none',
+                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)',
                 }}
               >
-                {isEditing ? 'Update Contact' : 'Save Contact'}
+                Save record
               </Button>
             </Group>
           </Stack>

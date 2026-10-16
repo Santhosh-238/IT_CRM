@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Group,
   TextInput,
@@ -22,6 +22,12 @@ import { Lead } from '../../types/lead';
 import { useLead } from '../../context/LeadContext';
 import { LeadTableView } from './components/LeadTableView';
 import { LeadModal } from './components/LeadModal';
+import {
+  DateFilterControl,
+  DateFilterValue,
+  DEFAULT_DATE_FILTER,
+  isDateMatchingFilter,
+} from '../../components/common/DateFilterControl';
 
 type ActiveTabType = 'ALL' | 'NEW' | 'IN_PROGRESS' | 'COMPLETE';
 
@@ -72,6 +78,22 @@ export const LeadsPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
   const [searchInput, setSearchInput] = useState<string>(filters.search || '');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>(DEFAULT_DATE_FILTER);
+
+  // Filter leads by date (day-wise and month-wise)
+  const filteredLeads = useMemo(() => {
+    return leads.filter((l) => isDateMatchingFilter(l.createdAt || l.updatedAt, dateFilter));
+  }, [leads, dateFilter]);
+
+  // Real-time debounced search so typing immediately filters leads
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      if ((filters.search || '') !== searchInput) {
+        setFilters({ search: searchInput });
+      }
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   const handleTabChange = (tab: ActiveTabType) => {
     setActiveTab(tab);
@@ -121,7 +143,7 @@ export const LeadsPage: React.FC = () => {
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
   return (
-    <Box p={{ base: 'md', md: 'lg' }} style={{ maxWidth: 1520, margin: '0 auto' }}>
+    <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ width: '100%', maxWidth: '100%' }}>
       {/* Top Controls Bar - Modern Toolbar Card matching Contacts Page */}
       <Paper
         p="sm"
@@ -133,8 +155,50 @@ export const LeadsPage: React.FC = () => {
         }}
       >
         <Group justify="space-between" wrap="wrap" gap="sm" align="center">
-          {/* Left: Capsule Segmented Tabs */}
-          <Box
+          {/* Left: Search Bar */}
+          <form onSubmit={handleSearchSubmit} style={{ flex: '1 1 240px', maxWidth: 320, minWidth: 180 }}>
+            <TextInput
+              placeholder="Search leads..."
+              leftSection={<IconSearch size={15} color="#94A3B8" />}
+              rightSection={
+                searchInput ? (
+                  <ActionIcon
+                    size="xs"
+                    variant="subtle"
+                    onClick={() => {
+                      setSearchInput('');
+                      setFilters({ search: '' });
+                    }}
+                  >
+                    <IconX size={12} />
+                  </ActionIcon>
+                ) : null
+              }
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  setFilters({ search: searchInput });
+                }
+              }}
+              onBlur={() => setFilters({ search: searchInput })}
+              size="sm"
+              radius="md"
+              styles={{
+                input: {
+                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
+                  fontSize: 13,
+                  height: 36,
+                },
+              }}
+            />
+          </form>
+
+          {/* Right: Status Filter Tabs & Date Filter */}
+          <Group gap="sm" align="center" wrap="wrap">
+            <Box
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -401,50 +465,15 @@ export const LeadsPage: React.FC = () => {
             </UnstyledButton>
           </Box>
 
-          {/* Right: Search, Filter Selects & Add Button */}
-          <Group gap="xs" align="center" wrap="wrap" style={{ flex: 1, justifyContent: 'flex-end' }}>
-            {/* Search leads... */}
-            <form onSubmit={handleSearchSubmit} style={{ flex: '1 1 180px', maxWidth: 220, minWidth: 150 }}>
-              <TextInput
-                placeholder="Search leads..."
-                leftSection={<IconSearch size={15} color="#94A3B8" />}
-                rightSection={
-                  searchInput ? (
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      onClick={() => {
-                        setSearchInput('');
-                        setFilters({ search: '' });
-                      }}
-                    >
-                      <IconX size={12} />
-                    </ActionIcon>
-                  ) : null
-                }
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onBlur={() => setFilters({ search: searchInput })}
-                size="sm"
-                radius="md"
-                styles={{
-                  input: {
-                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                    fontSize: 13,
-                    height: 36,
-                  },
-                }}
-              />
-            </form>
-
+            {/* Date Filter: Day-wise & Month-wise */}
+            <DateFilterControl value={dateFilter} onChange={setDateFilter} width={135} />
           </Group>
         </Group>
       </Paper>
 
       {/* Table Content */}
       <LeadTableView
-        leads={leads}
+        leads={filteredLeads}
         onEdit={handleOpenEditModal}
         onDelete={(lead) => setDeleteTarget(lead)}
         loading={loading}
@@ -462,7 +491,7 @@ export const LeadsPage: React.FC = () => {
       >
         <Group justify="space-between" align="center" wrap="wrap">
           <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-            Showing {startRecord} to {endRecord} of {pagination.total} leads
+            Showing {startRecord} to {Math.min(endRecord, filteredLeads.length)} of {dateFilter.type !== 'ALL' ? filteredLeads.length : pagination.total} leads
           </Text>
 
           <Group gap={6} align="center">

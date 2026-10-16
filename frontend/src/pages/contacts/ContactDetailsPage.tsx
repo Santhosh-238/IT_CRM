@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Paper,
@@ -17,6 +17,9 @@ import {
   Grid,
   CopyButton,
   Tooltip,
+  Select,
+  Modal,
+  ThemeIcon,
 } from '@mantine/core';
 import {
   IconArrowLeft,
@@ -24,79 +27,54 @@ import {
   IconTrash,
   IconMail,
   IconPhone,
-  IconBuildingSkyscraper,
-  IconMapPin,
-  IconBox,
+  IconBuilding,
+  IconUser,
   IconCalendar,
   IconTargetArrow,
   IconIdBadge,
-  IconUser,
-  IconShieldCheck,
-  IconReceiptTax,
-  IconUsers,
-  IconCreditCard,
-  IconFileCertificate,
-  IconWorld,
-  IconBrandLinkedin,
-  IconExternalLink,
+  IconFolders,
+  IconFileText,
   IconCheck,
   IconCopy,
+  IconAlertTriangle,
 } from '@tabler/icons-react';
 import { Contact } from '../../types/contact';
 import { useCRM } from '../../context/CRMContext';
+import { useContact } from '../../context/ContactContext';
+import { ContactModal } from './components/ContactModal';
 
 interface ContactDetailsPageProps {
   contact: Contact;
   onBack: () => void;
-  onEdit: (contact: Contact) => void;
-  onDelete: (contact: Contact) => void;
+  onEdit?: (contact: Contact) => void;
+  onDelete?: (contact: Contact) => void;
 }
 
 export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
-  contact,
+  contact: initialContact,
   onBack,
   onEdit,
   onDelete,
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
-  const { setActiveNav } = useCRM();
+  const { setActiveNav, currentUser } = useCRM();
+  const { contacts, updateContact, deleteContact, metadata, assignContact } = useContact();
+  const roleUpper = (currentUser?.role || '').toUpperCase();
+  const isAdmin = roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPER ADMIN';
+
+  // Find updated contact from context if available
+  const contact = contacts.find((c) => c.id === initialContact.id) || initialContact;
+
+  const [editModalOpened, setEditModalOpened] = useState<boolean>(false);
+  const [deleteModalOpened, setDeleteModalOpened] = useState<boolean>(false);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
   const getInitials = (name?: string) => {
     if (!name) return 'CT';
     const parts = name.trim().split(' ');
     if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     return name.slice(0, 2).toUpperCase();
-  };
-
-  const getStatusBadgeColor = (status?: string) => {
-    switch ((status || '').toLowerCase()) {
-      case 'new':
-        return 'blue';
-      case 'active':
-        return 'green';
-      case 'qualified':
-        return 'teal';
-      case 'inactive':
-        return 'gray';
-      case 'disqualified':
-        return 'red';
-      default:
-        return 'blue';
-    }
-  };
-
-  const getPriorityBadgeColor = (priority?: string) => {
-    switch ((priority || '').toLowerCase()) {
-      case 'high':
-        return 'red';
-      case 'medium':
-        return 'orange';
-      case 'low':
-        return 'gray';
-      default:
-        return 'blue';
-    }
   };
 
   const formatDateTime = (dateStr?: string) => {
@@ -115,45 +93,103 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    try {
+      setDeleteLoading(true);
+      if (onDelete) {
+        onDelete(contact);
+      } else {
+        await deleteContact(contact.id);
+        onBack();
+      }
+    } finally {
+      setDeleteLoading(false);
+      setDeleteModalOpened(false);
+    }
+  };
+
   const cardBg = isDark ? '#111827' : '#FFFFFF';
   const cardBorder = isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0';
   const headingColor = isDark ? '#F8FAFC' : '#0F172A';
   const labelColor = isDark ? '#94A3B8' : '#64748B';
   const valueColor = isDark ? '#F8FAFC' : '#0F172A';
 
+  const assignedOwnerName =
+    contact.assignedToName ||
+    metadata?.employees?.find((e) => e.id === contact.assignedTo || e.empCode === contact.assignedTo)?.name ||
+    'Unassigned';
+
   return (
-    <Box p={{ base: 'md', md: 'xl' }} style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ width: '100%', maxWidth: '100%' }}>
       {/* Top Breadcrumb & Action Header */}
-      <Group justify="space-between" align="center" mb="lg">
+      <Group justify="space-between" align="center" mb="lg" wrap="wrap" gap="md">
         <div>
           <Breadcrumbs separator="→" mb={6}>
             <Anchor size="xs" c="dimmed" onClick={onBack} style={{ cursor: 'pointer', fontWeight: 600 }}>
               Contacts
             </Anchor>
             <Text size="xs" fw={700} style={{ color: isDark ? '#60A5FA' : '#2563EB' }}>
-              {contact.contactId}
+              {contact.contactId || 'Contact Profile'}
             </Text>
           </Breadcrumbs>
-          <Group gap="sm">
-            <ActionIcon variant="subtle" size="lg" radius="100px" onClick={onBack} style={{ border: cardBorder }}>
+          <Group gap="sm" align="center">
+            <ActionIcon
+              variant="subtle"
+              size="lg"
+              radius="100px"
+              onClick={onBack}
+              style={{
+                border: cardBorder,
+                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+              }}
+            >
               <IconArrowLeft size={18} />
             </ActionIcon>
             <div>
-              <Text fw={800} size="24px" style={{ letterSpacing: '-0.02em', color: headingColor }}>
-                {contact.name}
-              </Text>
-              <Text size="xs" c="dimmed">
-                {contact.designation || contact.profession || 'Contact'} {contact.companyName ? `• ${contact.companyName}` : ''}
+              <Group gap="xs" align="center">
+                <Text fw={800} size="24px" style={{ letterSpacing: '-0.02em', color: headingColor, lineHeight: 1.2 }}>
+                  {contact.name}
+                </Text>
+                <Badge variant="light" color="blue" size="md">
+                  {contact.contactId}
+                </Badge>
+              </Group>
+              <Text size="xs" c="dimmed" mt={2}>
+                {contact.companyName || 'Independent'}
+                {contact.contactPerson ? ` • Contact Person: ${contact.contactPerson}` : ''}
               </Text>
             </div>
           </Group>
         </div>
 
-        <Group gap="xs">
+        {/* 4 Quick Action Buttons matching User Screenshot */}
+        <Group gap="xs" wrap="wrap">
+          <Button
+            variant="filled"
+            color="indigo"
+            radius="md"
+            leftSection={<IconFolders size={16} />}
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                sessionStorage.setItem(
+                  'crm_editing_project',
+                  JSON.stringify({
+                    contactId: contact.id,
+                    clientName: contact.companyName || contact.name,
+                    clientEmail: contact.email,
+                    clientPhone: contact.phone,
+                  })
+                );
+              }
+              setActiveNav('add-project');
+            }}
+          >
+            Create Project
+          </Button>
           <Button
             variant="filled"
             color="teal"
-            radius="100px"
+            radius="md"
             leftSection={<IconTargetArrow size={16} />}
             onClick={() => {
               if (typeof window !== 'undefined') {
@@ -162,22 +198,29 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
               setActiveNav('contact-qualification');
             }}
           >
-            Qualify Contact
+            Qualify
           </Button>
           <Button
-            variant="default"
-            radius="100px"
+            variant="light"
+            color="blue"
+            radius="md"
             leftSection={<IconEdit size={16} />}
-            onClick={() => onEdit(contact)}
+            onClick={() => {
+              if (onEdit) {
+                onEdit(contact);
+              } else {
+                setEditModalOpened(true);
+              }
+            }}
           >
-            Edit Contact
+            Edit
           </Button>
           <Button
             color="red"
             variant="light"
-            radius="100px"
+            radius="md"
             leftSection={<IconTrash size={16} />}
-            onClick={() => onDelete(contact)}
+            onClick={() => setDeleteModalOpened(true)}
           >
             Delete
           </Button>
@@ -186,93 +229,151 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
 
       {/* Main Grid Layout */}
       <Grid gutter="lg">
-        {/* Left Col: Summary Card */}
+        {/* Left Column (4 cols on desktop): Profile Summary & Quick Assign */}
         <Grid.Col span={{ base: 12, md: 4 }}>
           <Stack gap="lg">
-            <Paper p="xl" radius="24px" style={{ background: cardBg, border: cardBorder }}>
-              <Stack align="center" gap="xs" mb="lg">
+            {/* 1. Profile Avatar & Identity Card */}
+            <Paper p="xl" radius="20px" style={{ background: cardBg, border: cardBorder }}>
+              <Stack align="center" gap="xs" mb="md">
                 <Avatar
-                  size={88}
-                  radius="24px"
-                  color={contact.contactType === 'Individual' ? 'violet' : 'blue'}
+                  size={84}
+                  radius="20px"
+                  color="blue"
                   style={{
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                    border: `3px solid ${isDark ? '#1E293B' : '#F1F5F9'}`,
+                    boxShadow: '0 8px 24px rgba(37, 99, 235, 0.25)',
+                    border: `3px solid ${isDark ? '#1E293B' : '#EFF6FF'}`,
+                    fontWeight: 800,
+                    fontSize: 28,
                   }}
                 >
                   {getInitials(contact.name)}
                 </Avatar>
 
-                <Text fw={800} size="xl" style={{ color: headingColor, textAlign: 'center' }}>
+                <Text fw={800} size="xl" style={{ color: headingColor, textAlign: 'center', lineHeight: 1.2 }}>
                   {contact.name}
                 </Text>
 
-                <Text size="sm" c="dimmed">
-                  {contact.designation || contact.profession || 'Contact'}
+                <Text size="sm" c="dimmed" style={{ textAlign: 'center' }}>
+                  {contact.companyName || 'Independent'}
                 </Text>
 
                 <Group gap="xs" mt={4}>
-                  <Badge variant="light" color={contact.contactType === 'Individual' ? 'violet' : 'blue'} size="md">
-                    {contact.contactType || 'Company Representative'}
+                  <Badge
+                    size="sm"
+                    variant="light"
+                    color={
+                      contact.qualificationStatus === 'Qualified'
+                        ? 'teal'
+                        : contact.qualificationStatus === 'Unqualified'
+                        ? 'red'
+                        : 'orange'
+                    }
+                  >
+                    {contact.qualificationStatus || 'Pending'}
                   </Badge>
-                  <Badge variant="light" color="indigo" size="md">
-                    Stage: {contact.stage || 'New Lead'}
+                  <Badge size="sm" variant="outline" color="blue">
+                    {contact.priority || 'Medium'} Priority
                   </Badge>
                 </Group>
               </Stack>
 
               <Divider color={isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9'} my="md" />
 
-              <Stack gap="sm">
-                <Group justify="space-between">
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Contact ID
-                  </Text>
-                  <Badge variant="light" color="gray" radius="sm">
-                    {contact.contactId}
-                  </Badge>
-                </Group>
+              {/* Quick Details List */}
+              <Stack gap="xs">
+                {contact.phone && (
+                  <Group justify="space-between" align="center">
+                    <Text size="xs" fw={600} style={{ color: labelColor }}>
+                      Phone
+                    </Text>
+                    <Group gap={4}>
+                      <IconPhone size={13} color="#10B981" />
+                      <Text size="xs" fw={600} style={{ color: headingColor }}>
+                        {contact.phone}
+                      </Text>
+                    </Group>
+                  </Group>
+                )}
 
-                <Group justify="space-between">
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Assigned To
+                {contact.email && (
+                  <Group justify="space-between" align="center">
+                    <Text size="xs" fw={600} style={{ color: labelColor }}>
+                      Email
+                    </Text>
+                    <Group gap={4}>
+                      <Text size="xs" fw={600} style={{ color: '#2563EB' }}>
+                        {contact.email}
+                      </Text>
+                      <CopyButton value={contact.email} timeout={2000}>
+                        {({ copied, copy }) => (
+                          <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                            {copied ? <IconCheck size={11} /> : <IconCopy size={11} />}
+                          </ActionIcon>
+                        )}
+                      </CopyButton>
+                    </Group>
+                  </Group>
+                )}
+
+                {contact.estimatedValue && (
+                  <Group justify="space-between" align="center">
+                    <Text size="xs" fw={600} style={{ color: labelColor }}>
+                      Est. Value
+                    </Text>
+                    <Text size="xs" fw={700} style={{ color: headingColor }}>
+                      {contact.estimatedValue.startsWith('₹') ? contact.estimatedValue : `₹ ${contact.estimatedValue}`}
+                    </Text>
+                  </Group>
+                )}
+
+                {contact.expectedCloseDate && (
+                  <Group justify="space-between" align="center">
+                    <Text size="xs" fw={600} style={{ color: labelColor }}>
+                      Close Date
+                    </Text>
+                    <Text size="xs" fw={600} style={{ color: headingColor }}>
+                      {contact.expectedCloseDate}
+                    </Text>
+                  </Group>
+                )}
+              </Stack>
+
+              <Divider color={isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9'} my="md" />
+
+              {/* Quick Assign Owner (Admin Only) or Static Owner Name */}
+              {isAdmin ? (
+                <Box>
+                  <Text size="11.5px" fw={600} style={{ color: labelColor }} mb={4}>
+                    Change Assigned Owner
                   </Text>
-                  <Text size="xs" fw={700} style={{ color: headingColor }}>
+                  <Select
+                    placeholder="Assign owner"
+                    data={[
+                      { value: 'none', label: '— Unassigned —' },
+                      ...(metadata?.employees?.map((emp) => ({ value: emp.id, label: `${emp.name} (${emp.empCode})` })) || []),
+                    ]}
+                    value={contact.assignedTo || 'none'}
+                    onChange={async (val) => {
+                      await assignContact(contact.id, val === 'none' ? null : val);
+                    }}
+                    radius="md"
+                    size="sm"
+                  />
+                </Box>
+              ) : (
+                <Box>
+                  <Text size="11.5px" fw={600} style={{ color: labelColor }} mb={4}>
+                    Assigned Owner
+                  </Text>
+                  <Text size="13px" fw={600} style={{ color: isDark ? '#E2E8F0' : '#1E293B' }}>
                     {contact.assignedToName || 'Unassigned'}
                   </Text>
-                </Group>
-
-                <Group justify="space-between">
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Lead Source
-                  </Text>
-                  <Text size="xs" fw={600} style={{ color: headingColor }}>
-                    {contact.source === 'Other' && contact.customSource ? `${contact.source} (${contact.customSource})` : contact.source || 'Website'}
-                  </Text>
-                </Group>
-
-                <Group justify="space-between">
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Priority
-                  </Text>
-                  <Badge variant="outline" color={getPriorityBadgeColor(contact.priority || 'Medium')} size="sm">
-                    {contact.priority || 'Medium'}
-                  </Badge>
-                </Group>
-
-                <Group justify="space-between">
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Stage
-                  </Text>
-                  <Badge variant="light" color="indigo" size="sm">
-                    {contact.stage || 'New Lead'}
-                  </Badge>
-                </Group>
-              </Stack>
+                </Box>
+              )}
 
               <Divider color={isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9'} my="md" />
 
-              <Stack gap={4}>
+              <Stack gap={3}>
                 <Text size="11px" c="dimmed">
                   Created: {formatDateTime(contact.createdAt)}
                 </Text>
@@ -281,518 +382,352 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
                 </Text>
               </Stack>
             </Paper>
+
+            {/* 2. Description Card */}
+            <Paper p="xl" radius="20px" style={{ background: cardBg, border: cardBorder }}>
+              <Group gap="xs" mb="xs">
+                <IconFileText size={16} color={isDark ? '#A78BFA' : '#7C3AED'} />
+                <Text fw={700} size="xs" tt="uppercase" style={{ color: isDark ? '#A78BFA' : '#7C3AED', letterSpacing: '0.05em' }}>
+                  Description / Notes
+                </Text>
+              </Group>
+              <Text
+                size="sm"
+                style={{
+                  color: valueColor,
+                  whiteSpace: 'pre-wrap',
+                  background: isDark ? '#1F2937' : '#F8FAFC',
+                  padding: '12px 14px',
+                  borderRadius: 12,
+                  minHeight: 80,
+                  border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #F1F5F9',
+                  lineHeight: 1.5,
+                }}
+              >
+                {contact.description || contact.notes || 'No notes or description provided.'}
+              </Text>
+            </Paper>
           </Stack>
         </Grid.Col>
 
-        {/* Right Col: 6 Detailed Sections */}
+        {/* Right Column (8 cols on desktop): Essential Details, Dark Status Card & Qualification Checks */}
         <Grid.Col span={{ base: 12, md: 8 }}>
           <Stack gap="lg">
-            {/* 1. Basic Information */}
-            <Paper p="xl" radius="24px" style={{ background: cardBg, border: cardBorder }}>
-              <Group gap="xs" mb="md">
-                <IconUser size={18} color={isDark ? '#60A5FA' : '#2563EB'} />
-                <Text fw={800} size="md" style={{ color: headingColor }}>
-                  1. Basic Contact Information
-                </Text>
-              </Group>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Mobile / Phone Number
-                  </Text>
-                  <Group gap="xs" mt={4}>
-                    <IconPhone size={16} color={isDark ? '#34D399' : '#059669'} />
-                    <Text size="sm" fw={700} style={{ color: headingColor }}>
-                      {contact.phone}
-                    </Text>
-                  </Group>
-                </div>
-
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Email Address
-                  </Text>
-                  <Group gap="xs" mt={4}>
-                    <IconMail size={16} color={isDark ? '#60A5FA' : '#2563EB'} />
-                    <Text size="sm" fw={700} style={{ color: isDark ? '#93C5FD' : '#2563EB' }}>
-                      {contact.email || '—'}
-                    </Text>
-                  </Group>
-                </div>
-
-                <div style={{ gridColumn: 'span 2' }}>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Address
-                  </Text>
-                  <Group gap="xs" mt={4}>
-                    <IconMapPin size={16} color={labelColor} />
-                    <Text size="sm" fw={500} style={{ color: headingColor }}>
-                      {contact.address || '—'}
-                    </Text>
-                  </Group>
-                </div>
-              </SimpleGrid>
-            </Paper>
-
-            {/* 2. Professional & Company Details */}
-            <Paper p="xl" radius="24px" style={{ background: cardBg, border: cardBorder }}>
+            {/* 1. Essential Details Card (Matching 9 Fields) */}
+            <Paper p="xl" radius="20px" style={{ background: cardBg, border: cardBorder }}>
               <Group justify="space-between" align="center" mb="md">
                 <Group gap="xs">
-                  <IconBuildingSkyscraper size={18} color={isDark ? '#34D399' : '#059669'} />
-                  <Text fw={800} size="md" style={{ color: headingColor }}>
-                    2. Professional & Company Information
+                  <IconUser size={18} color={isDark ? '#60A5FA' : '#2563EB'} />
+                  <Text fw={800} size="md" style={{ color: headingColor, letterSpacing: '-0.01em' }}>
+                    Essential Contact Details
                   </Text>
                 </Group>
-                <Badge
-                  size="sm"
-                  variant="light"
-                  color={
-                    contact.verificationStatus === 'Verified'
-                      ? 'green'
-                      : contact.verificationStatus === 'Pending'
-                      ? 'orange'
-                      : 'gray'
-                  }
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="blue"
+                  leftSection={<IconEdit size={14} />}
+                  onClick={() => setEditModalOpened(true)}
                 >
-                  {contact.verificationStatus === 'Verified' ? '✓ Verified Company' : contact.verificationStatus === 'Pending' ? '⏳ Pending Verification' : '⚠️ Unverified'}
-                </Badge>
+                  Edit Details
+                </Button>
               </Group>
 
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+                {/* Name */}
                 <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Company Name
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    Name
                   </Text>
-                  <Text size="sm" fw={700} style={{ color: headingColor }} mt={4}>
+                  <Text size="sm" fw={700} style={{ color: valueColor }} mt={3}>
+                    {contact.name}
+                  </Text>
+                </div>
+
+                {/* Company Name */}
+                <div>
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    Company
+                  </Text>
+                  <Text size="sm" fw={700} style={{ color: valueColor }} mt={3}>
                     {contact.companyName || '—'}
                   </Text>
                 </div>
 
+                {/* Contact Person */}
                 <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Designation / Profession
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    Contact Person
                   </Text>
-                  <Text size="sm" fw={600} style={{ color: headingColor }} mt={4}>
-                    {contact.designation || contact.profession || '—'}
+                  <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                    {contact.contactPerson || '—'}
                   </Text>
                 </div>
 
+                {/* Email */}
                 <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Contact Type
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    Email Address
                   </Text>
-                  <Text size="sm" fw={600} style={{ color: headingColor }} mt={4}>
-                    {contact.contactType || 'Company Representative'}
-                  </Text>
-                </div>
-
-                {/* GST Number */}
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    GST Number (GSTIN)
-                  </Text>
-                  {contact.gstNumber ? (
-                    <Group gap="xs" mt={4}>
-                      <Badge variant="outline" color="blue" size="md" style={{ fontFamily: 'monospace' }}>
-                        {contact.gstNumber}
-                      </Badge>
-                      <CopyButton value={contact.gstNumber} timeout={2000}>
+                  {contact.email ? (
+                    <Group gap="xs" mt={3}>
+                      <Text size="sm" fw={600} style={{ color: '#2563EB' }}>
+                        {contact.email}
+                      </Text>
+                      <CopyButton value={contact.email} timeout={2000}>
                         {({ copied, copy }) => (
-                          <ActionIcon size="sm" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
-                            {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                          <ActionIcon size="xs" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
+                            {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
                           </ActionIcon>
                         )}
                       </CopyButton>
                     </Group>
                   ) : (
-                    <Text size="sm" c="dimmed" mt={4}>—</Text>
-                  )}
-                </div>
-
-                {/* Employee Count */}
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Employees / Company Size
-                  </Text>
-                  <Group gap="xs" mt={4}>
-                    <IconUsers size={16} color={isDark ? '#818CF8' : '#4F46E5'} />
-                    <Text size="sm" fw={600} style={{ color: headingColor }}>
-                      {contact.employeeCount || '—'}
+                    <Text size="sm" c="dimmed" mt={3}>
+                      —
                     </Text>
-                  </Group>
-                </div>
-
-                {/* Company PAN */}
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Company PAN
-                  </Text>
-                  {contact.companyPan ? (
-                    <Group gap="xs" mt={4}>
-                      <Text size="sm" fw={700} style={{ color: headingColor, fontFamily: 'monospace' }}>
-                        {contact.companyPan}
-                      </Text>
-                      <CopyButton value={contact.companyPan} timeout={2000}>
-                        {({ copied, copy }) => (
-                          <ActionIcon size="sm" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
-                            {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                          </ActionIcon>
-                        )}
-                      </CopyButton>
-                    </Group>
-                  ) : (
-                    <Text size="sm" c="dimmed" mt={4}>—</Text>
                   )}
                 </div>
 
-                {/* CIN Number */}
+                {/* Phone Number */}
                 <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    CIN (MCA Registration)
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    Phone Number
                   </Text>
-                  {contact.cinNumber ? (
-                    <Group gap="xs" mt={4}>
-                      <Text size="sm" fw={700} style={{ color: headingColor, fontFamily: 'monospace' }}>
-                        {contact.cinNumber}
-                      </Text>
-                      <CopyButton value={contact.cinNumber} timeout={2000}>
-                        {({ copied, copy }) => (
-                          <ActionIcon size="sm" variant="subtle" color={copied ? 'teal' : 'gray'} onClick={copy}>
-                            {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                          </ActionIcon>
-                        )}
-                      </CopyButton>
-                    </Group>
-                  ) : (
-                    <Text size="sm" c="dimmed" mt={4}>—</Text>
-                  )}
-                </div>
-
-                {/* Registered State */}
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Registered State
-                  </Text>
-                  <Text size="sm" fw={600} style={{ color: headingColor }} mt={4}>
-                    {contact.registeredState || '—'}
+                  <Text size="sm" fw={700} style={{ color: valueColor }} mt={3}>
+                    {contact.phone || '—'}
                   </Text>
                 </div>
 
-                {/* Budget */}
+                {/* Assigned Owner */}
                 <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Budget
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    Assigned Owner
                   </Text>
-                  <Text size="sm" fw={600} style={{ color: headingColor }} mt={4}>
-                    {contact.annualTurnover
-                      ? !isNaN(Number(contact.annualTurnover)) && String(contact.annualTurnover).trim() !== ''
-                        ? `₹ ${Number(contact.annualTurnover).toLocaleString('en-IN')}`
-                        : contact.annualTurnover
-                      : contact.annualRevenue || '—'}
-                  </Text>
+                  <Box mt={3}>
+                    <Badge variant="light" color={assignedOwnerName === 'Unassigned' ? 'gray' : 'blue'} size="md">
+                      👤 {assignedOwnerName}
+                    </Badge>
+                  </Box>
                 </div>
 
-                {/* Website & LinkedIn */}
-                {(contact.companyWebsite || contact.linkedinUrl) && (
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <Divider my="xs" color={isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9'} />
-                    <Group gap="sm">
-                      {contact.companyWebsite && (
-                        <Button
-                          size="xs"
-                          variant="light"
-                          color="blue"
-                          component="a"
-                          href={contact.companyWebsite.startsWith('http') ? contact.companyWebsite : `https://${contact.companyWebsite}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          leftSection={<IconWorld size={14} />}
-                          rightSection={<IconExternalLink size={12} />}
-                        >
-                          Official Website
-                        </Button>
-                      )}
-                      {contact.linkedinUrl && (
-                        <Button
-                          size="xs"
-                          variant="light"
-                          color="indigo"
-                          component="a"
-                          href={contact.linkedinUrl.startsWith('http') ? contact.linkedinUrl : `https://${contact.linkedinUrl}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          leftSection={<IconBrandLinkedin size={14} />}
-                          rightSection={<IconExternalLink size={12} />}
-                        >
-                          Company LinkedIn
-                        </Button>
-                      )}
-                    </Group>
-                  </div>
-                )}
-              </SimpleGrid>
-            </Paper>
-
-            {/* 3. Requirement Details */}
-            <Paper p="xl" radius="24px" style={{ background: cardBg, border: cardBorder }}>
-              <Group gap="xs" mb="md">
-                <IconBox size={18} color={isDark ? '#FB923C' : '#EA580C'} />
-                <Text fw={800} size="md" style={{ color: headingColor }}>
-                  3. Requirement Details
-                </Text>
-              </Group>
-
-              <Stack gap="sm">
-                <Group justify="space-between">
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Category
-                  </Text>
-                  <Badge variant="light" color={contact.category === 'Service' ? 'teal' : 'indigo'}>
-                    {contact.category || 'Product'}
-                  </Badge>
-                </Group>
-
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }} mb={6}>
-                    Selected {contact.category === 'Service' ? 'Services' : 'Products'}
-                  </Text>
-                  <Group gap={6}>
-                    {(contact.category === 'Service' ? contact.serviceList : contact.productList)?.length ? (
-                      (contact.category === 'Service' ? contact.serviceList : contact.productList).map((item, idx) => (
-                        <Badge key={idx} variant="outline" color="blue">
-                          {item}
-                        </Badge>
-                      ))
-                    ) : (
-                      <Text size="xs" c="dimmed">
-                        None specified
-                      </Text>
-                    )}
-                  </Group>
-                </div>
-
-                {contact.customProduct && (
+                {/* Estimated Value (if present) */}
+                {contact.estimatedValue && (
                   <div>
-                    <Text size="xs" fw={600} style={{ color: labelColor }}>
-                      Custom Product / Service Details
+                    <Text size="12px" fw={600} style={{ color: labelColor }}>
+                      Estimated Value
                     </Text>
-                    <Text size="xs" style={{ color: valueColor, background: isDark ? '#0F172A' : '#F8FAFC', padding: 10, borderRadius: 10 }} mt={4}>
-                      {contact.customProduct}
+                    <Text size="sm" fw={700} style={{ color: valueColor }} mt={3}>
+                      {!isNaN(Number(contact.estimatedValue))
+                        ? `₹ ${Number(contact.estimatedValue).toLocaleString('en-IN')}`
+                        : contact.estimatedValue}
                     </Text>
                   </div>
                 )}
-              </Stack>
-            </Paper>
 
-            {/* 4. Interaction & Follow-up Details */}
-            <Paper p="xl" radius="24px" style={{ background: cardBg, border: cardBorder }}>
-              <Group gap="xs" mb="md">
-                <IconCalendar size={18} color={isDark ? '#C084FC' : '#9333EA'} />
-                <Text fw={800} size="md" style={{ color: headingColor }}>
-                  4. Interaction & Follow-up Details
-                </Text>
-              </Group>
-
-              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Contact Mode
-                  </Text>
-                  <Text size="sm" fw={600} style={{ color: headingColor }} mt={2}>
-                    {contact.contactMode === 'Other' && contact.customContactMode ? `${contact.contactMode} (${contact.customContactMode})` : contact.contactMode || 'Call'}
-                  </Text>
-                </div>
-
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Meeting Type
-                  </Text>
-                  <Text size="sm" fw={600} style={{ color: headingColor }} mt={2}>
-                    {contact.meetingType || 'Virtual'}
-                  </Text>
-                </div>
-
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Next Follow-up Date
-                  </Text>
-                  <Badge variant="filled" color="orange" size="md" mt={2}>
-                    {contact.nextFollowDate || 'Not Scheduled'}
-                  </Badge>
-                </div>
-              </SimpleGrid>
-
-              {contact.remarks && (
-                <Box mt="md">
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Remarks / Discussion Highlights
-                  </Text>
-                  <Text size="xs" style={{ color: headingColor }} mt={2}>
-                    {contact.remarks}
-                  </Text>
-                </Box>
-              )}
-
-              {contact.notes && (
-                <Box mt="md">
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Notes & Action Items
-                  </Text>
-                  <Paper p="md" radius="12px" style={{ background: isDark ? '#0F172A' : '#F8FAFC', whiteSpace: 'pre-wrap' }} mt={2}>
-                    <Text size="xs" style={{ color: headingColor }}>
-                      {contact.notes}
+                {/* Expected Close Date (if present) */}
+                {contact.expectedCloseDate && (
+                  <div>
+                    <Text size="12px" fw={600} style={{ color: labelColor }}>
+                      Expected Close Date
                     </Text>
-                  </Paper>
-                </Box>
-              )}
+                    <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                      {contact.expectedCloseDate}
+                    </Text>
+                  </div>
+                )}
+              </SimpleGrid>
             </Paper>
 
-            {/* 5. Qualification & Project Details */}
-            <Paper p="xl" radius="24px" style={{ background: cardBg, border: cardBorder }}>
-              <Group gap="xs" mb="md">
-                <IconTargetArrow size={18} color={isDark ? '#F472B6' : '#DB2777'} />
-                <Text fw={800} size="md" style={{ color: headingColor }}>
-                  5. Qualification & Project Details
-                </Text>
+
+            {/* 3. Detailed Qualification Assessment (The 10 Checks) */}
+            <Paper p="xl" radius="20px" style={{ background: cardBg, border: cardBorder }}>
+              <Group justify="space-between" align="center" mb="md">
+                <Group gap="xs">
+                  <IconTargetArrow size={18} color="#10B981" />
+                  <Text fw={800} size="md" style={{ color: headingColor }}>
+                    Qualification Assessment Details
+                  </Text>
+                </Group>
+                <Badge
+                  size="md"
+                  variant="light"
+                  color={
+                    contact.qualificationStatus === 'Qualified'
+                      ? 'teal'
+                      : contact.qualificationStatus === 'Unqualified'
+                      ? 'red'
+                      : 'orange'
+                  }
+                >
+                  {contact.qualificationStatus || 'Pending'}
+                </Badge>
               </Group>
 
-              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
                 <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Qualification Status
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    1. Business Need
                   </Text>
-                  <Badge variant="light" color={contact.qualificationStatus === 'Qualified' ? 'teal' : 'blue'} mt={2}>
-                    {contact.qualificationStatus || 'In Progress'}
-                  </Badge>
-                </div>
-
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Qualified By & Date
-                  </Text>
-                  <Text size="xs" fw={600} style={{ color: headingColor }} mt={2}>
-                    {contact.qualifiedBy || '—'} {contact.qualificationDate ? `(${contact.qualificationDate})` : ''}
+                  <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                    {contact.businessNeed || '—'}
                   </Text>
                 </div>
 
                 <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Estimated Budget
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    2. Budget Range
                   </Text>
-                  <Text size="sm" fw={700} style={{ color: isDark ? '#34D399' : '#059669' }} mt={2}>
-                    {contact.estimatedBudget ? `₹${Number(contact.estimatedBudget).toLocaleString()}` : '—'}
-                  </Text>
-                </div>
-
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Project Type
-                  </Text>
-                  <Text size="xs" fw={600} style={{ color: headingColor }} mt={2}>
-                    {contact.projectType || 'New Implementation'}
+                  <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                    {contact.budgetRange || '—'}
                   </Text>
                 </div>
 
                 <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Expected Users
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    3. Decision Maker
                   </Text>
-                  <Text size="xs" fw={600} style={{ color: headingColor }} mt={2}>
-                    {contact.expectedUsers ? `${contact.expectedUsers} Users` : '—'}
-                  </Text>
-                </div>
-
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Target Go-Live Date
-                  </Text>
-                  <Text size="xs" fw={600} style={{ color: headingColor }} mt={2}>
-                    {contact.expectedGoLiveDate || '—'}
+                  <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                    {contact.decisionMaker || '—'}
                   </Text>
                 </div>
 
                 <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Decision Maker
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    4. Purchase Timeline
                   </Text>
-                  <Text size="xs" fw={600} style={{ color: headingColor }} mt={2}>
-                    {contact.influencer || '—'}
+                  <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                    {contact.purchaseTimeline || '—'}
                   </Text>
                 </div>
 
                 <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Competitors / Alternatives
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    5. Interested Service
                   </Text>
-                  <Text size="xs" fw={600} style={{ color: headingColor }} mt={2}>
-                    {contact.otherOptions || '—'}
+                  <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                    {contact.interestedService || '—'}
+                  </Text>
+                </div>
+
+                <div>
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    6. Priority
+                  </Text>
+                  <Box mt={3}>
+                    <Badge size="sm" variant="light" color={contact.priority === 'High' ? 'red' : contact.priority === 'Medium' ? 'orange' : 'teal'}>
+                      {contact.priority || 'Medium'}
+                    </Badge>
+                  </Box>
+                </div>
+
+                <div>
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    7. Qualified By
+                  </Text>
+                  <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                    {contact.qualifiedBy || '—'}
+                  </Text>
+                </div>
+
+                <div>
+                  <Text size="12px" fw={600} style={{ color: labelColor }}>
+                    8. Qualification Date
+                  </Text>
+                  <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                    {contact.qualificationDate || '—'}
                   </Text>
                 </div>
               </SimpleGrid>
 
-              {contact.disqualificationReason && (
-                <Box mt="md" p="md" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)', borderRadius: 12 }}>
+              {contact.unqualifiedReason && (
+                <Box mt="md" p="md" style={{ background: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2', borderRadius: 12 }}>
                   <Text size="xs" fw={700} c="red">
-                    Disqualification Reason:
+                    Unqualified Reason:
                   </Text>
-                  <Text size="xs" c="red" mt={2}>
-                    {contact.disqualificationReason}
+                  <Text size="sm" c="red" mt={2}>
+                    {contact.unqualifiedReason}
                   </Text>
                 </Box>
               )}
-            </Paper>
-
-            {/* 6. Assignment & Metadata */}
-            <Paper p="xl" radius="24px" style={{ background: cardBg, border: cardBorder }}>
-              <Group gap="xs" mb="md">
-                <IconIdBadge size={18} color={isDark ? '#818CF8' : '#4F46E5'} />
-                <Text fw={800} size="md" style={{ color: headingColor }}>
-                  6. Assignment & System Metadata
-                </Text>
-              </Group>
-
-              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Assigned Employee
-                  </Text>
-                  <Text size="sm" fw={700} style={{ color: headingColor }} mt={2}>
-                    {contact.assignedToName || 'Unassigned'}
-                  </Text>
-                </div>
-
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Assignment Status
-                  </Text>
-                  <Badge variant="light" color={contact.assignmentStatus === 'Assigned' ? 'teal' : 'gray'} mt={2}>
-                    {contact.assignmentStatus || 'Unassigned'}
-                  </Badge>
-                </div>
-
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Assigned By
-                  </Text>
-                  <Text size="xs" fw={500} style={{ color: headingColor }} mt={2}>
-                    {contact.assignedBy || '—'}
-                  </Text>
-                </div>
-
-                <div>
-                  <Text size="xs" fw={600} style={{ color: labelColor }}>
-                    Created By
-                  </Text>
-                  <Text size="xs" fw={500} style={{ color: headingColor }} mt={2}>
-                    {contact.createdBy || 'System Admin'}
-                  </Text>
-                </div>
-              </SimpleGrid>
             </Paper>
           </Stack>
         </Grid.Col>
       </Grid>
+
+      {/* Edit Contact Modal */}
+      <ContactModal
+        opened={editModalOpened}
+        onClose={() => setEditModalOpened(false)}
+        contact={contact}
+      />
+
+      {/* Modern Delete Confirmation Dialog */}
+      <Modal
+        opened={deleteModalOpened}
+        onClose={() => setDeleteModalOpened(false)}
+        centered
+        radius="lg"
+        padding="lg"
+        withCloseButton={false}
+        styles={{
+          content: {
+            backgroundColor: isDark ? '#111827' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
+            boxShadow: isDark
+              ? '0 20px 45px -10px rgba(0, 0, 0, 0.6)'
+              : '0 20px 45px -10px rgba(0, 0, 0, 0.12)',
+            borderRadius: 16,
+          },
+        }}
+      >
+        <Stack gap="md">
+          <Group align="flex-start" wrap="nowrap" gap="md">
+            <ThemeIcon
+              size={44}
+              radius="xl"
+              style={{
+                backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                color: '#EF4444',
+                flexShrink: 0,
+              }}
+            >
+              <IconAlertTriangle size={22} stroke={2} />
+            </ThemeIcon>
+
+            <Box style={{ flex: 1 }}>
+              <Text fw={700} size="md" style={{ color: isDark ? '#F8FAFC' : '#0F172A', lineHeight: 1.3 }}>
+                Delete Contact
+              </Text>
+              <Text size="sm" mt={4} style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                Are you sure you want to delete {contact.name}? This action cannot be undone.
+              </Text>
+            </Box>
+          </Group>
+
+          <Group justify="flex-end" gap="sm" mt="xs">
+            <Button
+              variant="default"
+              radius="md"
+              size="sm"
+              onClick={() => setDeleteModalOpened(false)}
+              disabled={deleteLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              radius="md"
+              size="sm"
+              loading={deleteLoading}
+              onClick={handleDeleteConfirm}
+              leftSection={<IconTrash size={15} stroke={2} />}
+            >
+              Confirm Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 };

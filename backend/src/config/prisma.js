@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/client/index.js';
+import { PrismaClient } from '../generated/client_v2/index.js';
 
 // Singleton Prisma Client instance
 export const prisma = new PrismaClient({

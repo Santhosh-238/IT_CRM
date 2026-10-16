@@ -150,24 +150,32 @@ export async function login(req, res) {
       });
     }
 
-    // 1. Check if identifier matches an Employee by empCode or email
+    const cleanId = identifier.toLowerCase();
+    const variations = [cleanId];
+    if (cleanId.includes('neela')) variations.push(cleanId.replace('neela', 'nela'));
+    if (cleanId.includes('nela')) variations.push(cleanId.replace('nela', 'neela'));
+
+    // 1. Check if identifier matches an Employee by empCode, email, or name
     const matchedEmployee = await prisma.employee.findFirst({
       where: {
         OR: [
           { empCode: { equals: identifier, mode: 'insensitive' } },
-          { email: { equals: identifier.toLowerCase(), mode: 'insensitive' } },
+          ...variations.map((v) => ({ email: { equals: v, mode: 'insensitive' } })),
+          { name: { equals: identifier, mode: 'insensitive' } },
         ],
       },
     });
 
-    const targetEmail = matchedEmployee ? matchedEmployee.email.toLowerCase().trim() : identifier.toLowerCase();
+    const targetEmail = matchedEmployee?.email?.toLowerCase().trim();
 
-    // 2. Find User by email or direct identifier match
+    // 2. Find User by email, employee match, or name
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: { equals: targetEmail, mode: 'insensitive' } },
-          { email: { equals: identifier.toLowerCase(), mode: 'insensitive' } },
+          ...(targetEmail ? [{ email: { equals: targetEmail, mode: 'insensitive' } }] : []),
+          ...variations.map((v) => ({ email: { equals: v, mode: 'insensitive' } })),
+          { name: { equals: identifier, mode: 'insensitive' } },
+          ...(matchedEmployee ? [{ name: { equals: matchedEmployee.name, mode: 'insensitive' } }] : []),
         ],
       },
     });

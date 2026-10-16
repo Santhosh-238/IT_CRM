@@ -42,7 +42,19 @@ export function buildContactFilterQuery(queryParams = {}) {
     andConditions.push({ source: { equals: source.trim(), mode: 'insensitive' } });
   }
   if (status && status !== 'All' && status.trim() !== '') {
-    andConditions.push({ status: { equals: status.trim(), mode: 'insensitive' } });
+    const s = status.trim();
+    andConditions.push({
+      OR: [
+        { status: { equals: s, mode: 'insensitive' } },
+        { qualificationStatus: { equals: s, mode: 'insensitive' } },
+        ...(s.toLowerCase() === 'disqualified' || s.toLowerCase() === 'unqualified'
+          ? [
+              { qualificationStatus: { equals: 'Disqualified', mode: 'insensitive' } },
+              { qualificationStatus: { equals: 'Unqualified', mode: 'insensitive' } },
+            ]
+          : []),
+      ],
+    });
   }
   if (stage && stage !== 'All' && stage.trim() !== '') {
     andConditions.push({ stage: { equals: stage.trim(), mode: 'insensitive' } });
@@ -54,7 +66,12 @@ export function buildContactFilterQuery(queryParams = {}) {
     andConditions.push({ priority: { equals: priority.trim(), mode: 'insensitive' } });
   }
   if (assignedTo && assignedTo !== 'All') {
-    andConditions.push({ assignedTo });
+    andConditions.push({
+      OR: [
+        { assignedTo },
+        { assignedToName: { equals: assignedTo, mode: 'insensitive' } },
+      ],
+    });
   }
   if (assignmentStatus && assignmentStatus !== 'All') {
     if (assignmentStatus === 'Unassigned') {
@@ -90,6 +107,8 @@ export function buildContactFilterQuery(queryParams = {}) {
         { contactId: { contains: q, mode: 'insensitive' } },
         { gstNumber: { contains: q, mode: 'insensitive' } },
         { cinNumber: { contains: q, mode: 'insensitive' } },
+        { city: { contains: q, mode: 'insensitive' } },
+        { internalReference: { contains: q, mode: 'insensitive' } },
       ],
     });
   }

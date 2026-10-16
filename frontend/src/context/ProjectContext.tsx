@@ -94,11 +94,13 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
         });
       }
     } catch (err: any) {
-      notifications.show({
-        title: 'Error loading projects',
-        message: err.message || 'Could not fetch projects list.',
-        color: 'red',
-      });
+      if (err.message && !err.message.includes('permission') && !err.message.includes('Access denied')) {
+        notifications.show({
+          title: 'Error loading projects',
+          message: err.message || 'Could not fetch projects list.',
+          color: 'red',
+        });
+      }
     } finally {
       setLoading(false);
     }

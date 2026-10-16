@@ -473,33 +473,42 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
     const templates: ProjectModuleItem[] = [
       {
         id: `mod-${Date.now()}-1`,
-        name: 'UI/UX Design, Wireframes & Component Specs',
-        description: 'Interactive Figma design system, prototypes, design reviews & token handoffs.',
-        assignedTo: defaultDev,
+        name: 'reworking ui design for dark theme',
+        description: 'Interactive Figma design system, dark mode color tokens, responsive components & layout polish.',
+        assignedTo: 'Rahul V',
         deadline: dayjs(startDate).add(step * 1, 'day').format('DD-MM-YYYY'),
         progress: 100,
         status: 'Completed',
       },
       {
         id: `mod-${Date.now()}-2`,
-        name: 'Database Architecture, Schema & Core APIs',
-        description: 'PostgreSQL schema models, Prisma migrations, RESTful APIs, auth & RBAC.',
-        assignedTo: defaultDev,
+        name: 'adding (Rule-Based Loan Eligibility and Bank Recommendation) Module in the backend',
+        description: 'Rule evaluation engine, credit threshold scoring algorithms, dynamic bank partner recommendation matrix.',
+        assignedTo: 'Rahul V',
         deadline: dayjs(startDate).add(step * 2, 'day').format('DD-MM-YYYY'),
-        progress: 50,
+        progress: 65,
         status: 'In Progress',
       },
       {
         id: `mod-${Date.now()}-3`,
-        name: 'Payment Gateway & Checkout Pipeline',
-        description: 'Payment intents, secure webhook listeners, invoices & transaction reconciliation.',
-        assignedTo: defaultDev,
+        name: 'working n backend for eligiblity creiterias',
+        description: 'Eligibility criteria schema models, RESTful APIs, validation pipelines and debt-to-income limits.',
+        assignedTo: 'Rahul V',
         deadline: dayjs(startDate).add(step * 3, 'day').format('DD-MM-YYYY'),
+        progress: 40,
+        status: 'In Progress',
+      },
+      {
+        id: `mod-${Date.now()}-4`,
+        name: 'API endpoint for bank partner interest rates and offers',
+        description: 'RESTful endpoints to query and filter bank loan offers based on customer eligibility.',
+        assignedTo: defaultDev,
+        deadline: dayjs(startDate).add(step * 4, 'day').format('DD-MM-YYYY'),
         progress: 0,
         status: 'Not Started',
       },
       {
-        id: `mod-${Date.now()}-4`,
+        id: `mod-${Date.now()}-5`,
         name: 'Deployment, CI/CD Pipeline & Final Handover',
         description: 'Automated test suites, production server release, DNS configuration & user training.',
         assignedTo: defaultDev,
@@ -529,7 +538,7 @@ export const ProjectDetailsPage: React.FC<ProjectDetailsPageProps> = ({
   }, [currentProject.name]);
 
   return (
-    <Box pt={0} pb="xl" px={{ base: 0, sm: 'xs' }} style={{ maxWidth: 1320, margin: '0 auto' }}>
+    <Box pt={0} pb="xl" px={{ base: 0, sm: 'xs' }} style={{ width: '100%', maxWidth: '100%' }}>
       {/* 1. TOP HEADER & BREADCRUMBS */}
       <Group justify="space-between" align="center" mb="sm">
         <Group gap="sm" align="center">

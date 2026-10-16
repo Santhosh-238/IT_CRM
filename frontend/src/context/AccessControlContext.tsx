@@ -47,15 +47,31 @@ interface AccessControlContextType {
   ) => Promise<{ success: boolean; message?: string; requiresReassignment?: boolean; assignedUserCount?: number }>;
   assignUserRole: (userId: string, roleId: string) => Promise<{ success: boolean; message?: string }>;
   bulkAssignUserRoles: (userIds: string[], roleId: string) => Promise<{ success: boolean; message?: string }>;
+  createModule: (data: { name: string; category?: string; description?: string }) => Promise<{ success: boolean; module?: SystemModule; message?: string }>;
 }
 
 const AccessControlContext = createContext<AccessControlContextType | undefined>(undefined);
+
+const DEFAULT_SYSTEM_MODULES: SystemModule[] = [
+  // 1. Main Navigation
+  { id: 'dashboard', name: 'Dashboard', category: 'Main Navigation', description: 'Executive analytics, revenue, KPIs, and overview charts.' },
+  { id: 'employee_management', name: 'Employee Management', category: 'Main Navigation', description: 'Staff directory, onboarding, designations, and employee records.' },
+  { id: 'contacts', name: 'Contacts', category: 'Main Navigation', description: 'Customer profiles, contact details, and account ownership.' },
+  { id: 'leads', name: 'Leads', category: 'Main Navigation', description: 'Prospect pipeline, lead stages, and qualification workflows.' },
+  { id: 'scheduled_meetings', name: 'Scheduled Meetings', category: 'Main Navigation', description: 'Date-wise scheduled client and team meetings, employee creator tracking, and timings.' },
+  { id: 'call_logs', name: 'Call Logs', category: 'Main Navigation', description: 'Telephony records, call durations, notes, and follow-ups.' },
+  { id: 'customers', name: 'Customers', category: 'Main Navigation', description: 'Client company directories, accounts, and relationship history.' },
+  { id: 'projects', name: 'Projects Management', category: 'Main Navigation', description: 'Client project delivery, sprints, milestones, and task SLAs.' },
+
+  // 2. Administration & Security
+  { id: 'access_control', name: 'Access Control & RBAC', category: 'Administration & Security', description: 'Role-Based Access Control, permissions matrix, and role hierarchy.' },
+];
 
 export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useCRM();
   const [roles, setRoles] = useState<Role[]>([]);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
-  const [systemModules, setSystemModules] = useState<SystemModule[]>([]);
+  const [systemModules, setSystemModules] = useState<SystemModule[]>(DEFAULT_SYSTEM_MODULES);
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [auditLogs, setAuditLogs] = useState<AccessAuditLog[]>([]);
   const [myPermissions, setMyPermissions] = useState<MyPermissionsResponse | null>(null);
@@ -71,25 +87,33 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // 2. Fetch Roles
+  // 2. Fetch Roles & Modules
   const fetchRoles = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await accessControlService.getRoles();
-    if (res.success && res.roles) {
-      setRoles(res.roles);
-      if (res.systemModules) {
-        setSystemModules(res.systemModules);
-      }
+    const [rolesRes, modulesRes] = await Promise.all([
+      accessControlService.getRoles(),
+      accessControlService.getModules(),
+    ]);
+
+    // Populate system modules
+    if (modulesRes.success && modulesRes.modules && modulesRes.modules.length > 0) {
+      setSystemModules(modulesRes.modules);
+    } else if (rolesRes.success && rolesRes.systemModules && rolesRes.systemModules.length > 0) {
+      setSystemModules(rolesRes.systemModules);
+    }
+
+    if (rolesRes.success && rolesRes.roles) {
+      setRoles(rolesRes.roles);
       setSelectedRole((prev) => {
         if (prev) {
-          const matched = res.roles!.find((r) => r.id === prev.id);
-          return matched || res.roles![0] || null;
+          const matched = rolesRes.roles!.find((r) => r.id === prev.id);
+          return matched || rolesRes.roles![0] || null;
         }
-        return res.roles![0] || null;
+        return rolesRes.roles![0] || null;
       });
     } else {
-      setError(res.message || 'Failed to fetch roles');
+      setError(rolesRes.message || 'Failed to fetch roles');
     }
     setLoading(false);
   }, []);
@@ -121,29 +145,75 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
     fetchRoles();
     fetchUsers();
     fetchAuditLogs();
-  }, [fetchMyPermissions, fetchRoles, fetchUsers, fetchAuditLogs]);
+  }, [fetchMyPermissions, fetchRoles, fetchUsers, fetchAuditLogs, currentUser?.id]);
+
+  useEffect(() => {
+    const handlePermsUpdated = () => {
+      fetchMyPermissions();
+      fetchRoles();
+    };
+    window.addEventListener('crm_permissions_updated', handlePermsUpdated);
+    return () => {
+      window.removeEventListener('crm_permissions_updated', handlePermsUpdated);
+    };
+  }, [fetchMyPermissions, fetchRoles]);
 
   // Permission Checkers
-  const userRoleStr = (currentUser?.role || myPermissions?.user?.role || '').toLowerCase().trim();
   const roleSlugStr = (myPermissions?.role?.slug || myPermissions?.role?.name || '').toLowerCase().trim();
 
+  // Only true Super Admin gets bypass from verified server permissions
   const isSuperAdmin = Boolean(
     myPermissions?.isSuperAdmin ||
-      roleSlugStr === 'super_admin' ||
-      roleSlugStr === 'admin' ||
-      userRoleStr === 'super_admin' ||
-      userRoleStr === 'admin' ||
-      userRoleStr === 'super admin' ||
-      userRoleStr.includes('admin')
+      roleSlugStr === 'super_admin'
   );
 
   const can = useCallback(
     (moduleId: string, action: PermissionAction = 'view'): boolean => {
       if (isSuperAdmin) return true;
-      if (!myPermissions?.permissions) return true; // Fail-open in dev mode
-      const modulePerms = myPermissions.permissions[moduleId];
-      if (!modulePerms) return false;
-      return Boolean(modulePerms[action]);
+      if (!myPermissions?.permissions) return false;
+
+      // Alias mapping between sidebar IDs, route names, and DB keys
+      const normalizeMap: Record<string, string[]> = {
+        dashboard: ['dashboard'],
+        employee_management: ['employee_management', 'employees'],
+        employees: ['employees', 'employee_management'],
+        contacts: ['contacts'],
+        leads: ['leads'],
+        scheduled_meetings: ['scheduled_meetings', 'meetings'],
+        meetings: ['meetings', 'scheduled_meetings'],
+        call_logs: ['call_logs', 'calls'],
+        calls: ['calls', 'call_logs'],
+        customers: ['customers', 'companies'],
+        companies: ['companies', 'customers'],
+        projects: ['projects', 'projects_management'],
+        projects_management: ['projects_management', 'projects'],
+        access_control: ['access_control', 'rbac'],
+        rbac: ['rbac', 'access_control'],
+      };
+
+      const candidates = normalizeMap[moduleId] || [moduleId];
+      for (const key of candidates) {
+        const p = myPermissions.permissions[key];
+        if (p) {
+          const val =
+            action === 'view'
+              ? (p.view !== undefined ? p.view : (p as any).canView)
+              : action === 'create'
+              ? (p.create !== undefined ? p.create : (p as any).canCreate)
+              : action === 'edit'
+              ? (p.edit !== undefined ? p.edit : (p as any).canEdit)
+              : action === 'delete'
+              ? (p.delete !== undefined ? p.delete : (p as any).canDelete)
+              : action === 'export'
+              ? (p.export !== undefined ? p.export : (p as any).canExport)
+              : action === 'approve'
+              ? (p.approve !== undefined ? p.approve : (p as any).canApprove)
+              : (p as any)[action];
+
+          return Boolean(val);
+        }
+      }
+      return false;
     },
     [isSuperAdmin, myPermissions]
   );
@@ -223,6 +293,16 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
     return res;
   };
 
+  const createModule = async (data: { name: string; category?: string; description?: string }) => {
+    setSaving(true);
+    const res = await accessControlService.createModule(data);
+    setSaving(false);
+    if (res.success && res.module) {
+      await fetchRoles();
+    }
+    return res;
+  };
+
   return (
     <AccessControlContext.Provider
       value={{
@@ -254,6 +334,7 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
         deleteRole,
         assignUserRole,
         bulkAssignUserRoles,
+        createModule,
       }}
     >
       {children}

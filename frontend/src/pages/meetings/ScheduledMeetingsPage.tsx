@@ -38,6 +38,12 @@ import {
 import { ScheduledMeeting, MeetingStats } from '../../types/meeting';
 import { Lead } from '../../types/lead';
 import {
+  DateFilterControl,
+  DateFilterValue,
+  DEFAULT_DATE_FILTER,
+  isDateMatchingFilter,
+} from '../../components/common/DateFilterControl';
+import {
   fetchMeetingsApi,
   fetchMeetingStatsApi,
   createMeetingApi,
@@ -81,6 +87,7 @@ export const ScheduledMeetingsPage: React.FC = () => {
   const [leadTab, setLeadTab] = useState<ActiveLeadTabType>('ALL');
   const [searchInput, setSearchInput] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>(DEFAULT_DATE_FILTER);
   const [page, setPage] = useState<number>(1);
   const pageSize = 10;
 
@@ -305,6 +312,14 @@ const inferDuration = (start?: string, end?: string): string => {
         if (!matchesStatus) return false;
       }
 
+      // 2b. Date filter
+      if (dateFilter.type !== 'ALL') {
+        const matchesDate = leadMeets.some((m) =>
+          isDateMatchingFilter(m.meetingDate || (m as any).date || m.createdAt, dateFilter)
+        );
+        if (!matchesDate) return false;
+      }
+
       // 3. Search query
       if (searchInput.trim()) {
         const query = searchInput.toLowerCase();
@@ -325,7 +340,7 @@ const inferDuration = (start?: string, end?: string): string => {
 
       return true;
     });
-  }, [effectiveLeads, leadMeetingsMap, leadTab, statusFilter, searchInput, todayStr]);
+  }, [effectiveLeads, leadMeetingsMap, leadTab, statusFilter, dateFilter, searchInput, todayStr]);
 
   // Pagination for Leads list
   const totalLeadPages = Math.ceil(filteredLeads.length / pageSize) || 1;
@@ -372,22 +387,25 @@ const inferDuration = (start?: string, end?: string): string => {
   // Selected Lead's Meetings (filtered strictly by the active tab if on Completed/Today/Upcoming)
   const selectedLeadMeetings = useMemo(() => {
     if (!activeLeadSelection) return [];
-    const leadMeets = leadMeetingsMap.get(activeLeadSelection.id) || [];
+    let leadMeets = leadMeetingsMap.get(activeLeadSelection.id) || [];
     if (leadTab === 'COMPLETED') {
-      return leadMeets.filter(
+      leadMeets = leadMeets.filter(
         (m) => (m.status || m.meetingStatus || '').toLowerCase() === 'completed'
       );
-    }
-    if (leadTab === 'TODAY') {
-      return leadMeets.filter((m) => m.meetingDate === todayStr);
-    }
-    if (leadTab === 'UPCOMING') {
-      return leadMeets.filter(
+    } else if (leadTab === 'TODAY') {
+      leadMeets = leadMeets.filter((m) => m.meetingDate === todayStr);
+    } else if (leadTab === 'UPCOMING') {
+      leadMeets = leadMeets.filter(
         (m) => m.meetingDate && m.meetingDate > todayStr && (m.status || m.meetingStatus || '').toLowerCase() !== 'cancelled'
       );
     }
+    if (dateFilter.type !== 'ALL') {
+      leadMeets = leadMeets.filter((m) =>
+        isDateMatchingFilter(m.meetingDate || (m as any).date || m.createdAt, dateFilter)
+      );
+    }
     return leadMeets;
-  }, [activeLeadSelection, leadMeetingsMap, leadTab, todayStr]);
+  }, [activeLeadSelection, leadMeetingsMap, leadTab, dateFilter, todayStr]);
 
   // Handlers
   const handleLeadTabChange = (tab: ActiveLeadTabType) => {
@@ -591,7 +609,7 @@ const inferDuration = (start?: string, end?: string): string => {
   ];
 
   return (
-    <Box p={{ base: 'md', md: 'lg' }} style={{ maxWidth: 1520, margin: '0 auto' }}>
+    <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ width: '100%', maxWidth: '100%' }}>
       {/* ========================================================================= */}
       {/* VIEW A: SELECTED LEAD MEETINGS VIEW (Drill-Down Detail)                   */}
       {/* ========================================================================= */}
@@ -698,6 +716,12 @@ const inferDuration = (start?: string, end?: string): string => {
               </Group>
 
               <Group gap="xs">
+                <DateFilterControl
+                  value={dateFilter}
+                  onChange={setDateFilter}
+                  width={135}
+                />
+
                 <Button
                   size="sm"
                   variant="default"
@@ -880,6 +904,15 @@ const inferDuration = (start?: string, end?: string): string => {
                   }}
                   style={{ width: 125 }}
                   allowDeselect={false}
+                />
+
+                <DateFilterControl
+                  value={dateFilter}
+                  onChange={(val) => {
+                    setDateFilter(val);
+                    setPage(1);
+                  }}
+                  width={135}
                 />
 
                 <Button

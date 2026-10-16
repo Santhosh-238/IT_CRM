@@ -47,6 +47,7 @@ import {
   IconCamera,
 } from '@tabler/icons-react';
 import { useEmployee } from '../../context/EmployeeContext';
+import { useAccessControl } from '../../context/AccessControlContext';
 import { Employee } from '../../types/employee';
 import { CRM_COLORS } from '../../theme/colors';
 
@@ -84,9 +85,16 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     },
   };
 
-  const { employees, addEmployee, updateEmployee } = useEmployee();
+  const { employees, fetchEmployees, addEmployee, updateEmployee } = useEmployee();
+  const { roles, users, fetchRoles, fetchUsers } = useAccessControl();
   const isEditing = Boolean(initialData && initialData.id);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetchRoles();
+    fetchUsers();
+    fetchEmployees();
+  }, [fetchRoles, fetchUsers, fetchEmployees]);
 
   // Helper to load and save custom items from localStorage
   const loadCustomItems = (key: string): string[] => {
@@ -304,39 +312,51 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   }, [employees, customDesignations, formData.designation]);
 
   const dynamicRoles = useMemo(() => {
+    const fromAccessControl = roles.map((r) => r.name?.trim()).filter(Boolean) as string[];
     const fromDb = employees.map((e) => e.role?.trim()).filter(Boolean) as string[];
     const combined = Array.from(
       new Set([
+        ...fromAccessControl,
         ...fromDb,
         ...customRoles,
         ...(formData.role ? [formData.role.trim()] : []),
       ])
     ).filter(Boolean).sort((a, b) => a.localeCompare(b));
     return combined;
-  }, [employees, customRoles, formData.role]);
+  }, [roles, employees, customRoles, formData.role]);
 
-  // Only employees who have been added in the role/designation of Sales Manager
-  const salesManagerOptions = useMemo(() => {
-    const managers = employees.filter((e) => {
+  // Dynamic Reporting Manager options fetched from active employees and system managers
+  const reportingManagerOptions = useMemo(() => {
+    // 1. Available active employees (excluding self if editing)
+    const availableEmployees = employees.filter((e) => {
       if (isEditing && initialData?.id && e.id === initialData.id) return false;
-      const r = (e.role || '').toLowerCase().trim();
-      const d = (e.designation || '').toLowerCase().trim();
-      return (
-        r.includes('sales manager') ||
-        r.includes('sales_manager') ||
-        r === 'sales manager' ||
-        r === 'asm' ||
-        r.includes('area sales manager') ||
-        d.includes('sales manager') ||
-        d.includes('area sales manager')
-      );
+      return e.status?.toUpperCase() !== 'INACTIVE' && e.status?.toUpperCase() !== 'TERMINATED';
     });
 
-    const list = managers.map((e) => ({
-      value: `${e.name} (${e.empCode})`,
-      label: `${e.name} (${e.empCode})${e.designation ? ` - ${e.designation}` : ' - Sales Manager'}`,
-    }));
+    const list: { value: string; label: string }[] = availableEmployees.map((e) => {
+      const code = e.empCode ? ` (${e.empCode})` : '';
+      const roleOrDesig = e.designation || e.role || '';
+      return {
+        value: `${e.name}${code}`,
+        label: `${e.name}${code}${roleOrDesig ? ` - ${roleOrDesig}` : ''}`,
+      };
+    });
 
+    // 2. Also include users from AccessControl (e.g. Super Admin / Admins if not already in employee list)
+    users.forEach((u) => {
+      if (!u.name) return;
+      const alreadyPresent = list.some(
+        (item) => item.value.toLowerCase().includes(u.name.toLowerCase()) || item.label.toLowerCase().includes(u.name.toLowerCase())
+      );
+      if (!alreadyPresent) {
+        list.push({
+          value: u.name,
+          label: `${u.name} (${u.role || 'Admin'})`,
+        });
+      }
+    });
+
+    // 3. Keep current selected reportingManager if not in list
     if (formData.reportingManager && !list.some((item) => item.value === formData.reportingManager)) {
       list.unshift({
         value: formData.reportingManager,
@@ -345,7 +365,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     }
 
     return list;
-  }, [employees, isEditing, initialData, formData.reportingManager]);
+  }, [employees, users, isEditing, initialData, formData.reportingManager]);
 
   const dynamicEmploymentTypes = useMemo(() => {
     const fromDb = employees.map((e) => e.employmentType?.trim()).filter(Boolean) as string[];
@@ -993,6 +1013,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                       <Select
                         placeholder="Select role"
                         data={dynamicRoles}
+                        searchable
                         leftSection={<IconShield size={16} color="#64748B" />}
                         value={formData.role || null}
                         onChange={(val) => setFormData({ ...formData, role: val || '' })}
@@ -1007,15 +1028,17 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                         allowDeselect
                         checkIconPosition="right"
                         comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        nothingFoundMessage="No matching roles found"
                         maxDropdownHeight={220}
                       />
                     </Box>
 
-                    {/* 4. Reporting Manager (Dropdown filtered to Sales Managers) */}
+                    {/* 4. Reporting Manager */}
                     <Select
                       label="Reporting Manager (Optional)"
-                      placeholder={salesManagerOptions.length > 0 ? 'Select Sales Manager' : 'No Sales Managers registered'}
-                      data={salesManagerOptions}
+                      placeholder={reportingManagerOptions.length > 0 ? 'Select reporting manager' : 'No managers registered'}
+                      data={reportingManagerOptions}
+                      searchable
                       leftSection={<IconUsers size={16} color="#64748B" />}
                       value={formData.reportingManager || null}
                       onChange={(val) => setFormData({ ...formData, reportingManager: val || '' })}
@@ -1030,7 +1053,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                       allowDeselect
                       checkIconPosition="right"
                       comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
-                      nothingFoundMessage="No employees found with Sales Manager role"
+                      nothingFoundMessage="No matching reporting managers found"
                       maxDropdownHeight={220}
                     />
 

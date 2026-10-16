@@ -73,7 +73,11 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
     let color = isDark ? '#93C5FD' : '#1D4ED8';
     let border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
 
-    if (sLow.includes('qualif') || sLow.includes('won') || sLow.includes('complete')) {
+    if (sLow.includes('unqual') || sLow.includes('disqual') || sLow.includes('lost') || sLow.includes('cancel')) {
+      bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
+      color = isDark ? '#FCA5A5' : '#DC2626';
+      border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
+    } else if (sLow.includes('qualif') || sLow.includes('won') || sLow.includes('complete')) {
       bg = isDark ? 'rgba(16, 185, 129, 0.16)' : '#ECFDF5';
       color = isDark ? '#6EE7B7' : '#047857';
       border = isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0';
@@ -85,10 +89,6 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
       bg = isDark ? 'rgba(147, 51, 234, 0.14)' : '#FAF5FF';
       color = isDark ? '#D8B4FE' : '#7E22CE';
       border = isDark ? 'rgba(147, 51, 234, 0.25)' : '#E9D5FF';
-    } else if (sLow.includes('lost') || sLow.includes('disqual') || sLow.includes('cancel')) {
-      bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
-      color = isDark ? '#FCA5A5' : '#B91C1C';
-      border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
     } else if (sLow.includes('new') || sLow.includes('init')) {
       bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
       color = isDark ? '#93C5FD' : '#1D4ED8';

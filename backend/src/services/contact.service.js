@@ -7,9 +7,68 @@ import { CONTACT_MODULE } from '../models/contact.model.js';
 import { generateContactId, buildContactFilterQuery, formatContactResponse } from '../utils/contact.util.js';
 
 /**
- * 1. List contacts with search, filters, pagination, and sorting
+ * Helper: check if a user has full enterprise admin privileges or is an employee
  */
-export async function getContactsService(queryParams = {}) {
+async function resolveEmployeeScopedFilter(currentUser) {
+  if (!currentUser) return null;
+  const roleUpper = String(currentUser.role || '').toUpperCase();
+  if (roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPER ADMIN') {
+    return null; // Full super admin access
+  }
+
+  if (currentUser.id) {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: currentUser.id },
+      include: { roleRelation: true },
+    });
+    if (dbUser?.roleRelation) {
+      const slug = dbUser.roleRelation.slug?.toLowerCase();
+      if (slug === 'super_admin') {
+        return null;
+      }
+    }
+  }
+
+  // Look up employee record matching current user
+  const emp = await prisma.employee.findFirst({
+    where: {
+      OR: [
+        ...(currentUser.email ? [{ email: { equals: currentUser.email, mode: 'insensitive' } }] : []),
+        ...(currentUser.name ? [{ name: { equals: currentUser.name, mode: 'insensitive' } }] : []),
+      ],
+    },
+  });
+
+  const assignedOr = [];
+  if (emp?.id) assignedOr.push({ assignedTo: emp.id });
+  if (emp?.empCode) assignedOr.push({ assignedTo: emp.empCode });
+  if (currentUser.id) assignedOr.push({ assignedTo: currentUser.id });
+  if (currentUser.name) assignedOr.push({ assignedToName: { equals: currentUser.name, mode: 'insensitive' } });
+  if (emp?.name && emp.name !== currentUser.name) assignedOr.push({ assignedToName: { equals: emp.name, mode: 'insensitive' } });
+
+  const createdOr = [];
+  if (currentUser.name) createdOr.push({ createdBy: { equals: currentUser.name, mode: 'insensitive' } });
+  if (currentUser.email) createdOr.push({ createdBy: { equals: currentUser.email, mode: 'insensitive' } });
+  if (currentUser.id) createdOr.push({ createdBy: currentUser.id });
+  if (emp?.id && emp.id !== currentUser.id) createdOr.push({ createdBy: emp.id });
+  if (emp?.name && emp.name !== currentUser.name) createdOr.push({ createdBy: { equals: emp.name, mode: 'insensitive' } });
+
+  const assignedFilter = assignedOr.length > 0 ? { OR: assignedOr } : { assignedTo: currentUser.id };
+  const createdFilter = createdOr.length > 0 ? { OR: createdOr } : { createdBy: currentUser.id };
+  const combinedFilter = {
+    OR: [
+      ...(assignedOr.length > 0 ? assignedOr : [{ assignedTo: currentUser.id }]),
+      ...(createdOr.length > 0 ? createdOr : [{ createdBy: currentUser.id }]),
+    ],
+  };
+
+  return { assignedFilter, createdFilter, combinedFilter };
+}
+
+/**
+ * 1. List contacts with search, filters, pagination, sorting, and role-based data scoping
+ */
+export async function getContactsService(queryParams = {}, currentUser = null) {
   const {
     sortBy = 'updatedAt',
     sortOrder = 'desc',
@@ -22,6 +81,20 @@ export async function getContactsService(queryParams = {}) {
   const skip = (pageNum - 1) * limitNum;
 
   const where = buildContactFilterQuery(queryParams);
+
+  const empScope = await resolveEmployeeScopedFilter(currentUser);
+  if (empScope) {
+    where.AND = where.AND || [];
+    if (queryParams.assignmentStatus === 'Assigned') {
+      where.AND.push(empScope.assignedFilter);
+    } else if (queryParams.assignmentStatus === 'Unassigned') {
+      // In New / Unassigned tab, employee only sees unassigned contacts created by them
+      where.AND.push(empScope.createdFilter);
+    } else {
+      // General view / All: employee sees contacts assigned to them OR created by them
+      where.AND.push(empScope.combinedFilter);
+    }
+  }
 
   const validSortFields = ['createdAt', 'updatedAt', 'name', 'companyName', 'status', 'stage'];
   const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'updatedAt';
@@ -75,21 +148,34 @@ export async function getContactByIdService(id) {
 }
 
 /**
- * 3. Get Contact KPI Stats
+ * 3. Get Contact KPI Stats (Role-Scoped)
  */
-export async function getContactStatsService() {
-  const [total, assigned, qualified, won, unassigned, active, disqualified, highPriority, newCount] = await Promise.all([
-    prisma.contact.count(),
-    prisma.contact.count({
-      where: {
+export async function getContactStatsService(currentUser = null) {
+  const empScope = await resolveEmployeeScopedFilter(currentUser);
+
+  const assignedWhere = empScope
+    ? { assignmentStatus: 'Assigned', AND: [empScope.assignedFilter] }
+    : {
         assignmentStatus: 'Assigned',
         assignedTo: { not: null },
-      },
-    }),
-    prisma.contact.count({ where: { stage: 'Qualification' } }),
-    prisma.contact.count({ where: { stage: { in: ['Won', 'Closed Won'] } } }),
-    prisma.contact.count({
-      where: {
+      };
+
+  const unassignedWhere = empScope
+    ? {
+        AND: [
+          {
+            OR: [
+              { assignmentStatus: 'Unassigned' },
+              { assignmentStatus: null },
+              { assignedTo: null },
+              { assignedTo: '' },
+              { assignedTo: 'none' },
+            ],
+          },
+          empScope.createdFilter,
+        ],
+      }
+    : {
         OR: [
           { assignmentStatus: 'Unassigned' },
           { assignmentStatus: null },
@@ -97,22 +183,26 @@ export async function getContactStatsService() {
           { assignedTo: '' },
           { assignedTo: 'none' },
         ],
-      },
-    }),
-    prisma.contact.count({ where: { status: 'Active' } }),
-    prisma.contact.count({ where: { qualificationStatus: 'Disqualified' } }),
-    prisma.contact.count({ where: { priority: 'High' } }),
+      };
+
+  const totalWhere = empScope ? empScope.combinedFilter : {};
+
+  const [total, assigned, qualified, won, unassigned, active, disqualified, highPriority] = await Promise.all([
+    prisma.contact.count({ where: totalWhere }),
+    prisma.contact.count({ where: assignedWhere }),
+    prisma.contact.count({ where: { stage: 'Qualification', ...(empScope ? { AND: [empScope.combinedFilter] } : {}) } }),
+    prisma.contact.count({ where: { stage: { in: ['Won', 'Closed Won'] }, ...(empScope ? { AND: [empScope.combinedFilter] } : {}) } }),
+    prisma.contact.count({ where: unassignedWhere }),
     prisma.contact.count({
       where: {
         OR: [
-          { assignmentStatus: 'Unassigned' },
-          { assignmentStatus: null },
-          { assignedTo: null },
-          { assignedTo: '' },
-          { assignedTo: 'none' },
+          { qualificationStatus: { in: ['Disqualified', 'Unqualified'] } },
+          { status: { in: ['Disqualified', 'Unqualified'] } },
         ],
+        ...(empScope ? { AND: [empScope.combinedFilter] } : {}),
       },
     }),
+    prisma.contact.count({ where: { priority: 'High', ...(empScope ? { AND: [empScope.combinedFilter] } : {}) } }),
   ]);
 
   return {
@@ -185,10 +275,9 @@ export async function createContactService(body, user) {
     registeredState,
     nextFollowDate,
     remarks,
-    notes,
     status = 'New',
     stage = 'Initialization',
-    qualificationStatus = 'In Progress',
+    qualificationStatus = 'New',
     priority = 'Medium',
     assignedTo,
   } = body;
@@ -199,7 +288,7 @@ export async function createContactService(body, user) {
     throw error;
   }
 
-  const finalPhone = phone || mobile_number;
+  const finalPhone = phone || mobile_number || '';
   const phoneDigits = String(finalPhone || '').replace(/\D/g, '');
   if (!phoneDigits) {
     const error = new Error('Phone number is required.');
@@ -207,7 +296,7 @@ export async function createContactService(body, user) {
     throw error;
   }
   if (phoneDigits.length !== 10) {
-    const error = new Error('Mobile number must be exactly 10 digits.');
+    const error = new Error('Phone number must be exactly 10 digits.');
     error.status = 400;
     throw error;
   }
@@ -237,6 +326,10 @@ export async function createContactService(body, user) {
       customSource: customSource || null,
       contactType,
       companyName: companyName ? companyName.trim() : null,
+      contactPerson: body.contactPerson ? body.contactPerson.trim() : null,
+      estimatedValue: body.estimatedValue || null,
+      expectedCloseDate: body.expectedCloseDate || null,
+      description: body.description || body.notes || null,
       designation: designation || null,
       profession: profession || null,
       gstNumber: gstNumber ? gstNumber.trim().toUpperCase() : null,
@@ -254,14 +347,35 @@ export async function createContactService(body, user) {
       customProduct: customProduct || null,
       nextFollowDate: nextFollowDate || null,
       remarks: remarks || null,
-      notes: notes || null,
       status: status || 'New',
       stage: stage || 'Initialization',
-      qualificationStatus: qualificationStatus || 'In Progress',
+      qualificationStatus: qualificationStatus || 'New',
       priority: priority || 'Medium',
+      businessNeed: body.businessNeed || null,
+      budgetRange: body.budgetRange || null,
+      decisionMaker: body.decisionMaker || null,
+      purchaseTimeline: body.purchaseTimeline || null,
+      interestedService: body.interestedService || null,
+      qualifiedBy: body.qualifiedBy || null,
+      qualificationDate: body.qualificationDate || null,
+      unqualifiedReason: body.unqualifiedReason || body.disqualificationReason || null,
+      disqualificationReason: body.unqualifiedReason || body.disqualificationReason || null,
       assignedTo: assignedToName ? assignedTo : null,
       assignedToName,
       assignmentStatus,
+      createdBy: user?.name || user?.email || user?.id || body.createdBy || null,
+      // Verified Odoo Contact Fields
+      title: body.title || null,
+      mobile: body.mobile || null,
+      tags: Array.isArray(body.tags) ? body.tags : [],
+      street: body.street || null,
+      street2: body.street2 || null,
+      city: body.city || null,
+      zip: body.zip || null,
+      country: body.country || 'India',
+      paymentTerms: body.paymentTerms || 'Immediate Payment',
+      creditLimit: body.creditLimit || null,
+      internalReference: body.internalReference || null,
     },
   });
 
@@ -488,22 +602,59 @@ export async function updateContactService(id, body, user) {
       ...(body.productList !== undefined && { productList: body.productList }),
       ...(body.serviceList !== undefined && { serviceList: body.serviceList }),
       ...(body.customProduct !== undefined && { customProduct: body.customProduct }),
+      ...(body.productCode !== undefined && { internalReference: body.productCode, customProduct: body.productCode }),
       ...(body.status !== undefined && { status: body.status }),
       ...(body.stage !== undefined && { stage: body.stage }),
       ...(body.qualificationStatus !== undefined
-        ? { qualificationStatus: body.qualificationStatus }
+        ? {
+            qualificationStatus: body.qualificationStatus,
+            status:
+              body.status !== undefined
+                ? body.status
+                : body.qualificationStatus === 'Qualified'
+                ? 'Qualified'
+                : body.qualificationStatus === 'Unqualified' || body.qualificationStatus === 'Disqualified'
+                ? 'Disqualified'
+                : body.qualificationStatus === 'Follow-up Required'
+                ? 'Follow-up Required'
+                : body.qualificationStatus === 'Pending'
+                ? 'Pending'
+                : body.qualificationStatus === 'New'
+                ? 'New'
+                : 'In Progress',
+          }
         : body.status !== undefined
         ? {
+            status: body.status,
             qualificationStatus:
               body.status === 'Qualified'
                 ? 'Qualified'
                 : body.status === 'Disqualified'
-                ? 'Disqualified'
+                ? 'Unqualified'
                 : body.status === 'Follow-up Required'
                 ? 'Follow-up Required'
-                : 'In Progress',
+                : body.status === 'New'
+                ? 'New'
+                : 'Pending',
           }
         : {}),
+      ...(body.businessNeed !== undefined && { businessNeed: body.businessNeed }),
+      ...(body.budgetRange !== undefined && { budgetRange: body.budgetRange }),
+      ...(body.decisionMaker !== undefined && { decisionMaker: body.decisionMaker }),
+      ...(body.purchaseTimeline !== undefined && { purchaseTimeline: body.purchaseTimeline }),
+      ...(body.interestedService !== undefined && {
+        interestedService: body.interestedService,
+        ...((body.category === 'Service' || (!body.category && existing.category === 'Service')) && body.interestedService
+          ? { serviceList: [body.interestedService] }
+          : {}),
+        ...((body.category === 'Product' || (!body.category && existing.category === 'Product')) && body.interestedService
+          ? { productList: [body.interestedService] }
+          : {})
+      }),
+      ...(body.unqualifiedReason !== undefined && {
+        unqualifiedReason: body.unqualifiedReason,
+        disqualificationReason: body.unqualifiedReason,
+      }),
       ...(body.qualifiedBy !== undefined && { qualifiedBy: body.qualifiedBy }),
       ...(body.qualificationDate !== undefined && { qualificationDate: body.qualificationDate }),
       ...(body.priority !== undefined && { priority: body.priority }),
@@ -511,10 +662,26 @@ export async function updateContactService(id, body, user) {
       ...(body.notes !== undefined && { notes: body.notes }),
       ...(body.remarks !== undefined && { remarks: body.remarks }),
       ...(body.nextFollowDate !== undefined && { nextFollowDate: body.nextFollowDate }),
+      ...(body.contactPerson !== undefined && { contactPerson: body.contactPerson }),
+      ...(body.estimatedValue !== undefined && { estimatedValue: body.estimatedValue }),
+      ...(body.expectedCloseDate !== undefined && { expectedCloseDate: body.expectedCloseDate }),
+      ...(body.description !== undefined && { description: body.description, notes: body.description }),
       ...(body.assignedTo !== undefined && {
         assignedTo: body.assignedTo && body.assignedTo !== 'none' && body.assignedTo !== 'Unassigned' ? body.assignedTo : null,
         assignmentStatus: body.assignedTo && body.assignedTo !== 'none' && body.assignedTo !== 'Unassigned' ? 'Assigned' : 'Unassigned',
       }),
+      // Verified Odoo Contact Fields
+      ...(body.title !== undefined && { title: body.title }),
+      ...(body.mobile !== undefined && { mobile: body.mobile }),
+      ...(body.tags !== undefined && { tags: Array.isArray(body.tags) ? body.tags : [] }),
+      ...(body.street !== undefined && { street: body.street }),
+      ...(body.street2 !== undefined && { street2: body.street2 }),
+      ...(body.city !== undefined && { city: body.city }),
+      ...(body.zip !== undefined && { zip: body.zip }),
+      ...(body.country !== undefined && { country: body.country }),
+      ...(body.paymentTerms !== undefined && { paymentTerms: body.paymentTerms }),
+      ...(body.creditLimit !== undefined && { creditLimit: body.creditLimit }),
+      ...(body.internalReference !== undefined && { internalReference: body.internalReference }),
     },
   });
 
@@ -550,32 +717,66 @@ export async function assignContactService(id, body, user) {
     throw error;
   }
 
+  const roleUpper = String(user?.role || '').toUpperCase();
+  const isAdminUser = roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPER ADMIN';
+
   let assignedToName = null;
   let assignmentStatus = 'Unassigned';
+  let resolvedTargetId = targetEmpId;
 
   if (targetEmpId && targetEmpId !== 'Unassigned' && targetEmpId !== 'none' && targetEmpId !== 'null' && String(targetEmpId).trim() !== '') {
+    let lookupTarget = targetEmpId;
+    if (targetEmpId === 'me' && user) {
+      lookupTarget = user.name || user.email || user.id;
+    }
+
     const emp = await prisma.employee.findFirst({
       where: {
         OR: [
-          { id: targetEmpId },
-          { empCode: targetEmpId },
-          { name: { equals: targetEmpId, mode: 'insensitive' } },
+          { id: lookupTarget },
+          { empCode: lookupTarget },
+          { name: { equals: lookupTarget, mode: 'insensitive' } },
+          ...(user?.email ? [{ email: { equals: user.email, mode: 'insensitive' } }] : []),
+          ...(user?.name ? [{ name: { equals: user.name, mode: 'insensitive' } }] : []),
         ],
       },
     });
+
     if (emp) {
       assignedToName = emp.name;
+      resolvedTargetId = emp.id;
       assignmentStatus = 'Assigned';
     } else {
-      assignedToName = targetEmpId;
+      assignedToName = user?.name || lookupTarget;
+      resolvedTargetId = lookupTarget;
       assignmentStatus = 'Assigned';
+    }
+
+    // Role-based validation: regular employees can ONLY assign to themselves ("Move to Assigned")
+    if (!isAdminUser && user) {
+      const targetLower = String(lookupTarget).toLowerCase();
+      const myName = String(user.name || '').toLowerCase();
+      const myEmail = String(user.email || '').toLowerCase();
+      const myId = String(user.id || '').toLowerCase();
+      const isSelf =
+        targetLower === myName ||
+        targetLower === myEmail ||
+        targetLower === myId ||
+        targetLower === 'me' ||
+        (emp && (emp.name.toLowerCase() === myName || emp.email.toLowerCase() === myEmail || emp.id.toLowerCase() === myId));
+
+      if (!isSelf) {
+        const error = new Error('Employees are only allowed to move contacts into their own assigned list.');
+        error.status = 403;
+        throw error;
+      }
     }
   }
 
   const updated = await prisma.contact.update({
     where: { id: existing.id },
     data: {
-      assignedTo: assignedToName ? targetEmpId : null,
+      assignedTo: assignedToName ? resolvedTargetId : null,
       assignedToName,
       assignmentStatus,
       updatedAt: new Date(),

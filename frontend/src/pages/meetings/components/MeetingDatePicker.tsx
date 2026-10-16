@@ -21,6 +21,7 @@ interface MeetingDatePickerProps {
   placeholder?: string;
   required?: boolean;
   zIndex?: number;
+  styles?: any;
 }
 
 const MONTH_NAMES = [
@@ -119,6 +120,7 @@ export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
   placeholder = 'DD-MM-YYYY',
   required = true,
   zIndex = 1500,
+  styles,
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
@@ -270,7 +272,17 @@ export const MeetingDatePicker: React.FC<MeetingDatePickerProps> = ({
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             onClick={() => setOpened(true)}
-            radius="md"
+            styles={styles || {
+              label: { fontWeight: 600, fontSize: 13, color: isDark ? '#E2E8F0' : '#374151', marginBottom: 6 },
+              input: {
+                height: 44,
+                borderRadius: 10,
+                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                borderColor: isDark ? '#334155' : '#E2E8F0',
+                fontSize: 14,
+                color: isDark ? '#F8FAFC' : '#1E293B',
+              },
+            }}
             rightSection={
               <ActionIcon
                 variant="subtle"

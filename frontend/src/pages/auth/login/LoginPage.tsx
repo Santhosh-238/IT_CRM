@@ -94,10 +94,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
     try {
       const res = await crmApi.login({ email, password });
       if (res.success && res.user) {
+        if (res.token) {
+          localStorage.setItem('crm_token', res.token);
+        }
         setCurrentUser(res.user);
+        window.dispatchEvent(new CustomEvent('crm_permissions_updated'));
         notifications.show({
           title: 'Welcome Back!',
-          message: `Signed in as ${res.user.name}. Redis session active.`,
+          message: `Signed in as ${res.user.name}. Session active.`,
           color: 'teal',
           icon: <IconShieldCheck size={18} />,
         });

@@ -7,7 +7,7 @@ const defaultEmptyUser: UserProfile = {
   id: '',
   name: '',
   email: '',
-  role: 'SUPER_ADMIN',
+  role: '' as UserRole,
   avatar: '',
   department: '',
 };
@@ -76,6 +76,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (path === 'leads' || path === 'lead') return 'leads';
       if (path === 'employees') return 'employees';
       if (path === 'scheduled-meetings' || path === 'meetings') return 'scheduled-meetings';
+      if (path === 'customers' || path === 'customer') return 'customers';
+      if (path === 'customers/details' || path === 'customer-details') return 'customer-details';
       if (path === 'projects' || path === 'projects-management') return 'projects';
       if (path === 'access-control' || path === 'rbac') return 'access-control';
       if (path === 'dashboard') return 'dashboard';
@@ -103,6 +105,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       else if (normalizedNav === 'lead-schedule' || normalizedNav === 'lead-details' || normalizedNav === 'schedule-meeting') targetPath = '/leads/schedule';
       else if (normalizedNav === 'add-contact') targetPath = '/contacts/add';
       else if (normalizedNav === 'contact-qualification' || normalizedNav === 'qualification') targetPath = '/contacts/qualification';
+      else if (normalizedNav === 'customers' || normalizedNav === 'customer') targetPath = '/customers';
+      else if (normalizedNav === 'customer-details') targetPath = '/customers/details';
       else if (normalizedNav === 'projects' || normalizedNav === 'projects-management') targetPath = '/projects';
       else if (normalizedNav === 'add-project' || normalizedNav === 'create-project' || normalizedNav === 'projects/add') targetPath = '/projects/add';
       else if (normalizedNav === 'access-control' || normalizedNav === 'rbac') targetPath = '/access-control';
@@ -224,7 +228,9 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       await crmApi.logout().catch(() => {});
       localStorage.removeItem('crm_user');
+      localStorage.removeItem('crm_token');
       setCurrentUser(defaultEmptyUser);
+      window.dispatchEvent(new CustomEvent('crm_permissions_updated'));
       notifications.show({
         title: 'Logged Out',
         message: 'Session closed and Redis cache purged successfully.',

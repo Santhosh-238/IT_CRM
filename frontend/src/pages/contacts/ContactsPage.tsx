@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -23,19 +23,31 @@ import {
   IconX,
   IconChevronLeft,
   IconChevronRight,
+  IconBuilding,
+  IconUser,
 } from '@tabler/icons-react';
 import { useContact } from '../../context/ContactContext';
+import { useCRM } from '../../context/CRMContext';
 import { Contact } from '../../types/contact';
 import { ContactTableView } from './components/ContactTableView';
 import { ContactModal } from './components/ContactModal';
 import { ContactDrawer } from './components/ContactDrawer';
 import { CRM_COLORS } from '../../theme/colors';
+import {
+  DateFilterControl,
+  DateFilterValue,
+  DEFAULT_DATE_FILTER,
+  isDateMatchingFilter,
+} from '../../components/common/DateFilterControl';
 
 type ActiveTabType = 'NEW' | 'ASSIGNED';
 
 export const ContactsPage: React.FC = () => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
+  const { setActiveNav, currentUser } = useCRM();
+  const isSuperAdmin = currentUser?.role?.toUpperCase() === 'SUPER_ADMIN' || currentUser?.role?.toUpperCase() === 'SUPER ADMIN';
+  const isAdmin = isSuperAdmin;
 
   const {
     contacts,
@@ -48,6 +60,7 @@ export const ContactsPage: React.FC = () => {
     setPage,
     deleteContact,
     fetchContacts,
+    setSelectedContact,
   } = useContact();
 
   const [activeTab, setActiveTab] = useState<ActiveTabType>(() => {
@@ -67,20 +80,91 @@ export const ContactsPage: React.FC = () => {
   const [contactModalOpened, setContactModalOpened] = useState<boolean>(false);
   const [modalContact, setModalContact] = useState<Contact | null>(null);
 
-  // Drawer State for Contact Details View
-  const [drawerContact, setDrawerContact] = useState<Contact | null>(null);
-  const [drawerOpened, setDrawerOpened] = useState<boolean>(false);
-
   const [searchInput, setSearchInput] = useState<string>(filters.search || '');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>(DEFAULT_DATE_FILTER);
+
+  // Filter contacts by date (day-wise and month-wise) and scope contacts for non-admins (own data only)
+  const filteredContacts = useMemo(() => {
+    return contacts.filter((c) => {
+      if (!isAdmin) {
+        const myName = currentUser?.name?.toLowerCase().trim();
+        const myEmail = currentUser?.email?.toLowerCase().trim();
+        const myId = currentUser?.id?.toLowerCase().trim();
+
+        if (activeTab === 'NEW' || c.assignmentStatus === 'Unassigned') {
+          // Employee sees unassigned contacts created by themselves
+          const creator = (c.createdBy || '').toLowerCase().trim();
+          const isMine =
+            (myName && creator === myName) ||
+            (myEmail && creator === myEmail) ||
+            (myId && creator === myId);
+          if (!isMine) return false;
+        } else if (activeTab === 'ASSIGNED' || c.assignmentStatus === 'Assigned') {
+          // Employee sees contacts assigned to them
+          const assignedName = (c.assignedToName || '').toLowerCase().trim();
+          const assignedId = (c.assignedTo || '').toLowerCase().trim();
+          const isAssignedToMe =
+            (myName && assignedName && (assignedName === myName || assignedName.includes(myName) || myName.includes(assignedName))) ||
+            (myId && assignedId === myId) ||
+            (myEmail && assignedId === myEmail);
+          if (!isAssignedToMe) return false;
+        }
+      }
+
+      // Status filter matching (checks both status and qualificationStatus)
+      if (filters.status && filters.status !== 'All') {
+        const s = filters.status.toLowerCase().trim();
+        const contactStatus = (c.status || '').toLowerCase().trim();
+        const qualStatus = (c.qualificationStatus || '').toLowerCase().trim();
+        const matchesStatus =
+          contactStatus === s ||
+          qualStatus === s ||
+          (s === 'disqualified' && (qualStatus === 'unqualified' || contactStatus === 'unqualified')) ||
+          (s === 'unqualified' && (qualStatus === 'disqualified' || contactStatus === 'disqualified'));
+        if (!matchesStatus) return false;
+      }
+
+      // Source filter matching
+      if (filters.source && filters.source !== 'All') {
+        const s = filters.source.toLowerCase().trim();
+        const contactSource = (c.source || '').toLowerCase().trim();
+        if (contactSource !== s) return false;
+      }
+
+      return isDateMatchingFilter(c.updatedAt || c.createdAt, dateFilter);
+    });
+  }, [contacts, dateFilter, isAdmin, currentUser, activeTab, filters.status, filters.source]);
 
   // Keep filters in sync on initial mount and tab switch
   useEffect(() => {
-    if (activeTab === 'NEW') {
+    if (activeTab === 'ASSIGNED') {
+      const assignedTarget = !isAdmin && currentUser?.name ? currentUser.name : 'All';
+      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: assignedTarget, sortBy: 'updatedAt', sortOrder: 'desc' });
+    } else {
       setFilters({ assignmentStatus: 'Unassigned', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
-    } else if (activeTab === 'ASSIGNED') {
-      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     }
-  }, [activeTab]);
+  }, [activeTab, isAdmin, currentUser?.name]);
+
+  // Listen to contacts update event across CRM components
+  useEffect(() => {
+    const handleUpdated = () => {
+      fetchContacts();
+    };
+    window.addEventListener('crm_contacts_updated', handleUpdated);
+    return () => {
+      window.removeEventListener('crm_contacts_updated', handleUpdated);
+    };
+  }, [fetchContacts]);
+
+  // Real-time debounced search so typing immediately filters contacts
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if ((filters.search || '') !== searchInput) {
+        setFilters({ search: searchInput });
+      }
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -92,10 +176,11 @@ export const ContactsPage: React.FC = () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('crm_contacts_tab', tab);
     }
-    if (tab === 'NEW') {
+    if (tab === 'ASSIGNED') {
+      const assignedTarget = !isAdmin && currentUser?.name ? currentUser.name : 'All';
+      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: assignedTarget, sortBy: 'updatedAt', sortOrder: 'desc' });
+    } else {
       setFilters({ assignmentStatus: 'Unassigned', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
-    } else if (tab === 'ASSIGNED') {
-      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     }
   };
 
@@ -109,9 +194,20 @@ export const ContactsPage: React.FC = () => {
     setContactModalOpened(true);
   };
 
-  const handleOpenViewDrawer = (contact: Contact) => {
-    setDrawerContact(contact);
-    setDrawerOpened(true);
+  const handleOpenViewDetails = (contact: Contact) => {
+    setSelectedContact(contact);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('crm_selected_contact', JSON.stringify(contact));
+    }
+    setActiveNav('contact-details');
+  };
+
+  const handleOpenQualification = (contact: Contact) => {
+    setSelectedContact(contact);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(contact));
+    }
+    setActiveNav('contact-qualification');
   };
 
   const handleConfirmDelete = async () => {
@@ -158,22 +254,52 @@ export const ContactsPage: React.FC = () => {
       .map((s) => ({ value: s, label: s })) || []),
   ];
 
-  const assignedOptions = [
-    { value: 'All', label: 'All Assigned' },
-    { value: 'Assigned', label: 'Assigned Only' },
-    { value: 'Unassigned', label: 'Unassigned Only' },
-    ...(metadata?.employees?.map((emp) => ({ value: emp.id, label: emp.name })) || []),
-  ];
+  const assignedOptions = useMemo(() => {
+    if (!isAdmin) {
+      return [
+        { value: currentUser?.name || 'Assigned', label: 'My Assigned Contacts' },
+        { value: 'Unassigned', label: 'Unassigned Only' },
+      ];
+    }
+    return [
+      { value: 'All', label: 'All Assigned' },
+      ...(currentUser?.name ? [{ value: currentUser.name, label: `Assigned to Me (${currentUser.name})` }] : []),
+      { value: 'Assigned', label: 'Assigned Only' },
+      { value: 'Unassigned', label: 'Unassigned Only' },
+      ...(metadata?.employees?.map((emp) => ({ value: emp.id, label: emp.name })) || []),
+    ];
+  }, [isAdmin, currentUser, metadata?.employees]);
 
   const totalCount = stats?.total ?? contacts.length;
-  const newCount = stats?.unassigned ?? stats?.new ?? 0;
-  const assignedCount = stats?.assigned ?? 0;
+  const newCount = useMemo(() => {
+    if (isAdmin) return stats?.unassigned ?? stats?.new ?? 0;
+    if (stats?.unassigned !== undefined) return stats.unassigned;
+    const myName = currentUser?.name?.toLowerCase().trim();
+    const myEmail = currentUser?.email?.toLowerCase().trim();
+    const myId = currentUser?.id?.toLowerCase().trim();
+    return contacts.filter((c) =>
+      c.assignmentStatus === 'Unassigned' &&
+      (((c.createdBy || '').toLowerCase().trim() === myName) ||
+       ((c.createdBy || '').toLowerCase().trim() === myEmail) ||
+       ((c.createdBy || '').toLowerCase().trim() === myId))
+    ).length;
+  }, [isAdmin, stats?.unassigned, stats?.new, contacts, currentUser]);
+
+  const assignedCount = useMemo(() => {
+    if (isAdmin) return stats?.assigned ?? 0;
+    if (stats?.assigned !== undefined) return stats.assigned;
+    const myName = currentUser?.name?.toLowerCase().trim();
+    return contacts.filter((c) =>
+      c.assignmentStatus === 'Assigned' &&
+      ((myName && c.assignedToName?.toLowerCase().trim() === myName) || c.assignedTo === currentUser?.id)
+    ).length;
+  }, [isAdmin, stats?.assigned, contacts, currentUser]);
 
   const startRecord = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
   const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
 
   return (
-    <Box p={{ base: 'md', md: 'lg' }} style={{ maxWidth: 1520, margin: '0 auto' }}>
+    <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ width: '100%', maxWidth: '100%' }}>
       {/* 1. Header Toolbar */}
       <Paper
         p="sm"
@@ -184,26 +310,29 @@ export const ContactsPage: React.FC = () => {
           boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
         }}
       >
-        <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+        <Group justify="space-between" align="center" wrap="nowrap" gap={8}>
           {/* Left: Modern Capsule Segmented Tabs */}
           <Box
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
-              padding: 3,
+              padding: 2.5,
               borderRadius: 10,
               border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #E2E8F0',
+              flexShrink: 0,
             }}
           >
+
+
             {/* Tab: New */}
             <UnstyledButton
               onClick={() => handleTabChange('NEW')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '6px 14px',
+                gap: 6,
+                padding: '5px 11px',
                 borderRadius: 8,
                 backgroundColor:
                   activeTab === 'NEW'
@@ -266,8 +395,8 @@ export const ContactsPage: React.FC = () => {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '6px 14px',
+                gap: 6,
+                padding: '5px 11px',
                 borderRadius: 8,
                 backgroundColor:
                   activeTab === 'ASSIGNED'
@@ -325,13 +454,13 @@ export const ContactsPage: React.FC = () => {
             </UnstyledButton>
           </Box>
 
-          {/* Right: Search, Filter Selects & Add Button */}
-          <Group gap="xs" align="center" wrap="wrap" style={{ flex: 1, justifyContent: 'flex-end' }}>
+          {/* Right: Search, Filter Selects & Add Button (All in Single Row) */}
+          <Group gap={6} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
             {/* Search contacts... */}
-            <form onSubmit={handleSearchSubmit} style={{ flex: '1 1 180px', maxWidth: 220, minWidth: 150 }}>
+            <form onSubmit={handleSearchSubmit} style={{ width: 160 }}>
               <TextInput
                 placeholder="Search contacts..."
-                leftSection={<IconSearch size={15} color={isDark ? '#94A3B8' : '#94A3B8'} />}
+                leftSection={<IconSearch size={14} color="#94A3B8" />}
                 rightSection={
                   searchInput ? (
                     <ActionIcon
@@ -348,6 +477,12 @@ export const ContactsPage: React.FC = () => {
                 }
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    setFilters({ search: searchInput });
+                  }
+                }}
                 onBlur={() => setFilters({ search: searchInput })}
                 size="sm"
                 radius="md"
@@ -355,12 +490,14 @@ export const ContactsPage: React.FC = () => {
                   input: {
                     backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
                     borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                    fontSize: 13,
+                    fontSize: 12.5,
                     height: 36,
                   },
                 }}
               />
             </form>
+
+
 
             {/* All Statuses */}
             <Select
@@ -369,13 +506,19 @@ export const ContactsPage: React.FC = () => {
               onChange={(val) => setFilters({ status: val || 'All' })}
               size="sm"
               radius="md"
-              style={{ width: 135 }}
+              style={{ width: 122 }}
+              comboboxProps={{ width: 195, position: 'bottom-start', withinPortal: true, shadow: 'md' }}
               styles={{
                 input: {
                   backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
                   borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                  fontSize: 13,
+                  fontSize: 12.5,
                   height: 36,
+                },
+                option: {
+                  fontSize: 12.5,
+                  padding: '7px 12px',
+                  whiteSpace: 'nowrap',
                 },
               }}
             />
@@ -387,48 +530,65 @@ export const ContactsPage: React.FC = () => {
               onChange={(val) => setFilters({ source: val || 'All' })}
               size="sm"
               radius="md"
-              style={{ width: 130 }}
+              style={{ width: 118 }}
+              comboboxProps={{ width: 175, position: 'bottom-start', withinPortal: true, shadow: 'md' }}
               styles={{
                 input: {
                   backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
                   borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                  fontSize: 13,
+                  fontSize: 12.5,
                   height: 36,
+                },
+                option: {
+                  fontSize: 12.5,
+                  padding: '7px 12px',
+                  whiteSpace: 'nowrap',
                 },
               }}
             />
 
-            {/* All Assigned */}
-            <Select
-              data={assignedOptions}
-              value={
-                filters.assignedTo && filters.assignedTo !== 'All'
-                  ? filters.assignedTo
-                  : filters.assignmentStatus && filters.assignmentStatus !== 'All'
-                  ? filters.assignmentStatus
-                  : 'All'
-              }
-              onChange={(val) => {
-                if (!val || val === 'All') {
-                  setFilters({ assignedTo: 'All', assignmentStatus: 'All' });
-                } else if (val === 'Assigned' || val === 'Unassigned') {
-                  setFilters({ assignmentStatus: val, assignedTo: 'All' });
-                } else {
-                  setFilters({ assignedTo: val, assignmentStatus: 'All' });
+            {/* All Assigned (Admin Only) */}
+            {isAdmin && (
+              <Select
+                data={assignedOptions}
+                value={
+                  filters.assignedTo && filters.assignedTo !== 'All'
+                    ? filters.assignedTo
+                    : filters.assignmentStatus && filters.assignmentStatus !== 'All'
+                    ? filters.assignmentStatus
+                    : 'All'
                 }
-              }}
-              size="sm"
-              radius="md"
-              style={{ width: 140 }}
-              styles={{
-                input: {
-                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                  fontSize: 13,
-                  height: 36,
-                },
-              }}
-            />
+                onChange={(val) => {
+                  if (!val || val === 'All') {
+                    setFilters({ assignedTo: 'All', assignmentStatus: 'All' });
+                  } else if (val === 'Assigned' || val === 'Unassigned') {
+                    setFilters({ assignmentStatus: val, assignedTo: 'All' });
+                  } else {
+                    setFilters({ assignedTo: val, assignmentStatus: 'All' });
+                  }
+                }}
+                size="sm"
+                radius="md"
+                style={{ width: 165 }}
+                comboboxProps={{ width: 220, position: 'bottom-start', withinPortal: true, shadow: 'md' }}
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
+                    fontSize: 12.5,
+                    height: 36,
+                  },
+                  option: {
+                    fontSize: 12.5,
+                    padding: '7px 12px',
+                    whiteSpace: 'nowrap',
+                  },
+                }}
+              />
+            )}
+
+            {/* Date Filter: Day-wise & Month-wise */}
+            <DateFilterControl value={dateFilter} onChange={setDateFilter} width={112} />
 
             {/* + Add Contact Button */}
             <Button
@@ -440,11 +600,14 @@ export const ContactsPage: React.FC = () => {
                 background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
                 color: '#FFFFFF',
                 fontWeight: 600,
-                fontSize: 13,
+                fontSize: 12.5,
                 height: 36,
+                padding: '0 14px',
                 border: 'none',
                 boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)',
                 transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
             >
               Add Contact
@@ -455,13 +618,14 @@ export const ContactsPage: React.FC = () => {
 
       {/* 2. Contact Table View */}
       <ContactTableView
-        contacts={contacts}
+        contacts={filteredContacts}
         activeTab={activeTab}
         loading={loading}
-        onView={handleOpenViewDrawer}
+        onView={handleOpenViewDetails}
         onEdit={(contact) => handleOpenEditModal(contact)}
         onDelete={(contact) => setDeleteTarget(contact)}
         onAddNew={handleOpenAddModal}
+        onQualify={handleOpenQualification}
         onTabChange={handleTabChange}
       />
 
@@ -477,7 +641,7 @@ export const ContactsPage: React.FC = () => {
       >
         <Group justify="space-between" align="center" wrap="wrap">
           <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-            Showing {startRecord} to {endRecord} of {pagination.total} contacts
+            Showing {startRecord} to {Math.min(endRecord, filteredContacts.length)} of {dateFilter.type !== 'ALL' ? filteredContacts.length : pagination.total} contacts
           </Text>
 
           <Group gap={6} align="center">
@@ -540,25 +704,7 @@ export const ContactsPage: React.FC = () => {
         </Group>
       </Paper>
 
-      {/* 4. Drawer for Contact Quick View */}
-      <ContactDrawer
-        opened={drawerOpened}
-        onClose={() => {
-          setDrawerOpened(false);
-          setDrawerContact(null);
-        }}
-        contact={drawerContact}
-        onEdit={(contact) => {
-          setDrawerOpened(false);
-          handleOpenEditModal(contact);
-        }}
-        onDelete={(contact) => {
-          setDrawerOpened(false);
-          setDeleteTarget(contact);
-        }}
-      />
-
-      {/* 5. Modal Popup for Add / Edit Contact */}
+      {/* 4. Modal Popup for Add / Edit Contact */}
       <ContactModal
         opened={contactModalOpened}
         onClose={() => {
