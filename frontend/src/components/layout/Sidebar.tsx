@@ -20,7 +20,6 @@ import {
   IconPhoneCall,
   IconBuilding,
   IconSettings,
-  IconReceipt2,
 } from '@tabler/icons-react';
 import { useCRM } from '../../context/CRMContext';
 import { usePermissions } from '../../context/AccessControlContext';
@@ -218,29 +217,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 onClick={() => onSelectNav('projects')}
                 className={
                   activeNav.startsWith('projects') || activeNav === 'project' || activeNav === 'add-project'
-                    ? 'crextio-pill-active'
-                    : 'crextio-pill-inactive'
-                }
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-              />
-            )}
-            {/* Billing & Invoicing Module */}
-            {(can('billing', 'view') || isSuperAdmin) && (
-              <NavLink
-                label="Billing & Invoicing"
-                leftSection={<IconReceipt2 size={18} stroke={2} />}
-                active={
-                  activeNav === 'billing' ||
-                  activeNav.startsWith('billing-') ||
-                  activeNav === 'invoices' ||
-                  activeNav === 'quotations'
-                }
-                onClick={() => onSelectNav('billing')}
-                className={
-                  activeNav === 'billing' ||
-                  activeNav.startsWith('billing-') ||
-                  activeNav === 'invoices' ||
-                  activeNav === 'quotations'
                     ? 'crextio-pill-active'
                     : 'crextio-pill-inactive'
                 }

@@ -55,13 +55,6 @@ export const SYSTEM_MODULES = [
     description: 'Client project delivery, sprints, milestones, and task SLAs.',
   },
 
-  {
-    id: 'billing',
-    name: 'Billing & Invoicing',
-    category: 'Main Navigation',
-    description: 'Quotations, sales orders, contracts, projects, milestones, invoices, and payments.',
-  },
-
   // 2. Administration & Security
   {
     id: 'access_control',
@@ -104,6 +97,7 @@ const EXCLUDED_LEGACY_MODULES = new Set([
   'projects_management', // aliased to projects
   'meetings', // aliased to scheduled_meetings
   'rbac', // aliased to access_control
+  'billing', // standalone billing module excluded from sidebar/rbac
 ]);
 
 /**
