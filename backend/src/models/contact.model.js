@@ -87,7 +87,7 @@ export class ContactModel {
 
     const fallbackSources = ['Website', 'Referral', 'Cold Call', 'LinkedIn', 'Social Media', 'Other'];
     const fallbackStatuses = ['New', 'Active', 'Qualified', 'In Progress', 'On Hold', 'Pending', 'Follow-up Required', 'Completed', 'Won', 'Lost', 'Cancelled'];
-    const fallbackStages = ['Initialization', 'Qualification', 'Discovery', 'Requirement Analysis', 'Demo / Presentation', 'Proposal / Quotation', 'Negotiation', 'Decision Making', 'Won', 'Lost'];
+    const fallbackStages = ['Initialization', 'Qualification', 'Discovery', 'Requirement Analysis', 'Demo / Presentation', 'Proposal', 'Negotiation', 'Decision Making', 'Won', 'Lost'];
     const fallbackCategories = ['Product', 'Service'];
     const fallbackContactTypes = ['Individual', 'Company Representative'];
     const fallbackPriorities = ['High', 'Medium', 'Low'];

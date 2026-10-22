@@ -21,7 +21,7 @@ export interface BillingProduct {
   updatedAt?: string;
 }
 
-export type QuotationStatus = 'Draft' | 'Sent' | 'Accepted' | 'Rejected' | 'Expired';
+export type QuotationStatus = 'Draft' | 'Sent' | 'Under Review' | 'Accepted' | 'Rejected' | 'Expired' | 'Converted' | string;
 
 export interface QuotationItem {
   id?: string;
@@ -66,9 +66,13 @@ export interface Quotation {
   salesOwnerName?: string | null;
   convertedToOrderId?: string | null;
   convertedAt?: string | null;
+  title?: string | null;
+  documentName?: string | null;
+  documentUrl?: string | null;
+  documentSize?: string | null;
   items: QuotationItem[];
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type BillingMethod = 'Milestone' | 'Fixed Price' | 'Product';

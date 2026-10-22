@@ -53,11 +53,12 @@ export const billingService = {
     request<null>(`/products-services/${id}`, { method: 'DELETE' }),
 
   // 3. Quotations
-  getQuotations: (params?: { search?: string; status?: string; contactId?: string }) => {
+  getQuotations: (params?: { search?: string; status?: string; contactId?: string; leadId?: string }) => {
     const q = new URLSearchParams();
     if (params?.search) q.append('search', params.search);
     if (params?.status && params.status !== 'All') q.append('status', params.status);
     if (params?.contactId && params.contactId !== 'All') q.append('contactId', params.contactId);
+    if (params?.leadId && params.leadId !== 'All') q.append('leadId', params.leadId);
     return request<Quotation[]>(`/quotations?${q.toString()}`);
   },
   getQuotationById: (id: string) => request<Quotation>(`/quotations/${id}`),

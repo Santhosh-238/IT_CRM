@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Modal,
   TextInput,
   Select,
+  Autocomplete,
   Button,
   Group,
   Stack,
@@ -16,14 +17,31 @@ import {
   Paper,
   Box,
   Badge,
+  ThemeIcon,
+  Tooltip,
+  SimpleGrid,
   useComputedColorScheme,
 } from '@mantine/core';
-import { IconPlus, IconTrash, IconCalculator, IconDeviceFloppy, IconX, IconPencil, IconList } from '@tabler/icons-react';
+import {
+  IconPlus,
+  IconTrash,
+  IconCalculator,
+  IconDeviceFloppy,
+  IconX,
+  IconPencil,
+  IconList,
+  IconUpload,
+  IconDownload,
+  IconFileDescription,
+  IconEye,
+  IconFile,
+} from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { Quotation, QuotationItem, BillingProduct } from '../../../types/billing';
 import { billingService } from '../../../services/billingService';
 import { contactService } from '../../../services/contactService';
 import { Contact } from '../../../types/contact';
+import { Lead } from '../../../types/lead';
 
 interface ParsedModule {
   name: string;
@@ -49,7 +67,8 @@ interface QuotationModalProps {
   opened: boolean;
   onClose: () => void;
   quotation?: Quotation | null;
-  onSuccess: () => void;
+  onSuccess: (savedQuote?: Quotation) => void;
+  initialLead?: Lead | null;
 }
 
 export const QuotationModal: React.FC<QuotationModalProps> = ({
@@ -57,6 +76,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
   onClose,
   quotation,
   onSuccess,
+  initialLead,
 }) => {
   const isDark = useComputedColorScheme('light') === 'dark';
   const [submitting, setSubmitting] = useState(false);
@@ -94,7 +114,9 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
   const [paymentTerms, setPaymentTerms] = useState<string>('Net 30 Days');
   const [notes, setNotes] = useState<string>('');
   const [termsConditions, setTermsConditions] = useState<string>(
-    '1. Quotation valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
+    initialLead
+      ? '1. Proposal valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
+      : '1. Quotation valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
   );
 
   const [items, setItems] = useState<QuotationItem[]>([
@@ -115,17 +137,36 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
   useEffect(() => {
     if (opened) {
       contactService.getContacts({ limit: 100 }).then((res) => {
-        if (res?.data) setContacts(res.data);
+        if (res?.data) {
+          setContacts(res.data);
+          // If we have an initialLead and clientGst is empty, try to match contact
+          if (initialLead && !quotation) {
+            const found = res.data.find(
+              (c: Contact) =>
+                (initialLead.email && c.email && c.email.toLowerCase() === initialLead.email.toLowerCase()) ||
+                (initialLead.phone && c.phone && c.phone === initialLead.phone) ||
+                (c.name && c.name.toLowerCase() === initialLead.name.toLowerCase())
+            );
+            if (found) {
+              if (found.gstNumber) setClientGst((prev) => prev || found.gstNumber || '');
+              if (!initialLead.address && found.address) {
+                setClientAddress((prev) => prev || found.address || '');
+              }
+            }
+          }
+        }
       }).catch(() => {});
 
       billingService.getProductsServices({ status: 'Active' }).then((data) => {
         if (data) setProducts(data);
       }).catch(() => {});
     }
-  }, [opened]);
+  }, [opened, initialLead]);
 
-  // Populate on edit
+  // Populate on edit or initialLead
   useEffect(() => {
+    if (!opened) return;
+
     if (quotation) {
       setContactId(quotation.contactId || '');
       setContactName(quotation.contactName || '');
@@ -155,6 +196,58 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
           }))
         );
       }
+    } else if (initialLead) {
+      // Auto-fetch details directly from the active Lead
+      const matchedContact = contacts.find(
+        (c) =>
+          (initialLead.email && c.email && c.email.toLowerCase() === initialLead.email.toLowerCase()) ||
+          (initialLead.phone && c.phone && c.phone === initialLead.phone) ||
+          (c.name && c.name.toLowerCase() === initialLead.name.toLowerCase())
+      );
+
+      setContactId(initialLead.id || '');
+      setContactName(initialLead.name || '');
+      setCompanyName(initialLead.companyName || initialLead.profession || '');
+      setContactEmail(initialLead.email || '');
+      setContactPhone(initialLead.phone || '');
+      setClientGst(matchedContact?.gstNumber || '');
+      setClientAddress(
+        initialLead.address ||
+          (matchedContact?.address
+            ? `${matchedContact.address}${matchedContact.registeredState ? `, ${matchedContact.registeredState}` : ''}`.trim()
+            : '')
+      );
+      setQuotationDate(new Date().toISOString().split('T')[0]);
+      setValidUntil(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+      setStatus('Draft');
+      setDiscountType('percentage');
+      setDiscountValue(0);
+      setPaymentTerms('Net 30 Days');
+      setNotes('');
+      setTermsConditions(
+        initialLead
+          ? '1. Proposal valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
+          : '1. Quotation valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
+      );
+      setSelectedCatalogueId(null);
+      setCustomRowIndices([]);
+      const defaultItemName =
+        initialLead.category === 'Product'
+          ? initialLead.productList?.[0] || 'IT CRM Software Enterprise License'
+          : initialLead.serviceList?.[0] || 'Custom Software Development & Implementation';
+      setItems([
+        {
+          itemName: defaultItemName,
+          itemType: 'Service',
+          description: 'Initial scope, implementation, and deployment deliverables',
+          quantity: 1,
+          unitPrice: 85000,
+          discount: 0,
+          taxRate: 18,
+          taxAmount: 15300,
+          totalAmount: 100300,
+        },
+      ]);
     } else {
       // Reset form
       setContactId('');
@@ -190,7 +283,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
         },
       ]);
     }
-  }, [quotation, opened]);
+  }, [quotation, opened, initialLead]);
 
   // Handle Contact Selection
   const handleSelectContact = (val: string | null) => {
@@ -228,81 +321,66 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     setItems(updated);
   };
 
-  const getRowModuleOptions = (currentItemName: string) => {
-    const seen = new Set<string>();
-    const options: { value: string; label: string }[] = [];
-
-    if (selectedCatalogueProduct && selectedProductModules.length > 0) {
-      for (const m of selectedProductModules) {
-        if (m.name && !seen.has(m.name)) {
-          seen.add(m.name);
-          options.push({ value: m.name, label: m.name });
-        }
+  // Smart suggestions for item names (products + modules)
+  const autocompleteOptions = useMemo(() => {
+    const list: string[] = [];
+    for (const p of products) {
+      if (p.name && !list.includes(p.name)) {
+        list.push(p.name);
       }
-    } else {
-      // All modules across all active products
-      for (const p of products) {
-        const mods = getProductModules(p);
-        for (const m of mods) {
-          if (m.name && !seen.has(m.name)) {
-            seen.add(m.name);
-            options.push({ value: m.name, label: `${m.name} (${p.name})` });
-          }
+      const mods = getProductModules(p);
+      for (const m of mods) {
+        if (m.name && !list.includes(m.name)) {
+          list.push(m.name);
         }
       }
     }
+    return list;
+  }, [products]);
 
-    // Add currently selected value if not in list
-    if (currentItemName && !seen.has(currentItemName) && currentItemName !== '__CUSTOM__') {
-      seen.add(currentItemName);
-      options.unshift({
-        value: currentItemName,
-        label: currentItemName,
-      });
-    }
+  const handleItemSelect = (idx: number, val: string) => {
+    const updated = [...items];
+    updated[idx].itemName = val;
 
-    // Add option to switch to custom typing
-    options.push({
-      value: '__CUSTOM__',
-      label: '✎ Type Custom Item Manually...',
-    });
-
-    return options;
-  };
-
-  const handleModuleSelect = (idx: number, val: string | null) => {
-    if (val === '__CUSTOM__') {
-      if (!customRowIndices.includes(idx)) {
-        setCustomRowIndices((prev) => [...prev, idx]);
+    // Check if it matches a catalogue product
+    const prod = products.find((p) => p.name.toLowerCase() === val.toLowerCase());
+    if (prod) {
+      updated[idx].productId = prod.id;
+      updated[idx].itemCode = prod.itemCode;
+      updated[idx].itemType = prod.type || 'Product';
+      if (prod.unitPrice !== undefined && prod.unitPrice > 0) {
+        updated[idx].unitPrice = prod.unitPrice;
       }
-      return;
-    }
-
-    if (!val) {
-      updateItem(idx, 'itemName', '');
-      return;
-    }
-
-    let foundDesc = '';
-    if (selectedCatalogueProduct) {
-      const mod = selectedProductModules.find((m) => m.name === val);
-      if (mod) foundDesc = mod.description;
+      if (prod.description && !updated[idx].description) {
+        updated[idx].description = prod.description;
+      }
+      if (prod.taxRate !== undefined) {
+        updated[idx].taxRate = prod.taxRate;
+      }
     } else {
+      // Check if it matches a module
       for (const p of products) {
         const mods = getProductModules(p);
-        const mod = mods.find((m) => m.name === val);
+        const mod = mods.find((m) => m.name.toLowerCase() === val.toLowerCase());
         if (mod) {
-          foundDesc = mod.description || p.description || '';
+          if (mod.description && !updated[idx].description) {
+            updated[idx].description = mod.description;
+          }
           break;
         }
       }
     }
 
-    const updated = [...items];
-    updated[idx].itemName = val;
-    if (foundDesc && !updated[idx].description) {
-      updated[idx].description = foundDesc;
-    }
+    // Recalculate line total
+    const qty = Number(updated[idx].quantity) || 1;
+    const price = Number(updated[idx].unitPrice) || 0;
+    const disc = Number(updated[idx].discount) || 0;
+    const base = Math.max(0, qty * price - disc);
+    const taxRate = updated[idx].taxRate !== undefined ? Number(updated[idx].taxRate) : 18;
+    const taxAmt = Number(((base * taxRate) / 100).toFixed(2));
+    updated[idx].taxAmount = taxAmt;
+    updated[idx].totalAmount = Number((base + taxAmt).toFixed(2));
+
     setItems(updated);
   };
 
@@ -343,18 +421,22 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     const isFirstItemEmpty =
       items.length === 1 && !items[0].itemName.trim() && (items[0].unitPrice === 0 || !items[0].unitPrice);
 
+    const price = prod.unitPrice || 0;
+    const taxRate = prod.taxRate !== undefined ? prod.taxRate : 18;
+    const taxAmt = Number(((price * taxRate) / 100).toFixed(2));
+
     const newItem: QuotationItem = {
       productId: prod.id,
       itemCode: prod.itemCode,
       itemName: prod.name,
-      itemType: prod.type,
+      itemType: prod.type || 'Product',
       description: prod.description || '',
       quantity: 1,
-      unitPrice: 0,
+      unitPrice: price,
       discount: 0,
-      taxRate: 18,
-      taxAmount: 0,
-      totalAmount: 0,
+      taxRate: taxRate,
+      taxAmount: taxAmt,
+      totalAmount: Number((price + taxAmt).toFixed(2)),
     };
 
     if (isFirstItemEmpty) {
@@ -365,7 +447,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
 
     notifications.show({
       color: 'teal',
-      message: `Added "${prod.name}" to line items`,
+      message: `Added "${prod.name}" to line items (₹${price.toLocaleString('en-IN')})`,
     });
   };
 
@@ -390,7 +472,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     if (items.length <= 1) {
       notifications.show({
         color: 'yellow',
-        message: 'A quotation must have at least one line item.',
+        message: initialLead ? 'A proposal must have at least one line item.' : 'A quotation must have at least one line item.',
       });
       return;
     }
@@ -427,6 +509,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
       setSubmitting(true);
       const payload: Partial<Quotation> = {
         contactId: contactId || null,
+        leadId: initialLead?.id || quotation?.leadId || null,
         contactName,
         companyName,
         contactEmail,
@@ -442,18 +525,27 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
         paymentTerms,
         notes,
         termsConditions,
+        grandTotal,
+        subtotal,
         items,
       };
 
+      let savedQuote: Quotation | undefined;
       if (quotation?.id) {
-        await billingService.updateQuotation(quotation.id, payload);
-        notifications.show({ color: 'green', message: 'Quotation updated successfully' });
+        savedQuote = await billingService.updateQuotation(quotation.id, payload);
+        notifications.show({
+          color: 'green',
+          message: 'Quotation updated successfully in CRM database',
+        });
       } else {
-        await billingService.createQuotation(payload);
-        notifications.show({ color: 'green', message: 'Quotation created successfully' });
+        savedQuote = await billingService.createQuotation(payload);
+        notifications.show({
+          color: 'green',
+          message: 'Quotation created and saved in CRM database',
+        });
       }
 
-      onSuccess();
+      onSuccess(savedQuote);
       onClose();
     } catch (err: any) {
       notifications.show({ color: 'red', message: err.message || 'Failed to save quotation' });
@@ -507,10 +599,14 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
           </Box>
           <div>
             <Text fw={800} size="19px" style={{ color: isDark ? '#F8FAFC' : '#0F172A', lineHeight: 1.2 }}>
-              {quotation ? `Edit Quotation: ${quotation.quotationNumber}` : 'Create New Quotation'}
+              {quotation
+                ? `Quotation Maker • Edit Quotation (${quotation.quotationNumber})`
+                : 'Quotation Maker • New Quotation'}
             </Text>
             <Text size="xs" c="dimmed" mt={2}>
-              Prepare estimate with items, pricing, discounts, and terms
+              {initialLead
+                ? `Build and save quotation for ${initialLead.name} (${initialLead.companyName || 'Lead'}) directly in CRM database`
+                : 'Prepare itemized estimate with catalogue products, GST rates, and terms (Stored in CRM Database)'}
             </Text>
           </div>
         </Group>
@@ -530,26 +626,35 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
         <Stack gap="md">
           {/* Client Details Section */}
           <Paper p="md" withBorder radius="lg" style={{ background: isDark ? '#111827' : '#F8FAFC', border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0' }}>
-            <Text fw={700} size="xs" mb="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
-              Client Information (CRM Contact / Organization)
-            </Text>
+            <Group justify="space-between" align="center" mb="xs">
+              <Text fw={700} size="xs" c="dimmed" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+                Client Information {initialLead ? '(Auto-fetched from Lead)' : '(CRM Contact / Organization)'}
+              </Text>
+              {initialLead && (
+                <Badge size="xs" variant="light" color="indigo" radius="sm">
+                  Lead: {initialLead.name}
+                </Badge>
+              )}
+            </Group>
             <Grid gutter="xs">
-              <Grid.Col span={{ base: 12, sm: 6 }}>
-                <Select
-                  label="Select Existing CRM Contact"
-                  placeholder="Choose contact to auto-fill"
-                  data={contacts.map((c) => ({
-                    value: c.id,
-                    label: `${c.name} ${c.companyName ? `(${c.companyName})` : ''}`,
-                  }))}
-                  value={contactId}
-                  onChange={handleSelectContact}
-                  searchable
-                  clearable
-                  radius="md"
-                />
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 6 }}>
+              {!initialLead && (
+                <Grid.Col span={{ base: 12, sm: 6 }}>
+                  <Select
+                    label="Select Existing CRM Contact"
+                    placeholder="Choose contact to auto-fill"
+                    data={contacts.map((c) => ({
+                      value: c.id,
+                      label: `${c.name} ${c.companyName ? `(${c.companyName})` : ''}`,
+                    }))}
+                    value={contactId}
+                    onChange={handleSelectContact}
+                    searchable
+                    clearable
+                    radius="md"
+                  />
+                </Grid.Col>
+              )}
+              <Grid.Col span={{ base: 12, sm: initialLead ? 6 : 6 }}>
                 <TextInput
                   label="Contact / Client Name"
                   placeholder="e.g. Rahul Sharma"
@@ -559,21 +664,12 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                   radius="md"
                 />
               </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 4 }}>
+              <Grid.Col span={{ base: 12, sm: initialLead ? 6 : 4 }}>
                 <TextInput
                   label="Company Name"
                   placeholder="e.g. Acme Innovations Pvt Ltd"
                   value={companyName}
                   onChange={(e) => setCompanyName(e.currentTarget.value)}
-                  radius="md"
-                />
-              </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 4 }}>
-                <TextInput
-                  label="Client GSTIN"
-                  placeholder="e.g. 33AAAAA0000A1Z5"
-                  value={clientGst}
-                  onChange={(e) => setClientGst(e.currentTarget.value)}
                   radius="md"
                 />
               </Grid.Col>
@@ -595,7 +691,16 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                   radius="md"
                 />
               </Grid.Col>
-              <Grid.Col span={{ base: 12, sm: 8 }}>
+              <Grid.Col span={{ base: 12, sm: 4 }}>
+                <TextInput
+                  label="Client GSTIN"
+                  placeholder="e.g. 33AAAAA0000A1Z5"
+                  value={clientGst}
+                  onChange={(e) => setClientGst(e.currentTarget.value)}
+                  radius="md"
+                />
+              </Grid.Col>
+              <Grid.Col span={{ base: 12, sm: initialLead ? 12 : 8 }}>
                 <TextInput
                   label="Billing Address"
                   placeholder="Registered Office Address"
@@ -607,11 +712,11 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
             </Grid>
           </Paper>
 
-          {/* Quotation Validity & Dates */}
+          {/* Validity & Dates */}
           <Grid gutter="xs">
             <Grid.Col span={{ base: 12, sm: 3 }}>
               <TextInput
-                label="Quotation Date"
+                label={initialLead ? 'Proposal Date' : 'Quotation Date'}
                 type="date"
                 value={quotationDate}
                 onChange={(e) => setQuotationDate(e.currentTarget.value)}
@@ -718,16 +823,24 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                   />
                 </Group>
 
-                {selectedCatalogueProduct && selectedProductModules.length > 0 && (
+                {selectedCatalogueProduct && (
                   <Button
                     variant="light"
                     color="indigo"
                     size="compact-xs"
                     radius="sm"
                     leftSection={<IconPlus size={12} />}
-                    onClick={() => handleAddAllModules(selectedCatalogueProduct)}
+                    onClick={() => {
+                      if (selectedProductModules.length > 0) {
+                        handleAddAllModules(selectedCatalogueProduct);
+                      } else {
+                        handleAddProductLineItem(selectedCatalogueProduct);
+                      }
+                    }}
                   >
-                    Add All {selectedCatalogueProduct.name} Modules ({selectedProductModules.length})
+                    {selectedProductModules.length > 0
+                      ? `Add All ${selectedCatalogueProduct.name} Modules (${selectedProductModules.length})`
+                      : `+ Add "${selectedCatalogueProduct.name}" (₹${selectedCatalogueProduct.unitPrice?.toLocaleString('en-IN')})`}
                   </Button>
                 )}
               </Group>
@@ -765,43 +878,17 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                   {items.map((item, idx) => (
                     <Table.Tr key={idx}>
                       <Table.Td>
-                        <Group gap={4} wrap="nowrap" align="center">
-                          {customRowIndices.includes(idx) ? (
-                            <TextInput
-                              placeholder="Type custom item name..."
-                              value={item.itemName}
-                              onChange={(e) => updateItem(idx, 'itemName', e.currentTarget.value)}
-                              size="xs"
-                              radius="sm"
-                              style={{ flex: 1 }}
-                              required
-                              autoFocus
-                            />
-                          ) : (
-                            <Select
-                              placeholder="Select Module..."
-                              data={getRowModuleOptions(item.itemName)}
-                              value={item.itemName || null}
-                              onChange={(val) => handleModuleSelect(idx, val)}
-                              searchable
-                              clearable
-                              size="xs"
-                              radius="sm"
-                              style={{ flex: 1 }}
-                              nothingFoundMessage="No matching module"
-                            />
-                          )}
-                          <ActionIcon
-                            variant="subtle"
-                            color={customRowIndices.includes(idx) ? 'indigo' : 'gray'}
-                            size="sm"
-                            radius="sm"
-                            onClick={() => toggleCustomRow(idx)}
-                            title={customRowIndices.includes(idx) ? 'Switch to Select Module' : 'Switch to Type Manually'}
-                          >
-                            {customRowIndices.includes(idx) ? <IconList size={13} /> : <IconPencil size={13} />}
-                          </ActionIcon>
-                        </Group>
+                        <Autocomplete
+                          placeholder="Type or select product/service..."
+                          data={autocompleteOptions}
+                          value={item.itemName || ''}
+                          onChange={(val) => updateItem(idx, 'itemName', val)}
+                          onOptionSubmit={(val) => handleItemSelect(idx, val)}
+                          size="xs"
+                          radius="sm"
+                          style={{ width: '100%' }}
+                          required
+                        />
                       </Table.Td>
                         <Table.Td>
                           <Textarea

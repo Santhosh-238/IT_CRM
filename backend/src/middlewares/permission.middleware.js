@@ -134,11 +134,25 @@ export function authorizePermission(moduleId, action = 'view') {
         return next();
       }
 
-      const modulePerms = userPerms.permissions[moduleId];
-      if (!modulePerms || !modulePerms[action]) {
+      // Check requested module or fallback to leads/deals for billing
+      const modulesToCheck = Array.isArray(moduleId) ? [...moduleId] : [moduleId];
+      if (modulesToCheck.includes('billing')) {
+        modulesToCheck.push('leads', 'deals');
+      }
+
+      let hasAccess = false;
+      for (const mod of modulesToCheck) {
+        const modulePerms = userPerms.permissions?.[mod];
+        if (modulePerms && modulePerms[action]) {
+          hasAccess = true;
+          break;
+        }
+      }
+
+      if (!hasAccess) {
         return res.status(403).json({
           success: false,
-          message: `Access denied: You do not have '${action}' permission for '${moduleId}'.`,
+          message: `Access denied: You do not have '${action}' permission for '${Array.isArray(moduleId) ? moduleId.join('/') : moduleId}'.`,
           requiredPermission: { module: moduleId, action },
         });
       }

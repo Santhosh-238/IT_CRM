@@ -124,6 +124,100 @@ export async function deleteLead(req, res) {
   }
 }
 
+/**
+ * 8. Get all proposals (Lead Module)
+ * GET /api/leads/proposals
+ */
+export async function getLeadProposals(req, res) {
+  try {
+    const proposals = await leadService.getLeadProposalsService(req.query);
+    return res.status(200).json({
+      success: true,
+      message: 'Proposals retrieved successfully.',
+      data: proposals,
+    });
+  } catch (error) {
+    console.error('getLeadProposals error:', error);
+    return sendError(res, error.message || 'Failed to fetch proposals', error.status || 500);
+  }
+}
+export const getProposals = getLeadProposals;
+
+/**
+ * 9. Get single proposal by ID
+ * GET /api/leads/proposals/:id
+ */
+export async function getLeadProposalById(req, res) {
+  try {
+    const proposal = await leadService.getLeadProposalByIdService(req.params.id);
+    return res.status(200).json({
+      success: true,
+      data: proposal,
+    });
+  } catch (error) {
+    console.error('getLeadProposalById error:', error);
+    return sendError(res, error.message || 'Failed to fetch proposal', error.status || 500);
+  }
+}
+export const getProposalById = getLeadProposalById;
+
+/**
+ * 10. Create new proposal
+ * POST /api/leads/proposals
+ */
+export async function createLeadProposal(req, res) {
+  try {
+    const proposal = await leadService.createLeadProposalService(req.body, req.user);
+    return res.status(201).json({
+      success: true,
+      message: 'Proposal created successfully.',
+      data: proposal,
+    });
+  } catch (error) {
+    console.error('createLeadProposal error:', error);
+    return sendError(res, error.message || 'Failed to create proposal', error.status || 500);
+  }
+}
+export const createProposal = createLeadProposal;
+
+/**
+ * 11. Update proposal
+ * PUT /api/leads/proposals/:id
+ */
+export async function updateLeadProposal(req, res) {
+  try {
+    const proposal = await leadService.updateLeadProposalService(req.params.id, req.body, req.user);
+    return res.status(200).json({
+      success: true,
+      message: 'Proposal updated successfully.',
+      data: proposal,
+    });
+  } catch (error) {
+    console.error('updateLeadProposal error:', error);
+    return sendError(res, error.message || 'Failed to update proposal', error.status || 500);
+  }
+}
+export const updateProposal = updateLeadProposal;
+
+/**
+ * 12. Delete proposal
+ * DELETE /api/leads/proposals/:id
+ */
+export async function deleteLeadProposal(req, res) {
+  try {
+    const result = await leadService.deleteLeadProposalService(req.params.id);
+    return res.status(200).json({
+      success: true,
+      message: 'Proposal deleted successfully.',
+      data: result,
+    });
+  } catch (error) {
+    console.error('deleteLeadProposal error:', error);
+    return sendError(res, error.message || 'Failed to delete proposal', error.status || 500);
+  }
+}
+export const deleteProposal = deleteLeadProposal;
+
 export default {
   getLeads,
   getLeadStats,
@@ -132,4 +226,15 @@ export default {
   createLead,
   updateLead,
   deleteLead,
+  getLeadProposals,
+  getLeadProposalById,
+  createLeadProposal,
+  updateLeadProposal,
+  deleteLeadProposal,
+  getProposals,
+  getProposalById,
+  createProposal,
+  updateProposal,
+  deleteProposal,
 };
+

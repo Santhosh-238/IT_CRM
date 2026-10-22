@@ -1,5 +1,15 @@
-export type MeetingStatus = 'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled';
+export type MeetingStatus = 'Scheduled' | 'Rescheduled' | 'Completed' | 'Cancelled' | 'In Progress';
 export type MeetingType = 'Virtual' | 'In-person' | 'Phone Call';
+
+export interface RescheduleRecord {
+  previousDate: string;
+  previousTime: string;
+  newDate: string;
+  newTime: string;
+  reason?: string;
+  rescheduledAt: string;
+  rescheduledBy?: string;
+}
 
 export interface ScheduledMeeting {
   id: string;
@@ -42,6 +52,8 @@ export interface ScheduledMeeting {
   status: MeetingStatus | string;
   description?: string;
   notes?: string;
+  rescheduleReason?: string;
+  rescheduleHistory?: RescheduleRecord[];
   requirements?: string;
   requirementFileName?: string;
   requirementFileUrl?: string;
@@ -50,6 +62,10 @@ export interface ScheduledMeeting {
   duration?: string;
   hostName?: string;
   stageAfterMeeting?: string;
+  internalAttendees?: string[] | string;
+  clientAttendees?: string[] | string;
+  meetingOutcome?: string;
+  outcome?: string;
   createdAt?: string;
   updatedAt?: string;
 }

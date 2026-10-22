@@ -37,6 +37,9 @@ interface MeetingTableViewProps {
   onMeetingUpdated?: (meeting: ScheduledMeeting) => void;
   onViewDetails?: (meeting: ScheduledMeeting) => void;
   loading?: boolean;
+  hideLeadColumn?: boolean;
+  hideAssignedUserColumn?: boolean;
+  hideRequirementButtons?: boolean;
 }
 
 export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
@@ -48,6 +51,9 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
   onMeetingUpdated,
   onViewDetails,
   loading = false,
+  hideLeadColumn = false,
+  hideAssignedUserColumn = false,
+  hideRequirementButtons = false,
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
@@ -220,18 +226,22 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
                 <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                   MEETING / PURPOSE
                 </Table.Th>
-                <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                  LEAD & COMPANY / PROFESSION
-                </Table.Th>
+                {!hideLeadColumn && (
+                  <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                    LEAD & COMPANY / PROFESSION
+                  </Table.Th>
+                )}
                 <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                   DATE & TIME
                 </Table.Th>
                 <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                   MEETING TYPE
                 </Table.Th>
-                <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
-                  ASSIGNED USER
-                </Table.Th>
+                {!hideAssignedUserColumn && (
+                  <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                    ASSIGNED USER
+                  </Table.Th>
+                )}
                 <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                   STATUS
                 </Table.Th>
@@ -295,29 +305,31 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
                     </Table.Td>
 
                     {/* 2. Lead Name & Company Name */}
-                    <Table.Td>
-                      <Stack gap={2}>
-                        <Group gap={6} wrap="nowrap">
-                          <IconUser size={14} color="#3B82F6" />
-                          <Text
-                            size="sm"
-                            fw={600}
-                            style={{
-                              color: isDark ? '#60A5FA' : '#2563EB',
-                              textDecoration: 'none',
-                            }}
-                          >
-                            {leadName}
-                          </Text>
-                        </Group>
-                        <Group gap={6} wrap="nowrap">
-                          <IconBuilding size={14} color="#64748B" />
-                          <Text size="xs" c="dimmed">
-                            {companyName}
-                          </Text>
-                        </Group>
-                      </Stack>
-                    </Table.Td>
+                    {!hideLeadColumn && (
+                      <Table.Td>
+                        <Stack gap={2}>
+                          <Group gap={6} wrap="nowrap">
+                            <IconUser size={14} color="#3B82F6" />
+                            <Text
+                              size="sm"
+                              fw={600}
+                              style={{
+                                color: isDark ? '#60A5FA' : '#2563EB',
+                                textDecoration: 'none',
+                              }}
+                            >
+                              {leadName}
+                            </Text>
+                          </Group>
+                          <Group gap={6} wrap="nowrap">
+                            <IconBuilding size={14} color="#64748B" />
+                            <Text size="xs" c="dimmed">
+                              {companyName}
+                            </Text>
+                          </Group>
+                        </Stack>
+                      </Table.Td>
+                    )}
 
                     {/* 3. Date & Time */}
                     <Table.Td>
@@ -325,15 +337,20 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
                         <Group gap={6} wrap="nowrap">
                           <IconCalendar size={14} color="#64748B" />
                           <Text size="sm" fw={600} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                            {formatDisplayDate(meeting.meetingDate)}
+                            {formatDisplayDate(meeting.meetingDate || meeting.date)}
                           </Text>
                         </Group>
                         <Group gap={6} wrap="nowrap">
                           <IconClock size={12} color="#94A3B8" />
                           <Text size="xs" c="dimmed">
-                            {meeting.startTime} – {meeting.endTime}
+                            {meeting.startTime || meeting.meetingTime || meeting.time} – {meeting.endTime || '10:30 AM'}
                           </Text>
                         </Group>
+                        {meeting.rescheduleReason && (
+                          <Text size="11px" c="orange" truncate style={{ maxWidth: 170 }}>
+                            Reason: {meeting.rescheduleReason}
+                          </Text>
+                        )}
                       </Stack>
                     </Table.Td>
 
@@ -355,21 +372,23 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
                     </Table.Td>
 
                     {/* 5. Assigned User / Host */}
-                    <Table.Td>
-                      <Stack gap={2}>
-                        <Group gap={6} wrap="nowrap">
-                          <IconUser size={14} color="#64748B" />
-                          <Text size="sm" fw={500}>
-                            {meeting.employeeName || 'Assigned Host'}
-                          </Text>
-                        </Group>
-                        {meeting.employeeDesignation && (
-                          <Text size="xs" c="dimmed">
-                            {meeting.employeeDesignation}
-                          </Text>
-                        )}
-                      </Stack>
-                    </Table.Td>
+                    {!hideAssignedUserColumn && (
+                      <Table.Td>
+                        <Stack gap={2}>
+                          <Group gap={6} wrap="nowrap">
+                            <IconUser size={14} color="#64748B" />
+                            <Text size="sm" fw={500}>
+                              {meeting.employeeName || 'Assigned Host'}
+                            </Text>
+                          </Group>
+                          {meeting.employeeDesignation && (
+                            <Text size="xs" c="dimmed">
+                              {meeting.employeeDesignation}
+                            </Text>
+                          )}
+                        </Stack>
+                      </Table.Td>
+                    )}
 
                     {/* 6. Meeting Status */}
                     <Table.Td>
@@ -385,7 +404,7 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
                     <Table.Td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                       <Group gap={6} justify="flex-end" wrap="nowrap">
                         {/* Direct View Attached Document */}
-                        {meeting.requirementFileUrl ? (
+                        {!hideRequirementButtons && meeting.requirementFileUrl ? (
                           <Tooltip label={`View Requirement Document (${meeting.requirementFileName || 'Document'})`} withArrow>
                             <ActionIcon
                               variant="light"
@@ -400,20 +419,22 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
                         ) : null}
 
                         {/* View Details & Requirements */}
-                        <Tooltip label="View Details & Requirements" withArrow>
-                          <ActionIcon
-                            variant="subtle"
-                            color="teal"
-                            size="md"
-                            radius="md"
-                            onClick={() => handleOpenDetails(meeting)}
-                          >
-                            <IconFileDescription size={16} />
-                          </ActionIcon>
-                        </Tooltip>
+                        {!hideRequirementButtons && (
+                          <Tooltip label="View Details & Requirements" withArrow>
+                            <ActionIcon
+                              variant="subtle"
+                              color="teal"
+                              size="md"
+                              radius="md"
+                              onClick={() => handleOpenDetails(meeting)}
+                            >
+                              <IconFileDescription size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
 
                         {/* Go to Lead Details */}
-                        {onNavigateToLead && (
+                        {!hideRequirementButtons && onNavigateToLead && (
                           <Tooltip label="View Lead Details & Pipeline" withArrow>
                             <ActionIcon
                               variant="subtle"
@@ -428,7 +449,7 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
                         )}
 
                         {/* Join Virtual Meeting */}
-                        {meeting.location && meeting.location.startsWith('http') ? (
+                        {!hideRequirementButtons && meeting.location && meeting.location.startsWith('http') ? (
                           <Tooltip label="Join Virtual Meeting" withArrow>
                             <ActionIcon
                               variant="subtle"
@@ -527,7 +548,7 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
                       {titleText}
                     </Text>
                     <Text size="xs" c="dimmed">
-                      {formatDisplayDate(meeting.meetingDate)} • {meeting.startTime}
+                      {formatDisplayDate(meeting.meetingDate || meeting.date)} • {meeting.startTime || meeting.meetingTime || meeting.time}
                     </Text>
                   </Box>
                 </Group>
@@ -536,20 +557,22 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
               </Group>
 
               {/* Lead & Company Info */}
-              <Group justify="space-between" align="center" wrap="wrap" gap="xs" mb="xs">
-                <Group gap={6} wrap="nowrap">
-                  <IconUser size={14} color="#3B82F6" />
-                  <Text size="xs" fw={600} style={{ color: isDark ? '#60A5FA' : '#2563EB' }}>
-                    {leadName}
-                  </Text>
+              {!hideLeadColumn && (
+                <Group justify="space-between" align="center" wrap="wrap" gap="xs" mb="xs">
+                  <Group gap={6} wrap="nowrap">
+                    <IconUser size={14} color="#3B82F6" />
+                    <Text size="xs" fw={600} style={{ color: isDark ? '#60A5FA' : '#2563EB' }}>
+                      {leadName}
+                    </Text>
+                  </Group>
+                  <Group gap={6} wrap="nowrap">
+                    <IconBuilding size={14} color="#64748B" />
+                    <Text size="xs" c="dimmed">
+                      {companyName}
+                    </Text>
+                  </Group>
                 </Group>
-                <Group gap={6} wrap="nowrap">
-                  <IconBuilding size={14} color="#64748B" />
-                  <Text size="xs" c="dimmed">
-                    {companyName}
-                  </Text>
-                </Group>
-              </Group>
+              )}
 
               {/* Action Bar */}
               <Group
@@ -559,16 +582,18 @@ export const MeetingTableView: React.FC<MeetingTableViewProps> = ({
                   borderTop: isDark ? '1px solid #1F2937' : '1px solid #F1F5F9',
                 }}
               >
-                <Button
-                  size="xs"
-                  variant="light"
-                  color="teal"
-                  onClick={() => handleOpenDetails(meeting)}
-                  leftSection={<IconFileDescription size={14} />}
-                  style={{ borderRadius: 8, fontWeight: 600 }}
-                >
-                  Details & Requirements
-                </Button>
+                {!hideRequirementButtons ? (
+                  <Button
+                    size="xs"
+                    variant="light"
+                    color="teal"
+                    onClick={() => handleOpenDetails(meeting)}
+                    leftSection={<IconFileDescription size={14} />}
+                    style={{ borderRadius: 8, fontWeight: 600 }}
+                  >
+                    Details & Requirements
+                  </Button>
+                ) : <Box />}
 
                 <Group gap="xs">
                   <ActionIcon
