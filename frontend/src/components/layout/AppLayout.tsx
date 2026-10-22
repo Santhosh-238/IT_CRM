@@ -91,7 +91,6 @@ export const AppLayout: React.FC = () => {
       { nav: 'call-logs', id: 'call_logs' },
       { nav: 'customers', id: 'customers' },
       { nav: 'projects', id: 'projects' },
-      { nav: 'billing', id: 'billing' },
       { nav: 'employees', id: 'employee_management' },
       { nav: 'access-control', id: 'access_control' },
       { nav: 'settings', id: 'settings' },
