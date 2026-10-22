@@ -62,6 +62,12 @@ export const SYSTEM_MODULES = [
     category: 'Administration & Security',
     description: 'Role-Based Access Control, permissions matrix, and role hierarchy.',
   },
+  {
+    id: 'settings',
+    name: 'Settings & Master Catalog',
+    category: 'Administration & Security',
+    description: 'Company profile, project & module catalog templates, CRM pipeline presets, and system configurations.',
+  },
 ];
 
 export const MODULE_CATEGORIES = [
@@ -85,7 +91,6 @@ const EXCLUDED_LEGACY_MODULES = new Set([
   'leave_management',
   'deals',
   'companies',
-  'settings',
   'audit_logs',
   'employees', // aliased to employee_management
   'calls', // aliased to call_logs

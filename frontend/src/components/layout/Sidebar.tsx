@@ -19,6 +19,7 @@ import {
   IconFolders,
   IconPhoneCall,
   IconBuilding,
+  IconSettings,
 } from '@tabler/icons-react';
 import { useCRM } from '../../context/CRMContext';
 import { usePermissions } from '../../context/AccessControlContext';
@@ -225,20 +226,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
           </Stack>
 
           {/* Administration & Security Section */}
-          {can('access_control', 'view') && (
+          {(can('access_control', 'view') || can('settings', 'view') || isSuperAdmin) && (
             <>
               <Text size="10px" fw={800} c="dimmed" tt="uppercase" px="xs" mt="sm" style={{ letterSpacing: '0.08em' }}>
                 Administration & Security
               </Text>
               <Stack gap={6}>
-                <NavLink
-                  label="Access Control & RBAC"
-                  leftSection={<IconShieldLock size={18} stroke={2} />}
-                  active={activeNav === 'access-control' || activeNav === 'rbac'}
-                  onClick={() => onSelectNav('access-control')}
-                  className={activeNav === 'access-control' || activeNav === 'rbac' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-                  style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-                />
+                {can('access_control', 'view') && (
+                  <NavLink
+                    label="Access Control & RBAC"
+                    leftSection={<IconShieldLock size={18} stroke={2} />}
+                    active={activeNav === 'access-control' || activeNav === 'rbac'}
+                    onClick={() => onSelectNav('access-control')}
+                    className={activeNav === 'access-control' || activeNav === 'rbac' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+                    style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                  />
+                )}
+                {(can('settings', 'view') || isSuperAdmin) && (
+                  <NavLink
+                    label="Settings & Master Catalog"
+                    leftSection={<IconSettings size={18} stroke={2} />}
+                    active={activeNav === 'settings'}
+                    onClick={() => onSelectNav('settings')}
+                    className={activeNav === 'settings' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+                    style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                  />
+                )}
               </Stack>
             </>
           )}

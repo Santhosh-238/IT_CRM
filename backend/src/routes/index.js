@@ -11,6 +11,7 @@ import meetingRouter from './meeting.routes.js';
 import callLogRouter from './callLog.routes.js';
 import customerRouter from './customer.routes.js';
 import crmRouter from './crm.routes.js';
+import settingsRouter from './settings.routes.js';
 
 const apiRouter = Router();
 
@@ -25,6 +26,7 @@ apiRouter.use('/tasks', taskRouter);
 apiRouter.use('/meetings', meetingRouter);
 apiRouter.use('/call-logs', callLogRouter);
 apiRouter.use('/customers', customerRouter);
+apiRouter.use('/settings', settingsRouter);
 apiRouter.use('/', crmRouter);
 
 export default apiRouter;
@@ -41,6 +43,7 @@ export {
   callLogRouter,
   customerRouter,
   crmRouter,
+  settingsRouter,
 };
 
 

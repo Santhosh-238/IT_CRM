@@ -73,6 +73,16 @@ export type CallLog = $Result.DefaultSelection<Prisma.$CallLogPayload>
  * 
  */
 export type Customer = $Result.DefaultSelection<Prisma.$CustomerPayload>
+/**
+ * Model MasterProject
+ * 
+ */
+export type MasterProject = $Result.DefaultSelection<Prisma.$MasterProjectPayload>
+/**
+ * Model SystemSetting
+ * 
+ */
+export type SystemSetting = $Result.DefaultSelection<Prisma.$SystemSettingPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -311,6 +321,26 @@ export class PrismaClient<
     * ```
     */
   get customer(): Prisma.CustomerDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.masterProject`: Exposes CRUD operations for the **MasterProject** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more MasterProjects
+    * const masterProjects = await prisma.masterProject.findMany()
+    * ```
+    */
+  get masterProject(): Prisma.MasterProjectDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.systemSetting`: Exposes CRUD operations for the **SystemSetting** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more SystemSettings
+    * const systemSettings = await prisma.systemSetting.findMany()
+    * ```
+    */
+  get systemSetting(): Prisma.SystemSettingDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -763,7 +793,9 @@ export namespace Prisma {
     ScheduledMeeting: 'ScheduledMeeting',
     Project: 'Project',
     CallLog: 'CallLog',
-    Customer: 'Customer'
+    Customer: 'Customer',
+    MasterProject: 'MasterProject',
+    SystemSetting: 'SystemSetting'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -782,7 +814,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "role" | "rolePermission" | "accessAuditLog" | "employee" | "contact" | "company" | "lead" | "scheduledMeeting" | "project" | "callLog" | "customer"
+      modelProps: "user" | "role" | "rolePermission" | "accessAuditLog" | "employee" | "contact" | "company" | "lead" | "scheduledMeeting" | "project" | "callLog" | "customer" | "masterProject" | "systemSetting"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1674,6 +1706,154 @@ export namespace Prisma {
           }
         }
       }
+      MasterProject: {
+        payload: Prisma.$MasterProjectPayload<ExtArgs>
+        fields: Prisma.MasterProjectFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.MasterProjectFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.MasterProjectFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload>
+          }
+          findFirst: {
+            args: Prisma.MasterProjectFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.MasterProjectFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload>
+          }
+          findMany: {
+            args: Prisma.MasterProjectFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload>[]
+          }
+          create: {
+            args: Prisma.MasterProjectCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload>
+          }
+          createMany: {
+            args: Prisma.MasterProjectCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.MasterProjectCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload>[]
+          }
+          delete: {
+            args: Prisma.MasterProjectDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload>
+          }
+          update: {
+            args: Prisma.MasterProjectUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload>
+          }
+          deleteMany: {
+            args: Prisma.MasterProjectDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.MasterProjectUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.MasterProjectUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload>[]
+          }
+          upsert: {
+            args: Prisma.MasterProjectUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MasterProjectPayload>
+          }
+          aggregate: {
+            args: Prisma.MasterProjectAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateMasterProject>
+          }
+          groupBy: {
+            args: Prisma.MasterProjectGroupByArgs<ExtArgs>
+            result: $Utils.Optional<MasterProjectGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.MasterProjectCountArgs<ExtArgs>
+            result: $Utils.Optional<MasterProjectCountAggregateOutputType> | number
+          }
+        }
+      }
+      SystemSetting: {
+        payload: Prisma.$SystemSettingPayload<ExtArgs>
+        fields: Prisma.SystemSettingFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.SystemSettingFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.SystemSettingFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload>
+          }
+          findFirst: {
+            args: Prisma.SystemSettingFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.SystemSettingFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload>
+          }
+          findMany: {
+            args: Prisma.SystemSettingFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload>[]
+          }
+          create: {
+            args: Prisma.SystemSettingCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload>
+          }
+          createMany: {
+            args: Prisma.SystemSettingCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.SystemSettingCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload>[]
+          }
+          delete: {
+            args: Prisma.SystemSettingDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload>
+          }
+          update: {
+            args: Prisma.SystemSettingUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload>
+          }
+          deleteMany: {
+            args: Prisma.SystemSettingDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.SystemSettingUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.SystemSettingUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload>[]
+          }
+          upsert: {
+            args: Prisma.SystemSettingUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SystemSettingPayload>
+          }
+          aggregate: {
+            args: Prisma.SystemSettingAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateSystemSetting>
+          }
+          groupBy: {
+            args: Prisma.SystemSettingGroupByArgs<ExtArgs>
+            result: $Utils.Optional<SystemSettingGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.SystemSettingCountArgs<ExtArgs>
+            result: $Utils.Optional<SystemSettingCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1782,6 +1962,8 @@ export namespace Prisma {
     project?: ProjectOmit
     callLog?: CallLogOmit
     customer?: CustomerOmit
+    masterProject?: MasterProjectOmit
+    systemSetting?: SystemSettingOmit
   }
 
   /* Types for Logging */
@@ -16539,6 +16721,2170 @@ export namespace Prisma {
 
 
   /**
+   * Model MasterProject
+   */
+
+  export type AggregateMasterProject = {
+    _count: MasterProjectCountAggregateOutputType | null
+    _avg: MasterProjectAvgAggregateOutputType | null
+    _sum: MasterProjectSumAggregateOutputType | null
+    _min: MasterProjectMinAggregateOutputType | null
+    _max: MasterProjectMaxAggregateOutputType | null
+  }
+
+  export type MasterProjectAvgAggregateOutputType = {
+    basePrice: number | null
+  }
+
+  export type MasterProjectSumAggregateOutputType = {
+    basePrice: number | null
+  }
+
+  export type MasterProjectMinAggregateOutputType = {
+    id: string | null
+    projectCode: string | null
+    name: string | null
+    category: string | null
+    projectType: string | null
+    basePrice: number | null
+    currency: string | null
+    defaultDuration: string | null
+    description: string | null
+    status: string | null
+    icon: string | null
+    createdBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type MasterProjectMaxAggregateOutputType = {
+    id: string | null
+    projectCode: string | null
+    name: string | null
+    category: string | null
+    projectType: string | null
+    basePrice: number | null
+    currency: string | null
+    defaultDuration: string | null
+    description: string | null
+    status: string | null
+    icon: string | null
+    createdBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type MasterProjectCountAggregateOutputType = {
+    id: number
+    projectCode: number
+    name: number
+    category: number
+    projectType: number
+    basePrice: number
+    currency: number
+    defaultDuration: number
+    techStack: number
+    description: number
+    status: number
+    modules: number
+    deliverables: number
+    icon: number
+    createdBy: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type MasterProjectAvgAggregateInputType = {
+    basePrice?: true
+  }
+
+  export type MasterProjectSumAggregateInputType = {
+    basePrice?: true
+  }
+
+  export type MasterProjectMinAggregateInputType = {
+    id?: true
+    projectCode?: true
+    name?: true
+    category?: true
+    projectType?: true
+    basePrice?: true
+    currency?: true
+    defaultDuration?: true
+    description?: true
+    status?: true
+    icon?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type MasterProjectMaxAggregateInputType = {
+    id?: true
+    projectCode?: true
+    name?: true
+    category?: true
+    projectType?: true
+    basePrice?: true
+    currency?: true
+    defaultDuration?: true
+    description?: true
+    status?: true
+    icon?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type MasterProjectCountAggregateInputType = {
+    id?: true
+    projectCode?: true
+    name?: true
+    category?: true
+    projectType?: true
+    basePrice?: true
+    currency?: true
+    defaultDuration?: true
+    techStack?: true
+    description?: true
+    status?: true
+    modules?: true
+    deliverables?: true
+    icon?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type MasterProjectAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which MasterProject to aggregate.
+     */
+    where?: MasterProjectWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of MasterProjects to fetch.
+     */
+    orderBy?: MasterProjectOrderByWithRelationInput | MasterProjectOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: MasterProjectWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` MasterProjects from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` MasterProjects.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned MasterProjects
+    **/
+    _count?: true | MasterProjectCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: MasterProjectAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: MasterProjectSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: MasterProjectMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: MasterProjectMaxAggregateInputType
+  }
+
+  export type GetMasterProjectAggregateType<T extends MasterProjectAggregateArgs> = {
+        [P in keyof T & keyof AggregateMasterProject]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateMasterProject[P]>
+      : GetScalarType<T[P], AggregateMasterProject[P]>
+  }
+
+
+
+
+  export type MasterProjectGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: MasterProjectWhereInput
+    orderBy?: MasterProjectOrderByWithAggregationInput | MasterProjectOrderByWithAggregationInput[]
+    by: MasterProjectScalarFieldEnum[] | MasterProjectScalarFieldEnum
+    having?: MasterProjectScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: MasterProjectCountAggregateInputType | true
+    _avg?: MasterProjectAvgAggregateInputType
+    _sum?: MasterProjectSumAggregateInputType
+    _min?: MasterProjectMinAggregateInputType
+    _max?: MasterProjectMaxAggregateInputType
+  }
+
+  export type MasterProjectGroupByOutputType = {
+    id: string
+    projectCode: string
+    name: string
+    category: string
+    projectType: string
+    basePrice: number | null
+    currency: string
+    defaultDuration: string | null
+    techStack: string[]
+    description: string | null
+    status: string
+    modules: JsonValue
+    deliverables: string[]
+    icon: string | null
+    createdBy: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: MasterProjectCountAggregateOutputType | null
+    _avg: MasterProjectAvgAggregateOutputType | null
+    _sum: MasterProjectSumAggregateOutputType | null
+    _min: MasterProjectMinAggregateOutputType | null
+    _max: MasterProjectMaxAggregateOutputType | null
+  }
+
+  type GetMasterProjectGroupByPayload<T extends MasterProjectGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<MasterProjectGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof MasterProjectGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], MasterProjectGroupByOutputType[P]>
+            : GetScalarType<T[P], MasterProjectGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type MasterProjectSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    projectCode?: boolean
+    name?: boolean
+    category?: boolean
+    projectType?: boolean
+    basePrice?: boolean
+    currency?: boolean
+    defaultDuration?: boolean
+    techStack?: boolean
+    description?: boolean
+    status?: boolean
+    modules?: boolean
+    deliverables?: boolean
+    icon?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["masterProject"]>
+
+  export type MasterProjectSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    projectCode?: boolean
+    name?: boolean
+    category?: boolean
+    projectType?: boolean
+    basePrice?: boolean
+    currency?: boolean
+    defaultDuration?: boolean
+    techStack?: boolean
+    description?: boolean
+    status?: boolean
+    modules?: boolean
+    deliverables?: boolean
+    icon?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["masterProject"]>
+
+  export type MasterProjectSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    projectCode?: boolean
+    name?: boolean
+    category?: boolean
+    projectType?: boolean
+    basePrice?: boolean
+    currency?: boolean
+    defaultDuration?: boolean
+    techStack?: boolean
+    description?: boolean
+    status?: boolean
+    modules?: boolean
+    deliverables?: boolean
+    icon?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["masterProject"]>
+
+  export type MasterProjectSelectScalar = {
+    id?: boolean
+    projectCode?: boolean
+    name?: boolean
+    category?: boolean
+    projectType?: boolean
+    basePrice?: boolean
+    currency?: boolean
+    defaultDuration?: boolean
+    techStack?: boolean
+    description?: boolean
+    status?: boolean
+    modules?: boolean
+    deliverables?: boolean
+    icon?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type MasterProjectOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "projectCode" | "name" | "category" | "projectType" | "basePrice" | "currency" | "defaultDuration" | "techStack" | "description" | "status" | "modules" | "deliverables" | "icon" | "createdBy" | "createdAt" | "updatedAt", ExtArgs["result"]["masterProject"]>
+
+  export type $MasterProjectPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "MasterProject"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      projectCode: string
+      name: string
+      category: string
+      projectType: string
+      basePrice: number | null
+      currency: string
+      defaultDuration: string | null
+      techStack: string[]
+      description: string | null
+      status: string
+      modules: Prisma.JsonValue
+      deliverables: string[]
+      icon: string | null
+      createdBy: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["masterProject"]>
+    composites: {}
+  }
+
+  type MasterProjectGetPayload<S extends boolean | null | undefined | MasterProjectDefaultArgs> = $Result.GetResult<Prisma.$MasterProjectPayload, S>
+
+  type MasterProjectCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<MasterProjectFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: MasterProjectCountAggregateInputType | true
+    }
+
+  export interface MasterProjectDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['MasterProject'], meta: { name: 'MasterProject' } }
+    /**
+     * Find zero or one MasterProject that matches the filter.
+     * @param {MasterProjectFindUniqueArgs} args - Arguments to find a MasterProject
+     * @example
+     * // Get one MasterProject
+     * const masterProject = await prisma.masterProject.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends MasterProjectFindUniqueArgs>(args: SelectSubset<T, MasterProjectFindUniqueArgs<ExtArgs>>): Prisma__MasterProjectClient<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one MasterProject that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {MasterProjectFindUniqueOrThrowArgs} args - Arguments to find a MasterProject
+     * @example
+     * // Get one MasterProject
+     * const masterProject = await prisma.masterProject.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends MasterProjectFindUniqueOrThrowArgs>(args: SelectSubset<T, MasterProjectFindUniqueOrThrowArgs<ExtArgs>>): Prisma__MasterProjectClient<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first MasterProject that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MasterProjectFindFirstArgs} args - Arguments to find a MasterProject
+     * @example
+     * // Get one MasterProject
+     * const masterProject = await prisma.masterProject.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends MasterProjectFindFirstArgs>(args?: SelectSubset<T, MasterProjectFindFirstArgs<ExtArgs>>): Prisma__MasterProjectClient<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first MasterProject that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MasterProjectFindFirstOrThrowArgs} args - Arguments to find a MasterProject
+     * @example
+     * // Get one MasterProject
+     * const masterProject = await prisma.masterProject.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends MasterProjectFindFirstOrThrowArgs>(args?: SelectSubset<T, MasterProjectFindFirstOrThrowArgs<ExtArgs>>): Prisma__MasterProjectClient<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more MasterProjects that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MasterProjectFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all MasterProjects
+     * const masterProjects = await prisma.masterProject.findMany()
+     * 
+     * // Get first 10 MasterProjects
+     * const masterProjects = await prisma.masterProject.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const masterProjectWithIdOnly = await prisma.masterProject.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends MasterProjectFindManyArgs>(args?: SelectSubset<T, MasterProjectFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a MasterProject.
+     * @param {MasterProjectCreateArgs} args - Arguments to create a MasterProject.
+     * @example
+     * // Create one MasterProject
+     * const MasterProject = await prisma.masterProject.create({
+     *   data: {
+     *     // ... data to create a MasterProject
+     *   }
+     * })
+     * 
+     */
+    create<T extends MasterProjectCreateArgs>(args: SelectSubset<T, MasterProjectCreateArgs<ExtArgs>>): Prisma__MasterProjectClient<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many MasterProjects.
+     * @param {MasterProjectCreateManyArgs} args - Arguments to create many MasterProjects.
+     * @example
+     * // Create many MasterProjects
+     * const masterProject = await prisma.masterProject.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends MasterProjectCreateManyArgs>(args?: SelectSubset<T, MasterProjectCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many MasterProjects and returns the data saved in the database.
+     * @param {MasterProjectCreateManyAndReturnArgs} args - Arguments to create many MasterProjects.
+     * @example
+     * // Create many MasterProjects
+     * const masterProject = await prisma.masterProject.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many MasterProjects and only return the `id`
+     * const masterProjectWithIdOnly = await prisma.masterProject.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends MasterProjectCreateManyAndReturnArgs>(args?: SelectSubset<T, MasterProjectCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a MasterProject.
+     * @param {MasterProjectDeleteArgs} args - Arguments to delete one MasterProject.
+     * @example
+     * // Delete one MasterProject
+     * const MasterProject = await prisma.masterProject.delete({
+     *   where: {
+     *     // ... filter to delete one MasterProject
+     *   }
+     * })
+     * 
+     */
+    delete<T extends MasterProjectDeleteArgs>(args: SelectSubset<T, MasterProjectDeleteArgs<ExtArgs>>): Prisma__MasterProjectClient<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one MasterProject.
+     * @param {MasterProjectUpdateArgs} args - Arguments to update one MasterProject.
+     * @example
+     * // Update one MasterProject
+     * const masterProject = await prisma.masterProject.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends MasterProjectUpdateArgs>(args: SelectSubset<T, MasterProjectUpdateArgs<ExtArgs>>): Prisma__MasterProjectClient<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more MasterProjects.
+     * @param {MasterProjectDeleteManyArgs} args - Arguments to filter MasterProjects to delete.
+     * @example
+     * // Delete a few MasterProjects
+     * const { count } = await prisma.masterProject.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends MasterProjectDeleteManyArgs>(args?: SelectSubset<T, MasterProjectDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more MasterProjects.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MasterProjectUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many MasterProjects
+     * const masterProject = await prisma.masterProject.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends MasterProjectUpdateManyArgs>(args: SelectSubset<T, MasterProjectUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more MasterProjects and returns the data updated in the database.
+     * @param {MasterProjectUpdateManyAndReturnArgs} args - Arguments to update many MasterProjects.
+     * @example
+     * // Update many MasterProjects
+     * const masterProject = await prisma.masterProject.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more MasterProjects and only return the `id`
+     * const masterProjectWithIdOnly = await prisma.masterProject.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends MasterProjectUpdateManyAndReturnArgs>(args: SelectSubset<T, MasterProjectUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one MasterProject.
+     * @param {MasterProjectUpsertArgs} args - Arguments to update or create a MasterProject.
+     * @example
+     * // Update or create a MasterProject
+     * const masterProject = await prisma.masterProject.upsert({
+     *   create: {
+     *     // ... data to create a MasterProject
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the MasterProject we want to update
+     *   }
+     * })
+     */
+    upsert<T extends MasterProjectUpsertArgs>(args: SelectSubset<T, MasterProjectUpsertArgs<ExtArgs>>): Prisma__MasterProjectClient<$Result.GetResult<Prisma.$MasterProjectPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of MasterProjects.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MasterProjectCountArgs} args - Arguments to filter MasterProjects to count.
+     * @example
+     * // Count the number of MasterProjects
+     * const count = await prisma.masterProject.count({
+     *   where: {
+     *     // ... the filter for the MasterProjects we want to count
+     *   }
+     * })
+    **/
+    count<T extends MasterProjectCountArgs>(
+      args?: Subset<T, MasterProjectCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], MasterProjectCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a MasterProject.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MasterProjectAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends MasterProjectAggregateArgs>(args: Subset<T, MasterProjectAggregateArgs>): Prisma.PrismaPromise<GetMasterProjectAggregateType<T>>
+
+    /**
+     * Group by MasterProject.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MasterProjectGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends MasterProjectGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: MasterProjectGroupByArgs['orderBy'] }
+        : { orderBy?: MasterProjectGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, MasterProjectGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetMasterProjectGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the MasterProject model
+   */
+  readonly fields: MasterProjectFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for MasterProject.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__MasterProjectClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the MasterProject model
+   */
+  interface MasterProjectFieldRefs {
+    readonly id: FieldRef<"MasterProject", 'String'>
+    readonly projectCode: FieldRef<"MasterProject", 'String'>
+    readonly name: FieldRef<"MasterProject", 'String'>
+    readonly category: FieldRef<"MasterProject", 'String'>
+    readonly projectType: FieldRef<"MasterProject", 'String'>
+    readonly basePrice: FieldRef<"MasterProject", 'Float'>
+    readonly currency: FieldRef<"MasterProject", 'String'>
+    readonly defaultDuration: FieldRef<"MasterProject", 'String'>
+    readonly techStack: FieldRef<"MasterProject", 'String[]'>
+    readonly description: FieldRef<"MasterProject", 'String'>
+    readonly status: FieldRef<"MasterProject", 'String'>
+    readonly modules: FieldRef<"MasterProject", 'Json'>
+    readonly deliverables: FieldRef<"MasterProject", 'String[]'>
+    readonly icon: FieldRef<"MasterProject", 'String'>
+    readonly createdBy: FieldRef<"MasterProject", 'String'>
+    readonly createdAt: FieldRef<"MasterProject", 'DateTime'>
+    readonly updatedAt: FieldRef<"MasterProject", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * MasterProject findUnique
+   */
+  export type MasterProjectFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * Filter, which MasterProject to fetch.
+     */
+    where: MasterProjectWhereUniqueInput
+  }
+
+  /**
+   * MasterProject findUniqueOrThrow
+   */
+  export type MasterProjectFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * Filter, which MasterProject to fetch.
+     */
+    where: MasterProjectWhereUniqueInput
+  }
+
+  /**
+   * MasterProject findFirst
+   */
+  export type MasterProjectFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * Filter, which MasterProject to fetch.
+     */
+    where?: MasterProjectWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of MasterProjects to fetch.
+     */
+    orderBy?: MasterProjectOrderByWithRelationInput | MasterProjectOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for MasterProjects.
+     */
+    cursor?: MasterProjectWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` MasterProjects from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` MasterProjects.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of MasterProjects.
+     */
+    distinct?: MasterProjectScalarFieldEnum | MasterProjectScalarFieldEnum[]
+  }
+
+  /**
+   * MasterProject findFirstOrThrow
+   */
+  export type MasterProjectFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * Filter, which MasterProject to fetch.
+     */
+    where?: MasterProjectWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of MasterProjects to fetch.
+     */
+    orderBy?: MasterProjectOrderByWithRelationInput | MasterProjectOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for MasterProjects.
+     */
+    cursor?: MasterProjectWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` MasterProjects from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` MasterProjects.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of MasterProjects.
+     */
+    distinct?: MasterProjectScalarFieldEnum | MasterProjectScalarFieldEnum[]
+  }
+
+  /**
+   * MasterProject findMany
+   */
+  export type MasterProjectFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * Filter, which MasterProjects to fetch.
+     */
+    where?: MasterProjectWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of MasterProjects to fetch.
+     */
+    orderBy?: MasterProjectOrderByWithRelationInput | MasterProjectOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing MasterProjects.
+     */
+    cursor?: MasterProjectWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` MasterProjects from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` MasterProjects.
+     */
+    skip?: number
+    distinct?: MasterProjectScalarFieldEnum | MasterProjectScalarFieldEnum[]
+  }
+
+  /**
+   * MasterProject create
+   */
+  export type MasterProjectCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * The data needed to create a MasterProject.
+     */
+    data: XOR<MasterProjectCreateInput, MasterProjectUncheckedCreateInput>
+  }
+
+  /**
+   * MasterProject createMany
+   */
+  export type MasterProjectCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many MasterProjects.
+     */
+    data: MasterProjectCreateManyInput | MasterProjectCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * MasterProject createManyAndReturn
+   */
+  export type MasterProjectCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * The data used to create many MasterProjects.
+     */
+    data: MasterProjectCreateManyInput | MasterProjectCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * MasterProject update
+   */
+  export type MasterProjectUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * The data needed to update a MasterProject.
+     */
+    data: XOR<MasterProjectUpdateInput, MasterProjectUncheckedUpdateInput>
+    /**
+     * Choose, which MasterProject to update.
+     */
+    where: MasterProjectWhereUniqueInput
+  }
+
+  /**
+   * MasterProject updateMany
+   */
+  export type MasterProjectUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update MasterProjects.
+     */
+    data: XOR<MasterProjectUpdateManyMutationInput, MasterProjectUncheckedUpdateManyInput>
+    /**
+     * Filter which MasterProjects to update
+     */
+    where?: MasterProjectWhereInput
+    /**
+     * Limit how many MasterProjects to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * MasterProject updateManyAndReturn
+   */
+  export type MasterProjectUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * The data used to update MasterProjects.
+     */
+    data: XOR<MasterProjectUpdateManyMutationInput, MasterProjectUncheckedUpdateManyInput>
+    /**
+     * Filter which MasterProjects to update
+     */
+    where?: MasterProjectWhereInput
+    /**
+     * Limit how many MasterProjects to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * MasterProject upsert
+   */
+  export type MasterProjectUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * The filter to search for the MasterProject to update in case it exists.
+     */
+    where: MasterProjectWhereUniqueInput
+    /**
+     * In case the MasterProject found by the `where` argument doesn't exist, create a new MasterProject with this data.
+     */
+    create: XOR<MasterProjectCreateInput, MasterProjectUncheckedCreateInput>
+    /**
+     * In case the MasterProject was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<MasterProjectUpdateInput, MasterProjectUncheckedUpdateInput>
+  }
+
+  /**
+   * MasterProject delete
+   */
+  export type MasterProjectDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+    /**
+     * Filter which MasterProject to delete.
+     */
+    where: MasterProjectWhereUniqueInput
+  }
+
+  /**
+   * MasterProject deleteMany
+   */
+  export type MasterProjectDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which MasterProjects to delete
+     */
+    where?: MasterProjectWhereInput
+    /**
+     * Limit how many MasterProjects to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * MasterProject without action
+   */
+  export type MasterProjectDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MasterProject
+     */
+    select?: MasterProjectSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MasterProject
+     */
+    omit?: MasterProjectOmit<ExtArgs> | null
+  }
+
+
+  /**
+   * Model SystemSetting
+   */
+
+  export type AggregateSystemSetting = {
+    _count: SystemSettingCountAggregateOutputType | null
+    _min: SystemSettingMinAggregateOutputType | null
+    _max: SystemSettingMaxAggregateOutputType | null
+  }
+
+  export type SystemSettingMinAggregateOutputType = {
+    id: string | null
+    settingKey: string | null
+    updatedBy: string | null
+    updatedAt: Date | null
+  }
+
+  export type SystemSettingMaxAggregateOutputType = {
+    id: string | null
+    settingKey: string | null
+    updatedBy: string | null
+    updatedAt: Date | null
+  }
+
+  export type SystemSettingCountAggregateOutputType = {
+    id: number
+    settingKey: number
+    value: number
+    updatedBy: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type SystemSettingMinAggregateInputType = {
+    id?: true
+    settingKey?: true
+    updatedBy?: true
+    updatedAt?: true
+  }
+
+  export type SystemSettingMaxAggregateInputType = {
+    id?: true
+    settingKey?: true
+    updatedBy?: true
+    updatedAt?: true
+  }
+
+  export type SystemSettingCountAggregateInputType = {
+    id?: true
+    settingKey?: true
+    value?: true
+    updatedBy?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type SystemSettingAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SystemSetting to aggregate.
+     */
+    where?: SystemSettingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SystemSettings to fetch.
+     */
+    orderBy?: SystemSettingOrderByWithRelationInput | SystemSettingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: SystemSettingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SystemSettings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SystemSettings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned SystemSettings
+    **/
+    _count?: true | SystemSettingCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: SystemSettingMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: SystemSettingMaxAggregateInputType
+  }
+
+  export type GetSystemSettingAggregateType<T extends SystemSettingAggregateArgs> = {
+        [P in keyof T & keyof AggregateSystemSetting]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateSystemSetting[P]>
+      : GetScalarType<T[P], AggregateSystemSetting[P]>
+  }
+
+
+
+
+  export type SystemSettingGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SystemSettingWhereInput
+    orderBy?: SystemSettingOrderByWithAggregationInput | SystemSettingOrderByWithAggregationInput[]
+    by: SystemSettingScalarFieldEnum[] | SystemSettingScalarFieldEnum
+    having?: SystemSettingScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: SystemSettingCountAggregateInputType | true
+    _min?: SystemSettingMinAggregateInputType
+    _max?: SystemSettingMaxAggregateInputType
+  }
+
+  export type SystemSettingGroupByOutputType = {
+    id: string
+    settingKey: string
+    value: JsonValue
+    updatedBy: string | null
+    updatedAt: Date
+    _count: SystemSettingCountAggregateOutputType | null
+    _min: SystemSettingMinAggregateOutputType | null
+    _max: SystemSettingMaxAggregateOutputType | null
+  }
+
+  type GetSystemSettingGroupByPayload<T extends SystemSettingGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<SystemSettingGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof SystemSettingGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], SystemSettingGroupByOutputType[P]>
+            : GetScalarType<T[P], SystemSettingGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type SystemSettingSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    settingKey?: boolean
+    value?: boolean
+    updatedBy?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["systemSetting"]>
+
+  export type SystemSettingSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    settingKey?: boolean
+    value?: boolean
+    updatedBy?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["systemSetting"]>
+
+  export type SystemSettingSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    settingKey?: boolean
+    value?: boolean
+    updatedBy?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["systemSetting"]>
+
+  export type SystemSettingSelectScalar = {
+    id?: boolean
+    settingKey?: boolean
+    value?: boolean
+    updatedBy?: boolean
+    updatedAt?: boolean
+  }
+
+  export type SystemSettingOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "settingKey" | "value" | "updatedBy" | "updatedAt", ExtArgs["result"]["systemSetting"]>
+
+  export type $SystemSettingPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "SystemSetting"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      settingKey: string
+      value: Prisma.JsonValue
+      updatedBy: string | null
+      updatedAt: Date
+    }, ExtArgs["result"]["systemSetting"]>
+    composites: {}
+  }
+
+  type SystemSettingGetPayload<S extends boolean | null | undefined | SystemSettingDefaultArgs> = $Result.GetResult<Prisma.$SystemSettingPayload, S>
+
+  type SystemSettingCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<SystemSettingFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: SystemSettingCountAggregateInputType | true
+    }
+
+  export interface SystemSettingDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SystemSetting'], meta: { name: 'SystemSetting' } }
+    /**
+     * Find zero or one SystemSetting that matches the filter.
+     * @param {SystemSettingFindUniqueArgs} args - Arguments to find a SystemSetting
+     * @example
+     * // Get one SystemSetting
+     * const systemSetting = await prisma.systemSetting.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends SystemSettingFindUniqueArgs>(args: SelectSubset<T, SystemSettingFindUniqueArgs<ExtArgs>>): Prisma__SystemSettingClient<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one SystemSetting that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {SystemSettingFindUniqueOrThrowArgs} args - Arguments to find a SystemSetting
+     * @example
+     * // Get one SystemSetting
+     * const systemSetting = await prisma.systemSetting.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends SystemSettingFindUniqueOrThrowArgs>(args: SelectSubset<T, SystemSettingFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SystemSettingClient<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first SystemSetting that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SystemSettingFindFirstArgs} args - Arguments to find a SystemSetting
+     * @example
+     * // Get one SystemSetting
+     * const systemSetting = await prisma.systemSetting.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends SystemSettingFindFirstArgs>(args?: SelectSubset<T, SystemSettingFindFirstArgs<ExtArgs>>): Prisma__SystemSettingClient<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first SystemSetting that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SystemSettingFindFirstOrThrowArgs} args - Arguments to find a SystemSetting
+     * @example
+     * // Get one SystemSetting
+     * const systemSetting = await prisma.systemSetting.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends SystemSettingFindFirstOrThrowArgs>(args?: SelectSubset<T, SystemSettingFindFirstOrThrowArgs<ExtArgs>>): Prisma__SystemSettingClient<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more SystemSettings that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SystemSettingFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all SystemSettings
+     * const systemSettings = await prisma.systemSetting.findMany()
+     * 
+     * // Get first 10 SystemSettings
+     * const systemSettings = await prisma.systemSetting.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const systemSettingWithIdOnly = await prisma.systemSetting.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends SystemSettingFindManyArgs>(args?: SelectSubset<T, SystemSettingFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a SystemSetting.
+     * @param {SystemSettingCreateArgs} args - Arguments to create a SystemSetting.
+     * @example
+     * // Create one SystemSetting
+     * const SystemSetting = await prisma.systemSetting.create({
+     *   data: {
+     *     // ... data to create a SystemSetting
+     *   }
+     * })
+     * 
+     */
+    create<T extends SystemSettingCreateArgs>(args: SelectSubset<T, SystemSettingCreateArgs<ExtArgs>>): Prisma__SystemSettingClient<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many SystemSettings.
+     * @param {SystemSettingCreateManyArgs} args - Arguments to create many SystemSettings.
+     * @example
+     * // Create many SystemSettings
+     * const systemSetting = await prisma.systemSetting.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends SystemSettingCreateManyArgs>(args?: SelectSubset<T, SystemSettingCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many SystemSettings and returns the data saved in the database.
+     * @param {SystemSettingCreateManyAndReturnArgs} args - Arguments to create many SystemSettings.
+     * @example
+     * // Create many SystemSettings
+     * const systemSetting = await prisma.systemSetting.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many SystemSettings and only return the `id`
+     * const systemSettingWithIdOnly = await prisma.systemSetting.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends SystemSettingCreateManyAndReturnArgs>(args?: SelectSubset<T, SystemSettingCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a SystemSetting.
+     * @param {SystemSettingDeleteArgs} args - Arguments to delete one SystemSetting.
+     * @example
+     * // Delete one SystemSetting
+     * const SystemSetting = await prisma.systemSetting.delete({
+     *   where: {
+     *     // ... filter to delete one SystemSetting
+     *   }
+     * })
+     * 
+     */
+    delete<T extends SystemSettingDeleteArgs>(args: SelectSubset<T, SystemSettingDeleteArgs<ExtArgs>>): Prisma__SystemSettingClient<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one SystemSetting.
+     * @param {SystemSettingUpdateArgs} args - Arguments to update one SystemSetting.
+     * @example
+     * // Update one SystemSetting
+     * const systemSetting = await prisma.systemSetting.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends SystemSettingUpdateArgs>(args: SelectSubset<T, SystemSettingUpdateArgs<ExtArgs>>): Prisma__SystemSettingClient<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more SystemSettings.
+     * @param {SystemSettingDeleteManyArgs} args - Arguments to filter SystemSettings to delete.
+     * @example
+     * // Delete a few SystemSettings
+     * const { count } = await prisma.systemSetting.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends SystemSettingDeleteManyArgs>(args?: SelectSubset<T, SystemSettingDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SystemSettings.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SystemSettingUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many SystemSettings
+     * const systemSetting = await prisma.systemSetting.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends SystemSettingUpdateManyArgs>(args: SelectSubset<T, SystemSettingUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SystemSettings and returns the data updated in the database.
+     * @param {SystemSettingUpdateManyAndReturnArgs} args - Arguments to update many SystemSettings.
+     * @example
+     * // Update many SystemSettings
+     * const systemSetting = await prisma.systemSetting.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more SystemSettings and only return the `id`
+     * const systemSettingWithIdOnly = await prisma.systemSetting.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends SystemSettingUpdateManyAndReturnArgs>(args: SelectSubset<T, SystemSettingUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one SystemSetting.
+     * @param {SystemSettingUpsertArgs} args - Arguments to update or create a SystemSetting.
+     * @example
+     * // Update or create a SystemSetting
+     * const systemSetting = await prisma.systemSetting.upsert({
+     *   create: {
+     *     // ... data to create a SystemSetting
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the SystemSetting we want to update
+     *   }
+     * })
+     */
+    upsert<T extends SystemSettingUpsertArgs>(args: SelectSubset<T, SystemSettingUpsertArgs<ExtArgs>>): Prisma__SystemSettingClient<$Result.GetResult<Prisma.$SystemSettingPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of SystemSettings.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SystemSettingCountArgs} args - Arguments to filter SystemSettings to count.
+     * @example
+     * // Count the number of SystemSettings
+     * const count = await prisma.systemSetting.count({
+     *   where: {
+     *     // ... the filter for the SystemSettings we want to count
+     *   }
+     * })
+    **/
+    count<T extends SystemSettingCountArgs>(
+      args?: Subset<T, SystemSettingCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], SystemSettingCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a SystemSetting.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SystemSettingAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends SystemSettingAggregateArgs>(args: Subset<T, SystemSettingAggregateArgs>): Prisma.PrismaPromise<GetSystemSettingAggregateType<T>>
+
+    /**
+     * Group by SystemSetting.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SystemSettingGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends SystemSettingGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: SystemSettingGroupByArgs['orderBy'] }
+        : { orderBy?: SystemSettingGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, SystemSettingGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSystemSettingGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the SystemSetting model
+   */
+  readonly fields: SystemSettingFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for SystemSetting.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__SystemSettingClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the SystemSetting model
+   */
+  interface SystemSettingFieldRefs {
+    readonly id: FieldRef<"SystemSetting", 'String'>
+    readonly settingKey: FieldRef<"SystemSetting", 'String'>
+    readonly value: FieldRef<"SystemSetting", 'Json'>
+    readonly updatedBy: FieldRef<"SystemSetting", 'String'>
+    readonly updatedAt: FieldRef<"SystemSetting", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * SystemSetting findUnique
+   */
+  export type SystemSettingFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * Filter, which SystemSetting to fetch.
+     */
+    where: SystemSettingWhereUniqueInput
+  }
+
+  /**
+   * SystemSetting findUniqueOrThrow
+   */
+  export type SystemSettingFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * Filter, which SystemSetting to fetch.
+     */
+    where: SystemSettingWhereUniqueInput
+  }
+
+  /**
+   * SystemSetting findFirst
+   */
+  export type SystemSettingFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * Filter, which SystemSetting to fetch.
+     */
+    where?: SystemSettingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SystemSettings to fetch.
+     */
+    orderBy?: SystemSettingOrderByWithRelationInput | SystemSettingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SystemSettings.
+     */
+    cursor?: SystemSettingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SystemSettings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SystemSettings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SystemSettings.
+     */
+    distinct?: SystemSettingScalarFieldEnum | SystemSettingScalarFieldEnum[]
+  }
+
+  /**
+   * SystemSetting findFirstOrThrow
+   */
+  export type SystemSettingFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * Filter, which SystemSetting to fetch.
+     */
+    where?: SystemSettingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SystemSettings to fetch.
+     */
+    orderBy?: SystemSettingOrderByWithRelationInput | SystemSettingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SystemSettings.
+     */
+    cursor?: SystemSettingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SystemSettings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SystemSettings.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SystemSettings.
+     */
+    distinct?: SystemSettingScalarFieldEnum | SystemSettingScalarFieldEnum[]
+  }
+
+  /**
+   * SystemSetting findMany
+   */
+  export type SystemSettingFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * Filter, which SystemSettings to fetch.
+     */
+    where?: SystemSettingWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SystemSettings to fetch.
+     */
+    orderBy?: SystemSettingOrderByWithRelationInput | SystemSettingOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing SystemSettings.
+     */
+    cursor?: SystemSettingWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SystemSettings from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SystemSettings.
+     */
+    skip?: number
+    distinct?: SystemSettingScalarFieldEnum | SystemSettingScalarFieldEnum[]
+  }
+
+  /**
+   * SystemSetting create
+   */
+  export type SystemSettingCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * The data needed to create a SystemSetting.
+     */
+    data: XOR<SystemSettingCreateInput, SystemSettingUncheckedCreateInput>
+  }
+
+  /**
+   * SystemSetting createMany
+   */
+  export type SystemSettingCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many SystemSettings.
+     */
+    data: SystemSettingCreateManyInput | SystemSettingCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SystemSetting createManyAndReturn
+   */
+  export type SystemSettingCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * The data used to create many SystemSettings.
+     */
+    data: SystemSettingCreateManyInput | SystemSettingCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SystemSetting update
+   */
+  export type SystemSettingUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * The data needed to update a SystemSetting.
+     */
+    data: XOR<SystemSettingUpdateInput, SystemSettingUncheckedUpdateInput>
+    /**
+     * Choose, which SystemSetting to update.
+     */
+    where: SystemSettingWhereUniqueInput
+  }
+
+  /**
+   * SystemSetting updateMany
+   */
+  export type SystemSettingUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update SystemSettings.
+     */
+    data: XOR<SystemSettingUpdateManyMutationInput, SystemSettingUncheckedUpdateManyInput>
+    /**
+     * Filter which SystemSettings to update
+     */
+    where?: SystemSettingWhereInput
+    /**
+     * Limit how many SystemSettings to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * SystemSetting updateManyAndReturn
+   */
+  export type SystemSettingUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * The data used to update SystemSettings.
+     */
+    data: XOR<SystemSettingUpdateManyMutationInput, SystemSettingUncheckedUpdateManyInput>
+    /**
+     * Filter which SystemSettings to update
+     */
+    where?: SystemSettingWhereInput
+    /**
+     * Limit how many SystemSettings to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * SystemSetting upsert
+   */
+  export type SystemSettingUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * The filter to search for the SystemSetting to update in case it exists.
+     */
+    where: SystemSettingWhereUniqueInput
+    /**
+     * In case the SystemSetting found by the `where` argument doesn't exist, create a new SystemSetting with this data.
+     */
+    create: XOR<SystemSettingCreateInput, SystemSettingUncheckedCreateInput>
+    /**
+     * In case the SystemSetting was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<SystemSettingUpdateInput, SystemSettingUncheckedUpdateInput>
+  }
+
+  /**
+   * SystemSetting delete
+   */
+  export type SystemSettingDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+    /**
+     * Filter which SystemSetting to delete.
+     */
+    where: SystemSettingWhereUniqueInput
+  }
+
+  /**
+   * SystemSetting deleteMany
+   */
+  export type SystemSettingDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SystemSettings to delete
+     */
+    where?: SystemSettingWhereInput
+    /**
+     * Limit how many SystemSettings to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * SystemSetting without action
+   */
+  export type SystemSettingDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SystemSetting
+     */
+    select?: SystemSettingSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SystemSetting
+     */
+    omit?: SystemSettingOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -16863,6 +19209,40 @@ export namespace Prisma {
   export type CustomerScalarFieldEnum = (typeof CustomerScalarFieldEnum)[keyof typeof CustomerScalarFieldEnum]
 
 
+  export const MasterProjectScalarFieldEnum: {
+    id: 'id',
+    projectCode: 'projectCode',
+    name: 'name',
+    category: 'category',
+    projectType: 'projectType',
+    basePrice: 'basePrice',
+    currency: 'currency',
+    defaultDuration: 'defaultDuration',
+    techStack: 'techStack',
+    description: 'description',
+    status: 'status',
+    modules: 'modules',
+    deliverables: 'deliverables',
+    icon: 'icon',
+    createdBy: 'createdBy',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type MasterProjectScalarFieldEnum = (typeof MasterProjectScalarFieldEnum)[keyof typeof MasterProjectScalarFieldEnum]
+
+
+  export const SystemSettingScalarFieldEnum: {
+    id: 'id',
+    settingKey: 'settingKey',
+    value: 'value',
+    updatedBy: 'updatedBy',
+    updatedAt: 'updatedAt'
+  };
+
+  export type SystemSettingScalarFieldEnum = (typeof SystemSettingScalarFieldEnum)[keyof typeof SystemSettingScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -16877,6 +19257,13 @@ export namespace Prisma {
   };
 
   export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+  export const JsonNullValueInput: {
+    JsonNull: typeof JsonNull
+  };
+
+  export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
   export const QueryMode: {
@@ -18529,6 +20916,172 @@ export namespace Prisma {
     notes?: StringNullableWithAggregatesFilter<"Customer"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Customer"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Customer"> | Date | string
+  }
+
+  export type MasterProjectWhereInput = {
+    AND?: MasterProjectWhereInput | MasterProjectWhereInput[]
+    OR?: MasterProjectWhereInput[]
+    NOT?: MasterProjectWhereInput | MasterProjectWhereInput[]
+    id?: StringFilter<"MasterProject"> | string
+    projectCode?: StringFilter<"MasterProject"> | string
+    name?: StringFilter<"MasterProject"> | string
+    category?: StringFilter<"MasterProject"> | string
+    projectType?: StringFilter<"MasterProject"> | string
+    basePrice?: FloatNullableFilter<"MasterProject"> | number | null
+    currency?: StringFilter<"MasterProject"> | string
+    defaultDuration?: StringNullableFilter<"MasterProject"> | string | null
+    techStack?: StringNullableListFilter<"MasterProject">
+    description?: StringNullableFilter<"MasterProject"> | string | null
+    status?: StringFilter<"MasterProject"> | string
+    modules?: JsonFilter<"MasterProject">
+    deliverables?: StringNullableListFilter<"MasterProject">
+    icon?: StringNullableFilter<"MasterProject"> | string | null
+    createdBy?: StringNullableFilter<"MasterProject"> | string | null
+    createdAt?: DateTimeFilter<"MasterProject"> | Date | string
+    updatedAt?: DateTimeFilter<"MasterProject"> | Date | string
+  }
+
+  export type MasterProjectOrderByWithRelationInput = {
+    id?: SortOrder
+    projectCode?: SortOrder
+    name?: SortOrder
+    category?: SortOrder
+    projectType?: SortOrder
+    basePrice?: SortOrderInput | SortOrder
+    currency?: SortOrder
+    defaultDuration?: SortOrderInput | SortOrder
+    techStack?: SortOrder
+    description?: SortOrderInput | SortOrder
+    status?: SortOrder
+    modules?: SortOrder
+    deliverables?: SortOrder
+    icon?: SortOrderInput | SortOrder
+    createdBy?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type MasterProjectWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    projectCode?: string
+    AND?: MasterProjectWhereInput | MasterProjectWhereInput[]
+    OR?: MasterProjectWhereInput[]
+    NOT?: MasterProjectWhereInput | MasterProjectWhereInput[]
+    name?: StringFilter<"MasterProject"> | string
+    category?: StringFilter<"MasterProject"> | string
+    projectType?: StringFilter<"MasterProject"> | string
+    basePrice?: FloatNullableFilter<"MasterProject"> | number | null
+    currency?: StringFilter<"MasterProject"> | string
+    defaultDuration?: StringNullableFilter<"MasterProject"> | string | null
+    techStack?: StringNullableListFilter<"MasterProject">
+    description?: StringNullableFilter<"MasterProject"> | string | null
+    status?: StringFilter<"MasterProject"> | string
+    modules?: JsonFilter<"MasterProject">
+    deliverables?: StringNullableListFilter<"MasterProject">
+    icon?: StringNullableFilter<"MasterProject"> | string | null
+    createdBy?: StringNullableFilter<"MasterProject"> | string | null
+    createdAt?: DateTimeFilter<"MasterProject"> | Date | string
+    updatedAt?: DateTimeFilter<"MasterProject"> | Date | string
+  }, "id" | "projectCode">
+
+  export type MasterProjectOrderByWithAggregationInput = {
+    id?: SortOrder
+    projectCode?: SortOrder
+    name?: SortOrder
+    category?: SortOrder
+    projectType?: SortOrder
+    basePrice?: SortOrderInput | SortOrder
+    currency?: SortOrder
+    defaultDuration?: SortOrderInput | SortOrder
+    techStack?: SortOrder
+    description?: SortOrderInput | SortOrder
+    status?: SortOrder
+    modules?: SortOrder
+    deliverables?: SortOrder
+    icon?: SortOrderInput | SortOrder
+    createdBy?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: MasterProjectCountOrderByAggregateInput
+    _avg?: MasterProjectAvgOrderByAggregateInput
+    _max?: MasterProjectMaxOrderByAggregateInput
+    _min?: MasterProjectMinOrderByAggregateInput
+    _sum?: MasterProjectSumOrderByAggregateInput
+  }
+
+  export type MasterProjectScalarWhereWithAggregatesInput = {
+    AND?: MasterProjectScalarWhereWithAggregatesInput | MasterProjectScalarWhereWithAggregatesInput[]
+    OR?: MasterProjectScalarWhereWithAggregatesInput[]
+    NOT?: MasterProjectScalarWhereWithAggregatesInput | MasterProjectScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"MasterProject"> | string
+    projectCode?: StringWithAggregatesFilter<"MasterProject"> | string
+    name?: StringWithAggregatesFilter<"MasterProject"> | string
+    category?: StringWithAggregatesFilter<"MasterProject"> | string
+    projectType?: StringWithAggregatesFilter<"MasterProject"> | string
+    basePrice?: FloatNullableWithAggregatesFilter<"MasterProject"> | number | null
+    currency?: StringWithAggregatesFilter<"MasterProject"> | string
+    defaultDuration?: StringNullableWithAggregatesFilter<"MasterProject"> | string | null
+    techStack?: StringNullableListFilter<"MasterProject">
+    description?: StringNullableWithAggregatesFilter<"MasterProject"> | string | null
+    status?: StringWithAggregatesFilter<"MasterProject"> | string
+    modules?: JsonWithAggregatesFilter<"MasterProject">
+    deliverables?: StringNullableListFilter<"MasterProject">
+    icon?: StringNullableWithAggregatesFilter<"MasterProject"> | string | null
+    createdBy?: StringNullableWithAggregatesFilter<"MasterProject"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"MasterProject"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"MasterProject"> | Date | string
+  }
+
+  export type SystemSettingWhereInput = {
+    AND?: SystemSettingWhereInput | SystemSettingWhereInput[]
+    OR?: SystemSettingWhereInput[]
+    NOT?: SystemSettingWhereInput | SystemSettingWhereInput[]
+    id?: StringFilter<"SystemSetting"> | string
+    settingKey?: StringFilter<"SystemSetting"> | string
+    value?: JsonFilter<"SystemSetting">
+    updatedBy?: StringNullableFilter<"SystemSetting"> | string | null
+    updatedAt?: DateTimeFilter<"SystemSetting"> | Date | string
+  }
+
+  export type SystemSettingOrderByWithRelationInput = {
+    id?: SortOrder
+    settingKey?: SortOrder
+    value?: SortOrder
+    updatedBy?: SortOrderInput | SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SystemSettingWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    settingKey?: string
+    AND?: SystemSettingWhereInput | SystemSettingWhereInput[]
+    OR?: SystemSettingWhereInput[]
+    NOT?: SystemSettingWhereInput | SystemSettingWhereInput[]
+    value?: JsonFilter<"SystemSetting">
+    updatedBy?: StringNullableFilter<"SystemSetting"> | string | null
+    updatedAt?: DateTimeFilter<"SystemSetting"> | Date | string
+  }, "id" | "settingKey">
+
+  export type SystemSettingOrderByWithAggregationInput = {
+    id?: SortOrder
+    settingKey?: SortOrder
+    value?: SortOrder
+    updatedBy?: SortOrderInput | SortOrder
+    updatedAt?: SortOrder
+    _count?: SystemSettingCountOrderByAggregateInput
+    _max?: SystemSettingMaxOrderByAggregateInput
+    _min?: SystemSettingMinOrderByAggregateInput
+  }
+
+  export type SystemSettingScalarWhereWithAggregatesInput = {
+    AND?: SystemSettingScalarWhereWithAggregatesInput | SystemSettingScalarWhereWithAggregatesInput[]
+    OR?: SystemSettingScalarWhereWithAggregatesInput[]
+    NOT?: SystemSettingScalarWhereWithAggregatesInput | SystemSettingScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"SystemSetting"> | string
+    settingKey?: StringWithAggregatesFilter<"SystemSetting"> | string
+    value?: JsonWithAggregatesFilter<"SystemSetting">
+    updatedBy?: StringNullableWithAggregatesFilter<"SystemSetting"> | string | null
+    updatedAt?: DateTimeWithAggregatesFilter<"SystemSetting"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -20465,6 +23018,202 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type MasterProjectCreateInput = {
+    id?: string
+    projectCode: string
+    name: string
+    category?: string
+    projectType?: string
+    basePrice?: number | null
+    currency?: string
+    defaultDuration?: string | null
+    techStack?: MasterProjectCreatetechStackInput | string[]
+    description?: string | null
+    status?: string
+    modules?: JsonNullValueInput | InputJsonValue
+    deliverables?: MasterProjectCreatedeliverablesInput | string[]
+    icon?: string | null
+    createdBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MasterProjectUncheckedCreateInput = {
+    id?: string
+    projectCode: string
+    name: string
+    category?: string
+    projectType?: string
+    basePrice?: number | null
+    currency?: string
+    defaultDuration?: string | null
+    techStack?: MasterProjectCreatetechStackInput | string[]
+    description?: string | null
+    status?: string
+    modules?: JsonNullValueInput | InputJsonValue
+    deliverables?: MasterProjectCreatedeliverablesInput | string[]
+    icon?: string | null
+    createdBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MasterProjectUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    projectCode?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    projectType?: StringFieldUpdateOperationsInput | string
+    basePrice?: NullableFloatFieldUpdateOperationsInput | number | null
+    currency?: StringFieldUpdateOperationsInput | string
+    defaultDuration?: NullableStringFieldUpdateOperationsInput | string | null
+    techStack?: MasterProjectUpdatetechStackInput | string[]
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    modules?: JsonNullValueInput | InputJsonValue
+    deliverables?: MasterProjectUpdatedeliverablesInput | string[]
+    icon?: NullableStringFieldUpdateOperationsInput | string | null
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MasterProjectUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    projectCode?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    projectType?: StringFieldUpdateOperationsInput | string
+    basePrice?: NullableFloatFieldUpdateOperationsInput | number | null
+    currency?: StringFieldUpdateOperationsInput | string
+    defaultDuration?: NullableStringFieldUpdateOperationsInput | string | null
+    techStack?: MasterProjectUpdatetechStackInput | string[]
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    modules?: JsonNullValueInput | InputJsonValue
+    deliverables?: MasterProjectUpdatedeliverablesInput | string[]
+    icon?: NullableStringFieldUpdateOperationsInput | string | null
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MasterProjectCreateManyInput = {
+    id?: string
+    projectCode: string
+    name: string
+    category?: string
+    projectType?: string
+    basePrice?: number | null
+    currency?: string
+    defaultDuration?: string | null
+    techStack?: MasterProjectCreatetechStackInput | string[]
+    description?: string | null
+    status?: string
+    modules?: JsonNullValueInput | InputJsonValue
+    deliverables?: MasterProjectCreatedeliverablesInput | string[]
+    icon?: string | null
+    createdBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MasterProjectUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    projectCode?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    projectType?: StringFieldUpdateOperationsInput | string
+    basePrice?: NullableFloatFieldUpdateOperationsInput | number | null
+    currency?: StringFieldUpdateOperationsInput | string
+    defaultDuration?: NullableStringFieldUpdateOperationsInput | string | null
+    techStack?: MasterProjectUpdatetechStackInput | string[]
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    modules?: JsonNullValueInput | InputJsonValue
+    deliverables?: MasterProjectUpdatedeliverablesInput | string[]
+    icon?: NullableStringFieldUpdateOperationsInput | string | null
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MasterProjectUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    projectCode?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    projectType?: StringFieldUpdateOperationsInput | string
+    basePrice?: NullableFloatFieldUpdateOperationsInput | number | null
+    currency?: StringFieldUpdateOperationsInput | string
+    defaultDuration?: NullableStringFieldUpdateOperationsInput | string | null
+    techStack?: MasterProjectUpdatetechStackInput | string[]
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: StringFieldUpdateOperationsInput | string
+    modules?: JsonNullValueInput | InputJsonValue
+    deliverables?: MasterProjectUpdatedeliverablesInput | string[]
+    icon?: NullableStringFieldUpdateOperationsInput | string | null
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SystemSettingCreateInput = {
+    id?: string
+    settingKey: string
+    value: JsonNullValueInput | InputJsonValue
+    updatedBy?: string | null
+    updatedAt?: Date | string
+  }
+
+  export type SystemSettingUncheckedCreateInput = {
+    id?: string
+    settingKey: string
+    value: JsonNullValueInput | InputJsonValue
+    updatedBy?: string | null
+    updatedAt?: Date | string
+  }
+
+  export type SystemSettingUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    settingKey?: StringFieldUpdateOperationsInput | string
+    value?: JsonNullValueInput | InputJsonValue
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SystemSettingUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    settingKey?: StringFieldUpdateOperationsInput | string
+    value?: JsonNullValueInput | InputJsonValue
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SystemSettingCreateManyInput = {
+    id?: string
+    settingKey: string
+    value: JsonNullValueInput | InputJsonValue
+    updatedBy?: string | null
+    updatedAt?: Date | string
+  }
+
+  export type SystemSettingUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    settingKey?: StringFieldUpdateOperationsInput | string
+    value?: JsonNullValueInput | InputJsonValue
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SystemSettingUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    settingKey?: StringFieldUpdateOperationsInput | string
+    value?: JsonNullValueInput | InputJsonValue
+    updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -21560,6 +24309,139 @@ export namespace Prisma {
   export type CustomerSumOrderByAggregateInput = {
     contractValue?: SortOrder
   }
+  export type JsonFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
+  export type MasterProjectCountOrderByAggregateInput = {
+    id?: SortOrder
+    projectCode?: SortOrder
+    name?: SortOrder
+    category?: SortOrder
+    projectType?: SortOrder
+    basePrice?: SortOrder
+    currency?: SortOrder
+    defaultDuration?: SortOrder
+    techStack?: SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    modules?: SortOrder
+    deliverables?: SortOrder
+    icon?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type MasterProjectAvgOrderByAggregateInput = {
+    basePrice?: SortOrder
+  }
+
+  export type MasterProjectMaxOrderByAggregateInput = {
+    id?: SortOrder
+    projectCode?: SortOrder
+    name?: SortOrder
+    category?: SortOrder
+    projectType?: SortOrder
+    basePrice?: SortOrder
+    currency?: SortOrder
+    defaultDuration?: SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    icon?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type MasterProjectMinOrderByAggregateInput = {
+    id?: SortOrder
+    projectCode?: SortOrder
+    name?: SortOrder
+    category?: SortOrder
+    projectType?: SortOrder
+    basePrice?: SortOrder
+    currency?: SortOrder
+    defaultDuration?: SortOrder
+    description?: SortOrder
+    status?: SortOrder
+    icon?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type MasterProjectSumOrderByAggregateInput = {
+    basePrice?: SortOrder
+  }
+  export type JsonWithAggregatesFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedJsonFilter<$PrismaModel>
+    _max?: NestedJsonFilter<$PrismaModel>
+  }
+
+  export type SystemSettingCountOrderByAggregateInput = {
+    id?: SortOrder
+    settingKey?: SortOrder
+    value?: SortOrder
+    updatedBy?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SystemSettingMaxOrderByAggregateInput = {
+    id?: SortOrder
+    settingKey?: SortOrder
+    updatedBy?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SystemSettingMinOrderByAggregateInput = {
+    id?: SortOrder
+    settingKey?: SortOrder
+    updatedBy?: SortOrder
+    updatedAt?: SortOrder
+  }
 
   export type RoleCreateNestedOneWithoutUsersInput = {
     create?: XOR<RoleCreateWithoutUsersInput, RoleUncheckedCreateWithoutUsersInput>
@@ -21819,6 +24701,24 @@ export namespace Prisma {
     divide?: number
   }
 
+  export type MasterProjectCreatetechStackInput = {
+    set: string[]
+  }
+
+  export type MasterProjectCreatedeliverablesInput = {
+    set: string[]
+  }
+
+  export type MasterProjectUpdatetechStackInput = {
+    set?: string[]
+    push?: string | string[]
+  }
+
+  export type MasterProjectUpdatedeliverablesInput = {
+    set?: string[]
+    push?: string | string[]
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -22016,6 +24916,29 @@ export namespace Prisma {
     _sum?: NestedFloatNullableFilter<$PrismaModel>
     _min?: NestedFloatNullableFilter<$PrismaModel>
     _max?: NestedFloatNullableFilter<$PrismaModel>
+  }
+  export type NestedJsonFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
+        Required<NestedJsonFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>
+
+  export type NestedJsonFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
   }
 
   export type RoleCreateWithoutUsersInput = {

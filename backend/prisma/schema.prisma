@@ -322,4 +322,32 @@ model Customer {
   updatedAt        DateTime @updatedAt
 }
 
+model MasterProject {
+  id              String   @id @default(uuid())
+  projectCode     String   @unique // e.g. "PRJ-HRMS", "PRJ-ECOM"
+  name            String   // e.g. "OneAssist HRMS Suite"
+  category        String   @default("Full-Stack Web Development")
+  projectType     String   @default("Fixed Price") // "Fixed Price", "Time & Material", "Retainer", "Dedicated Team"
+  basePrice       Float?   @default(0)
+  currency        String   @default("INR")
+  defaultDuration String?  @default("60 Days")
+  techStack       String[] @default([]) // e.g. ["React", "Node.js", "PostgreSQL", "AWS"]
+  description     String?
+  status          String   @default("Active") // "Active" | "Draft" | "Archived"
+  modules         Json     @default("[]") // Array of { id, name, code, description, durationDays, priority, isCore, deliverables, price }
+  deliverables    String[] @default([]) // Common deliverables list
+  icon            String?  @default("folders")
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  settingKey  String   @unique // "company_profile", "crm_pipeline", "email_config", "general_prefs"
+  value       Json     // Key-value settings JSON
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+}
+
 

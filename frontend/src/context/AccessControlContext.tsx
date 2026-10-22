@@ -19,6 +19,7 @@ interface AccessControlContextType {
   users: UserWithRole[];
   auditLogs: AccessAuditLog[];
   myPermissions: MyPermissionsResponse | null;
+  permissionsLoaded: boolean;
   isSuperAdmin: boolean;
   loading: boolean;
   saving: boolean;
@@ -74,16 +75,37 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
   const [systemModules, setSystemModules] = useState<SystemModule[]>(DEFAULT_SYSTEM_MODULES);
   const [users, setUsers] = useState<UserWithRole[]>([]);
   const [auditLogs, setAuditLogs] = useState<AccessAuditLog[]>([]);
-  const [myPermissions, setMyPermissions] = useState<MyPermissionsResponse | null>(null);
+  const [myPermissions, setMyPermissions] = useState<MyPermissionsResponse | null>(() => {
+    try {
+      const saved = localStorage.getItem('crm_my_permissions');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
+  const [permissionsLoaded, setPermissionsLoaded] = useState<boolean>(() => {
+    try {
+      return Boolean(localStorage.getItem('crm_my_permissions'));
+    } catch {
+      return false;
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 1. Fetch My Permissions
   const fetchMyPermissions = useCallback(async () => {
-    const res = await accessControlService.getMyPermissions();
-    if (res.success && res.data) {
-      setMyPermissions(res.data);
+    try {
+      const res = await accessControlService.getMyPermissions();
+      if (res.success && res.data) {
+        setMyPermissions(res.data);
+        setPermissionsLoaded(true);
+        try {
+          localStorage.setItem('crm_my_permissions', JSON.stringify(res.data));
+        } catch {}
+      }
+    } catch {
+      setPermissionsLoaded(true);
     }
   }, []);
 
@@ -159,18 +181,23 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
   }, [fetchMyPermissions, fetchRoles]);
 
   // Permission Checkers
-  const roleSlugStr = (myPermissions?.role?.slug || myPermissions?.role?.name || '').toLowerCase().trim();
+  const roleSlugStr = (myPermissions?.role?.slug || myPermissions?.role?.name || currentUser?.role || '').toLowerCase().trim();
 
-  // Only true Super Admin gets bypass from verified server permissions
+  // True Super Admin gets bypass from verified server permissions, user profile or sandy@gmail.com
   const isSuperAdmin = Boolean(
     myPermissions?.isSuperAdmin ||
-      roleSlugStr === 'super_admin'
+      roleSlugStr === 'super_admin' ||
+      currentUser?.role === 'SUPER_ADMIN' ||
+      (currentUser?.email && currentUser.email.toLowerCase() === 'sandy@gmail.com')
   );
 
   const can = useCallback(
     (moduleId: string, action: PermissionAction = 'view'): boolean => {
       if (isSuperAdmin) return true;
-      if (!myPermissions?.permissions) return false;
+      // If permissions are not yet loaded and no cache exists, do not block or flip screen during initial render
+      if (!myPermissions?.permissions) {
+        return !permissionsLoaded;
+      }
 
       // Alias mapping between sidebar IDs, route names, and DB keys
       const normalizeMap: Record<string, string[]> = {
@@ -313,6 +340,7 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
         users,
         auditLogs,
         myPermissions,
+        permissionsLoaded,
         isSuperAdmin,
         loading,
         saving,
@@ -361,6 +389,7 @@ export const usePermissions = () => {
     canApprove,
     isSuperAdmin,
     myPermissions,
+    permissionsLoaded,
   } = useAccessControl();
 
   return {
@@ -373,6 +402,7 @@ export const usePermissions = () => {
     canApprove,
     isSuperAdmin,
     myPermissions,
+    permissionsLoaded,
   };
 };
 

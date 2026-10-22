@@ -396,6 +396,34 @@ exports.Prisma.CustomerScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.MasterProjectScalarFieldEnum = {
+  id: 'id',
+  projectCode: 'projectCode',
+  name: 'name',
+  category: 'category',
+  projectType: 'projectType',
+  basePrice: 'basePrice',
+  currency: 'currency',
+  defaultDuration: 'defaultDuration',
+  techStack: 'techStack',
+  description: 'description',
+  status: 'status',
+  modules: 'modules',
+  deliverables: 'deliverables',
+  icon: 'icon',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.SystemSettingScalarFieldEnum = {
+  id: 'id',
+  settingKey: 'settingKey',
+  value: 'value',
+  updatedBy: 'updatedBy',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -403,6 +431,10 @@ exports.Prisma.SortOrder = {
 
 exports.Prisma.NullableJsonNullValueInput = {
   DbNull: Prisma.DbNull,
+  JsonNull: Prisma.JsonNull
+};
+
+exports.Prisma.JsonNullValueInput = {
   JsonNull: Prisma.JsonNull
 };
 
@@ -435,7 +467,9 @@ exports.Prisma.ModelName = {
   ScheduledMeeting: 'ScheduledMeeting',
   Project: 'Project',
   CallLog: 'CallLog',
-  Customer: 'Customer'
+  Customer: 'Customer',
+  MasterProject: 'MasterProject',
+  SystemSetting: 'SystemSetting'
 };
 
 /**

@@ -73,9 +73,30 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
   // Active View State: Table, List (Tasks), Board (Kanban), Pipeline
-  const [currentView, setCurrentView] = useState<'table' | 'list' | 'board' | 'pipeline'>(
-    initialSubNav === 'tasks' ? 'list' : 'table'
-  );
+  const [currentView, setCurrentViewState] = useState<'table' | 'list' | 'board' | 'pipeline'>(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const v = searchParams.get('view');
+      if (v === 'table' || v === 'list' || v === 'board' || v === 'pipeline') return v as any;
+      const saved = localStorage.getItem('crm_projects_view');
+      if (saved === 'table' || saved === 'list' || saved === 'board' || saved === 'pipeline') return saved as any;
+    }
+    return initialSubNav === 'tasks' ? 'list' : 'table';
+  });
+
+  const setCurrentView = (v: 'table' | 'list' | 'board' | 'pipeline') => {
+    setCurrentViewState(v);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('crm_projects_view', v);
+      const url = new URL(window.location.href);
+      if (v === 'table') {
+        url.searchParams.delete('view');
+      } else {
+        url.searchParams.set('view', v);
+      }
+      window.history.replaceState(null, '', url.pathname + url.search);
+    }
+  };
 
   // Local filter states
   const [searchInput, setSearchInput] = useState<string>(filters.search || '');
