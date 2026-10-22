@@ -42,11 +42,14 @@ import {
   IconFlag,
   IconActivity,
   IconDeviceLaptop,
+  IconSparkles,
 } from '@tabler/icons-react';
 import { Project, ProjectFormData } from '../../types/project';
 import { useProject } from '../../context/ProjectContext';
 import { useCRM } from '../../context/CRMContext';
 import { contactService } from '../../services/contactService';
+import { settingsService } from '../../services/settingsService';
+import { MasterProject } from '../../types/settings';
 import { Contact } from '../../types/contact';
 
 interface AddProjectPageProps {
@@ -99,6 +102,10 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
   const [contactsList, setContactsList] = useState<Contact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState<boolean>(false);
 
+  // Master Project Templates from Settings Catalog
+  const [masterCatalog, setMasterCatalog] = useState<MasterProject[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+
   useEffect(() => {
     let isMounted = true;
     const loadContacts = async () => {
@@ -138,7 +145,20 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
         if (isMounted) setLoadingContacts(false);
       }
     };
+
+    const loadMasterProjects = async () => {
+      try {
+        const res = await settingsService.getMasterProjects({ status: 'Active' });
+        if (isMounted && res.success && Array.isArray(res.data)) {
+          setMasterCatalog(res.data);
+        }
+      } catch (e) {
+        console.error('Failed to load master projects catalog in AddProjectPage:', e);
+      }
+    };
+
     loadContacts();
+    loadMasterProjects();
     return () => {
       isMounted = false;
     };
@@ -259,6 +279,31 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
         return next;
       });
     }
+  };
+
+  const handleSelectMasterProject = (masterId: string) => {
+    setSelectedTemplateId(masterId);
+    const template = masterCatalog.find((p) => p.id === masterId || p.projectCode === masterId);
+    if (!template) return;
+
+    setFormData((prev) => ({
+      ...prev,
+      name: prev.name && prev.name.trim() ? prev.name : template.name,
+      category: template.category || prev.category,
+      projectType: template.projectType || prev.projectType,
+      estimatedBudget: template.basePrice ? String(template.basePrice) : prev.estimatedBudget,
+      description: template.description || prev.description,
+      modules: Array.isArray(template.modules)
+        ? template.modules.map((m) => ({
+            id: m.id,
+            name: m.name,
+            description: m.description,
+            deadline: '',
+            progress: 0,
+            status: 'Not Started' as const,
+          }))
+        : prev.modules,
+    }));
   };
 
   useEffect(() => {
@@ -607,6 +652,49 @@ export const AddProjectPage: React.FC<AddProjectPageProps> = ({ onBack, initialD
                     })}
                   </Group>
                 </Group>
+              </Box>
+            )}
+
+            {/* Quick Template Presets from Settings Master Catalog */}
+            {masterCatalog.length > 0 && !isEditing && (
+              <Box mb="md" p="xs" style={{ borderRadius: 8, background: isDark ? 'rgba(79,70,229,0.08)' : '#EEF2FF', border: isDark ? '1px solid rgba(79,70,229,0.25)' : '1px solid #C7D2FE' }}>
+                <Group justify="space-between" align="center" wrap="wrap" gap={8}>
+                  <Group gap={6} align="center">
+                    <IconSparkles size={14} color="#4F46E5" />
+                    <Text size="11.5px" fw={700} style={{ color: isDark ? '#A5B4FC' : '#4338CA', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Import In-House Solution Catalog:
+                    </Text>
+                  </Group>
+                  <Group gap={6} align="center" wrap="wrap">
+                    {masterCatalog.map((tmpl) => {
+                      const isSel = selectedTemplateId === tmpl.id;
+                      const modCount = Array.isArray(tmpl.modules) ? tmpl.modules.length : 0;
+                      return (
+                        <Badge
+                          key={tmpl.id}
+                          variant={isSel ? 'filled' : 'light'}
+                          color="indigo"
+                          size="sm"
+                          radius="sm"
+                          style={{
+                            cursor: 'pointer',
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            transition: 'all 0.15s ease',
+                          }}
+                          onClick={() => handleSelectMasterProject(tmpl.id)}
+                        >
+                          {tmpl.name} ({modCount} Modules)
+                        </Badge>
+                      );
+                    })}
+                  </Group>
+                </Group>
+                {selectedTemplateId && formData.modules && formData.modules.length > 0 && (
+                  <Text size="11px" c="indigo" fw={600} mt={4}>
+                    ✓ Loaded {formData.modules.length} configured sub-modules, pricing, and scope from catalog template.
+                  </Text>
+                )}
               </Box>
             )}
 

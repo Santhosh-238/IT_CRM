@@ -371,6 +371,7 @@ export async function createProjectService(body, user) {
       figmaUrl: figmaUrl || null,
       githubUrl: githubUrl || null,
       liveUrl: liveUrl || null,
+      modules: Array.isArray(body.modules) ? body.modules : [],
       createdBy: user?.name || 'System Admin',
     },
   });
@@ -464,6 +465,7 @@ export async function updateProjectService(id, body, user) {
       ...(body.figmaUrl !== undefined && { figmaUrl: body.figmaUrl }),
       ...(body.githubUrl !== undefined && { githubUrl: body.githubUrl }),
       ...(body.liveUrl !== undefined && { liveUrl: body.liveUrl }),
+      ...(Array.isArray(body.modules) && { modules: body.modules }),
     },
   });
 

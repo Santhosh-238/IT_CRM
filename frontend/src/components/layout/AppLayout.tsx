@@ -14,6 +14,7 @@ import { AccessControlPage } from '../../pages/access-control/AccessControlPage'
 import { ScheduledMeetingsPage } from '../../pages/meetings';
 import { CallLogsPage } from '../../pages/calls';
 import { CustomersPage, CustomerDetailsPage } from '../../pages/customers';
+import { SettingsPage } from '../../pages/settings';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
 import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
@@ -91,6 +92,7 @@ export const AppLayout: React.FC = () => {
       { nav: 'projects', id: 'projects' },
       { nav: 'employees', id: 'employee_management' },
       { nav: 'access-control', id: 'access_control' },
+      { nav: 'settings', id: 'settings' },
     ];
     for (const m of candidateModules) {
       if (can(m.id, 'view')) return m.nav;
@@ -422,6 +424,20 @@ export const AppLayout: React.FC = () => {
           );
         }
         return <AccessControlPage />;
+      case 'settings':
+      case 'setting':
+      case 'master-catalog':
+      case 'catalog': {
+        if (!can('settings', 'view') && !isSuperAdmin) {
+          return (
+            <AccessRestrictedView
+              moduleName="Settings & Master Catalog"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
+        return <SettingsPage />;
+      }
       case 'scheduled-meetings':
       case 'meetings':
         if (!can('scheduled_meetings', 'view')) {

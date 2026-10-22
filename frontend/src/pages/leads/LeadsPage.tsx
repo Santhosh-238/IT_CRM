@@ -51,24 +51,29 @@ export const LeadsPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<ActiveTabType>(() => {
     try {
-      const savedTab = sessionStorage.getItem('crm_leads_tab');
-      if (savedTab === 'NEW') {
-        sessionStorage.removeItem('crm_leads_tab');
-        return 'NEW';
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const tabParam = searchParams.get('tab') as ActiveTabType;
+        if (tabParam && ['ALL', 'NEW', 'IN_PROGRESS', 'COMPLETE'].includes(tabParam)) {
+          return tabParam;
+        }
+        const savedTab = sessionStorage.getItem('crm_leads_tab');
+        if (savedTab && ['ALL', 'NEW', 'IN_PROGRESS', 'COMPLETE'].includes(savedTab)) {
+          return savedTab as ActiveTabType;
+        }
       }
     } catch (e) {}
     return 'ALL';
   });
 
   React.useEffect(() => {
-    try {
-      const savedTab = sessionStorage.getItem('crm_leads_tab');
-      if (savedTab === 'NEW') {
-        sessionStorage.removeItem('crm_leads_tab');
-        setActiveTab('NEW');
-        setFilters({ status: 'New' });
-      }
-    } catch (e) {}
+    if (activeTab === 'NEW') {
+      setFilters({ status: 'New' });
+    } else if (activeTab === 'IN_PROGRESS') {
+      setFilters({ status: 'In Progress' });
+    } else if (activeTab === 'COMPLETE') {
+      setFilters({ status: 'Complete' });
+    }
     fetchLeads();
     fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,6 +102,18 @@ export const LeadsPage: React.FC = () => {
 
   const handleTabChange = (tab: ActiveTabType) => {
     setActiveTab(tab);
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('crm_leads_tab', tab);
+        const url = new URL(window.location.href);
+        if (tab === 'ALL') {
+          url.searchParams.delete('tab');
+        } else {
+          url.searchParams.set('tab', tab);
+        }
+        window.history.replaceState(null, '', url.pathname + url.search);
+      }
+    } catch {}
     if (tab === 'NEW') {
       setFilters({ status: 'New' });
     } else if (tab === 'IN_PROGRESS') {

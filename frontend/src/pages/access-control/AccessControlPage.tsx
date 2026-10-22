@@ -294,7 +294,30 @@ export const AccessControlPage: React.FC = () => {
   } = useAccessControl();
 
   // Active top tab: 'perms' | 'team' | 'tree'
-  const [activeTab, setActiveTab] = useState<'perms' | 'team' | 'tree'>('perms');
+  const [activeTab, setActiveTabState] = useState<'perms' | 'team' | 'tree'>(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tab = searchParams.get('tab');
+      if (tab === 'perms' || tab === 'team' || tab === 'tree') return tab;
+      const saved = localStorage.getItem('crm_access_control_tab');
+      if (saved === 'perms' || saved === 'team' || saved === 'tree') return saved as any;
+    }
+    return 'perms';
+  });
+
+  const setActiveTab = (tab: 'perms' | 'team' | 'tree') => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('crm_access_control_tab', tab);
+      const url = new URL(window.location.href);
+      if (tab === 'perms') {
+        url.searchParams.delete('tab');
+      } else {
+        url.searchParams.set('tab', tab);
+      }
+      window.history.replaceState(null, '', url.pathname + url.search);
+    }
+  };
 
   // Search in Perms Sidebar
   const [roleSearch, setRoleSearch] = useState('');

@@ -26,26 +26,28 @@ import {
   IconCheck,
   IconChevronRight,
   IconRefresh,
-  IconPhone,
-  IconBuilding,
   IconCalendarCheck,
   IconCalendarTime,
   IconInbox,
   IconExternalLink,
   IconX,
-  IconSparkles,
+  IconUser,
 } from '@tabler/icons-react';
 import { contactService } from '../../services/contactService';
+import { settingsService } from '../../services/settingsService';
 import { Contact } from '../../types/contact';
+import { ReminderItem } from '../../types/settings';
 import { useCRM } from '../../context/CRMContext';
 import { useContact } from '../../context/ContactContext';
 
 interface NotificationItem {
   id: string;
-  contact: Contact;
+  type: 'contact' | 'reminder';
+  contact?: Contact;
+  reminder?: ReminderItem;
   title: string;
   subtitle: string;
-  category: 'due_today' | 'overdue' | 'upcoming' | 'pending';
+  category: 'due_today' | 'overdue' | 'upcoming' | 'pending' | 'reminder';
   dateStr: string;
   formattedDate: string;
   badgeLabel: string;
@@ -60,12 +62,13 @@ interface NotificationItem {
 export const NotificationBell: React.FC = () => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
-  const { setActiveNav } = useCRM();
+  const { currentUser, setActiveNav } = useCRM();
   const { setSelectedContact, fetchContacts: refreshContactsList } = useContact();
 
   const [opened, setOpened] = useState(false);
   const [loading, setLoading] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [reminders, setReminders] = useState<ReminderItem[]>([]);
   const [readIds, setReadIds] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem('crm_read_notifications');
@@ -74,7 +77,7 @@ export const NotificationBell: React.FC = () => {
       return [];
     }
   });
-  const [activeTab, setActiveTab] = useState<'all' | 'due_today' | 'overdue' | 'followup' | 'pending'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'reminders' | 'due_today' | 'overdue' | 'followup' | 'pending'>('all');
   const [desktopPermission, setDesktopPermission] = useState<NotificationPermission>(() => {
     return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default';
   });
@@ -87,7 +90,6 @@ export const NotificationBell: React.FC = () => {
   });
 
   const pillBg = isDark ? '#1E293B' : '#F5F8FA';
-  const pillBorder = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(15, 23, 42, 0.08)';
   const textColor = isDark ? '#F8FAFC' : '#0F172A';
   const subtextColor = isDark ? '#94A3B8' : '#64748B';
 
@@ -108,7 +110,7 @@ export const NotificationBell: React.FC = () => {
     try {
       const parts = dateStr.split('-');
       if (parts.length === 3) {
-        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
         return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       }
     } catch {}
@@ -117,7 +119,9 @@ export const NotificationBell: React.FC = () => {
 
   const playNotificationSound = () => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
@@ -149,13 +153,13 @@ export const NotificationBell: React.FC = () => {
         playNotificationSound();
         notifications.show({
           title: 'Desktop Notifications Enabled',
-          message: 'You will receive alerts for scheduled follow-ups and pending contacts!',
+          message: 'You will receive alerts for scheduled reminders and follow-ups!',
           color: 'teal',
           icon: <IconCheck size={16} />,
         });
         try {
           new Notification('CRM Web Notifications Active', {
-            body: 'You will receive timely desktop notifications when contact follow-ups are due.',
+            body: 'You will receive timely desktop notifications when reminders or follow-ups are assigned.',
             icon: '/favicon.ico',
           });
         } catch (e) {}
@@ -178,17 +182,64 @@ export const NotificationBell: React.FC = () => {
     } catch {}
   };
 
-  // Fetch contacts for notifications
-  const fetchNotificationContacts = useCallback(async (isInitial = false) => {
+  // Check if reminder is meant for this logged-in user and alert
+  const checkAndAlertReminder = useCallback((rem: ReminderItem) => {
+    if (!rem) return;
+    const myId = (currentUser?.id || '').toLowerCase();
+    const myName = (currentUser?.name || '').toLowerCase();
+    const myEmail = (currentUser?.email || '').toLowerCase();
+
+    const assignedId = (rem.assignedToId || '').toLowerCase();
+    const assignedUserId = (rem.assignedUserId || '').toLowerCase();
+    const assignedEmpId = (rem.assignedEmployeeId || '').toLowerCase();
+    const assignedName = (rem.assignedToName || '').toLowerCase();
+    const assignedEmail = (rem.assignedToEmail || '').toLowerCase();
+    const creatorId = (rem.createdById || '').toLowerCase();
+
+    // Do not notify creator of their own scheduled reminder, only the recipient
+    const isRecipient =
+      (myId && (assignedId === myId || assignedUserId === myId || assignedEmpId === myId)) ||
+      (myName && assignedName === myName) ||
+      (myEmail && assignedEmail === myEmail) ||
+      (currentUser?.role === 'SUPER_ADMIN' && creatorId !== myId);
+
+    if (isRecipient) {
+      playNotificationSound();
+      notifications.show({
+        id: `notif-assigned-${rem.id}`,
+        title: 'New Reminder Scheduled!',
+        message: `"${rem.title}" scheduled for ${rem.date} at ${rem.time || '10:00 AM'}${rem.createdByName ? ` by ${rem.createdByName}` : ''}`,
+        color: 'indigo',
+        autoClose: 10000,
+        icon: <IconBellRinging size={18} />,
+      });
+
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(`Reminder: ${rem.title}`, {
+            body: `Scheduled for ${rem.date} at ${rem.time || '10:00 AM'} by ${rem.createdByName || 'Admin'}`,
+            icon: '/favicon.ico',
+          });
+        } catch {}
+      }
+    }
+  }, [currentUser]);
+
+  // Fetch contacts and reminders for notifications
+  const fetchAllNotifications = useCallback(async (isInitial = false) => {
     try {
       setLoading(true);
-      const res = await contactService.getContacts({ limit: 150 });
-      if (res && res.data) {
-        setContacts(res.data);
+      const [contactsRes, remindersRes] = await Promise.allSettled([
+        contactService.getContacts({ limit: 150 }),
+        settingsService.getReminders(),
+      ]);
+
+      if (contactsRes.status === 'fulfilled' && contactsRes.value?.data) {
+        setContacts(contactsRes.value.data);
 
         if (isInitial) {
           const today = getTodayStr();
-          const dueTodayList = res.data.filter((c) => {
+          const dueTodayList = contactsRes.value.data.filter((c) => {
             const fDate = (c.nextFollowDate || '').trim();
             return fDate === today;
           });
@@ -207,58 +258,80 @@ export const NotificationBell: React.FC = () => {
                 autoClose: 12000,
                 icon: <IconBellRinging size={18} />,
               });
-
-              if ('Notification' in window && Notification.permission === 'granted') {
-                try {
-                  const names = dueTodayList.map((c) => c.name).slice(0, 3).join(', ');
-                  new Notification(`CRM Reminder: ${dueTodayList.length} Follow-up${dueTodayList.length > 1 ? 's' : ''} Due Today`, {
-                    body: `${names}${dueTodayList.length > 3 ? '...' : ''} - Click to view in CRM.`,
-                    icon: '/favicon.ico',
-                  });
-                } catch (e) {}
-              }
             }
           }
         }
       }
+
+      if (remindersRes.status === 'fulfilled' && Array.isArray(remindersRes.value?.data)) {
+        setReminders(remindersRes.value.data);
+      }
     } catch (err) {
-      console.error('Failed to load contacts for notifications:', err);
+      console.error('Failed to load notifications data:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchNotificationContacts(true);
+    fetchAllNotifications(true);
 
-    const handleUpdate = () => {
-      fetchNotificationContacts(false);
+    const handleContactsUpdated = () => {
+      fetchAllNotifications(false);
     };
-    window.addEventListener('crm_contacts_updated', handleUpdate);
 
+    const handleRemindersUpdated = (e: any) => {
+      fetchAllNotifications(false);
+      const rem = e?.detail;
+      if (rem) {
+        checkAndAlertReminder(rem);
+      }
+    };
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'crm_reminder_broadcast' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          fetchAllNotifications(false);
+          if (parsed?.reminder && parsed.action === 'create') {
+            checkAndAlertReminder(parsed.reminder);
+          }
+        } catch {}
+      } else if (e.key === 'crm_contacts_updated') {
+        fetchAllNotifications(false);
+      }
+    };
+
+    window.addEventListener('crm_contacts_updated', handleContactsUpdated);
+    window.addEventListener('crm_reminders_updated', handleRemindersUpdated);
+    window.addEventListener('storage', handleStorageChange);
+
+    // Dynamic background polling every 12 seconds so updates from other sessions appear dynamically
     const interval = setInterval(() => {
-      fetchNotificationContacts(false);
-    }, 120000);
+      fetchAllNotifications(false);
+    }, 12000);
 
     return () => {
-      window.removeEventListener('crm_contacts_updated', handleUpdate);
+      window.removeEventListener('crm_contacts_updated', handleContactsUpdated);
+      window.removeEventListener('crm_reminders_updated', handleRemindersUpdated);
+      window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
     };
-  }, [fetchNotificationContacts]);
+  }, [fetchAllNotifications, checkAndAlertReminder]);
 
-  // Transform contacts into clean notifications (ONLY for scheduled dates that have arrived)
+  // Transform contacts & reminders into clean notifications
   const notificationItems = useMemo<NotificationItem[]>(() => {
     const today = getTodayStr();
     const items: NotificationItem[] = [];
 
+    // 1. Process contacts
     contacts.forEach((c) => {
       const followDate = (c.nextFollowDate || '').trim();
       const qStatus = (c.qualificationStatus || '').trim();
       const status = (c.status || '').trim();
 
-      // Strict User Requirement: Only notify when a scheduled date was set AND that date has arrived!
       if (!followDate) return;
-      if (followDate > today) return; // Future date -> do not alert yet!
+      if (followDate > today) return;
 
       const isPending = qStatus === 'Pending' || status === 'Pending';
       const isDueToday = followDate === today;
@@ -266,6 +339,7 @@ export const NotificationBell: React.FC = () => {
       if (isDueToday) {
         items.push({
           id: `due_${c.id}`,
+          type: 'contact',
           contact: c,
           title: c.name,
           subtitle: c.companyName || c.phone || 'Company Representative',
@@ -281,9 +355,9 @@ export const NotificationBell: React.FC = () => {
           isRead: readIds.includes(`due_${c.id}`),
         });
       } else {
-        // followDate < today (Overdue)
         items.push({
           id: `overdue_${c.id}`,
+          type: 'contact',
           contact: c,
           title: c.name,
           subtitle: c.companyName || c.phone || 'Company Representative',
@@ -301,19 +375,77 @@ export const NotificationBell: React.FC = () => {
       }
     });
 
+    // 2. Process active reminders
+    reminders.forEach((r) => {
+      if (r.completed) return; // Hide completed reminders from active notification popover
+      const remDate = (r.date || '').trim();
+      const isDueToday = remDate === today;
+      const isOverdue = remDate < today;
+
+      const category = isDueToday ? 'due_today' : isOverdue ? 'overdue' : 'reminder';
+      const badgeLabel = isDueToday
+        ? 'Reminder Today'
+        : isOverdue
+        ? 'Reminder Overdue'
+        : r.priority === 'High'
+        ? 'High Priority'
+        : 'Reminder';
+
+      const badgeColor = isOverdue ? 'red' : isDueToday ? 'indigo' : r.priority === 'High' ? 'red' : 'indigo';
+      const badgeBg = isOverdue
+        ? isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2'
+        : isDueToday
+        ? isDark ? 'rgba(99, 102, 241, 0.16)' : '#EEF2FF'
+        : isDark ? 'rgba(99, 102, 241, 0.12)' : '#F5F3FF';
+      const badgeBorder = isOverdue
+        ? isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA'
+        : isDueToday
+        ? isDark ? 'rgba(99, 102, 241, 0.35)' : '#C7D2FE'
+        : isDark ? 'rgba(99, 102, 241, 0.25)' : '#DDD6FE';
+      const badgeTextColor = isOverdue
+        ? isDark ? '#FCA5A5' : '#DC2626'
+        : isDueToday
+        ? isDark ? '#A5B4FC' : '#4338CA'
+        : isDark ? '#C7D2FE' : '#6366F1';
+
+      const assignedInfo =
+        r.assignedToName && r.assignedToName !== 'Super Administrator'
+          ? `For: ${r.assignedToName}`
+          : 'Confidential Task';
+
+      items.push({
+        id: `rem_${r.id}`,
+        type: 'reminder',
+        reminder: r,
+        title: r.title,
+        subtitle: `${assignedInfo} • By ${r.createdByName || 'Admin'}`,
+        category,
+        dateStr: remDate,
+        formattedDate: `${formatCleanDate(remDate)}${r.time ? ` at ${r.time}` : ''}`,
+        badgeLabel,
+        badgeColor,
+        badgeBg,
+        badgeBorder,
+        badgeTextColor,
+        statusText: r.notes || `${r.category} • Priority: ${r.priority}`,
+        isRead: readIds.includes(`rem_${r.id}`),
+      });
+    });
+
     const priorityWeight: Record<string, number> = {
       due_today: 1,
       overdue: 2,
-      pending: 3,
-      upcoming: 4,
+      reminder: 3,
+      pending: 4,
+      upcoming: 5,
     };
 
     return items.sort((a, b) => {
-      const pDiff = (priorityWeight[a.category] || 5) - (priorityWeight[b.category] || 5);
+      const pDiff = (priorityWeight[a.category] || 6) - (priorityWeight[b.category] || 6);
       if (pDiff !== 0) return pDiff;
       return a.dateStr.localeCompare(b.dateStr);
     });
-  }, [contacts, readIds, isDark]);
+  }, [contacts, reminders, readIds, isDark]);
 
   const unreadCount = useMemo(() => {
     return notificationItems.filter((i) => !i.isRead).length;
@@ -327,41 +459,48 @@ export const NotificationBell: React.FC = () => {
     return notificationItems.filter((i) => i.category === 'overdue').length;
   }, [notificationItems]);
 
+  const reminderCount = useMemo(() => {
+    return notificationItems.filter((i) => i.type === 'reminder').length;
+  }, [notificationItems]);
+
   const followUpCount = useMemo(() => {
     return notificationItems.filter(
       (i) =>
-        i.contact.qualificationStatus === 'Follow-up Required' ||
-        i.contact.status === 'Follow-up Required' ||
-        i.category === 'overdue' ||
-        (i.category === 'due_today' && i.badgeLabel === 'Due Today')
+        i.type === 'contact' &&
+        (i.contact?.qualificationStatus === 'Follow-up Required' ||
+          i.contact?.status === 'Follow-up Required' ||
+          i.category === 'overdue' ||
+          (i.category === 'due_today' && i.badgeLabel === 'Due Today'))
     ).length;
   }, [notificationItems]);
 
   const pendingCount = useMemo(() => {
     return notificationItems.filter(
       (i) =>
-        i.contact.qualificationStatus === 'Pending' ||
-        i.contact.status === 'Pending'
+        i.type === 'contact' &&
+        (i.contact?.qualificationStatus === 'Pending' || i.contact?.status === 'Pending')
     ).length;
   }, [notificationItems]);
 
   const filteredItems = useMemo(() => {
+    if (activeTab === 'reminders') return notificationItems.filter((i) => i.type === 'reminder');
     if (activeTab === 'due_today') return notificationItems.filter((i) => i.category === 'due_today');
     if (activeTab === 'overdue') return notificationItems.filter((i) => i.category === 'overdue');
     if (activeTab === 'followup') {
       return notificationItems.filter(
         (i) =>
-          i.contact.qualificationStatus === 'Follow-up Required' ||
-          i.contact.status === 'Follow-up Required' ||
-          i.category === 'overdue' ||
-          (i.category === 'due_today' && i.badgeLabel === 'Due Today')
+          i.type === 'contact' &&
+          (i.contact?.qualificationStatus === 'Follow-up Required' ||
+            i.contact?.status === 'Follow-up Required' ||
+            i.category === 'overdue' ||
+            (i.category === 'due_today' && i.badgeLabel === 'Due Today'))
       );
     }
     if (activeTab === 'pending') {
       return notificationItems.filter(
         (i) =>
-          i.contact.qualificationStatus === 'Pending' ||
-          i.contact.status === 'Pending'
+          i.type === 'contact' &&
+          (i.contact?.qualificationStatus === 'Pending' || i.contact?.status === 'Pending')
       );
     }
     return notificationItems;
@@ -376,7 +515,7 @@ export const NotificationBell: React.FC = () => {
     } catch {}
   };
 
-  const handleOpenContact = (item: NotificationItem) => {
+  const handleItemClick = (item: NotificationItem) => {
     if (!readIds.includes(item.id)) {
       const updated = [...readIds, item.id];
       setReadIds(updated);
@@ -385,14 +524,38 @@ export const NotificationBell: React.FC = () => {
       } catch {}
     }
 
-    try {
-      sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(item.contact));
-      sessionStorage.setItem('crm_selected_contact', JSON.stringify(item.contact));
-    } catch {}
+    if (item.type === 'reminder' && item.reminder) {
+      setOpened(false);
+      try {
+        sessionStorage.setItem('crm_selected_reminder_date', item.reminder.date);
+      } catch {}
+      window.dispatchEvent(
+        new CustomEvent('crm_open_calendar_date', {
+          detail: { date: item.reminder.date, reminderId: item.reminder.id },
+        })
+      );
+      setActiveNav('settings');
+      notifications.show({
+        id: `nav-calendar-${item.reminder.id}`,
+        title: 'Opening Calendar',
+        message: `Navigating to reminder on ${formatCleanDate(item.reminder.date)}`,
+        color: 'indigo',
+        autoClose: 2500,
+        icon: <IconCalendar size={16} />,
+      });
+      return;
+    }
 
-    setSelectedContact(item.contact);
-    setOpened(false);
-    setActiveNav('contact-qualification');
+    if (item.contact) {
+      try {
+        sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(item.contact));
+        sessionStorage.setItem('crm_selected_contact', JSON.stringify(item.contact));
+      } catch {}
+
+      setSelectedContact(item.contact);
+      setOpened(false);
+      setActiveNav('contact-qualification');
+    }
   };
 
   const handleViewAllContacts = () => {
@@ -410,13 +573,11 @@ export const NotificationBell: React.FC = () => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
     }
-    notifications.show({
-      id: 'crm-nav-contacts',
-      title: 'Contacts Directory',
-      message: 'Viewing all contacts list',
-      color: 'blue',
-      autoClose: 2500,
-    });
+  };
+
+  const handleViewCalendar = () => {
+    setOpened(false);
+    setActiveNav('settings');
   };
 
   return (
@@ -432,12 +593,16 @@ export const NotificationBell: React.FC = () => {
       transitionProps={{ transition: 'pop-top-right', duration: 180 }}
     >
       <Popover.Target>
-        <Tooltip label={unreadCount > 0 ? `${unreadCount} New Notification${unreadCount > 1 ? 's' : ''}` : 'Notifications'} withArrow position="bottom">
+        <Tooltip
+          label={unreadCount > 0 ? `${unreadCount} New Notification${unreadCount > 1 ? 's' : ''}` : 'Notifications'}
+          withArrow
+          position="bottom"
+        >
           <Indicator
             inline
             size={11}
             offset={4}
-            color={dueTodayCount > 0 ? 'red' : 'blue'}
+            color={dueTodayCount > 0 ? 'red' : 'indigo'}
             disabled={unreadCount === 0}
             processing={dueTodayCount > 0}
             zIndex={10}
@@ -448,17 +613,16 @@ export const NotificationBell: React.FC = () => {
               radius="100px"
               style={{
                 background: pillBg,
-                color: unreadCount > 0 ? (dueTodayCount > 0 ? '#EF4444' : '#3B82F6') : isDark ? '#E2E8F0' : '#475569',
-                border: `1px solid ${pillBorder}`,
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(15, 23, 42, 0.08)',
+                color: unreadCount > 0 ? '#4F46E5' : textColor,
+                width: 38,
+                height: 38,
                 transition: 'all 0.15s ease',
               }}
               onClick={() => setOpened((o) => !o)}
+              aria-label="Open notifications"
             >
-              {dueTodayCount > 0 ? (
-                <IconBellRinging size={17} stroke={2} />
-              ) : (
-                <IconBell size={17} stroke={1.8} />
-              )}
+              {unreadCount > 0 ? <IconBellRinging size={18} stroke={2} /> : <IconBell size={18} stroke={1.8} />}
             </ActionIcon>
           </Indicator>
         </Tooltip>
@@ -467,35 +631,29 @@ export const NotificationBell: React.FC = () => {
       <Popover.Dropdown
         p={0}
         style={{
-          background: isDark ? '#1E293B' : '#FFFFFF',
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
+          backgroundColor: isDark ? '#111827' : '#FFFFFF',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #EAECF0',
           overflow: 'hidden',
-          borderRadius: 16,
-          boxShadow: isDark
-            ? '0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08)'
-            : '0 20px 40px -10px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.06)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
         }}
       >
         {/* 1. HEADER */}
-        <Box p="sm" px="md" style={{ borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #F1F5F9' }}>
-          <Group justify="space-between" align="center" wrap="nowrap">
-            <Group gap="xs" align="center">
-              <Text fw={750} size="sm" style={{ color: textColor, letterSpacing: '-0.01em' }}>
+        <Box
+          p="md"
+          pb={10}
+          style={{
+            borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #F1F5F9',
+            background: isDark ? 'rgba(255, 255, 255, 0.02)' : '#FFFFFF',
+          }}
+        >
+          <Group justify="space-between" align="center">
+            <Group gap={8} align="center">
+              <Text fw={750} size="15px" style={{ color: textColor, letterSpacing: '-0.01em' }}>
                 Notifications
               </Text>
-              {unreadCount > 0 ? (
-                <Badge
-                  size="xs"
-                  variant="filled"
-                  color={dueTodayCount > 0 ? 'red' : 'blue'}
-                  radius="100px"
-                  style={{ fontWeight: 700, height: 19, padding: '0 8px' }}
-                >
+              {unreadCount > 0 && (
+                <Badge size="sm" variant="filled" color="indigo" radius="xl">
                   {unreadCount} new
-                </Badge>
-              ) : (
-                <Badge size="xs" variant="light" color="gray" radius="100px" style={{ height: 19 }}>
-                  All caught up
                 </Badge>
               )}
             </Group>
@@ -507,7 +665,7 @@ export const NotificationBell: React.FC = () => {
                   variant="subtle"
                   color="gray"
                   loading={loading}
-                  onClick={() => fetchNotificationContacts(false)}
+                  onClick={() => fetchAllNotifications(false)}
                   style={{ borderRadius: 6 }}
                 >
                   <IconRefresh size={14} />
@@ -517,7 +675,7 @@ export const NotificationBell: React.FC = () => {
                 <Button
                   variant="subtle"
                   size="compact-xs"
-                  color="blue"
+                  color="indigo"
                   leftSection={<IconCheck size={12} stroke={2.5} />}
                   onClick={handleMarkAllAsRead}
                   style={{ fontSize: 11, fontWeight: 650, borderRadius: 6 }}
@@ -528,7 +686,7 @@ export const NotificationBell: React.FC = () => {
             </Group>
           </Group>
 
-          {/* Web Desktop Permission Banner (Clean, Dismissible) */}
+          {/* Desktop Permission Banner */}
           {desktopPermission !== 'granted' && !bannerDismissed && (
             <Box
               mt={10}
@@ -536,9 +694,9 @@ export const NotificationBell: React.FC = () => {
               style={{
                 borderRadius: 10,
                 background: isDark
-                  ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.16) 0%, rgba(99, 102, 241, 0.16) 100%)'
-                  : 'linear-gradient(135deg, #EFF6FF 0%, #EEF2FF 100%)',
-                border: isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #BFDBFE',
+                  ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.16) 0%, rgba(59, 130, 246, 0.16) 100%)'
+                  : 'linear-gradient(135deg, #EEF2FF 0%, #EFF6FF 100%)',
+                border: isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #C7D2FE',
               }}
             >
               <Group justify="space-between" align="center" wrap="nowrap">
@@ -548,7 +706,7 @@ export const NotificationBell: React.FC = () => {
                       width: 26,
                       height: 26,
                       borderRadius: 8,
-                      background: '#2563EB',
+                      background: '#4F46E5',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -559,11 +717,11 @@ export const NotificationBell: React.FC = () => {
                     <IconBellRinging size={14} />
                   </Box>
                   <Box style={{ flex: 1, minWidth: 0 }}>
-                    <Text size="11px" fw={700} style={{ color: isDark ? '#93C5FD' : '#1E40AF', lineHeight: 1.2 }}>
+                    <Text size="11px" fw={700} style={{ color: isDark ? '#A5B4FC' : '#3730A3', lineHeight: 1.2 }}>
                       Enable desktop alerts
                     </Text>
                     <Text size="10px" c="dimmed" truncate style={{ color: isDark ? '#CBD5E1' : '#475569' }}>
-                      Get instant alerts when follow-ups are due
+                      Get instant alerts for reminders & follow-ups
                     </Text>
                   </Box>
                 </Group>
@@ -571,20 +729,14 @@ export const NotificationBell: React.FC = () => {
                 <Group gap={4} wrap="nowrap">
                   <Button
                     size="compact-xs"
-                    color="blue"
+                    color="indigo"
                     radius="100px"
                     onClick={requestDesktopPermission}
                     style={{ fontSize: 10, height: 22, fontWeight: 700 }}
                   >
                     Enable
                   </Button>
-                  <ActionIcon
-                    size="xs"
-                    variant="subtle"
-                    color="gray"
-                    onClick={dismissBanner}
-                    style={{ borderRadius: 999 }}
-                  >
+                  <ActionIcon size="xs" variant="subtle" color="gray" onClick={dismissBanner} style={{ borderRadius: 999 }}>
                     <IconX size={12} />
                   </ActionIcon>
                 </Group>
@@ -601,10 +753,12 @@ export const NotificationBell: React.FC = () => {
               borderRadius: 100,
               display: 'flex',
               gap: 3,
+              overflowX: 'auto',
             }}
           >
             {[
               { key: 'all', label: 'All', count: notificationItems.length },
+              ...(reminderCount > 0 ? [{ key: 'reminders', label: 'Reminders', count: reminderCount }] : []),
               { key: 'due_today', label: 'Due Today', count: dueTodayCount, alert: dueTodayCount > 0 },
               ...(overdueCount > 0 ? [{ key: 'overdue', label: 'Overdue', count: overdueCount, alert: true }] : []),
               { key: 'followup', label: 'Follow-ups', count: followUpCount },
@@ -664,7 +818,7 @@ export const NotificationBell: React.FC = () => {
           </Box>
         </Box>
 
-        {/* 3. NOTIFICATION ITEMS LIST (Adaptive max-height, NO HUGE EMPTY SPACE!) */}
+        {/* 3. NOTIFICATION ITEMS LIST */}
         <ScrollArea.Autosize mah={360} scrollbarSize={6}>
           {filteredItems.length === 0 ? (
             <Center p="xl" py={36}>
@@ -686,12 +840,12 @@ export const NotificationBell: React.FC = () => {
                 <Text size="xs" fw={700} style={{ color: textColor }}>
                   No notifications in this view
                 </Text>
-                <Text size="11px" c="dimmed" ta="center" style={{ maxWidth: 220 }}>
-                  {activeTab === 'due_today'
-                    ? 'No follow-up dates due today.'
-                    : activeTab === 'pending'
-                    ? 'No pending contacts found.'
-                    : 'All contact follow-ups and reviews are up to date!'}
+                <Text size="11px" c="dimmed" ta="center" style={{ maxWidth: 240 }}>
+                  {activeTab === 'reminders'
+                    ? 'No scheduled calendar reminders for you right now.'
+                    : activeTab === 'due_today'
+                    ? 'No tasks or follow-ups due today.'
+                    : 'All notifications and tasks are up to date!'}
                 </Text>
               </Stack>
             </Center>
@@ -701,7 +855,7 @@ export const NotificationBell: React.FC = () => {
                 return (
                   <UnstyledButton
                     key={item.id}
-                    onClick={() => handleOpenContact(item)}
+                    onClick={() => handleItemClick(item)}
                     p="xs"
                     px="md"
                     style={{
@@ -713,8 +867,8 @@ export const NotificationBell: React.FC = () => {
                           : '1px solid #F1F5F9',
                       background: !item.isRead
                         ? isDark
-                          ? 'rgba(59, 130, 246, 0.06)'
-                          : 'rgba(59, 130, 246, 0.03)'
+                          ? 'rgba(99, 102, 241, 0.08)'
+                          : 'rgba(99, 102, 241, 0.03)'
                         : 'transparent',
                       transition: 'background 0.15s ease',
                       cursor: 'pointer',
@@ -725,8 +879,8 @@ export const NotificationBell: React.FC = () => {
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = !item.isRead
                         ? isDark
-                          ? 'rgba(59, 130, 246, 0.06)'
-                          : 'rgba(59, 130, 246, 0.03)'
+                          ? 'rgba(99, 102, 241, 0.08)'
+                          : 'rgba(99, 102, 241, 0.03)'
                         : 'transparent';
                     }}
                   >
@@ -747,7 +901,9 @@ export const NotificationBell: React.FC = () => {
                             color: item.badgeTextColor,
                           }}
                         >
-                          {item.category === 'due_today' ? (
+                          {item.type === 'reminder' ? (
+                            <IconBellRinging size={18} stroke={2.2} />
+                          ) : item.category === 'due_today' ? (
                             <IconCalendarCheck size={18} stroke={2.2} />
                           ) : item.category === 'overdue' ? (
                             <IconAlertCircle size={18} stroke={2.2} />
@@ -758,7 +914,7 @@ export const NotificationBell: React.FC = () => {
                           )}
                         </Box>
 
-                        {/* Contact details */}
+                        {/* Details */}
                         <Box style={{ flex: 1, minWidth: 0 }}>
                           <Group gap={6} align="center" wrap="nowrap" justify="space-between">
                             <Group gap={6} align="center" wrap="nowrap" style={{ minWidth: 0 }}>
@@ -771,7 +927,7 @@ export const NotificationBell: React.FC = () => {
                                     width: 6,
                                     height: 6,
                                     borderRadius: '50%',
-                                    background: '#3B82F6',
+                                    background: '#4F46E5',
                                     flexShrink: 0,
                                   }}
                                 />
@@ -798,12 +954,12 @@ export const NotificationBell: React.FC = () => {
                             </Box>
                           </Group>
 
-                          {/* Company Name */}
+                          {/* Subtitle */}
                           <Text size="11px" c="dimmed" truncate mt={1} fw={500}>
                             {item.subtitle}
                           </Text>
 
-                          {/* Date & Context (CLEAN - NO REPEATING DATES!) */}
+                          {/* Date & Context */}
                           <Group gap={6} mt={3} align="center" wrap="nowrap">
                             <Group gap={3} align="center" wrap="nowrap">
                               <IconCalendar size={11} color={subtextColor} stroke={1.8} />
@@ -848,19 +1004,32 @@ export const NotificationBell: React.FC = () => {
                 }}
               />
               <Text size="11px" fw={500} c="dimmed">
-                Live sync with scheduled contacts
+                Dynamic real-time sync active
               </Text>
             </Group>
-            <Button
-              id="notif-view-contacts-btn"
-              variant="subtle"
-              size="compact-xs"
-              rightSection={<IconExternalLink size={12} />}
-              onClick={handleViewAllContacts}
-              style={{ fontSize: 11, fontWeight: 650, borderRadius: 6 }}
-            >
-              View Contacts
-            </Button>
+            <Group gap="xs">
+              <Button
+                variant="subtle"
+                size="compact-xs"
+                color="indigo"
+                leftSection={<IconCalendar size={12} />}
+                onClick={handleViewCalendar}
+                style={{ fontSize: 11, fontWeight: 650, borderRadius: 6 }}
+              >
+                Calendar
+              </Button>
+              <Button
+                id="notif-view-contacts-btn"
+                variant="subtle"
+                size="compact-xs"
+                color="blue"
+                rightSection={<IconExternalLink size={12} />}
+                onClick={handleViewAllContacts}
+                style={{ fontSize: 11, fontWeight: 650, borderRadius: 6 }}
+              >
+                Contacts
+              </Button>
+            </Group>
           </Group>
         </Box>
       </Popover.Dropdown>
