@@ -96,28 +96,28 @@ export const LeadMeetingsTableView: React.FC<LeadMeetingsTableViewProps> = ({
     let bg = isDark ? 'rgba(234, 179, 8, 0.15)' : '#FEF9C3';
     let color = isDark ? '#FDE047' : '#854D0E';
     let border = isDark ? 'rgba(234, 179, 8, 0.3)' : '#FEF08A';
-    let label = 'Scheduled';
+    let label = status || 'Scheduled';
 
     if (s.includes('COMPLET')) {
       bg = isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5';
       color = isDark ? '#34D399' : '#047857';
       border = isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0';
-      label = 'Completed';
-    } else if (s.includes('PROGRESS')) {
+    } else if (s.includes('PROGRESS') || s.includes('INTERESTING')) {
       bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
       color = isDark ? '#60A5FA' : '#1D4ED8';
       border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
-      label = 'In Progress';
-    } else if (s.includes('CANCEL')) {
+    } else if (s.includes('CANCEL') || s.includes('NOT INTEREST')) {
       bg = isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2';
       color = isDark ? '#F87171' : '#B91C1C';
       border = isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA';
-      label = 'Cancelled';
     } else if (s.includes('RESCHEDUL')) {
       bg = isDark ? 'rgba(249, 115, 22, 0.15)' : '#FFF7ED';
       color = isDark ? '#FB923C' : '#C2410C';
       border = isDark ? 'rgba(249, 115, 22, 0.3)' : '#FED7AA';
-      label = 'Rescheduled';
+    } else if (s.includes('PROPOSAL') || s.includes('GATHER') || s.includes('CONSIDER')) {
+      bg = isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF';
+      color = isDark ? '#818CF8' : '#4338CA';
+      border = isDark ? 'rgba(99, 102, 241, 0.3)' : '#C7D2FE';
     }
 
     return (

@@ -52,6 +52,7 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
     setSelectedLead(lead);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('crm_selected_lead', JSON.stringify(lead));
+      sessionStorage.setItem('crm_lead_active_section', 'meetings');
       const isNew = !lead.status || lead.status.toLowerCase() === 'new';
       const targetTab = forceTab || (isNew ? 'schedule' : 'pipeline');
       sessionStorage.setItem('crm_schedule_tab', targetTab);

@@ -603,8 +603,14 @@ const inferDuration = (start?: string, end?: string): string => {
   const statusDropdownOptions = [
     { value: 'All', label: 'All' },
     { value: 'Scheduled', label: 'Scheduled' },
-    { value: 'In Progress', label: 'In Progress' },
+    { value: 'Interested / Progressing', label: 'Interested / Progressing' },
+    { value: 'Proposal Requested', label: 'Proposal Requested' },
+    { value: 'Demo Completed', label: 'Demo Completed' },
+    { value: 'Requirements Gathered', label: 'Requirements Gathered' },
+    { value: 'Under Consideration', label: 'Under Consideration' },
     { value: 'Completed', label: 'Completed' },
+    { value: 'Rescheduled', label: 'Rescheduled' },
+    { value: 'Not Interested', label: 'Not Interested' },
     { value: 'Cancelled', label: 'Cancelled' },
   ];
 
@@ -1167,14 +1173,14 @@ const inferDuration = (start?: string, end?: string): string => {
           <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
             <MeetingDatePicker
               label="Meeting Date"
-              placeholder="DD-MM-YYYY"
+              placeholder="dd-mm-yyyy"
               value={formMeetingDate}
               onChange={(val) => setFormMeetingDate(val)}
               required
             />
             <MeetingTimePicker
               label="Meeting Time"
-              placeholder="10:00 AM"
+              placeholder="hh:mm"
               value={formStartTime}
               onChange={(val) => setFormStartTime(val)}
               required
@@ -1221,8 +1227,14 @@ const inferDuration = (start?: string, end?: string): string => {
             label="Meeting Status"
             data={[
               { value: 'Scheduled', label: 'Scheduled' },
-              { value: 'In Progress', label: 'In Progress' },
+              { value: 'Interested / Progressing', label: 'Interested / Progressing' },
+              { value: 'Proposal Requested', label: 'Proposal Requested' },
+              { value: 'Demo Completed', label: 'Demo Completed' },
+              { value: 'Requirements Gathered', label: 'Requirements Gathered' },
+              { value: 'Under Consideration', label: 'Under Consideration' },
               { value: 'Completed', label: 'Completed' },
+              { value: 'Rescheduled', label: 'Rescheduled' },
+              { value: 'Not Interested', label: 'Not Interested' },
               { value: 'Cancelled', label: 'Cancelled' },
             ]}
             value={formStatus}

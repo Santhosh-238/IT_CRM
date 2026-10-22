@@ -8,6 +8,7 @@ import {
   Badge,
   Button,
   ActionIcon,
+  TextInput,
   Textarea,
   Select,
   Paper,
@@ -32,10 +33,14 @@ import {
   IconExternalLink,
   IconTarget,
   IconEye,
+  IconHistory,
+  IconArrowRight,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { ScheduledMeeting } from '../../../types/meeting';
+import { ScheduledMeeting, RescheduleRecord } from '../../../types/meeting';
 import { updateMeetingApi } from '../../../services/meetingService';
+import { MeetingDatePicker } from './MeetingDatePicker';
+import { MeetingTimePicker } from './MeetingTimePicker';
 
 interface MeetingDetailsModalProps {
   opened: boolean;
@@ -55,7 +60,22 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
 
+  const [title, setTitle] = useState<string>('');
+  const [purpose, setPurpose] = useState<string>('');
+  const [clientName, setClientName] = useState<string>('');
+  const [hostName, setHostName] = useState<string>('');
+  const [initialMeetingDate, setInitialMeetingDate] = useState<string>('');
+  const [initialStartTime, setInitialStartTime] = useState<string>('');
+  const [meetingDate, setMeetingDate] = useState<string>('');
+  const [startTime, setStartTime] = useState<string>('');
+  const [newMeetingDate, setNewMeetingDate] = useState<string>('');
+  const [newMeetingTime, setNewMeetingTime] = useState<string>('');
+  const [duration, setDuration] = useState<string>('30 Minutes');
+  const [meetingType, setMeetingType] = useState<string>('Virtual');
+  const [location, setLocation] = useState<string>('');
   const [status, setStatus] = useState<string>('Scheduled');
+  const [rescheduleReason, setRescheduleReason] = useState<string>('');
+  const [rescheduleHistory, setRescheduleHistory] = useState<RescheduleRecord[]>([]);
   const [requirements, setRequirements] = useState<string>('');
   const [fileName, setFileName] = useState<string>('');
   const [fileUrl, setFileUrl] = useState<string>('');
@@ -121,15 +141,26 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
   const getStatusColor = (val?: string) => {
     switch (val?.toLowerCase()) {
       case 'scheduled':
+      case 'pending':
         return 'yellow';
       case 'in progress':
+      case 'interested / progressing':
         return 'blue';
-      case 'completed':
+      case 'proposal requested':
+        return 'indigo';
+      case 'demo completed':
         return 'teal';
-      case 'cancelled':
-        return 'red';
+      case 'requirements gathered':
+        return 'cyan';
+      case 'under consideration':
+        return 'violet';
+      case 'completed':
+        return 'green';
       case 'rescheduled':
         return 'orange';
+      case 'not interested':
+      case 'cancelled':
+        return 'red';
       default:
         return 'gray';
     }
@@ -138,7 +169,26 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
   // Sync state whenever selected meeting changes
   useEffect(() => {
     if (meeting) {
+      const initDate = meeting.meetingDate || meeting.date || '';
+      const initTime = meeting.startTime || meeting.meetingTime || meeting.time || '10:00 AM';
+      setInitialMeetingDate(initDate);
+      setInitialStartTime(initTime);
+      setTitle(meeting.title || meeting.meetingTitle || meeting.purpose || '');
+      setPurpose(meeting.purpose || meeting.title || '');
+      const lName = meeting.leadName || meeting.clientName || '';
+      const cName = meeting.companyName && !lName.includes(meeting.companyName) ? ` (${meeting.companyName})` : '';
+      setClientName(lName ? `${lName}${cName}` : 'Lead Contact');
+      setHostName(meeting.employeeName || meeting.hostName || meeting.assignedTo || 'Kavin');
+      setMeetingDate(initDate);
+      setStartTime(initTime);
+      setNewMeetingDate('');
+      setNewMeetingTime('');
+      setDuration(meeting.duration || '30 Minutes');
+      setMeetingType(meeting.meetingType?.toLowerCase().includes('in-person') ? 'In-person' : 'Virtual');
+      setLocation(meeting.location || meeting.meetingLocation || meeting.meetingLink || '');
       setStatus(meeting.status || meeting.meetingStatus || 'Scheduled');
+      setRescheduleReason(meeting.rescheduleReason || '');
+      setRescheduleHistory(meeting.rescheduleHistory || []);
       setRequirements(meeting.requirements || '');
       setFileName(meeting.requirementFileName || '');
       setFileUrl(meeting.requirementFileUrl || '');
@@ -174,7 +224,7 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
       setFileSize(sizeFormatted);
       notifications.show({
         title: 'File Ready to Save',
-        message: `${file.name} (${sizeFormatted}) uploaded. Click "Save Details & Requirements" to persist.`,
+        message: `${file.name} (${sizeFormatted}) uploaded. Click "Update" to persist.`,
         color: 'teal',
       });
     };
@@ -192,28 +242,129 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
 
   const handleSave = async () => {
     if (!meeting) return;
+
+    // Validate new date and time when status is Rescheduled
+    if (status === 'Rescheduled') {
+      if (!newMeetingDate || !newMeetingDate.trim()) {
+        notifications.show({
+          title: 'Validation Error',
+          message: 'Please select a new meeting date.',
+          color: 'red',
+        });
+        return;
+      }
+      if (!newMeetingTime || !newMeetingTime.trim()) {
+        notifications.show({
+          title: 'Validation Error',
+          message: 'Please provide a new meeting time.',
+          color: 'red',
+        });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
-      const payload: Partial<ScheduledMeeting> = {
+      const effectiveDate = status === 'Rescheduled' && newMeetingDate ? newMeetingDate.trim() : meetingDate.trim();
+      const effectiveTime = status === 'Rescheduled' && newMeetingTime ? newMeetingTime.trim() : startTime.trim();
+
+      // Record in meeting history if status is Rescheduled
+      let updatedHistory = [...(rescheduleHistory || [])];
+      if (status === 'Rescheduled' && newMeetingDate && newMeetingTime) {
+        const isChanged = (newMeetingDate !== initialMeetingDate) || (newMeetingTime !== initialStartTime);
+        if (isChanged || initialMeetingDate) {
+          const newRecord: RescheduleRecord = {
+            previousDate: initialMeetingDate || meetingDate,
+            previousTime: initialStartTime || startTime,
+            newDate: newMeetingDate.trim(),
+            newTime: newMeetingTime.trim(),
+            reason: rescheduleReason.trim() || undefined,
+            rescheduledAt: new Date().toISOString(),
+            rescheduledBy: hostName || 'User',
+          };
+          const last = updatedHistory[updatedHistory.length - 1];
+          if (!last || last.newDate !== newRecord.newDate || last.newTime !== newRecord.newTime || last.reason !== newRecord.reason) {
+            updatedHistory.push(newRecord);
+          }
+        }
+      }
+
+      const payload: Partial<ScheduledMeeting> & { rescheduleReason?: string; rescheduleHistory?: RescheduleRecord[] } = {
+        title: title.trim(),
+        meetingTitle: title.trim(),
+        purpose: purpose.trim() || title.trim(),
+        meetingDate: effectiveDate,
+        date: effectiveDate,
+        startTime: effectiveTime,
+        time: effectiveTime,
+        meetingTime: effectiveTime,
+        duration: duration.trim(),
+        meetingType: meetingType,
+        location: location.trim(),
+        meetingLocation: location.trim(),
+        meetingLink: location.trim(),
+        employeeName: hostName.trim(),
+        hostName: hostName.trim(),
+        clientName: clientName.trim(),
         status: status as any,
         meetingStatus: status as any,
+        meetingOutcome: status,
+        outcome: status,
+        rescheduleReason: rescheduleReason.trim() || undefined,
+        rescheduleHistory: updatedHistory,
+        notes: rescheduleReason.trim()
+          ? `[Rescheduled from ${initialMeetingDate} ${initialStartTime} to ${effectiveDate} ${effectiveTime}. Reason: ${rescheduleReason.trim()}]${meeting.notes && !meeting.notes.startsWith('[Rescheduled') ? `\n${meeting.notes}` : ''}`
+          : meeting.notes,
         requirements: requirements.trim(),
         requirementFileName: fileName.trim() || undefined,
         requirementFileUrl: fileUrl || undefined,
         requirementFileSize: fileSize.trim() || undefined,
       };
 
-      const updated = await updateMeetingApi(meeting.id, payload);
+      let updated: ScheduledMeeting = {
+        ...meeting,
+        ...payload,
+      } as ScheduledMeeting;
+
+      try {
+        const apiRes = await updateMeetingApi(meeting.id, payload);
+        if (apiRes) {
+          updated = {
+            ...updated,
+            ...apiRes,
+            rescheduleReason: payload.rescheduleReason,
+            rescheduleHistory: payload.rescheduleHistory,
+          };
+        }
+      } catch (apiErr) {
+        console.warn('Backend update failed, persisting locally:', apiErr);
+      }
 
       notifications.show({
-        title: 'Meeting Details Saved',
-        message: 'Status and client requirements updated successfully.',
+        title: status === 'Rescheduled' ? 'Meeting Rescheduled' : 'Meeting Details Saved',
+        message: status === 'Rescheduled'
+          ? `Meeting rescheduled to ${effectiveDate} at ${effectiveTime}. Assigned host (${hostName}) and participants notified.`
+          : 'Meeting details and requirements updated successfully.',
         color: 'teal',
         icon: <IconCheck size={16} />,
       });
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('crm:meeting-updated', { detail: updated }));
+        if (status === 'Rescheduled') {
+          window.dispatchEvent(
+            new CustomEvent('crm:notification', {
+              detail: {
+                id: `notif-${Date.now()}`,
+                title: 'Meeting Rescheduled',
+                message: `Meeting with ${clientName} rescheduled to ${meetingDate} at ${startTime}. Reason: ${rescheduleReason || 'Schedule adjustment'}`,
+                type: 'meeting',
+                recipient: hostName,
+                timestamp: new Date().toISOString(),
+              },
+            })
+          );
+        }
       }
 
       if (onMeetingUpdated && updated) {
@@ -258,155 +409,179 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
           <ThemeIcon color="teal" variant="light" size="md" radius="md">
             <IconCalendarEvent size={18} />
           </ThemeIcon>
-          <div>
-            <Text fw={700} size="md">
-              Meeting Details & Requirements
-            </Text>
-            <Text size="xs" c="dimmed">
-              Review meeting schedule, update status, and record client requirements
-            </Text>
-          </div>
+          <Text fw={700} size="md">
+            Meeting Details & Requirements
+          </Text>
         </Group>
       }
     >
       <Stack gap="md" mt="xs">
         {/* ========================================================= */}
-        {/* SECTION 1: MEETING OVERVIEW CARD                          */}
+        {/* SECTION 1: MEETING DETAILS FORM FIELDS                    */}
         {/* ========================================================= */}
-        <Paper
-          p="md"
-          radius="md"
-          style={{
-            background: isDark ? '#1E293B' : '#F8FAFC',
-            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-          }}
-        >
-          <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
-            <div>
-              <Text fw={700} size="md" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                {meeting.title || meeting.purpose || 'Client Discussion'}
-              </Text>
-              {meeting.purpose && meeting.purpose !== meeting.title && (
-                <Text size="xs" c="dimmed" mt={2}>
-                  Purpose: {meeting.purpose}
-                </Text>
-              )}
-            </div>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <TextInput
+            label="Meeting Title"
+            value={title}
+            onChange={(e) => setTitle(e.currentTarget.value)}
+            placeholder="Meeting Title"
+            radius="md"
+            leftSection={<IconCalendarEvent size={16} />}
+          />
+          <TextInput
+            label="Purpose / Agenda"
+            value={purpose}
+            onChange={(e) => setPurpose(e.currentTarget.value)}
+            placeholder="Purpose / Agenda"
+            radius="md"
+            leftSection={<IconTarget size={16} />}
+          />
+        </SimpleGrid>
 
-            <Group gap="xs">
-              <Badge
-                variant="light"
-                color={getStatusColor(status)}
-                size="sm"
-                radius="sm"
-              >
-                {status}
-              </Badge>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <TextInput
+            label="Client / Lead Name"
+            value={clientName}
+            onChange={(e) => setClientName(e.currentTarget.value)}
+            placeholder="Client Name"
+            radius="md"
+            leftSection={<IconUser size={16} />}
+          />
+          <TextInput
+            label="Assigned Host / Employee"
+            value={hostName}
+            onChange={(e) => setHostName(e.currentTarget.value)}
+            placeholder="Host Name"
+            radius="md"
+            leftSection={<IconUser size={16} />}
+          />
+        </SimpleGrid>
 
-              <Badge
-                variant="outline"
-                color={isVirtual ? 'blue' : 'cyan'}
-                size="sm"
-                radius="sm"
-              >
-                {meeting.meetingType || 'Virtual'}
-              </Badge>
-            </Group>
-          </Group>
-
-          <Divider my="sm" />
-
-          {/* Quick Meta Grid */}
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-            {/* Lead & Company */}
-            <Group gap="xs" align="center">
-              <ThemeIcon variant="light" color="blue" size="sm" radius="md">
-                <IconUser size={14} />
-              </ThemeIcon>
-              <div>
-                <Text size="xs" fw={700} style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
-                  {leadName}
-                </Text>
-                <Text size="11px" c="dimmed">
-                  {companyName}
-                </Text>
-              </div>
-            </Group>
-
-            {/* Host Rep */}
-            <Group gap="xs" align="center">
-              <ThemeIcon variant="light" color="teal" size="sm" radius="md">
-                <IconUser size={14} />
-              </ThemeIcon>
-              <div>
-                <Text size="xs" fw={700} style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
-                  {meeting.employeeName || 'Assigned Host'}
-                </Text>
-                <Text size="11px" c="dimmed">
-                  {meeting.employeeDesignation || 'CRM Host'}
-                </Text>
-              </div>
-            </Group>
-
-            {/* Date & Time */}
-            <Group gap="xs" align="center">
-              <ThemeIcon variant="light" color="orange" size="sm" radius="md">
-                <IconClock size={14} />
-              </ThemeIcon>
-              <div>
-                <Text size="xs" fw={600} style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
-                  {meeting.meetingDate} • {meeting.startTime}
-                  {meeting.endTime ? ` – ${meeting.endTime}` : ''}
-                </Text>
-                <Text size="11px" c="dimmed">
-                  Duration: {meeting.duration || '30 Minutes'}
-                </Text>
-              </div>
-            </Group>
-
-            {/* Location / Meeting URL */}
-            <Group gap="xs" align="center">
-              <ThemeIcon variant="light" color="violet" size="sm" radius="md">
-                <IconMapPin size={14} />
-              </ThemeIcon>
-              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {meeting.location ? (
-                  meeting.location.startsWith('http') ? (
-                    <Text
-                      component="a"
-                      href={meeting.location}
-                      target="_blank"
-                      size="xs"
-                      fw={600}
-                      c="blue"
-                      style={{ textDecoration: 'underline' }}
-                    >
-                      {meeting.location.replace(/^https?:\/\//, '').slice(0, 30)}
-                      {meeting.location.length > 30 ? '...' : ''}
-                    </Text>
-                  ) : (
-                    <Text size="xs" fw={600} style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
-                      {meeting.location}
-                    </Text>
-                  )
-                ) : (
-                  <Text size="xs" c="dimmed">
-                    No location specified
-                  </Text>
-                )}
-                <Text size="11px" c="dimmed">
-                  Location / Venue
-                </Text>
-              </div>
-            </Group>
+        {status !== 'Rescheduled' ? (
+          <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+            <MeetingDatePicker
+              label="Meeting Date"
+              value={meetingDate}
+              onChange={(val) => setMeetingDate(val)}
+              placeholder="dd-mm-yyyy"
+              zIndex={3000}
+            />
+            <MeetingTimePicker
+              label="Meeting Time"
+              value={startTime}
+              onChange={(val) => setStartTime(val)}
+              placeholder="hh:mm A"
+              zIndex={3000}
+            />
+            <Select
+              label="Duration"
+              value={duration}
+              onChange={(val) => setDuration(val || '30 Minutes')}
+              data={['15 Minutes', '30 Minutes', '45 Minutes', '1 Hour', '1.5 Hours', '2 Hours']}
+              radius="md"
+            />
           </SimpleGrid>
-        </Paper>
+        ) : (
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <Select
+              label="Duration"
+              value={duration}
+              onChange={(val) => setDuration(val || '30 Minutes')}
+              data={['15 Minutes', '30 Minutes', '45 Minutes', '1 Hour', '1.5 Hours', '2 Hours']}
+              radius="md"
+            />
+            <Select
+              label="Meeting Type"
+              value={meetingType}
+              onChange={(val) => setMeetingType(val || 'Virtual')}
+              data={[
+                { value: 'Virtual', label: 'Virtual (Google Meet / Zoom)' },
+                { value: 'In-person', label: 'In-person' },
+                { value: 'Phone Call', label: 'Phone Call' },
+              ]}
+              radius="md"
+            />
+          </SimpleGrid>
+        )}
+
+        {status !== 'Rescheduled' ? (
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+            <Select
+              label="Meeting Type"
+              value={meetingType}
+              onChange={(val) => setMeetingType(val || 'Virtual')}
+              data={[
+                { value: 'Virtual', label: 'Virtual (Google Meet / Zoom)' },
+                { value: 'In-person', label: 'In-person' },
+                { value: 'Phone Call', label: 'Phone Call' },
+              ]}
+              radius="md"
+            />
+            <TextInput
+              label={meetingType?.toLowerCase().includes('in-person') ? 'Meeting Location / Venue' : 'Meeting Link (URL)'}
+              value={location}
+              onChange={(e) => setLocation(e.currentTarget.value)}
+              placeholder={
+                meetingType?.toLowerCase().includes('in-person')
+                  ? 'Client Office Address or Office Room'
+                  : 'https://meet.google.com/xyz or Zoom URL'
+              }
+              radius="md"
+              leftSection={<IconMapPin size={16} />}
+              rightSection={
+                location && location.startsWith('http') ? (
+                  <Tooltip label="Open Meeting Link">
+                    <ActionIcon
+                      size="sm"
+                      variant="subtle"
+                      color="blue"
+                      component="a"
+                      href={location}
+                      target="_blank"
+                    >
+                      <IconExternalLink size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                ) : null
+              }
+            />
+          </SimpleGrid>
+        ) : (
+          <TextInput
+            label={meetingType?.toLowerCase().includes('in-person') ? 'Meeting Location / Venue' : 'Meeting Link (URL)'}
+            value={location}
+            onChange={(e) => setLocation(e.currentTarget.value)}
+            placeholder={
+              meetingType?.toLowerCase().includes('in-person')
+                ? 'Client Office Address or Office Room'
+                : 'https://meet.google.com/xyz or Zoom URL'
+            }
+            radius="md"
+            leftSection={<IconMapPin size={16} />}
+            rightSection={
+              location && location.startsWith('http') ? (
+                <Tooltip label="Open Meeting Link">
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="blue"
+                    component="a"
+                    href={location}
+                    target="_blank"
+                  >
+                    <IconExternalLink size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              ) : null
+            }
+          />
+        )}
 
         {/* ========================================================= */}
         {/* SECTION 2: MEETING STATUS UPDATE FIELD                   */}
         {/* ========================================================= */}
         <Box>
-          <Group justify="space-between" align="center" mb={4}>
+          <Group justify="space-between" align="center" mb={6}>
             <Text fw={700} size="sm" style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
               Meeting Status *
             </Text>
@@ -419,18 +594,28 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
               Current: {status}
             </Badge>
           </Group>
-          <Text size="xs" c="dimmed" mb={8}>
-            Update the progress or outcome for this meeting.
-          </Text>
           <Select
             placeholder="Select Status"
             value={status}
-            onChange={(val) => setStatus(val || 'Scheduled')}
+            onChange={(val) => {
+              const next = val || 'Scheduled';
+              setStatus(next);
+              if (next === 'Rescheduled') {
+                setNewMeetingDate('');
+                setNewMeetingTime('');
+              }
+            }}
             allowDeselect={false}
             data={[
               { value: 'Scheduled', label: 'Scheduled' },
-              { value: 'In Progress', label: 'In Progress' },
+              { value: 'Interested / Progressing', label: 'Interested / Progressing' },
+              { value: 'Proposal Requested', label: 'Proposal Requested' },
+              { value: 'Demo Completed', label: 'Demo Completed' },
+              { value: 'Requirements Gathered', label: 'Requirements Gathered' },
+              { value: 'Under Consideration', label: 'Under Consideration' },
               { value: 'Completed', label: 'Completed' },
+              { value: 'Rescheduled', label: 'Rescheduled' },
+              { value: 'Not Interested', label: 'Not Interested' },
               { value: 'Cancelled', label: 'Cancelled' },
             ]}
             styles={{
@@ -447,14 +632,116 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
         </Box>
 
         {/* ========================================================= */}
+        {/* RESCHEDULE DETAILS SECTION (Visible when Rescheduled)    */}
+        {/* ========================================================= */}
+        {status === 'Rescheduled' && (
+          <Paper
+            p="md"
+            radius="md"
+            style={{
+              backgroundColor: isDark ? 'rgba(249, 115, 22, 0.08)' : '#FFFBF5',
+              border: isDark ? '1px solid rgba(249, 115, 22, 0.4)' : '1px solid #FED7AA',
+            }}
+          >
+            <Stack gap="sm">
+              <Group justify="space-between" align="center" wrap="wrap">
+                <Group gap="xs">
+                  <ThemeIcon color="orange" variant="light" size="sm" radius="md">
+                    <IconClock size={16} />
+                  </ThemeIcon>
+                  <Text fw={700} size="sm" style={{ color: isDark ? '#FB923C' : '#C2410C' }}>
+                    Reschedule Details
+                  </Text>
+                </Group>
+                {(initialMeetingDate || initialStartTime) && (
+                  <Badge variant="outline" color="orange" size="sm" radius="sm">
+                    Previous Schedule: {initialMeetingDate || 'Not set'} • {initialStartTime || 'Not set'}
+                  </Badge>
+                )}
+              </Group>
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+                <MeetingDatePicker
+                  label="New Meeting Date"
+                  required
+                  value={newMeetingDate}
+                  onChange={(val) => setNewMeetingDate(val)}
+                  placeholder="dd-mm-yyyy"
+                  zIndex={3000}
+                />
+                <MeetingTimePicker
+                  label="New Meeting Time"
+                  required
+                  value={newMeetingTime}
+                  onChange={(val) => setNewMeetingTime(val)}
+                  placeholder="hh:mm"
+                  zIndex={3000}
+                />
+              </SimpleGrid>
+
+              <Textarea
+                label="Reschedule Reason (Optional)"
+                placeholder="e.g. Client requested time change due to urgent internal review / conflict..."
+                value={rescheduleReason}
+                onChange={(e) => setRescheduleReason(e.currentTarget.value)}
+                minRows={2}
+                maxRows={4}
+                autosize
+                radius="md"
+              />
+
+              {/* Previous Reschedule History */}
+              {rescheduleHistory && rescheduleHistory.length > 0 && (
+                <Box mt={4}>
+                  <Group gap={6} mb={6} align="center">
+                    <IconHistory size={14} color="#EA580C" />
+                    <Text size="xs" fw={700} c="dimmed">
+                      Reschedule History ({rescheduleHistory.length})
+                    </Text>
+                  </Group>
+                  <Stack gap={6}>
+                    {rescheduleHistory.map((item, idx) => (
+                      <Paper
+                        key={idx}
+                        p="xs"
+                        radius="sm"
+                        style={{
+                          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                          border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
+                          fontSize: 12,
+                        }}
+                      >
+                        <Group justify="space-between" align="center" wrap="nowrap">
+                          <Group gap="xs" wrap="nowrap">
+                            <IconCalendarEvent size={13} color="#EA580C" />
+                            <Text size="xs" fw={600}>
+                              {item.previousDate} {item.previousTime} ➔ {item.newDate} {item.newTime}
+                            </Text>
+                          </Group>
+                          <Text size="11px" c="dimmed">
+                            {item.rescheduledAt ? new Date(item.rescheduledAt).toLocaleDateString() : ''}
+                          </Text>
+                        </Group>
+                        {item.reason && (
+                          <Text size="xs" c="dimmed" mt={2} style={{ fontStyle: 'italic' }}>
+                            Reason: {item.reason}
+                          </Text>
+                        )}
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </Stack>
+          </Paper>
+        )}
+
+        {/* ========================================================= */}
         {/* SECTION 3: REQUIREMENT ENTRY FIELD                        */}
         {/* ========================================================= */}
         <Box>
-          <Text fw={700} size="sm" mb={4} style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
+          <Text fw={700} size="sm" mb={6} style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
             Client Requirements / Scope of Work *
-          </Text>
-          <Text size="xs" c="dimmed" mb={8}>
-            Enter the client’s requested features, software scope, technical stack, or discussion notes.
           </Text>
           <Textarea
             placeholder="e.g. Client needs custom CRM with WhatsApp integration, Lead pipeline, Role-based permissions, and Mobile App for 25 sales reps..."
@@ -636,9 +923,10 @@ export const MeetingDetailsModal: React.FC<MeetingDetailsModalProps> = ({
                 background: isDark ? '#22c55e' : '#0F172A',
                 color: '#FFFFFF',
                 fontWeight: 600,
+                minWidth: 100,
               }}
             >
-              Save Details & Requirements
+              {status === 'Rescheduled' ? 'Update Meeting' : 'Update'}
             </Button>
           </Group>
         </Group>

@@ -246,6 +246,204 @@ export async function deleteLeadService(id) {
   };
 }
 
+/**
+ * 8. GET ALL PROPOSALS (Inside Lead Module)
+ */
+export async function getLeadProposalsService(query = {}) {
+  const { leadId, search, status } = query;
+  const where = {};
+
+  if (leadId && leadId !== 'All') {
+    where.leadId = leadId;
+  }
+
+  if (status && status !== 'All') {
+    where.status = status;
+  }
+
+  if (search) {
+    const q = search.trim();
+    where.OR = [
+      { proposalNumber: { contains: q, mode: 'insensitive' } },
+      { contactName: { contains: q, mode: 'insensitive' } },
+      { companyName: { contains: q, mode: 'insensitive' } },
+      { title: { contains: q, mode: 'insensitive' } },
+    ];
+  }
+
+  const proposals = await prisma.proposal.findMany({
+    where,
+    include: { items: true },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return proposals;
+}
+export const getProposalsService = getLeadProposalsService;
+
+/**
+ * 9. GET SINGLE PROPOSAL BY ID
+ */
+export async function getLeadProposalByIdService(id) {
+  const proposal = await prisma.proposal.findFirst({
+    where: {
+      OR: [{ id }, { proposalNumber: id }],
+    },
+    include: { items: true },
+  });
+
+  if (!proposal) {
+    const err = new Error('Proposal not found.');
+    err.status = 404;
+    throw err;
+  }
+
+  return proposal;
+}
+export const getProposalByIdService = getLeadProposalByIdService;
+
+/**
+ * 10. CREATE NEW PROPOSAL
+ */
+export async function createLeadProposalService(data, user) {
+  const year = new Date().getFullYear();
+  const count = await prisma.proposal.count();
+  const nextNum = 1001 + count;
+  const proposalNumber = data.proposalNumber || `PROP-${year}-${nextNum}`;
+
+  const proposal = await prisma.proposal.create({
+    data: {
+      proposalNumber,
+      leadId: data.leadId || null,
+      contactId: data.contactId || null,
+      contactName: data.contactName || '',
+      contactEmail: data.contactEmail || null,
+      contactPhone: data.contactPhone || null,
+      companyName: data.companyName || null,
+      clientGst: data.clientGst || null,
+      clientAddress: data.clientAddress || null,
+      title: data.title || null,
+      proposalDate: data.proposalDate || data.issueDate || new Date().toISOString().split('T')[0],
+      validUntil: data.validUntil || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+      status: data.status || 'Draft',
+      currency: data.currency || 'INR (₹)',
+      subtotal: Number(data.subtotal) || Number(data.totalAmount) || 0,
+      totalAmount: Number(data.totalAmount) || Number(data.subtotal) || 0,
+      grandTotal: Number(data.grandTotal) || Number(data.totalAmount) || 0,
+      discountPercent: Number(data.discountPercent) || 0,
+      taxPercent: Number(data.taxPercent) || 0,
+      paymentTerms: data.paymentTerms || 'Net 30 Days',
+      documentName: data.documentName || null,
+      documentUrl: data.documentUrl || null,
+      documentSize: data.documentSize || null,
+      notes: data.notes || null,
+      terms: data.terms || data.termsConditions || null,
+      items: {
+        create: (data.items || []).map((it) => ({
+          itemName: it.itemName || it.description || 'Deliverable',
+          description: it.description || null,
+          quantity: Number(it.quantity) || 1,
+          unitPrice: Number(it.unitPrice) || 0,
+          totalAmount: Number(it.totalAmount) || Number(it.total) || 0,
+        })),
+      },
+    },
+    include: { items: true },
+  });
+
+  return proposal;
+}
+export const createProposalService = createLeadProposalService;
+
+/**
+ * 11. UPDATE PROPOSAL
+ */
+export async function updateLeadProposalService(id, data, user) {
+  const existing = await prisma.proposal.findFirst({
+    where: {
+      OR: [{ id }, { proposalNumber: id }],
+    },
+  });
+
+  if (!existing) {
+    const err = new Error('Proposal not found.');
+    err.status = 404;
+    throw err;
+  }
+
+  const updateData = {};
+  if (data.contactName !== undefined) updateData.contactName = data.contactName;
+  if (data.companyName !== undefined) updateData.companyName = data.companyName;
+  if (data.contactEmail !== undefined) updateData.contactEmail = data.contactEmail;
+  if (data.contactPhone !== undefined) updateData.contactPhone = data.contactPhone;
+  if (data.clientGst !== undefined) updateData.clientGst = data.clientGst;
+  if (data.clientAddress !== undefined) updateData.clientAddress = data.clientAddress;
+  if (data.title !== undefined) updateData.title = data.title;
+  if (data.proposalDate || data.issueDate) updateData.proposalDate = data.proposalDate || data.issueDate;
+  if (data.validUntil) updateData.validUntil = data.validUntil;
+  if (data.status) updateData.status = data.status;
+  if (data.currency) updateData.currency = data.currency;
+  if (data.subtotal !== undefined) updateData.subtotal = Number(data.subtotal);
+  if (data.totalAmount !== undefined) updateData.totalAmount = Number(data.totalAmount);
+  if (data.grandTotal !== undefined) updateData.grandTotal = Number(data.grandTotal);
+  if (data.discountPercent !== undefined) updateData.discountPercent = Number(data.discountPercent);
+  if (data.taxPercent !== undefined) updateData.taxPercent = Number(data.taxPercent);
+  if (data.paymentTerms !== undefined) updateData.paymentTerms = data.paymentTerms;
+  if (data.documentName !== undefined) updateData.documentName = data.documentName;
+  if (data.documentUrl !== undefined) updateData.documentUrl = data.documentUrl;
+  if (data.documentSize !== undefined) updateData.documentSize = data.documentSize;
+  if (data.notes !== undefined) updateData.notes = data.notes;
+  if (data.terms !== undefined || data.termsConditions !== undefined) {
+    updateData.terms = data.terms !== undefined ? data.terms : data.termsConditions;
+  }
+
+  if (Array.isArray(data.items)) {
+    await prisma.proposalItem.deleteMany({ where: { proposalId: existing.id } });
+    updateData.items = {
+      create: data.items.map((it) => ({
+        itemName: it.itemName || it.description || 'Deliverable',
+        description: it.description || null,
+        quantity: Number(it.quantity) || 1,
+        unitPrice: Number(it.unitPrice) || 0,
+        totalAmount: Number(it.totalAmount) || Number(it.total) || 0,
+      })),
+    };
+  }
+
+  const updated = await prisma.proposal.update({
+    where: { id: existing.id },
+    data: updateData,
+    include: { items: true },
+  });
+
+  return updated;
+}
+export const updateProposalService = updateLeadProposalService;
+
+/**
+ * 12. DELETE PROPOSAL
+ */
+export async function deleteLeadProposalService(id) {
+  const existing = await prisma.proposal.findFirst({
+    where: {
+      OR: [{ id }, { proposalNumber: id }],
+    },
+  });
+
+  if (!existing) {
+    const err = new Error('Proposal not found.');
+    err.status = 404;
+    throw err;
+  }
+
+  await prisma.proposal.delete({
+    where: { id: existing.id },
+  });
+
+  return { id: existing.id, proposalNumber: existing.proposalNumber };
+}
+export const deleteProposalService = deleteLeadProposalService;
+
 export default {
   getLeadsService,
   getLeadByIdService,
@@ -254,4 +452,15 @@ export default {
   createLeadService,
   updateLeadService,
   deleteLeadService,
+  getLeadProposalsService,
+  getLeadProposalByIdService,
+  createLeadProposalService,
+  updateLeadProposalService,
+  deleteLeadProposalService,
+  getProposalsService,
+  getProposalByIdService,
+  createProposalService,
+  updateProposalService,
+  deleteProposalService,
 };
+

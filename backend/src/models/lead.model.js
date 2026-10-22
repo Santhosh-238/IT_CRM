@@ -71,7 +71,7 @@ export class LeadModel {
 
     const fallbackSources = ['Website', 'Referral', 'Cold Call', 'LinkedIn', 'Social Media', 'Other'];
     const fallbackStatuses = ['New', 'In Progress', 'Qualified', 'Proposal Sent', 'In Negotiation', 'Complete', 'Lost'];
-    const fallbackStages = ['Initialization', 'Qualification', 'Discovery', 'Requirement Analysis', 'Demo / Presentation', 'Proposal / Quotation', 'Negotiation', 'Decision Making', 'Won', 'Lost'];
+    const fallbackStages = ['Initialization', 'Qualification', 'Discovery', 'Requirement Analysis', 'Demo / Presentation', 'Proposal', 'Negotiation', 'Decision Making', 'Won', 'Lost'];
     const fallbackCategories = ['Product', 'Service'];
     const fallbackContactTypes = ['Individual', 'Company Representative'];
 

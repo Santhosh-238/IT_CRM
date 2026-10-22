@@ -9,6 +9,11 @@ import {
   createLead,
   updateLead,
   deleteLead,
+  getLeadProposals,
+  getLeadProposalById,
+  createLeadProposal,
+  updateLeadProposal,
+  deleteLeadProposal,
 } from '../controllers/lead.controller.js';
 
 const router = Router();
@@ -29,7 +34,43 @@ router.get(
   getLeadMetadata
 );
 
-// 3. List leads with filters, pagination, search
+// 3. Proposals under Lead Module
+router.get(
+  '/proposals',
+  requireAuth,
+  authorizePermission('leads', 'view'),
+  getLeadProposals
+);
+
+router.get(
+  '/proposals/:id',
+  requireAuth,
+  authorizePermission('leads', 'view'),
+  getLeadProposalById
+);
+
+router.post(
+  '/proposals',
+  requireAuth,
+  authorizePermission('leads', 'create'),
+  createLeadProposal
+);
+
+router.put(
+  '/proposals/:id',
+  requireAuth,
+  authorizePermission('leads', 'edit'),
+  updateLeadProposal
+);
+
+router.delete(
+  '/proposals/:id',
+  requireAuth,
+  authorizePermission('leads', 'delete'),
+  deleteLeadProposal
+);
+
+// 4. List leads with filters, pagination, search
 router.get(
   '/',
   requireAuth,
@@ -37,7 +78,7 @@ router.get(
   getLeads
 );
 
-// 4. Single lead by ID
+// 5. Single lead by ID
 router.get(
   '/:id',
   requireAuth,

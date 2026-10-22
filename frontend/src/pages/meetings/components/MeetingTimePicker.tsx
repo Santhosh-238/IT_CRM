@@ -10,6 +10,7 @@ import {
   Divider,
   SimpleGrid,
   Button,
+  Select,
   useComputedColorScheme,
 } from '@mantine/core';
 import { IconClock } from '@tabler/icons-react';
@@ -22,7 +23,21 @@ interface MeetingTimePickerProps {
   required?: boolean;
   zIndex?: number;
   styles?: any;
+  leftSection?: React.ReactNode;
+  error?: React.ReactNode;
 }
+
+const STANDARD_TIME_SLOTS = [
+  '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
+  '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM',
+  '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
+  '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM',
+  '08:00 PM',
+];
+
+const QUICK_TIME_PRESETS = [
+  '10:00 AM', '11:30 AM', '02:30 PM', '04:00 PM', '05:30 PM',
+];
 
 interface ParsedTimeResult {
   hours: string; // "01" - "12"
@@ -110,10 +125,12 @@ export const MeetingTimePicker: React.FC<MeetingTimePickerProps> = ({
   value,
   onChange,
   label = 'Meeting Time',
-  placeholder = '11:00 AM',
+  placeholder = 'hh:mm',
   required = true,
-  zIndex = 1500,
+  zIndex = 3000,
   styles,
+  leftSection,
+  error,
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
@@ -193,6 +210,18 @@ export const MeetingTimePicker: React.FC<MeetingTimePickerProps> = ({
     onChange('');
   };
 
+  const handleSelectSlot = (slot: string) => {
+    const parsed = parseFlexibleTime(slot);
+    if (parsed) {
+      setHours(parsed.hours);
+      setMinutes(parsed.minutes);
+      setPeriod(parsed.period);
+      setExactMinInput(parseInt(parsed.minutes, 10).toString());
+      setInputText(parsed.formatted);
+      onChange(parsed.formatted);
+    }
+  };
+
   const handleManualTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     setInputText(raw);
@@ -270,6 +299,9 @@ export const MeetingTimePicker: React.FC<MeetingTimePickerProps> = ({
                 color: isDark ? '#F8FAFC' : '#1E293B',
               },
             }}
+            radius="md"
+            leftSection={leftSection !== undefined ? leftSection : <IconClock size={16} />}
+            error={error}
             rightSection={
               <ActionIcon
                 variant="subtle"
@@ -291,7 +323,7 @@ export const MeetingTimePicker: React.FC<MeetingTimePickerProps> = ({
           {/* Header */}
           <Group justify="space-between" align="center" mb={8}>
             <Text size="xs" fw={700} c="dimmed" style={{ letterSpacing: '0.05em' }}>
-              12-HOUR TIME
+              TIME (HH:MM A)
             </Text>
             <Badge
               size="md"
@@ -309,6 +341,51 @@ export const MeetingTimePicker: React.FC<MeetingTimePickerProps> = ({
               {value || inputText || '11:00 AM'}
             </Badge>
           </Group>
+
+          {/* Quick Select Buttons */}
+          <Text size="xs" fw={700} c="dimmed" mb={4} style={{ letterSpacing: '0.03em' }}>
+            QUICK SELECT
+          </Text>
+          <SimpleGrid cols={3} spacing={6} mb={8}>
+            {QUICK_TIME_PRESETS.map((slot) => (
+              <Button
+                key={slot}
+                size="xs"
+                radius="md"
+                variant={inputText === slot ? 'filled' : 'light'}
+                color={inputText === slot ? 'orange' : 'gray'}
+                onClick={() => handleSelectSlot(slot)}
+                style={{
+                  fontWeight: 600,
+                  height: 28,
+                  fontSize: 11,
+                }}
+              >
+                {slot}
+              </Button>
+            ))}
+          </SimpleGrid>
+
+          {/* Standard Interval Select Dropdown */}
+          <Select
+            size="xs"
+            placeholder="Select standard time slot..."
+            data={STANDARD_TIME_SLOTS}
+            value={STANDARD_TIME_SLOTS.includes(inputText) ? inputText : null}
+            onChange={(val) => {
+              if (val) handleSelectSlot(val);
+            }}
+            searchable
+            clearable
+            radius="md"
+            mb={8}
+            styles={{
+              input: {
+                fontSize: 12,
+                fontWeight: 600,
+              },
+            }}
+          />
           <Divider mb={8} />
 
           {/* Period (AM / PM) */}
