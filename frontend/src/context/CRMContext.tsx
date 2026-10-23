@@ -82,6 +82,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (path === 'customers/details' || path === 'customer-details') return 'customer-details';
     if (path === 'customers' || path === 'customer' || path === 'customers-all') return 'customers';
 
+    if (path === 'negotiations' || path === 'negotiation') return 'negotiations';
+
     if (path === 'projects/add' || path === 'add-project' || path === 'projects/create' || path === 'create-project') return 'add-project';
     if (path === 'projects/details' || path === 'project-details' || path === 'projects-details') return 'project-details';
     if (path === 'projects/my' || path === 'projects-my') return 'projects-my';
@@ -125,6 +127,7 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       else if (normalizedNav === 'call-logs' || normalizedNav === 'calls' || normalizedNav === 'call-log') targetPath = '/call-logs';
       else if (normalizedNav === 'customers' || normalizedNav === 'customer') targetPath = '/customers';
       else if (normalizedNav === 'customer-details') targetPath = '/customers/details';
+      else if (normalizedNav === 'negotiations' || normalizedNav === 'negotiation') targetPath = '/negotiations';
       else if (normalizedNav === 'projects' || normalizedNav === 'projects-management') targetPath = '/projects';
       else if (normalizedNav === 'add-project' || normalizedNav === 'create-project' || normalizedNav === 'projects/add') targetPath = '/projects/add';
       else if (normalizedNav === 'project-details') targetPath = '/projects/details';

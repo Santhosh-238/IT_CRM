@@ -33,12 +33,45 @@ export async function getUserPermissions(user) {
           OR: [
             { slug: 'super_admin' },
             { name: { equals: 'Super Admin', mode: 'insensitive' } },
+            { slug: 'admin' },
+            { name: { equals: 'Admin', mode: 'insensitive' } },
           ],
         },
         include: { permissions: true },
       });
 
       const permsMap = {};
+      const allModules = [
+        'dashboard',
+        'leads',
+        'negotiations',
+        'negotiation',
+        'contacts',
+        'customers',
+        'projects',
+        'tasks',
+        'meetings',
+        'scheduled_meetings',
+        'call_logs',
+        'billing',
+        'invoices',
+        'quotations',
+        'contracts',
+        'employee_management',
+        'access_control',
+        'settings',
+      ];
+      allModules.forEach((mod) => {
+        permsMap[mod] = {
+          view: true,
+          create: true,
+          edit: true,
+          delete: true,
+          export: true,
+          approve: true,
+        };
+      });
+
       if (adminRole?.permissions) {
         adminRole.permissions.forEach((p) => {
           permsMap[p.moduleId] = {
@@ -53,12 +86,19 @@ export async function getUserPermissions(user) {
       }
 
       const result = {
-        role: {
-          id: adminRole.id,
-          name: adminRole.name,
-          slug: adminRole.slug,
-          isSystem: true,
-        },
+        role: adminRole
+          ? {
+              id: adminRole.id,
+              name: adminRole.name,
+              slug: adminRole.slug,
+              isSystem: Boolean(adminRole.isSystem),
+            }
+          : {
+              id: 'super-admin-role',
+              name: 'Super Admin',
+              slug: 'super_admin',
+              isSystem: true,
+            },
         permissions: permsMap,
         isSuperAdmin: true,
       };

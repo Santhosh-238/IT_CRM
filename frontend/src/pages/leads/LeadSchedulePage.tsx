@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
-  Paper,
   Stack,
   SimpleGrid,
   Grid,
@@ -18,7 +17,6 @@ import {
   Divider,
   Menu,
   Modal,
-  Avatar,
   Tooltip,
   ThemeIcon,
   ScrollArea,
@@ -30,8 +28,6 @@ import {
   IconUser,
   IconBriefcase,
   IconMail,
-  IconPhone,
-  IconBrandWhatsapp,
   IconBuilding,
   IconBox,
   IconLayersSubtract,
@@ -459,7 +455,6 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
 
   // Lead Properties
   const leadName = activeLead?.name || 'Athi';
-  const designation = activeLead?.designation || 'CEO';
   const email = activeLead?.email || 'athi@gmail.com';
   const phone = activeLead?.phone || '+9000000012';
   const contactType = activeLead?.contactType || 'Company Representative';
@@ -473,20 +468,6 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
       : activeLead?.serviceList && activeLead.serviceList.length > 0
       ? activeLead.serviceList.join(', ')
       : 'IT Consulting';
-
-  const formattedCreatedAt = useMemo(() => {
-    if (activeLead?.createdAt) {
-      try {
-        const d = new Date(activeLead.createdAt);
-        return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} • ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-      } catch (_) {}
-    }
-    return 'Oct 14, 2026 • 12:15 PM';
-  }, [activeLead?.createdAt]);
-
-  const getInitial = (name?: string) => {
-    return name ? name.trim().charAt(0).toUpperCase() : 'A';
-  };
 
   // Schedule Meeting Handler
   const handleScheduleMeeting = async (e?: React.FormEvent) => {
@@ -1102,258 +1083,61 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
       </Group>
 
       {/* ========================================================================= */}
-      {/* 2. TOP EXECUTIVE HEADER CARD (Full Width as in Screenshot)                */}
+      {/* 2. SECTION TABS                                                           */}
       {/* ========================================================================= */}
-      <Paper
-        p={{ base: 'md', sm: 'xl' }}
-        radius="18px"
-        mb="lg"
+      <Box
+        mb="xl"
         style={{
-          backgroundColor: isDark ? '#111827' : '#FFFFFF',
-          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #EAECEF',
-          boxShadow: isDark ? '0 10px 30px rgba(0,0,0,0.4)' : '0 2px 12px rgba(0, 0, 0, 0.02)',
+          borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
         }}
       >
-        <Grid gutter={{ base: 'lg', md: 'xl' }} align="center">
-          
-          {/* Left Zone: Lead Identity & Contact */}
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Group gap="lg" align="flex-start" wrap="nowrap">
-              {/* Large Circular Avatar */}
-              <Box
+        <Group gap="xl" wrap="nowrap" style={{ minWidth: 'max-content' }}>
+          {SECTIONS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <UnstyledButton
+                key={tab.id}
+                onClick={() => handleSelectTab(tab.id)}
                 style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-                  color: '#FFFFFF',
+                  padding: '14px 6px',
+                  position: 'relative',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 28,
-                  fontWeight: 800,
-                  flexShrink: 0,
-                  boxShadow: '0 8px 24px rgba(79, 70, 229, 0.35)',
+                  gap: 8,
+                  cursor: 'pointer',
+                  borderBottom: isActive ? '3px solid #2563EB' : '3px solid transparent',
+                  transition: 'all 0.15s ease',
+                  marginBottom: -1,
                 }}
               >
-                {getInitial(leadName)}
-              </Box>
-
-              {/* Identity Details */}
-              <Box style={{ flex: 1 }}>
-                <Group gap="xs" align="center" mb={2}>
-                  <Text fw={800} size="22px" style={{ color: isDark ? '#F8FAFC' : '#111827', letterSpacing: '-0.02em' }}>
-                    {leadName}
-                  </Text>
-                  <Badge
-                    size="sm"
-                    radius="xl"
-                    style={{
-                      backgroundColor: isDark ? 'rgba(16, 185, 129, 0.16)' : '#ECFDF5',
-                      color: isDark ? '#6EE7B7' : '#059669',
-                      border: isDark ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #A7F3D0',
-                      fontWeight: 700,
-                      textTransform: 'none',
-                    }}
-                  >
-                    Active
-                  </Badge>
-                </Group>
-
-                <Text size="13px" fw={600} style={{ color: isDark ? '#94A3B8' : '#64748B' }} mb={8}>
-                  {designation} • {companyName}
-                </Text>
-
-                <Group gap="md" align="center" mb={10} wrap="wrap">
-                  <Group gap={6} align="center">
-                    <IconPhone size={14} color="#6366F1" />
-                    <Text size="13px" fw={600} style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
-                      {phone}
-                    </Text>
-                    {phone && (
-                      <Box
-                        component="a"
-                        href={`https://wa.me/${phone.replace(/[^0-9]/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          width: 17,
-                          height: 17,
-                          borderRadius: '50%',
-                          backgroundColor: '#22C55E',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#FFFFFF',
-                          textDecoration: 'none',
-                        }}
-                      >
-                        <IconBrandWhatsapp size={11} stroke={2.5} />
-                      </Box>
-                    )}
-                  </Group>
-
-                  <Group gap={6} align="center">
-                    <IconMail size={14} color="#2563EB" />
-                    <Text
-                      size="13px"
-                      fw={600}
-                      component="a"
-                      href={`mailto:${email}`}
-                      style={{ color: '#2563EB', textDecoration: 'none' }}
-                    >
-                      {email}
-                    </Text>
-                  </Group>
-                </Group>
-
-                {/* Badges / Pills */}
-                <Group gap={8} wrap="wrap">
-                  <Badge
-                    size="md"
-                    radius="md"
-                    style={{
-                      backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
-                      color: isDark ? '#A5B4FC' : '#4F46E5',
-                      border: isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #C7D2FE',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {contactType}
-                  </Badge>
-
-                  <Badge
-                    size="md"
-                    radius="md"
-                    style={{
-                      backgroundColor: isDark ? 'rgba(249, 115, 22, 0.15)' : '#FFF7ED',
-                      color: isDark ? '#FDBA74' : '#EA580C',
-                      border: isDark ? '1px solid rgba(249, 115, 22, 0.3)' : '1px solid #FFEDD5',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {requirementType}
-                  </Badge>
-                </Group>
-              </Box>
-            </Group>
-          </Grid.Col>
-
-          {/* Right Zone: Meta Info Grid */}
-          <Grid.Col span={{ base: 12, md: 6 }}>
-            <Group justify="flex-end" gap="2.5rem" wrap="wrap">
-              <Stack gap={8}>
-                <Group gap={8} wrap="nowrap" align="center">
-                  <Text size="12px" c="dimmed" style={{ minWidth: 72 }}>Company</Text>
-                  <Text size="12px" fw={700} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-                    {companyName}
-                  </Text>
-                </Group>
-                <Group gap={8} wrap="nowrap" align="center">
-                  <Text size="12px" c="dimmed" style={{ minWidth: 72 }}>Lead Type</Text>
-                  <Text size="12px" fw={700} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-                    {offerings}
-                  </Text>
-                </Group>
-                <Group gap={8} wrap="nowrap" align="center">
-                  <Text size="12px" c="dimmed" style={{ minWidth: 72 }}>Stage</Text>
-                  <Badge size="sm" color="green" variant="light" style={{ textTransform: 'none' }}>
-                    {activeLead?.stage || 'Active'}
-                  </Badge>
-                </Group>
-              </Stack>
-
-              <Stack gap={8}>
-                <Group gap={8} wrap="nowrap" align="center">
-                  <Text size="12px" c="dimmed" style={{ minWidth: 78 }}>Created On</Text>
-                  <Text size="12px" fw={600} style={{ color: isDark ? '#CBD5E1' : '#475569' }}>
-                    {formattedCreatedAt}
-                  </Text>
-                </Group>
-                <Group gap={8} wrap="nowrap" align="center">
-                  <Text size="12px" c="dimmed" style={{ minWidth: 78 }}>Assigned To</Text>
-                  <Group gap={6} align="center">
-                    <Avatar size={20} radius="xl" color="blue">
-                      {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'S'}
-                    </Avatar>
-                    <Text size="12px" fw={700} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-                      {currentUser?.name || 'sandy'}
-                    </Text>
-                  </Group>
-                </Group>
-              </Stack>
-            </Group>
-          </Grid.Col>
-        </Grid>
-      </Paper>
-
-      {/* ========================================================================= */}
-      {/* 3. SECOND CARD: DEAL SECTIONS (Card Header contains Sections Tabs)        */}
-      {/* ========================================================================= */}
-      <Paper
-        radius="18px"
-        style={{
-          backgroundColor: isDark ? '#111827' : '#FFFFFF',
-          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-          boxShadow: isDark ? '0 10px 30px rgba(0,0,0,0.4)' : '0 2px 12px rgba(0, 0, 0, 0.02)',
-          overflow: 'hidden',
-        }}
-      >
-        {/* CARD HEADER: Section Tabs */}
-        <Box
-          px={{ base: 'md', sm: 'xl' }}
-          style={{
-            borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-            backgroundColor: isDark ? '#111827' : '#FFFFFF',
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-          }}
-        >
-          <Group gap="xl" wrap="nowrap" style={{ minWidth: 'max-content' }}>
-            {SECTIONS.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <UnstyledButton
-                  key={tab.id}
-                  onClick={() => handleSelectTab(tab.id)}
+                <Icon
+                  size={16}
+                  color={isActive ? '#2563EB' : (isDark ? '#94A3B8' : '#64748B')}
+                  stroke={isActive ? 2.4 : 1.8}
+                />
+                <Text
+                  size="14px"
+                  fw={isActive ? 700 : 500}
                   style={{
-                    padding: '16px 4px',
-                    position: 'relative',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    cursor: 'pointer',
-                    borderBottom: isActive ? '3px solid #2563EB' : '3px solid transparent',
-                    transition: 'all 0.15s ease',
-                    marginBottom: -1,
+                    color: isActive ? (isDark ? '#93C5FD' : '#2563EB') : (isDark ? '#94A3B8' : '#64748B'),
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  <Icon
-                    size={16}
-                    color={isActive ? '#2563EB' : (isDark ? '#94A3B8' : '#64748B')}
-                    stroke={isActive ? 2.4 : 1.8}
-                  />
-                  <Text
-                    size="14px"
-                    fw={isActive ? 700 : 500}
-                    style={{
-                      color: isActive ? (isDark ? '#93C5FD' : '#2563EB') : (isDark ? '#94A3B8' : '#64748B'),
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {tab.label}
-                  </Text>
-                </UnstyledButton>
-              );
-            })}
-          </Group>
-        </Box>
+                  {tab.label}
+                </Text>
+              </UnstyledButton>
+            );
+          })}
+        </Group>
+      </Box>
 
-        {/* CARD BODY: Active Section Content */}
-        <Box p={{ base: 'md', sm: 'xl' }}>
+      {/* ========================================================================= */}
+      {/* 3. ACTIVE SECTION CONTENT                                                 */}
+      {/* ========================================================================= */}
+      <Box>
 
 
       {/* SECTION 1: MEETINGS */}
@@ -1498,9 +1282,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           onNavigateSection={handleSelectTab}
         />
       )}
-
-        </Box>
-      </Paper>
+      </Box>
 
       {/* ========================================================================= */}
       {/* MODALS                                                                    */}

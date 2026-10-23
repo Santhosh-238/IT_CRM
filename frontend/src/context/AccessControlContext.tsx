@@ -63,6 +63,7 @@ const DEFAULT_SYSTEM_MODULES: SystemModule[] = [
   { id: 'call_logs', name: 'Call Logs', category: 'Main Navigation', description: 'Telephony records, call durations, notes, and follow-ups.' },
   { id: 'customers', name: 'Customers', category: 'Main Navigation', description: 'Client company directories, accounts, and relationship history.' },
   { id: 'projects', name: 'Projects Management', category: 'Main Navigation', description: 'Client project delivery, sprints, milestones, and task SLAs.' },
+  { id: 'negotiations', name: 'Negotiations', category: 'Main Navigation', description: 'Commercial terms, pricing discussions, discounts, and client follow-ups.' },
 
   // 2. Administration & Security
   { id: 'access_control', name: 'Access Control & RBAC', category: 'Administration & Security', description: 'Role-Based Access Control, permissions matrix, and role hierarchy.' },

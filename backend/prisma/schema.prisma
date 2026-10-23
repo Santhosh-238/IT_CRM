@@ -5,7 +5,6 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/client_v2"
 }
 
 model User {
@@ -418,6 +417,7 @@ model QuotationItem {
   quantity    Float     @default(1)
   unitPrice   Float     @default(0)
   discount    Float     @default(0)
+  discountType String?  @default("percentage")
   taxRate     Float     @default(18.0)
   taxAmount   Float     @default(0)
   totalAmount Float     @default(0)
@@ -676,5 +676,102 @@ model BillingSettings {
   defaultPaymentTerms    String   @default("Net 30")
   defaultTermsConditions String?  @default("1. Payment is due within the stipulated credit term from invoice date.\n2. In case of delayed payment, interest @ 18% per annum will be charged.\n3. Goods or services once delivered/rendered are not refundable.")
   updatedAt              DateTime @updatedAt
+}
+
+// =============================================================================
+// NEGOTIATION MODULE ENTITY
+// =============================================================================
+
+model Negotiation {
+  id                  String   @id @default(uuid())
+  negotiationId       String   @unique // e.g. "NEG-2026-1001"
+  leadId              String?  @map("lead_id") // Reference to CRM Lead
+  leadName            String   // Lead / Client Name
+  clientName          String?  // Client / Company Name
+  contactId           String?  // Reference to CRM Contact
+  quotationId         String?  // Reference to Quotation
+  quotationNumber     String?  // Linked Quotation Number
+  proposalId          String?  // Reference to Proposal
+  proposalNumber      String?  // Linked Proposal Number
+  assignedTo          String?  // Responsible Employee ID
+  assignedToName      String   // Responsible Employee Name
+  negotiationDate     String   // YYYY-MM-DD
+  status              String   @default("In Progress") // "In Progress" | "Awaiting Client" | "Revised Quotation" | "Won" | "Lost"
+  quotedAmount        Float    @default(0) // Original quotation amount
+  expectedFinalAmount Float    @default(0) // Expected negotiated deal amount
+  discountPercentage  Float    @default(0) // Proposed discount percentage (%)
+  discountAmount      Float    @default(0) // Calculated discount amount
+  paymentTerms        String?  @default("Milestone Based") // e.g. "Full Payment", "50% Advance", "Milestone Based", "Net 30"
+  scopeChanges        String?  // Describe additions, removals, or modifications
+  deliveryTimeline    String?  // Proposed or agreed delivery period
+  clientRequirements  String?  // Client concerns, requested changes, and objections
+  notes               String?  // Negotiation summaries, commitments, decisions
+  nextFollowUpDate    String?  // Conditionally required when status is "Awaiting Client"
+  discussionHistory   Json?    @default("[]") // Discussion entries: { id, date, author, topic, notes, priceImpact, status, createdAt }
+  lossReason          String?  // Recorded if status is "Lost"
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("negotiations")
+}
+
+// =============================================================================
+// CONTRACT MODULE ENTITY (UNDER LEAD MODULE)
+// =============================================================================
+
+model Contract {
+  id                    String   @id @default(uuid())
+  contractId            String   @unique // e.g. "CNT-2026-1001"
+  title                 String   // Contract Title
+  contractType          String   @default("Software Development") // "Software Development" | "IT Product Sales" | "Implementation" | "Maintenance" | "Support" | "Other"
+  clientName            String   // Client Name
+  leadId                String?  @map("lead_id") // Reference to CRM Lead
+  leadName              String?  // Lead Name
+  contactId             String?  // Reference to CRM Contact
+  proposalId            String?  // Reference to Proposal
+  proposalNumber        String?  // Linked Proposal Number
+  negotiationId         String?  // Reference to Negotiation
+  negotiationNumber     String?  // Linked Negotiation Number
+  assignedTo            String?  // Assigned Employee ID
+  assignedToName        String   // Assigned Employee Name
+  contractDate          String   // YYYY-MM-DD
+  
+  // Project & Scope Details
+  projectName           String?
+  projectDescription    String?
+  scopeOfWork           String?
+  deliverables          String?
+  responsibilities      String?
+  startDate             String?  // YYYY-MM-DD
+  endDate               String?  // YYYY-MM-DD
+  specialConditions     String?
+  
+  // Contract Terms
+  contractValue         Float    @default(0)
+  warrantyTerms         String?
+  confidentialityClause String?
+  terminationClause     String?
+  additionalTerms       String?
+  
+  // Documents & Signatures
+  documentName          String?
+  documentUrl           String?
+  documentSize          String?
+  attachments           Json?    @default("[]")
+  clientSignatoryName   String?
+  companySignatoryName  String?  @default("OmniTech Solutions Representative")
+  signatureStatus       String   @default("Pending") // "Pending" | "Partially Signed" | "Signed"
+  signedDate            String?
+  approvalStatus        String   @default("Draft") // "Draft" | "Pending Approval" | "Approved" | "Rejected"
+  approvedBy            String?
+  approvalDate          String?
+  
+  // Contract Status
+  status                String   @default("Draft") // "Draft" | "Pending Approval" | "Sent for Signature" | "Partially Signed" | "Active" | "Completed" | "Expired" | "Terminated"
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("contracts")
 }
 

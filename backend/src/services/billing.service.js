@@ -246,6 +246,100 @@ export async function getQuotationByIdService(id) {
   return quote;
 }
 
+/**
+ * Unified calculation function for Quotation totals, line items, and GST taxes
+ */
+export function calculateQuotationTotals(rawItems = [], discountType = 'percentage', discountValue = 0) {
+  let grossSubtotal = 0;
+  let totalLineDiscount = 0;
+
+  const itemsWithComputed = (Array.isArray(rawItems) ? rawItems : []).map((item) => {
+    const qty = Number(item.quantity) || 1;
+    const price = Number(item.unitPrice) || 0;
+    const gross = qty * price;
+    const discVal = Number(item.discount) || 0;
+    const discType = item.discountType || 'percentage';
+
+    let lineDiscAmt = 0;
+    if (discType === 'percentage') {
+      lineDiscAmt = (gross * discVal) / 100;
+    } else {
+      lineDiscAmt = Math.min(gross, discVal);
+    }
+    lineDiscAmt = Number(lineDiscAmt.toFixed(2));
+    const lineTaxable = Math.max(0, gross - lineDiscAmt);
+    const taxRate = item.taxRate !== undefined ? Number(item.taxRate) : 18.0;
+
+    grossSubtotal += gross;
+    totalLineDiscount += lineDiscAmt;
+
+    return {
+      item,
+      qty,
+      price,
+      discVal,
+      discType,
+      lineDiscAmt,
+      lineTaxable,
+      taxRate,
+    };
+  });
+
+  const netSubtotal = Math.max(0, grossSubtotal - totalLineDiscount);
+
+  // Overall Quotation Discount
+  const discType = discountType || 'percentage';
+  const discVal = Number(discountValue) || 0;
+  let discountAmount = 0;
+  if (discType === 'percentage') {
+    discountAmount = (netSubtotal * discVal) / 100;
+  } else {
+    discountAmount = Math.min(netSubtotal, discVal);
+  }
+  discountAmount = Number(discountAmount.toFixed(2));
+
+  const taxableAmount = Math.max(0, netSubtotal - discountAmount);
+  const factor = netSubtotal > 0 ? taxableAmount / netSubtotal : 1;
+
+  let totalTax = 0;
+  const itemsToCreate = itemsWithComputed.map((calc) => {
+    const effectiveBase = calc.lineTaxable * factor;
+    const lineTax = Number(((effectiveBase * calc.taxRate) / 100).toFixed(2));
+    const lineTotal = Number((calc.lineTaxable + lineTax).toFixed(2));
+    totalTax += lineTax;
+
+    return {
+      productId: calc.item.productId || null,
+      itemCode: calc.item.itemCode || null,
+      itemName: calc.item.itemName?.trim() || 'Item',
+      itemType: calc.item.itemType || 'Product',
+      description: calc.item.description ? calc.item.description.trim() : null,
+      quantity: calc.qty,
+      unitPrice: calc.price,
+      discount: calc.discVal,
+      discountType: calc.discType || 'percentage',
+      taxRate: calc.taxRate,
+      taxAmount: lineTax,
+      totalAmount: lineTotal,
+    };
+  });
+
+  totalTax = Number(totalTax.toFixed(2));
+  const grandTotal = Number((taxableAmount + totalTax).toFixed(2));
+
+  return {
+    grossSubtotal: Number(grossSubtotal.toFixed(2)),
+    totalLineDiscount: Number(totalLineDiscount.toFixed(2)),
+    subtotal: Number(netSubtotal.toFixed(2)),
+    discountType: discType,
+    discountValue: discVal,
+    discountAmount,
+    taxAmount: totalTax,
+    grandTotal,
+    itemsToCreate,
+  };
+}
+
 export async function createQuotationService(data, user) {
   if (!data.contactName?.trim()) {
     const err = new Error('Client / Contact Name is required.');
@@ -264,48 +358,9 @@ export async function createQuotationService(data, user) {
     data: { quotationNextNumber: nextNum + 1 },
   });
 
-  // Calculate Line Items
+  // Calculate Totals using unified helper
   const rawItems = Array.isArray(data.items) && data.items.length > 0 ? data.items : [];
-  let subtotal = 0;
-  let totalTax = 0;
-
-  const itemsToCreate = rawItems.map((item) => {
-    const qty = Number(item.quantity) || 1;
-    const price = Number(item.unitPrice) || 0;
-    const itemDisc = Number(item.discount) || 0;
-    const lineSubtotal = Math.max(0, qty * price - itemDisc);
-    const taxRate = item.taxRate !== undefined ? Number(item.taxRate) : 18.0;
-    const taxAmt = Number(((lineSubtotal * taxRate) / 100).toFixed(2));
-    const totalAmount = lineSubtotal + taxAmt;
-
-    subtotal += lineSubtotal;
-    totalTax += taxAmt;
-
-    return {
-      productId: item.productId || null,
-      itemCode: item.itemCode || null,
-      itemName: item.itemName?.trim() || 'Item',
-      itemType: item.itemType || 'Product',
-      description: item.description ? item.description.trim() : null,
-      quantity: qty,
-      unitPrice: price,
-      discount: itemDisc,
-      taxRate: taxRate,
-      taxAmount: taxAmt,
-      totalAmount: totalAmount,
-    };
-  });
-
-  // Quotation-level Discount
-  let discountAmount = 0;
-  if (data.discountType === 'percentage') {
-    discountAmount = (subtotal * (Number(data.discountValue) || 0)) / 100;
-  } else {
-    discountAmount = Number(data.discountValue) || 0;
-  }
-  discountAmount = Math.min(subtotal, Math.max(0, discountAmount));
-
-  const grandTotal = Math.max(0, subtotal - discountAmount + totalTax);
+  const totals = calculateQuotationTotals(rawItems, data.discountType, data.discountValue);
 
   const quote = await prisma.quotation.create({
     data: {
@@ -322,19 +377,19 @@ export async function createQuotationService(data, user) {
       validUntil: data.validUntil || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
       status: data.status || 'Draft',
       currency: data.currency || 'INR',
-      subtotal: Number(subtotal.toFixed(2)),
-      discountType: data.discountType || 'percentage',
-      discountValue: Number(data.discountValue) || 0,
-      discountAmount: Number(discountAmount.toFixed(2)),
-      taxAmount: Number(totalTax.toFixed(2)),
-      grandTotal: Number(grandTotal.toFixed(2)),
+      subtotal: totals.subtotal,
+      discountType: totals.discountType,
+      discountValue: totals.discountValue,
+      discountAmount: totals.discountAmount,
+      taxAmount: totals.taxAmount,
+      grandTotal: totals.grandTotal,
       paymentTerms: data.paymentTerms || settings.defaultPaymentTerms || 'Net 30',
       notes: data.notes ? data.notes.trim() : null,
       termsConditions: data.termsConditions ? data.termsConditions.trim() : settings.defaultTermsConditions,
       salesOwnerId: user?.id || null,
       salesOwnerName: user?.name || null,
       items: {
-        create: itemsToCreate,
+        create: totals.itemsToCreate,
       },
     },
     include: { items: true },
@@ -372,50 +427,19 @@ export async function updateQuotationService(id, data, user) {
   if (Array.isArray(data.items)) {
     await prisma.quotationItem.deleteMany({ where: { quotationId: existing.id } });
 
-    let subtotal = 0;
-    let totalTax = 0;
-    const itemsToCreate = data.items.map((item) => {
-      const qty = Number(item.quantity) || 1;
-      const price = Number(item.unitPrice) || 0;
-      const itemDisc = Number(item.discount) || 0;
-      const lineSubtotal = Math.max(0, qty * price - itemDisc);
-      const taxRate = item.taxRate !== undefined ? Number(item.taxRate) : 18.0;
-      const taxAmt = Number(((lineSubtotal * taxRate) / 100).toFixed(2));
-      const totalAmount = lineSubtotal + taxAmt;
-
-      subtotal += lineSubtotal;
-      totalTax += taxAmt;
-
-      return {
-        productId: item.productId || null,
-        itemCode: item.itemCode || null,
-        itemName: item.itemName?.trim() || 'Item',
-        itemType: item.itemType || 'Product',
-        description: item.description ? item.description.trim() : null,
-        quantity: qty,
-        unitPrice: price,
-        discount: itemDisc,
-        taxRate: taxRate,
-        taxAmount: taxAmt,
-        totalAmount: totalAmount,
-      };
-    });
-
     const discType = data.discountType || existing.discountType;
     const discVal = data.discountValue !== undefined ? Number(data.discountValue) : existing.discountValue;
-    let discountAmount = discType === 'percentage' ? (subtotal * discVal) / 100 : discVal;
-    discountAmount = Math.min(subtotal, Math.max(0, discountAmount));
-    const grandTotal = Math.max(0, subtotal - discountAmount + totalTax);
+    const totals = calculateQuotationTotals(data.items, discType, discVal);
 
     updateData = {
       ...updateData,
-      subtotal: Number(subtotal.toFixed(2)),
-      discountType: discType,
-      discountValue: discVal,
-      discountAmount: Number(discountAmount.toFixed(2)),
-      taxAmount: Number(totalTax.toFixed(2)),
-      grandTotal: Number(grandTotal.toFixed(2)),
-      items: { create: itemsToCreate },
+      subtotal: totals.subtotal,
+      discountType: totals.discountType,
+      discountValue: totals.discountValue,
+      discountAmount: totals.discountAmount,
+      taxAmount: totals.taxAmount,
+      grandTotal: totals.grandTotal,
+      items: { create: totals.itemsToCreate },
     };
   }
 

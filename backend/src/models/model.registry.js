@@ -54,6 +54,12 @@ export const SYSTEM_MODULES = [
     category: 'Main Navigation',
     description: 'Client project delivery, sprints, milestones, and task SLAs.',
   },
+  {
+    id: 'negotiations',
+    name: 'Negotiations',
+    category: 'Main Navigation',
+    description: 'Commercial deal negotiations, expected values, discounts, and client discussions.',
+  },
 
   // 2. Administration & Security
   {

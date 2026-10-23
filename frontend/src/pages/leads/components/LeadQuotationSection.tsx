@@ -47,7 +47,6 @@ import { Quotation, QuotationItem } from '../../../types/billing';
 import { billingService } from '../../../services/billingService';
 import { QuotationModal } from '../../billing/components/QuotationModal';
 import { QuotationPrintModal } from '../../billing/components/QuotationPrintModal';
-import { LedgerOneQuotationMakerModal } from './LedgerOneQuotationMakerModal';
 
 interface LeadQuotationSectionProps {
   lead: Lead;
@@ -65,7 +64,6 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
   onNavigateSection,
 }) => {
   // Modal states
-  const [ledgerOneModalOpened, setLedgerOneModalOpened] = useState(false);
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
   const [printingQuotation, setPrintingQuotation] = useState<Quotation | null>(null);
@@ -88,11 +86,6 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
   }, [lead?.id]);
 
   const handleOpenCreate = () => {
-    // Directly opens LedgerOne Quotation Maker in CRM Modal
-    setLedgerOneModalOpened(true);
-  };
-
-  const handleOpenCrmModalCreate = () => {
     setEditingQuotation(null);
     setCreateModalOpened(true);
   };
@@ -219,12 +212,26 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
 
   return (
     <Box>
-      {/* 1. Header Toolbar */}
-      <Group justify="space-between" align="center" mb="md" wrap="wrap" gap="md">
-        <div>
-          <Text fw={800} size="18px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-            Quotations
-          </Text>
+      {createModalOpened ? (
+        <QuotationModal
+          opened={createModalOpened}
+          embedded={true}
+          onClose={() => {
+            setCreateModalOpened(false);
+            setEditingQuotation(null);
+          }}
+          quotation={editingQuotation}
+          onSuccess={handleQuotationSaved}
+          initialLead={lead}
+        />
+      ) : (
+        <>
+          {/* 1. Header Toolbar */}
+          <Group justify="space-between" align="center" mb="md" wrap="wrap" gap="md">
+            <div>
+              <Text fw={800} size="18px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                Quotations
+              </Text>
           <Text size="xs" c="dimmed">
             Generate and manage itemized price quotations and estimates for {lead.name}.
           </Text>
@@ -243,17 +250,6 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
             }}
           >
             Create Quotation
-          </Button>
-
-          <Button
-            size="sm"
-            variant="light"
-            color="indigo"
-            leftSection={<IconFileText size={14} />}
-            onClick={handleOpenCrmModalCreate}
-            style={{ borderRadius: 10, fontWeight: 700 }}
-          >
-            In-App Form
           </Button>
 
           <Button
@@ -303,16 +299,6 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
               }}
             >
               Create Quotation
-            </Button>
-            <Button
-              size="sm"
-              variant="light"
-              color="indigo"
-              leftSection={<IconFileText size={15} />}
-              onClick={handleOpenCrmModalCreate}
-              style={{ borderRadius: 10, fontWeight: 700 }}
-            >
-              In-App Form
             </Button>
           </Group>
         </Paper>
@@ -613,6 +599,8 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
           </Stack>
         </>
       )}
+        </>
+      )}
 
       {/* ========================================================================= */}
       {/* 3. QUOTATION DETAILS MODAL (Matching Meeting & Proposal Details Design)   */}
@@ -627,17 +615,23 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
         withCloseButton={false}
         styles={{
           header: { display: 'none' },
-          body: { padding: 0 },
+          body: {
+            padding: 0,
+            maxHeight: 'calc(90vh - 20px)',
+            overflowY: 'auto',
+          },
           content: {
             backgroundColor: isDark ? '#111827' : '#FFFFFF',
             border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
             borderRadius: '16px',
-            overflow: 'hidden',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
           },
         }}
       >
         {selectedQuotation && (
-          <Box p={{ base: 'md', sm: 'xl' }}>
+          <Box p={{ base: 'md', sm: 'xl' }} pb={{ base: 'xl', sm: '2xl' }}>
             {/* Modal Top Header */}
             <Group justify="space-between" align="center" mb="lg">
               <Group gap="sm">
@@ -842,103 +836,159 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
                         <Table.Th style={{ fontSize: 11, fontWeight: 700, color: '#64748B' }}>TYPE</Table.Th>
                         <Table.Th style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textAlign: 'center' }}>QTY</Table.Th>
                         <Table.Th style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textAlign: 'right' }}>UNIT PRICE</Table.Th>
+                        <Table.Th style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textAlign: 'right' }}>DISCOUNT</Table.Th>
                         <Table.Th style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textAlign: 'right' }}>TAX</Table.Th>
                         <Table.Th style={{ fontSize: 11, fontWeight: 700, color: '#64748B', textAlign: 'right' }}>TOTAL</Table.Th>
                       </Table.Tr>
                     </Table.Thead>
                     <Table.Tbody>
-                      {selectedQuotation.items.map((item, idx) => (
-                        <Table.Tr key={item.id || idx}>
-                          <Table.Td>
-                            <Text size="xs" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                              {item.itemName}
-                            </Text>
-                            {item.description && (
-                              <Text size="10px" c="dimmed">
-                                {item.description}
+                      {selectedQuotation.items.map((item, idx) => {
+                        const qty = Number(item.quantity) || 1;
+                        const price = Number(item.unitPrice) || 0;
+                        const gross = qty * price;
+                        const disc = Number(item.discount) || 0;
+                        const discType = item.discountType || (disc > 0 && disc <= 100 ? 'percentage' : 'fixed');
+                        const discAmt = discType === 'percentage' ? (gross * disc) / 100 : Math.min(gross, disc);
+                        const discDisplay = disc > 0
+                          ? (discType === 'percentage'
+                              ? `${disc}% (₹${discAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })})`
+                              : `₹${disc.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`)
+                          : '—';
+
+                        return (
+                          <Table.Tr key={item.id || idx}>
+                            <Table.Td>
+                              <Text size="xs" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                                {item.itemName}
                               </Text>
-                            )}
-                          </Table.Td>
-                          <Table.Td>
-                            <Badge size="xs" variant="light" color={item.itemType === 'Product' ? 'blue' : 'teal'}>
-                              {item.itemType || 'Service'}
-                            </Badge>
-                          </Table.Td>
-                          <Table.Td style={{ textAlign: 'center' }}>
-                            <Text size="xs" fw={600}>
-                              {item.quantity}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td style={{ textAlign: 'right' }}>
-                            <Text size="xs" fw={600}>
-                              ₹{Number(item.unitPrice).toLocaleString('en-IN')}
-                            </Text>
-                          </Table.Td>
-                          <Table.Td style={{ textAlign: 'right' }}>
-                            <Text size="xs" c="dimmed">
-                              {item.taxRate}%
-                            </Text>
-                          </Table.Td>
-                          <Table.Td style={{ textAlign: 'right' }}>
-                            <Text size="xs" fw={700} style={{ color: '#2563EB' }}>
-                              ₹{Number(item.totalAmount || item.quantity * item.unitPrice).toLocaleString('en-IN')}
-                            </Text>
-                          </Table.Td>
-                        </Table.Tr>
-                      ))}
+                              {item.description && (
+                                <Text size="10px" c="dimmed">
+                                  {item.description}
+                                </Text>
+                              )}
+                            </Table.Td>
+                            <Table.Td>
+                              <Badge size="xs" variant="light" color={item.itemType === 'Product' ? 'blue' : 'teal'}>
+                                {item.itemType || 'Service'}
+                              </Badge>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'center' }}>
+                              <Text size="xs" fw={600}>
+                                {item.quantity}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <Text size="xs" fw={600}>
+                                ₹{price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <Text size="xs" fw={disc > 0 ? 600 : 400} style={{ color: disc > 0 ? '#16A34A' : '#94A3B8' }}>
+                                {discDisplay}
+                              </Text>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <Text size="xs" c="dimmed">
+                                {item.taxRate}%
+                              </Text>
+                            </Table.Td>
+                            <Table.Td style={{ textAlign: 'right' }}>
+                              <Text size="xs" fw={700} style={{ color: '#2563EB' }}>
+                                ₹{Number(item.totalAmount || (gross - discAmt) + ((gross - discAmt) * (item.taxRate || 18) / 100)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                              </Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        );
+                      })}
                     </Table.Tbody>
                   </Table>
                 </Paper>
               </Box>
             )}
 
-            {/* Financial Summary Card */}
-            <Paper
-              p="md"
-              radius="md"
-              mb="lg"
-              style={{
-                background: isDark ? '#1E293B' : '#F8FAFC',
-                border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
-              }}
-            >
-              <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
-                <div>
-                  <Text size="11px" c="dimmed" fw={600}>
-                    Subtotal
-                  </Text>
-                  <Text size="sm" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                    ₹{selectedQuotation.subtotal?.toLocaleString('en-IN') || '0'}
-                  </Text>
-                </div>
-                <div>
-                  <Text size="11px" c="dimmed" fw={600}>
-                    Discount
-                  </Text>
-                  <Text size="sm" fw={700} style={{ color: '#E11D48' }}>
-                    {selectedQuotation.discountValue && selectedQuotation.discountValue > 0
-                      ? `- ₹${selectedQuotation.discountAmount?.toLocaleString('en-IN') || selectedQuotation.discountValue}`
-                      : '₹0'}
-                  </Text>
-                </div>
-                <div>
-                  <Text size="11px" c="dimmed" fw={600}>
-                    Tax Amount
-                  </Text>
-                  <Text size="sm" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                    ₹{selectedQuotation.taxAmount?.toLocaleString('en-IN') || '0'}
-                  </Text>
-                </div>
-                <div>
-                  <Text size="11px" c="dimmed" fw={600}>
-                    Grand Total
-                  </Text>
-                  <Text size="md" fw={800} style={{ color: '#2563EB' }}>
-                    ₹{selectedQuotation.grandTotal?.toLocaleString('en-IN') || '0'}
-                  </Text>
-                </div>
-              </SimpleGrid>
-            </Paper>
+            {/* Financial Summary Card with full discount breakdown */}
+            {(() => {
+              const grossSub = selectedQuotation.items?.reduce(
+                (acc, it) => acc + (Number(it.quantity) || 1) * (Number(it.unitPrice) || 0),
+                0
+              ) || Number(selectedQuotation.subtotal) || 0;
+
+              const totalItemDisc = selectedQuotation.items?.reduce((acc, it) => {
+                const qty = Number(it.quantity) || 1;
+                const price = Number(it.unitPrice) || 0;
+                const gross = qty * price;
+                const disc = Number(it.discount) || 0;
+                const discType = it.discountType || (disc > 0 && disc <= 100 ? 'percentage' : 'fixed');
+                return acc + (discType === 'percentage' ? (gross * disc) / 100 : Math.min(gross, disc));
+              }, 0) || 0;
+
+              const netSub = Math.max(0, grossSub - totalItemDisc);
+              const overallDiscAmt = Number(selectedQuotation.discountAmount) || 0;
+              const taxableAmt = Math.max(0, netSub - overallDiscAmt);
+
+              return (
+                <Paper
+                  p="md"
+                  radius="md"
+                  mb="lg"
+                  style={{
+                    background: isDark ? '#1E293B' : '#F8FAFC',
+                    border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
+                  }}
+                >
+                  <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing="md">
+                    <div>
+                      <Text size="11px" c="dimmed" fw={600}>
+                        Subtotal before discounts
+                      </Text>
+                      <Text size="sm" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                        ₹{grossSub.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </div>
+                    <div>
+                      <Text size="11px" c="dimmed" fw={600}>
+                        Item-wise Discount
+                      </Text>
+                      <Text size="sm" fw={700} style={{ color: totalItemDisc > 0 ? '#16A34A' : isDark ? '#94A3B8' : '#64748B' }}>
+                        {totalItemDisc > 0 ? `- ₹${totalItemDisc.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00'}
+                      </Text>
+                    </div>
+                    <div>
+                      <Text size="11px" c="dimmed" fw={600}>
+                        Overall Discount {selectedQuotation.discountValue && selectedQuotation.discountValue > 0 ? `(${selectedQuotation.discountValue}%)` : ''}
+                      </Text>
+                      <Text size="sm" fw={700} style={{ color: overallDiscAmt > 0 ? '#16A34A' : isDark ? '#94A3B8' : '#64748B' }}>
+                        {overallDiscAmt > 0 ? `- ₹${overallDiscAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00'}
+                      </Text>
+                    </div>
+                    <div>
+                      <Text size="11px" c="dimmed" fw={600}>
+                        Taxable Amount
+                      </Text>
+                      <Text size="sm" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                        ₹{taxableAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </div>
+                    <div>
+                      <Text size="11px" c="dimmed" fw={600}>
+                        GST Amount
+                      </Text>
+                      <Text size="sm" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                        ₹{(selectedQuotation.taxAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </div>
+                    <div>
+                      <Text size="11px" c="dimmed" fw={600}>
+                        Grand Total
+                      </Text>
+                      <Text size="md" fw={800} style={{ color: '#2563EB' }}>
+                        ₹{selectedQuotation.grandTotal?.toLocaleString('en-IN', { minimumFractionDigits: 2 }) || '0'}
+                      </Text>
+                    </div>
+                  </SimpleGrid>
+                </Paper>
+              );
+            })()}
 
             {/* Notes & Terms (if present) */}
             {(selectedQuotation.notes || selectedQuotation.termsConditions) && (
@@ -1017,34 +1067,7 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
         )}
       </Modal>
 
-      {/* 4a. LedgerOne Quotation Maker Modal (Iframe integration) */}
-      {ledgerOneModalOpened && (
-        <LedgerOneQuotationMakerModal
-          opened={ledgerOneModalOpened}
-          onClose={() => setLedgerOneModalOpened(false)}
-          lead={lead}
-          onSuccess={handleQuotationSaved}
-          onSwitchToCrmForm={() => {
-            setLedgerOneModalOpened(false);
-            setEditingQuotation(null);
-            setCreateModalOpened(true);
-          }}
-        />
-      )}
 
-      {/* 4b. In-App CRM Quotation Create / Edit Modal */}
-      {createModalOpened && (
-        <QuotationModal
-          opened={createModalOpened}
-          onClose={() => {
-            setCreateModalOpened(false);
-            setEditingQuotation(null);
-          }}
-          quotation={editingQuotation}
-          onSuccess={handleQuotationSaved}
-          initialLead={lead}
-        />
-      )}
 
       {/* 5. Quotation Print / PDF Modal */}
       {printingQuotation && (

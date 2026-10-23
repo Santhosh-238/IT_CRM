@@ -24,6 +24,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Prisma Generated Temporary Clients
+backend/src/generated/client_v3/
+backend/src/generated/client_v*/
+
 # IDE & OS files
 .vscode/
 .idea/

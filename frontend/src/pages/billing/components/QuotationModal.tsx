@@ -35,6 +35,7 @@ import {
   IconFileDescription,
   IconEye,
   IconFile,
+  IconArrowLeft,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { Quotation, QuotationItem, BillingProduct } from '../../../types/billing';
@@ -69,6 +70,7 @@ interface QuotationModalProps {
   quotation?: Quotation | null;
   onSuccess: (savedQuote?: Quotation) => void;
   initialLead?: Lead | null;
+  embedded?: boolean;
 }
 
 export const QuotationModal: React.FC<QuotationModalProps> = ({
@@ -77,6 +79,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
   quotation,
   onSuccess,
   initialLead,
+  embedded = false,
 }) => {
   const isDark = useComputedColorScheme('light') === 'dark';
   const [submitting, setSubmitting] = useState(false);
@@ -127,6 +130,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
       quantity: 1,
       unitPrice: 0,
       discount: 0,
+      discountType: 'percentage',
       taxRate: 18,
       taxAmount: 0,
       totalAmount: 0,
@@ -185,15 +189,29 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
       setTermsConditions(quotation.termsConditions || '');
       if (quotation.items && quotation.items.length > 0) {
         setItems(
-          quotation.items.map((it) => ({
-            ...it,
-            quantity: Number(it.quantity) || 1,
-            unitPrice: Number(it.unitPrice) || 0,
-            discount: Number(it.discount) || 0,
-            taxRate: Number(it.taxRate) || 0,
-            taxAmount: Number(it.taxAmount) || 0,
-            totalAmount: Number(it.totalAmount) || 0,
-          }))
+          quotation.items.map((it) => {
+            const qty = Number(it.quantity) || 1;
+            const price = Number(it.unitPrice) || 0;
+            const disc = Number(it.discount) || 0;
+            const discType = it.discountType || 'percentage';
+            const gross = qty * price;
+            const discAmt = discType === 'percentage' ? (gross * disc) / 100 : Math.min(gross, disc);
+            const base = Math.max(0, gross - discAmt);
+            const taxRate = Number(it.taxRate) || 0;
+            const taxAmount = Number(((base * taxRate) / 100).toFixed(2));
+            const totalAmount = Number((base + taxAmount).toFixed(2));
+
+            return {
+              ...it,
+              quantity: qty,
+              unitPrice: price,
+              discount: disc,
+              discountType: discType,
+              taxRate,
+              taxAmount: it.taxAmount ? Number(it.taxAmount) : taxAmount,
+              totalAmount: it.totalAmount ? Number(it.totalAmount) : totalAmount,
+            };
+          })
         );
       }
     } else if (initialLead) {
@@ -243,6 +261,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
           quantity: 1,
           unitPrice: 85000,
           discount: 0,
+          discountType: 'percentage',
           taxRate: 18,
           taxAmount: 15300,
           totalAmount: 100300,
@@ -277,6 +296,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
           quantity: 1,
           unitPrice: 0,
           discount: 0,
+          discountType: 'percentage',
           taxRate: 18,
           taxAmount: 0,
           totalAmount: 0,
@@ -308,10 +328,20 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     // Recompute line item total
     const qty = Number(updated[index].quantity) || 0;
     const price = Number(updated[index].unitPrice) || 0;
+    const gross = qty * price;
     const disc = Number(updated[index].discount) || 0;
+    const discType = updated[index].discountType || 'percentage';
     const rate = Number(updated[index].taxRate) || 0;
 
-    const baseAmount = Math.max(0, qty * price - disc);
+    let lineDiscAmt = 0;
+    if (discType === 'percentage') {
+      lineDiscAmt = (gross * disc) / 100;
+    } else {
+      lineDiscAmt = Math.min(gross, disc);
+    }
+    lineDiscAmt = Number(lineDiscAmt.toFixed(2));
+
+    const baseAmount = Math.max(0, gross - lineDiscAmt);
     const tax = Number(((baseAmount * rate) / 100).toFixed(2));
     const total = Number((baseAmount + tax).toFixed(2));
 
@@ -374,8 +404,17 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     // Recalculate line total
     const qty = Number(updated[idx].quantity) || 1;
     const price = Number(updated[idx].unitPrice) || 0;
+    const gross = qty * price;
     const disc = Number(updated[idx].discount) || 0;
-    const base = Math.max(0, qty * price - disc);
+    const discType = updated[idx].discountType || 'percentage';
+    let lineDiscAmt = 0;
+    if (discType === 'percentage') {
+      lineDiscAmt = (gross * disc) / 100;
+    } else {
+      lineDiscAmt = Math.min(gross, disc);
+    }
+    lineDiscAmt = Number(lineDiscAmt.toFixed(2));
+    const base = Math.max(0, gross - lineDiscAmt);
     const taxRate = updated[idx].taxRate !== undefined ? Number(updated[idx].taxRate) : 18;
     const taxAmt = Number(((base * taxRate) / 100).toFixed(2));
     updated[idx].taxAmount = taxAmt;
@@ -479,16 +518,35 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     setItems(items.filter((_, i) => i !== idx));
   };
 
-  // Grand summary
-  const subtotal = items.reduce((acc, it) => acc + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0) - (Number(it.discount) || 0), 0);
+  // Grand summary calculations matching PDF and DB
+  const grossSubtotal = items.reduce(
+    (acc, it) => acc + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0),
+    0
+  );
+  const totalItemDiscount = items.reduce((acc, it) => {
+    const qty = Number(it.quantity) || 0;
+    const price = Number(it.unitPrice) || 0;
+    const gross = qty * price;
+    const disc = Number(it.discount) || 0;
+    const discType = it.discountType || 'percentage';
+    const lineDiscAmt = discType === 'percentage' ? (gross * disc) / 100 : Math.min(gross, disc);
+    return acc + lineDiscAmt;
+  }, 0);
+  const netSubtotal = Math.max(0, grossSubtotal - totalItemDiscount);
   const overallDiscount = discountType === 'percentage'
-    ? (subtotal * discountValue) / 100
-    : discountValue;
-  const taxableSubtotal = Math.max(0, subtotal - overallDiscount);
+    ? (netSubtotal * discountValue) / 100
+    : Math.min(netSubtotal, discountValue);
+  const taxableSubtotal = Math.max(0, netSubtotal - overallDiscount);
+  const factor = netSubtotal > 0 ? taxableSubtotal / netSubtotal : 1;
   const totalTax = items.reduce((acc, it) => {
-    // If overall discount applied, proportion tax
-    const lineBase = Math.max(0, (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0) - (Number(it.discount) || 0));
-    const effectiveBase = subtotal > 0 ? (lineBase / subtotal) * taxableSubtotal : lineBase;
+    const qty = Number(it.quantity) || 0;
+    const price = Number(it.unitPrice) || 0;
+    const gross = qty * price;
+    const disc = Number(it.discount) || 0;
+    const discType = it.discountType || 'percentage';
+    const lineDiscAmt = discType === 'percentage' ? (gross * disc) / 100 : Math.min(gross, disc);
+    const lineBase = Math.max(0, gross - lineDiscAmt);
+    const effectiveBase = lineBase * factor;
     return acc + (effectiveBase * (Number(it.taxRate) || 0)) / 100;
   }, 0);
   const grandTotal = Number((taxableSubtotal + totalTax).toFixed(2));
@@ -521,12 +579,13 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
         status: status as any,
         discountType,
         discountValue,
-        discountAmount: overallDiscount,
+        discountAmount: Number(overallDiscount.toFixed(2)),
+        taxAmount: Number(totalTax.toFixed(2)),
         paymentTerms,
         notes,
         termsConditions,
         grandTotal,
-        subtotal,
+        subtotal: Number(netSubtotal.toFixed(2)),
         items,
       };
 
@@ -554,33 +613,11 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     }
   };
 
-  return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      size="1240px"
-      centered
-      yOffset="3vh"
-      withCloseButton={false}
-      radius="lg"
-      styles={{
-        content: {
-          borderRadius: 16,
-          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.22)',
-          maxWidth: '96vw',
-          maxHeight: '94vh',
-          display: 'flex',
-          flexDirection: 'column',
-        },
-        body: {
-          padding: '24px 28px',
-          overflowY: 'auto',
-          maxHeight: 'calc(94vh - 20px)',
-        },
-      }}
-      closeOnClickOutside={!submitting}
-    >
-      {/* Header matching existing CRM modals */}
+  if (!opened) return null;
+
+  const formContent = (
+    <>
+      {/* Header */}
       <Group justify="space-between" align="flex-start" mb="lg">
         <Group gap="md">
           <Box
@@ -600,7 +637,9 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
           <div>
             <Text fw={800} size="19px" style={{ color: isDark ? '#F8FAFC' : '#0F172A', lineHeight: 1.2 }}>
               {quotation
-                ? `Quotation Maker • Edit Quotation (${quotation.quotationNumber})`
+                ? `Edit Quotation (${quotation.quotationNumber})`
+                : initialLead
+                ? `Create Quotation • ${initialLead.name}`
                 : 'Quotation Maker • New Quotation'}
             </Text>
             <Text size="xs" c="dimmed" mt={2}>
@@ -611,15 +650,29 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
           </div>
         </Group>
 
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          size="md"
-          radius="100px"
-          onClick={onClose}
-        >
-          <IconX size={18} />
-        </ActionIcon>
+        {embedded ? (
+          <Button
+            variant="light"
+            color="gray"
+            size="sm"
+            radius="md"
+            leftSection={<IconArrowLeft size={16} />}
+            onClick={onClose}
+            style={{ fontWeight: 600 }}
+          >
+            Back to Quotations
+          </Button>
+        ) : (
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="md"
+            radius="100px"
+            onClick={onClose}
+          >
+            <IconX size={18} />
+          </ActionIcon>
+        )}
       </Group>
 
       <form onSubmit={handleSubmit}>
@@ -850,56 +903,49 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
               <Table striped highlightOnHover withTableBorder withColumnBorders style={{ minWidth: 800 }}>
                 <Table.Thead>
                   <Table.Tr style={{ background: isDark ? '#0F172A' : '#F8FAFC' }}>
-                    <Table.Th style={{ width: '28%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Item Name / Module
+                    <Table.Th style={{ width: '36%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Items / Item Description
                     </Table.Th>
-                    <Table.Th style={{ width: '24%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Scope / Description
-                    </Table.Th>
-                    <Table.Th style={{ width: '8%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <Table.Th style={{ width: '7%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Qty
                     </Table.Th>
-                    <Table.Th style={{ width: '13%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <Table.Th style={{ width: '14%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       Unit Rate (₹)
                     </Table.Th>
-                    <Table.Th style={{ width: '8%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Disc (₹)
+                    <Table.Th style={{ width: '17%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Discount
                     </Table.Th>
-                    <Table.Th style={{ width: '8%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <Table.Th style={{ width: '10%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       GST %
                     </Table.Th>
-                    <Table.Th style={{ width: '8%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>
+                    <Table.Th style={{ width: '12%', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>
                       Total (₹)
                     </Table.Th>
-                    <Table.Th style={{ width: '3%', textAlign: 'center' }}></Table.Th>
+                    <Table.Th style={{ width: '4%', textAlign: 'center' }}></Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
-                  {items.map((item, idx) => (
-                    <Table.Tr key={idx}>
-                      <Table.Td>
-                        <Autocomplete
-                          placeholder="Type or select product/service..."
-                          data={autocompleteOptions}
-                          value={item.itemName || ''}
-                          onChange={(val) => updateItem(idx, 'itemName', val)}
-                          onOptionSubmit={(val) => handleItemSelect(idx, val)}
-                          size="xs"
-                          radius="sm"
-                          style={{ width: '100%' }}
-                          required
-                        />
-                      </Table.Td>
+                  {items.map((item, idx) => {
+                    const qty = Number(item.quantity) || 1;
+                    const price = Number(item.unitPrice) || 0;
+                    const gross = qty * price;
+                    const disc = Number(item.discount) || 0;
+                    const discType = item.discountType || 'percentage';
+                    const lineDiscAmt = discType === 'percentage' ? (gross * disc) / 100 : Math.min(gross, disc);
+
+                    return (
+                      <Table.Tr key={idx}>
                         <Table.Td>
-                          <Textarea
-                            placeholder="Scope details / features..."
-                            value={item.description || ''}
-                            onChange={(e) => updateItem(idx, 'description', e.currentTarget.value)}
+                          <Autocomplete
+                            placeholder="Type or select product/service, enter item description..."
+                            data={autocompleteOptions}
+                            value={item.itemName || ''}
+                            onChange={(val) => updateItem(idx, 'itemName', val)}
+                            onOptionSubmit={(val) => handleItemSelect(idx, val)}
                             size="xs"
                             radius="sm"
-                            minRows={3}
-                            maxRows={4}
-                            autosize
+                            style={{ width: '100%' }}
+                            required
                           />
                         </Table.Td>
                         <Table.Td>
@@ -923,13 +969,33 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                           />
                         </Table.Td>
                         <Table.Td>
-                          <NumberInput
-                            value={item.discount}
-                            onChange={(val) => updateItem(idx, 'discount', val)}
-                            min={0}
-                            size="xs"
-                            radius="sm"
-                          />
+                          <Group gap={3} wrap="nowrap" align="center">
+                            <Select
+                              data={[
+                                { value: 'percentage', label: '%' },
+                                { value: 'fixed', label: '₹' },
+                              ]}
+                              value={item.discountType || 'percentage'}
+                              onChange={(v) => updateItem(idx, 'discountType', v || 'percentage')}
+                              size="xs"
+                              radius="sm"
+                              style={{ width: 54 }}
+                              comboboxProps={{ withinPortal: false }}
+                            />
+                            <NumberInput
+                              value={item.discount}
+                              onChange={(val) => updateItem(idx, 'discount', Number(val) || 0)}
+                              min={0}
+                              size="xs"
+                              radius="sm"
+                              style={{ width: 70 }}
+                            />
+                          </Group>
+                          {disc > 0 && discType === 'percentage' && (
+                            <Text size="10px" c="green" mt={2} ta="right">
+                              -₹{lineDiscAmt.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                            </Text>
+                          )}
                         </Table.Td>
                         <Table.Td>
                           <Select
@@ -957,29 +1023,39 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                           </ActionIcon>
                         </Table.Td>
                       </Table.Tr>
-                  ))}
+                    );
+                  })}
                 </Table.Tbody>
               </Table>
             </Box>
 
-            {/* Calculations Box */}
+            {/* Calculations Box matching PDF & DB */}
             <Group justify="flex-end" mt="md">
-              <Box style={{ width: 280 }}>
+              <Box style={{ width: 340 }}>
                 <Stack gap={6}>
                   <Group justify="space-between">
-                    <Text size="xs" c="dimmed">Subtotal:</Text>
-                    <Text size="xs" fw={600}>₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                    <Text size="xs" c="dimmed">Subtotal before discounts:</Text>
+                    <Text size="xs" fw={600}>₹{grossSubtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                   </Group>
+
+                  <Group justify="space-between">
+                    <Text size="xs" c={totalItemDiscount > 0 ? 'green' : 'dimmed'}>Total Item-wise Discount:</Text>
+                    <Text size="xs" fw={600} c={totalItemDiscount > 0 ? 'green' : 'dimmed'}>
+                      {totalItemDiscount > 0 ? `-₹${totalItemDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '₹0.00'}
+                    </Text>
+                  </Group>
+
                   <Group justify="space-between">
                     <Group gap={4}>
-                      <Text size="xs" c="dimmed">Discount:</Text>
+                      <Text size="xs" c="dimmed">Overall Discount:</Text>
                       <Select
                         data={[{ value: 'percentage', label: '%' }, { value: 'fixed', label: '₹' }]}
                         value={discountType}
                         onChange={(v) => setDiscountType((v as any) || 'percentage')}
                         size="xs"
                         radius="xs"
-                        style={{ width: 60 }}
+                        style={{ width: 56 }}
+                        comboboxProps={{ withinPortal: false }}
                       />
                       <NumberInput
                         value={discountValue}
@@ -987,19 +1063,31 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                         min={0}
                         size="xs"
                         radius="xs"
-                        style={{ width: 70 }}
+                        style={{ width: 68 }}
                       />
                     </Group>
-                    <Text size="xs" fw={600} c="red">-₹{overallDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                    <Text size="xs" fw={600} c={overallDiscount > 0 ? 'green' : 'dimmed'}>
+                      {overallDiscount > 0 ? `-₹${overallDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '₹0.00'}
+                    </Text>
                   </Group>
+
+                  <Divider my={2} />
+
                   <Group justify="space-between">
-                    <Text size="xs" c="dimmed">Taxes (GST):</Text>
-                    <Text size="xs" fw={600}>₹{totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                    <Text size="xs" c="dimmed">Taxable Amount:</Text>
+                    <Text size="xs" fw={600}>₹{taxableSubtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                   </Group>
-                  <Divider />
+
+                  <Group justify="space-between">
+                    <Text size="xs" c="dimmed">GST Amount:</Text>
+                    <Text size="xs" fw={600}>₹{totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                  </Group>
+
+                  <Divider my={2} />
+
                   <Group justify="space-between">
                     <Text size="sm" fw={700}>Grand Total:</Text>
-                    <Text size="sm" fw={800} c="indigo">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</Text>
+                    <Text size="sm" fw={800} c="indigo">₹{grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                   </Group>
                 </Stack>
               </Box>
@@ -1059,6 +1147,52 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
           </Group>
         </Stack>
       </form>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <Paper
+        p={{ base: 'md', sm: 'xl' }}
+        radius="lg"
+        style={{
+          background: isDark ? '#111827' : '#FFFFFF',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 4px rgba(0,0,0,0.03)',
+        }}
+      >
+        {formContent}
+      </Paper>
+    );
+  }
+
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      size="1240px"
+      centered
+      yOffset="3vh"
+      withCloseButton={false}
+      radius="lg"
+      styles={{
+        content: {
+          borderRadius: 16,
+          boxShadow: '0 25px 60px rgba(0, 0, 0, 0.22)',
+          maxWidth: '96vw',
+          maxHeight: '94vh',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+        body: {
+          padding: '24px 28px',
+          overflowY: 'auto',
+          maxHeight: 'calc(94vh - 20px)',
+        },
+      }}
+      closeOnClickOutside={!submitting}
+    >
+      {formContent}
     </Modal>
   );
 };

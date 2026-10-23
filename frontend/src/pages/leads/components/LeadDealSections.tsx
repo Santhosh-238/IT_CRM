@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Text,
@@ -19,6 +19,16 @@ import {
   Card,
   Table,
   Progress,
+  Pagination,
+  Tooltip,
+  Center,
+  Loader,
+  UnstyledButton,
+  Timeline,
+  Grid,
+  useComputedColorScheme,
+  ComboboxItem,
+  Alert,
 } from '@mantine/core';
 import {
   IconScale,
@@ -37,10 +47,13 @@ import {
   IconBuilding,
   IconSignature,
   IconCalendar,
+  IconCalendarEvent,
+  IconTruckDelivery,
   IconClock,
   IconShieldCheck,
   IconReceipt,
   IconAlertCircle,
+  IconAlertTriangle,
   IconCreditCard,
   IconBuildingBank,
   IconQrcode,
@@ -49,6 +62,17 @@ import {
   IconUser,
   IconCode,
   IconChevronRight,
+  IconSearch,
+  IconEdit,
+  IconTrash,
+  IconEye,
+  IconFileText,
+  IconTrendingUp,
+  IconX,
+  IconCurrencyRupee,
+  IconMessageCircle,
+  IconUpload,
+  IconFileDescription,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import {
@@ -62,8 +86,33 @@ import {
   LeadPaymentRecord,
   LeadProgressData,
   ProjectMilestoneItem,
+  Negotiation,
+  NegotiationStatus,
+  NegotiationFormData,
+  NegotiationStats,
+  Contract,
+  ContractFormData,
+  ContractStats,
+  ContractFilters,
+  ContractType,
+  ContractApprovalStatus,
+  ContractSignatureStatus,
+  ContractStatus,
 } from '../../../types/lead';
 import { Quotation } from '../../../types/billing';
+import { useEmployee } from '../../../context/EmployeeContext';
+import { useContact } from '../../../context/ContactContext';
+import { useLead } from '../../../context/LeadContext';
+import { usePermissions } from '../../../context/AccessControlContext';
+import { leadService } from '../../../services/leadService';
+import { billingService } from '../../../services/billingService';
+import { MeetingDatePicker } from '../../meetings/components/MeetingDatePicker';
+import {
+  DateFilterControl,
+  DateFilterValue,
+  DEFAULT_DATE_FILTER,
+  isDateMatchingFilter,
+} from '../../../components/common/DateFilterControl';
 
 // =========================================================================
 // 1. LEAD DEAL STORE HELPERS
@@ -226,6 +275,9 @@ export const getInitialLeadDealData = (lead: Lead): LeadDealData => {
   // 3. Initial Contract
   const initialContract: LeadContract = {
     id: `cnt-${lead.id}-1`,
+    contractId: `CNT-${new Date().getFullYear()}-018`,
+    contractType: 'Software Development',
+    contractDate: new Date().toISOString().split('T')[0],
     leadId: lead.id,
     contractNumber: `CNT-${new Date().getFullYear()}-018`,
     title: `Master Services Agreement - ${company}`,
@@ -234,6 +286,8 @@ export const getInitialLeadDealData = (lead: Lead): LeadDealData => {
     expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     durationMonths: 12,
     status: 'Signed',
+    signatureStatus: 'Signed',
+    approvalStatus: 'Approved',
     signedByClient: true,
     clientSignerName: `${lead.name} (${lead.designation || 'CEO'})`,
     clientSignedDate: new Date().toISOString().split('T')[0],
@@ -389,445 +443,2106 @@ export const saveLeadDealData = (leadId: string, data: LeadDealData): void => {
 // =========================================================================
 
 interface LeadNegotiationSectionProps {
-  lead: Lead;
-  isDark: boolean;
-  negotiation: LeadNegotiation;
-  onUpdateNegotiation: (negotiation: LeadNegotiation) => void;
-  onNavigateSection: (section: any) => void;
+  lead?: Lead | null;
+  isDark?: boolean;
+  negotiation?: LeadNegotiation;
+  onUpdateNegotiation?: (negotiation: LeadNegotiation) => void;
+  onNavigateSection?: (section: any) => void;
 }
+
+type ActiveNegTabType =
+  | 'ALL'
+  | 'IN_PROGRESS'
+  | 'AWAITING_CLIENT'
+  | 'REVISED_QUOTATION'
+  | 'WON'
+  | 'LOST';
 
 export const LeadNegotiationSection: React.FC<LeadNegotiationSectionProps> = ({
   lead,
-  isDark,
-  negotiation,
+  isDark: propIsDark,
+  negotiation: legacyNegotiation,
   onUpdateNegotiation,
   onNavigateSection,
 }) => {
-  const [modalOpened, setModalOpened] = useState(false);
-  const [newTopic, setNewTopic] = useState('');
-  const [newNotes, setNewNotes] = useState('');
-  const [newPriceImpact, setNewPriceImpact] = useState<number>(0);
-  const [newType, setNewType] = useState<string>('pricing');
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
+  const isDark = propIsDark !== undefined ? propIsDark : computedColorScheme === 'dark';
 
-  const [editValuesModal, setEditValuesModal] = useState(false);
-  const [editAgreedPrice, setEditAgreedPrice] = useState<number>(negotiation.currentAgreedAmount);
-  const [editStatus, setEditStatus] = useState<string>(negotiation.status);
+  // Contexts
+  const { employees, fetchEmployees } = useEmployee();
+  const { contacts } = useContact();
+  const { leads } = useLead();
+  const { can, isSuperAdmin } = usePermissions();
 
-  const handleAddLog = () => {
-    if (!newNotes.trim()) {
-      notifications.show({ title: 'Notes Required', message: 'Please enter discussion notes.', color: 'red' });
+  const canCreate = isSuperAdmin || can('leads', 'create');
+  const canEdit = isSuperAdmin || can('leads', 'edit');
+  const canDelete = isSuperAdmin || can('leads', 'delete');
+
+  // Negotiations & Stats state
+  const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
+  const [stats, setStats] = useState<NegotiationStats | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [quotations, setQuotations] = useState<Quotation[]>([]);
+
+  // Filter States
+  const [activeTab, setActiveTab] = useState<ActiveNegTabType>('ALL');
+  const [searchInput, setSearchInput] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>(DEFAULT_DATE_FILTER);
+  const [page, setPage] = useState<number>(1);
+  const pageSize = 10;
+
+  // Modals
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [editingNegotiation, setEditingNegotiation] = useState<Negotiation | null>(null);
+  const [detailsNegotiation, setDetailsNegotiation] = useState<Negotiation | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Negotiation | null>(null);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+
+  // Form State
+  const [formNegotiationId, setFormNegotiationId] = useState<string>('');
+  const [formNegotiationTitle, setFormNegotiationTitle] = useState<string>('');
+  const [leadOrContactKey, setLeadOrContactKey] = useState<string>('');
+  const [formLeadName, setFormLeadName] = useState<string>('');
+  const [formClientName, setFormClientName] = useState<string>('');
+  const [formContactEmail, setFormContactEmail] = useState<string>('');
+  const [formContactPhone, setFormContactPhone] = useState<string>('');
+  const [formLeadId, setFormLeadId] = useState<string>('');
+  const [formContactId, setFormContactId] = useState<string>('');
+  const [quotationOrProposal, setQuotationOrProposal] = useState<string>('');
+  const [formQuotationId, setFormQuotationId] = useState<string>('');
+  const [formQuotationNumber, setFormQuotationNumber] = useState<string>('');
+  const [formProposalNumber, setFormProposalNumber] = useState<string>('');
+  const [assignedEmployeeKey, setAssignedEmployeeKey] = useState<string>('');
+  const [formAssignedTo, setFormAssignedTo] = useState<string>('');
+  const [formAssignedToName, setFormAssignedToName] = useState<string>('');
+  const [formNegotiationDate, setFormNegotiationDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [formValidUntil, setFormValidUntil] = useState<string>('');
+  const [formStatus, setFormStatus] = useState<NegotiationStatus>('Draft');
+  const [formQuotedAmount, setFormQuotedAmount] = useState<number>(85000);
+  const [formExpectedFinalAmount, setFormExpectedFinalAmount] = useState<number>(85000);
+  const [formDiscountPercentage, setFormDiscountPercentage] = useState<number>(0);
+  const [formPaymentTerms, setFormPaymentTerms] = useState<string>('Milestone Based');
+  const [formScopeChanges, setFormScopeChanges] = useState<string>('');
+  const [formDeliveryTimeline, setFormDeliveryTimeline] = useState<string>('45 Days');
+  const [formClientRequirements, setFormClientRequirements] = useState<string>('');
+  const [formNotes, setFormNotes] = useState<string>('');
+  const [formNextFollowUpDate, setFormNextFollowUpDate] = useState<string>('');
+  const [formLossReason, setFormLossReason] = useState<string>('');
+  const [documentFileName, setDocumentFileName] = useState<string>('');
+  const [documentFileUrl, setDocumentFileUrl] = useState<string>('');
+  const [documentFileSize, setDocumentFileSize] = useState<string>('');
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const generateNegotiationNumber = () => {
+    const year = new Date().getFullYear();
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    return `NEG-${year}-${randomNum}`;
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 25 * 1024 * 1024) {
+      notifications.show({
+        title: 'File Too Large',
+        message: 'Please upload a negotiation document smaller than 25MB.',
+        color: 'red',
+      });
       return;
     }
 
-    const newEntry: NegotiationEntry = {
-      id: `neg-${Date.now()}`,
-      date: new Date().toISOString().split('T')[0],
-      author: 'Sandy (Account Exec)',
-      topic: newTopic.trim() || 'Negotiation Discussion',
-      notes: newNotes.trim(),
-      priceImpact: newPriceImpact !== 0 ? newPriceImpact : undefined,
-      type: newType as any,
+    const sizeFormatted =
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      setDocumentFileName(file.name);
+      setDocumentFileUrl(dataUrl);
+      setDocumentFileSize(sizeFormatted);
+      notifications.show({
+        title: 'Document Attached',
+        message: `${file.name} (${sizeFormatted}) uploaded successfully.`,
+        color: 'teal',
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveFile = () => {
+    setDocumentFileName('');
+    setDocumentFileUrl('');
+    setDocumentFileSize('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleOpenDocument = () => {
+    if (!documentFileUrl) return;
+    const win = window.open();
+    if (win) {
+      win.document.write(
+        `<iframe src="${documentFileUrl}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`
+      );
+    }
+  };
+
+  // Fetch negotiations list from leadService
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [res, statsRes] = await Promise.all([
+        leadService.getNegotiations({
+          leadId: lead?.id || undefined,
+          limit: 100,
+        }),
+        leadService.getNegotiationStats().catch(() => null),
+      ]);
+      setNegotiations(res.data || []);
+      if (statsRes) setStats(statsRes);
+    } catch (err: any) {
+      notifications.show({
+        title: 'Error Loading Negotiations',
+        message: err.message || 'Could not fetch negotiations',
+        color: 'red',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [lead?.id]);
+
+  useEffect(() => {
+    loadData();
+    billingService
+      .getQuotations()
+      .then((quotes) => {
+        if (quotes && Array.isArray(quotes)) setQuotations(quotes);
+      })
+      .catch(() => {});
+  }, [loadData]);
+
+  // Tab counts
+  const totalCount = negotiations.length;
+  const inProgressCount = useMemo(
+    () => negotiations.filter((n) => n.status.toLowerCase() === 'in progress').length,
+    [negotiations]
+  );
+  const awaitingClientCount = useMemo(
+    () => negotiations.filter((n) => n.status.toLowerCase() === 'awaiting client').length,
+    [negotiations]
+  );
+  const revisedQuoteCount = useMemo(
+    () => negotiations.filter((n) => n.status.toLowerCase() === 'revised quotation').length,
+    [negotiations]
+  );
+  const wonCount = useMemo(
+    () => negotiations.filter((n) => n.status.toLowerCase() === 'won').length,
+    [negotiations]
+  );
+  const lostCount = useMemo(
+    () => negotiations.filter((n) => n.status.toLowerCase() === 'lost').length,
+    [negotiations]
+  );
+
+  const totalQuotedSum = useMemo(
+    () => negotiations.reduce((acc, curr) => acc + (Number(curr.quotedAmount) || 0), 0),
+    [negotiations]
+  );
+  const totalExpectedSum = useMemo(
+    () => negotiations.reduce((acc, curr) => acc + (Number(curr.expectedFinalAmount) || 0), 0),
+    [negotiations]
+  );
+
+  // Filtered list
+  const filteredNegotiations = useMemo(() => {
+    return negotiations.filter((neg) => {
+      if (activeTab === 'IN_PROGRESS' && neg.status.toLowerCase() !== 'in progress') return false;
+      if (activeTab === 'AWAITING_CLIENT' && neg.status.toLowerCase() !== 'awaiting client') return false;
+      if (activeTab === 'REVISED_QUOTATION' && neg.status.toLowerCase() !== 'revised quotation') return false;
+      if (activeTab === 'WON' && neg.status.toLowerCase() !== 'won') return false;
+      if (activeTab === 'LOST' && neg.status.toLowerCase() !== 'lost') return false;
+
+      if (statusFilter !== 'All') {
+        if (neg.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
+      }
+
+      if (!isDateMatchingFilter(neg.negotiationDate || neg.createdAt, dateFilter)) {
+        return false;
+      }
+
+      if (searchInput.trim()) {
+        const q = searchInput.toLowerCase();
+        const matchId = (neg.negotiationId || '').toLowerCase().includes(q);
+        const matchLead = (neg.leadName || '').toLowerCase().includes(q);
+        const matchClient = (neg.clientName || '').toLowerCase().includes(q);
+        const matchQuote = (neg.quotationNumber || '').toLowerCase().includes(q);
+        const matchProp = (neg.proposalNumber || '').toLowerCase().includes(q);
+        const matchEmp = (neg.assignedToName || '').toLowerCase().includes(q);
+        const matchNotes = (neg.notes || '').toLowerCase().includes(q);
+        const matchReq = (neg.clientRequirements || '').toLowerCase().includes(q);
+        const matchStatus = (neg.status || '').toLowerCase().includes(q);
+
+        if (
+          !matchId &&
+          !matchLead &&
+          !matchClient &&
+          !matchQuote &&
+          !matchProp &&
+          !matchEmp &&
+          !matchNotes &&
+          !matchReq &&
+          !matchStatus
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [negotiations, activeTab, statusFilter, dateFilter, searchInput]);
+
+  const totalPages = Math.ceil(filteredNegotiations.length / pageSize) || 1;
+  const paginatedNegotiations = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredNegotiations.slice(start, start + pageSize);
+  }, [filteredNegotiations, page, pageSize]);
+
+  // Open Create Modal
+  const handleOpenCreateModal = () => {
+    setEditingNegotiation(null);
+    setFormNegotiationId(generateNegotiationNumber());
+    setFormNegotiationTitle(
+      lead?.category === 'Product'
+        ? `${lead.productList?.[0] || 'IT CRM'} Solution Negotiation`
+        : `${lead?.serviceList?.[0] || 'IT Solution'} Commercial Negotiation`
+    );
+    if (lead) {
+      setLeadOrContactKey(`lead:${lead.id}`);
+      setFormLeadId(lead.id);
+      setFormLeadName(lead.name || '');
+      setFormClientName(lead.companyName || lead.profession || '');
+      setFormContactEmail(lead.email || '');
+      setFormContactPhone(lead.phone || '');
+    } else {
+      setLeadOrContactKey('');
+      setFormLeadId('');
+      setFormLeadName('');
+      setFormClientName('');
+      setFormContactEmail('');
+      setFormContactPhone('');
+    }
+
+    setFormContactId('');
+    setQuotationOrProposal('');
+    setFormQuotationId('');
+    setFormQuotationNumber('');
+    setFormProposalNumber('');
+
+    const defaultEmp = employees[0];
+    setFormAssignedTo(defaultEmp?.id || defaultEmp?.empCode || '');
+    setFormAssignedToName(defaultEmp?.name || 'Admin Employee');
+    setAssignedEmployeeKey(defaultEmp ? `emp:${defaultEmp.id}` : '');
+
+    setFormNegotiationDate(new Date().toISOString().split('T')[0]);
+    setFormValidUntil('');
+    setFormStatus('In Progress');
+
+    const quoted = legacyNegotiation?.originalQuotedAmount || 85000;
+    const agreed = legacyNegotiation?.currentAgreedAmount || 85000;
+    const discount = legacyNegotiation?.discountPercentage || 0;
+    setFormQuotedAmount(quoted);
+    setFormExpectedFinalAmount(agreed || quoted);
+    setFormDiscountPercentage(discount);
+    setFormPaymentTerms('Milestone Based');
+    setFormScopeChanges('');
+    setFormDeliveryTimeline('45 Days');
+    setFormClientRequirements('');
+    setFormNotes('');
+    setFormNextFollowUpDate('');
+    setFormLossReason('');
+    setDocumentFileName('');
+    setDocumentFileUrl('');
+    setDocumentFileSize('');
+    setErrors({});
+    setModalOpen(true);
+  };
+
+  // Open Edit Modal
+  const handleOpenEditModal = (neg: Negotiation) => {
+    setEditingNegotiation(neg);
+    setFormNegotiationId(neg.negotiationId || generateNegotiationNumber());
+    setFormNegotiationTitle(
+      neg.scopeChanges ||
+        (neg.quotationNumber ? `Commercial Negotiation (${neg.quotationNumber})` : 'IT CRM Solution Negotiation')
+    );
+    setFormLeadName(neg.leadName || lead?.name || '');
+    setFormClientName(neg.clientName || lead?.companyName || '');
+    setFormContactEmail(lead?.email || '');
+    setFormContactPhone(lead?.phone || '');
+    setFormLeadId(neg.leadId || '');
+    setFormContactId(neg.contactId || '');
+
+    if (neg.leadId) {
+      setLeadOrContactKey(`lead:${neg.leadId}`);
+    } else if (neg.contactId) {
+      setLeadOrContactKey(`contact:${neg.contactId}`);
+    } else {
+      setLeadOrContactKey(`custom:${neg.leadName}`);
+    }
+
+    setFormQuotationId(neg.quotationId || '');
+    setFormQuotationNumber(neg.quotationNumber || '');
+    setFormProposalNumber(neg.proposalNumber || '');
+    setQuotationOrProposal(neg.quotationNumber || neg.proposalNumber || '');
+
+    setFormAssignedTo(neg.assignedTo || '');
+    setFormAssignedToName(neg.assignedToName || '');
+    setAssignedEmployeeKey(neg.assignedTo ? `emp:${neg.assignedTo}` : `custom:${neg.assignedToName}`);
+
+    setFormNegotiationDate(neg.negotiationDate || new Date().toISOString().split('T')[0]);
+    setFormValidUntil(neg.nextFollowUpDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]);
+    setFormStatus(neg.status || 'In Progress');
+
+    setFormQuotedAmount(Number(neg.quotedAmount) || 85000);
+    setFormExpectedFinalAmount(Number(neg.expectedFinalAmount) || Number(neg.quotedAmount) || 85000);
+    setFormDiscountPercentage(Number(neg.discountPercentage) || 0);
+    setFormPaymentTerms(neg.paymentTerms || 'Milestone Based');
+    setFormScopeChanges(neg.scopeChanges || '');
+    setFormDeliveryTimeline(neg.deliveryTimeline || '45 Days');
+
+    setFormClientRequirements(neg.clientRequirements || '');
+    setFormNotes(neg.notes || '');
+    setFormNextFollowUpDate(neg.nextFollowUpDate || '');
+    setFormLossReason(neg.lossReason || '');
+    setDocumentFileName('');
+    setDocumentFileUrl('');
+    setDocumentFileSize('');
+    setErrors({});
+    setModalOpen(true);
+  };
+
+  // Lead / Contact selector in modal
+  const handleLeadSelect = (val: string | null) => {
+    if (!val) {
+      setLeadOrContactKey('');
+      setFormLeadName('');
+      setFormClientName('');
+      setFormLeadId('');
+      setFormContactId('');
+      return;
+    }
+    setLeadOrContactKey(val);
+    if (val.startsWith('lead:')) {
+      const id = val.replace('lead:', '');
+      const found = leads.find((l) => l.id === id);
+      if (found) {
+        setFormLeadId(found.id);
+        setFormContactId('');
+        setFormLeadName(found.name);
+        setFormClientName(found.companyName || found.name);
+      }
+    } else if (val.startsWith('contact:')) {
+      const id = val.replace('contact:', '');
+      const found = contacts.find((c) => c.id === id);
+      if (found) {
+        setFormContactId(found.id);
+        setFormLeadId('');
+        setFormLeadName(found.name);
+        setFormClientName(found.companyName || found.name);
+      }
+    } else {
+      setFormLeadName(val);
+      setFormClientName(val);
+      setFormLeadId('');
+      setFormContactId('');
+    }
+    if (errors.leadName) setErrors((prev) => ({ ...prev, leadName: '' }));
+  };
+
+  // Employee selector
+  const handleEmployeeSelect = (val: string | null) => {
+    if (!val) {
+      setAssignedEmployeeKey('');
+      setFormAssignedTo('');
+      setFormAssignedToName('');
+      return;
+    }
+    setAssignedEmployeeKey(val);
+    if (val.startsWith('emp:')) {
+      const id = val.replace('emp:', '');
+      const found = employees.find((e) => e.id === id);
+      if (found) {
+        setFormAssignedTo(found.id);
+        setFormAssignedToName(found.name);
+      }
+    } else {
+      setFormAssignedTo('');
+      setFormAssignedToName(val);
+    }
+    if (errors.assignedToName) setErrors((prev) => ({ ...prev, assignedToName: '' }));
+  };
+
+  // Quotation selector
+  const handleQuotationSelect = (val: string | null) => {
+    if (!val) {
+      setQuotationOrProposal('');
+      setFormQuotationId('');
+      setFormQuotationNumber('');
+      return;
+    }
+    setQuotationOrProposal(val);
+    const matched = quotations.find((q) => q.quotationNumber === val || q.id === val);
+    if (matched) {
+      setFormQuotationId(matched.id);
+      setFormQuotationNumber(matched.quotationNumber);
+      if (matched.grandTotal && formQuotedAmount === 0) {
+        setFormQuotedAmount(matched.grandTotal);
+        if (formExpectedFinalAmount === 0) setFormExpectedFinalAmount(matched.grandTotal);
+      }
+    } else {
+      if (val.toUpperCase().startsWith('PROP')) {
+        setFormProposalNumber(val);
+        setFormQuotationNumber('');
+      } else {
+        setFormQuotationNumber(val);
+      }
+    }
+  };
+
+  // Discount % change -> auto updates Expected Final Amount
+  const handleDiscountChange = (val: number | string) => {
+    const pct = Math.max(0, Math.min(100, Number(val) || 0));
+    setFormDiscountPercentage(pct);
+    if (formQuotedAmount > 0) {
+      const discountAmt = (formQuotedAmount * pct) / 100;
+      setFormExpectedFinalAmount(Math.round(Math.max(0, formQuotedAmount - discountAmt)));
+    }
+  };
+
+  // Expected Final Amount change -> auto updates Discount %
+  const handleExpectedFinalAmountChange = (val: number | string) => {
+    const finalAmt = Math.max(0, Number(val) || 0);
+    setFormExpectedFinalAmount(finalAmt);
+    if (formQuotedAmount > 0 && finalAmt <= formQuotedAmount) {
+      const discountAmt = formQuotedAmount - finalAmt;
+      const pct = Math.round((discountAmt / formQuotedAmount) * 100);
+      setFormDiscountPercentage(Math.max(0, Math.min(100, pct)));
+    } else if (finalAmt > formQuotedAmount) {
+      setFormDiscountPercentage(0);
+    }
+  };
+
+  // Quoted Amount change
+  const handleQuotedAmountChange = (val: number | string) => {
+    const quoted = Math.max(0, Number(val) || 0);
+    setFormQuotedAmount(quoted);
+    if (formDiscountPercentage > 0) {
+      const discountAmt = (quoted * formDiscountPercentage) / 100;
+      setFormExpectedFinalAmount(Math.round(Math.max(0, quoted - discountAmt)));
+    } else if (formExpectedFinalAmount === 0 || formExpectedFinalAmount > quoted) {
+      setFormExpectedFinalAmount(quoted);
+    }
+  };
+
+  // Status Change with Conditional Follow-up handling
+  const handleStatusChange = (newStatus: string | null) => {
+    const st = (newStatus as NegotiationStatus) || 'In Progress';
+    setFormStatus(st);
+    if (st !== 'Awaiting Client') {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.nextFollowUpDate;
+        return next;
+      });
+      // NOTE: We do NOT clear formNextFollowUpDate, preserving any previously saved follow-up date
+    }
+    if (st !== 'Lost') {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.lossReason;
+        return next;
+      });
+    }
+  };
+
+  // Submit Modal
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: { [key: string]: string } = {};
+
+    if (!formLeadName.trim()) newErrors.leadName = 'Lead / Client Name is required';
+    if (!formAssignedToName.trim()) newErrors.assignedToName = 'Assigned Employee is required';
+    if (!formNegotiationDate) newErrors.negotiationDate = 'Negotiation Date is required';
+
+    // CONDITIONAL VALIDATION: Required ONLY when status is "Awaiting Client"
+    if (formStatus === 'Awaiting Client') {
+      if (!formNextFollowUpDate || !formNextFollowUpDate.trim()) {
+        newErrors.nextFollowUpDate = 'Next Follow-up Date is required when status is Awaiting Client';
+      }
+    }
+
+    // CONDITIONAL VALIDATION: Required ONLY when status is "Lost"
+    if (formStatus === 'Lost') {
+      if (!formLossReason || !formLossReason.trim()) {
+        newErrors.lossReason = 'Reason for Lost Deal is required when status is Lost';
+      }
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      notifications.show({
+        title: 'Validation Error',
+        message: 'Please resolve the highlighted fields before saving.',
+        color: 'red',
+      });
+      return;
+    }
+
+    const payload: Partial<NegotiationFormData> = {
+      negotiationId: formNegotiationId.trim() || undefined,
+      leadId: formLeadId || lead?.id || undefined,
+      leadName: formLeadName.trim(),
+      clientName: formClientName.trim() || formLeadName.trim(),
+      contactId: formContactId || undefined,
+      quotationId: formQuotationId || undefined,
+      quotationNumber: formQuotationNumber.trim() || undefined,
+      proposalNumber: formProposalNumber.trim() || undefined,
+      assignedTo: formAssignedTo || undefined,
+      assignedToName: formAssignedToName.trim() || 'Admin Employee',
+      negotiationDate: formNegotiationDate,
+      status: formStatus,
+      quotedAmount: formQuotedAmount,
+      expectedFinalAmount: formExpectedFinalAmount,
+      discountPercentage: formDiscountPercentage,
+      paymentTerms: formPaymentTerms,
+      scopeChanges: formScopeChanges.trim() || undefined,
+      deliveryTimeline: formDeliveryTimeline.trim() || undefined,
+      clientRequirements: formClientRequirements.trim() || undefined,
+      notes: formNotes.trim() || undefined,
+      nextFollowUpDate: formNextFollowUpDate ? formNextFollowUpDate.trim() : undefined,
+      lossReason: formStatus === 'Lost' ? formLossReason.trim() : undefined,
     };
 
-    const updatedAgreedAmount = newPriceImpact !== 0
-      ? Math.max(0, negotiation.currentAgreedAmount + newPriceImpact)
-      : negotiation.currentAgreedAmount;
+    setSubmitting(true);
+    try {
+      if (editingNegotiation) {
+        await leadService.updateNegotiation(editingNegotiation.id, payload);
+        notifications.show({
+          title: 'Negotiation Updated',
+          message: `Negotiation ${editingNegotiation.negotiationId} updated successfully.`,
+          color: 'blue',
+        });
+      } else {
+        const created = await leadService.createNegotiation(payload);
+        notifications.show({
+          title: 'Negotiation Created',
+          message: `New negotiation ${created.negotiationId} created successfully.`,
+          color: 'teal',
+        });
+      }
 
-    const discount = negotiation.originalQuotedAmount > 0
-      ? Math.round(((negotiation.originalQuotedAmount - updatedAgreedAmount) / negotiation.originalQuotedAmount) * 100)
-      : 0;
+      // Sync with parent lead deal state if callback provided
+      if (onUpdateNegotiation && legacyNegotiation) {
+        onUpdateNegotiation({
+          ...legacyNegotiation,
+          currentAgreedAmount: formExpectedFinalAmount,
+          discountPercentage: formDiscountPercentage,
+          status: formStatus === 'Won' ? 'Terms Agreed' : 'In Discussion',
+        });
+      }
 
-    const updated: LeadNegotiation = {
-      ...negotiation,
-      currentAgreedAmount: updatedAgreedAmount,
-      discountPercentage: Math.max(0, discount),
-      entries: [newEntry, ...negotiation.entries],
-    };
+      setModalOpen(false);
+      setEditingNegotiation(null);
+      await loadData();
+    } catch (err: any) {
+      notifications.show({
+        title: 'Save Failed',
+        message: err.message || 'Could not save negotiation record.',
+        color: 'red',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-    onUpdateNegotiation(updated);
-    setNewTopic('');
-    setNewNotes('');
-    setNewPriceImpact(0);
-    setModalOpened(false);
+  // Confirm Delete
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await leadService.deleteNegotiation(deleteTarget.id);
+      notifications.show({
+        title: 'Negotiation Deleted',
+        message: `Negotiation ${deleteTarget.negotiationId} has been removed.`,
+        color: 'blue',
+      });
+      setDeleteTarget(null);
+      await loadData();
+    } catch (err: any) {
+      notifications.show({
+        title: 'Delete Failed',
+        message: err.message || 'Could not delete negotiation record.',
+        color: 'red',
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
+  // Quick Mark Won
+  const handleQuickMarkWon = async (neg: Negotiation) => {
+    try {
+      await leadService.updateNegotiation(neg.id, {
+        status: 'Won',
+        notes: `Quick-marked as Won from Negotiation list view.`,
+      });
+      notifications.show({
+        title: 'Negotiation Won! 🎉',
+        message: `${neg.negotiationId} commercial terms accepted. Ready for Contract.`,
+        color: 'teal',
+      });
+      if (onUpdateNegotiation && legacyNegotiation) {
+        onUpdateNegotiation({
+          ...legacyNegotiation,
+          status: 'Terms Agreed',
+        });
+      }
+      await loadData();
+    } catch (err: any) {
+      notifications.show({
+        title: 'Update Failed',
+        message: err.message || 'Could not update status.',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleDownloadSummary = (neg: Negotiation) => {
     notifications.show({
-      title: 'Negotiation Note Added',
-      message: 'Discussion update recorded successfully.',
-      color: 'teal',
+      title: 'Commercial Terms Export',
+      message: `Exporting executed negotiation terms summary for ${neg.negotiationId}...`,
+      color: 'blue',
     });
   };
 
-  const handleSaveTerms = () => {
-    const discount = negotiation.originalQuotedAmount > 0
-      ? Math.round(((negotiation.originalQuotedAmount - editAgreedPrice) / negotiation.originalQuotedAmount) * 100)
-      : 0;
-
-    const updated: LeadNegotiation = {
-      ...negotiation,
-      currentAgreedAmount: editAgreedPrice,
-      discountPercentage: Math.max(0, discount),
-      status: editStatus as any,
-    };
-
-    onUpdateNegotiation(updated);
-    setEditValuesModal(false);
-
-    notifications.show({
-      title: 'Commercial Terms Finalized',
-      message: `Deal agreed at ₹${editAgreedPrice.toLocaleString('en-IN')} with status ${editStatus}.`,
-      color: 'green',
-    });
+  const handleDetailsStatusChange = async (newStatus: string) => {
+    if (!detailsNegotiation || detailsNegotiation.status === newStatus) return;
+    try {
+      await leadService.updateNegotiation(detailsNegotiation.id, {
+        status: newStatus as NegotiationStatus,
+      });
+      setDetailsNegotiation((prev) => (prev ? { ...prev, status: newStatus as NegotiationStatus } : null));
+      notifications.show({
+        title: 'Status Updated',
+        message: `Negotiation status changed to ${newStatus}.`,
+        color: 'blue',
+      });
+      await loadData();
+    } catch (err: any) {
+      notifications.show({
+        title: 'Update Failed',
+        message: err.message || 'Could not update status.',
+        color: 'red',
+      });
+    }
   };
+
+  // Render Status Badge matching Proposal section design
+  const renderStatusBadge = (statusVal?: string | null) => {
+    const st = (statusVal || 'In Progress').trim();
+    const sLow = st.toLowerCase();
+    let bg = isDark ? 'rgba(59, 130, 246, 0.16)' : '#EFF6FF';
+    let color = isDark ? '#93C5FD' : '#1D4ED8';
+    let border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
+
+    if (sLow === 'won' || sLow === 'accepted') {
+      bg = isDark ? 'rgba(16, 185, 129, 0.16)' : '#F0FDF4';
+      color = isDark ? '#6EE7B7' : '#16A34A';
+      border = isDark ? 'rgba(16, 185, 129, 0.35)' : '#BBF7D0';
+    } else if (sLow === 'lost') {
+      bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
+      color = isDark ? '#FCA5A5' : '#DC2626';
+      border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
+    } else if (sLow === 'awaiting client') {
+      bg = isDark ? 'rgba(245, 158, 11, 0.16)' : '#FFFBEB';
+      color = isDark ? '#FCD34D' : '#D97706';
+      border = isDark ? 'rgba(245, 158, 11, 0.35)' : '#FDE68A';
+    } else if (sLow === 'revised quotation') {
+      bg = isDark ? 'rgba(139, 92, 246, 0.16)' : '#F5F3FF';
+      color = isDark ? '#C4B5FD' : '#7C3AED';
+      border = isDark ? 'rgba(139, 92, 246, 0.35)' : '#DDD6FE';
+    } else if (sLow === 'draft') {
+      bg = isDark ? 'rgba(148, 163, 184, 0.16)' : '#F8FAFC';
+      color = isDark ? '#94A3B8' : '#64748B';
+      border = isDark ? 'rgba(148, 163, 184, 0.3)' : '#E2E8F0';
+    }
+
+    return (
+      <Badge
+        size="sm"
+        radius="sm"
+        style={{
+          backgroundColor: bg,
+          color,
+          border: `1px solid ${border}`,
+          fontWeight: 700,
+          textTransform: 'capitalize',
+          fontSize: '11px',
+          padding: '2px 8px',
+        }}
+      >
+        {st}
+      </Badge>
+    );
+  };
+
+  const formatDisplayDate = (dateString?: string | null) => {
+    if (!dateString) return '—';
+    try {
+      const parts = dateString.split('T')[0].split('-');
+      if (parts.length === 3 && parts[0].length === 4) {
+        const d = new Date(dateString);
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+      return dateString;
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatCurrency = (val?: number | null) => {
+    if (val === undefined || val === null || isNaN(val)) return '₹0';
+    return `₹${Number(val).toLocaleString('en-IN')}`;
+  };
+
+  // Build Lead / Contact select options
+  const leadOptions: ComboboxItem[] = useMemo(() => {
+    const list: ComboboxItem[] = [];
+    if (lead && !leads.some((l) => l.id === lead.id)) {
+      list.push({
+        value: `lead:${lead.id}`,
+        label: `${lead.name} (${lead.companyName ? `${lead.companyName} • ` : ''}Current Lead)`,
+      });
+    }
+    leads.forEach((l) => {
+      list.push({
+        value: `lead:${l.id}`,
+        label: `${l.name} (${l.companyName ? `${l.companyName} • ` : ''}Lead)`,
+      });
+    });
+    contacts.forEach((c) => {
+      list.push({
+        value: `contact:${c.id}`,
+        label: `${c.name} (${c.companyName ? `${c.companyName} • ` : ''}Contact)`,
+      });
+    });
+    return list;
+  }, [leads, contacts, lead]);
+
+  const employeeOptions: ComboboxItem[] = useMemo(() => {
+    return employees.map((e) => ({
+      value: `emp:${e.id}`,
+      label: `${e.name} (${e.designation || e.role || 'Staff'})`,
+    }));
+  }, [employees]);
+
+  const quotationOptions: ComboboxItem[] = useMemo(() => {
+    return quotations.map((q) => ({
+      value: q.quotationNumber,
+      label: `${q.quotationNumber} — ${q.contactName || 'Client'} (₹${Number(q.grandTotal || 0).toLocaleString('en-IN')})`,
+    }));
+  }, [quotations]);
+
+  const paymentTermsOptions = [
+    { value: 'Milestone Based', label: 'Milestone Based' },
+    { value: 'Full Payment', label: 'Full Payment' },
+    { value: 'Partial Payment', label: 'Partial Payment' },
+    { value: 'Advance Payment', label: 'Advance Payment' },
+    { value: '50% Advance + 50% Completion', label: '50% Advance + 50% Completion' },
+    { value: '30% Advance + 70% Delivery', label: '30% Advance + 70% Delivery' },
+    { value: 'Net 30 Days', label: 'Net 30 Days' },
+    { value: 'Net 60 Days', label: 'Net 60 Days' },
+  ];
+
+  const paymentTermList = useMemo(() => {
+    const base = [...paymentTermsOptions];
+    if (formPaymentTerms && !base.some((b) => b.value === formPaymentTerms)) {
+      return [{ value: formPaymentTerms, label: formPaymentTerms }, ...base];
+    }
+    return base;
+  }, [formPaymentTerms]);
+
+  const negotiationStatusOptions = useMemo(() => {
+    const list = [
+      { value: 'In Progress', label: 'In Progress' },
+      { value: 'Awaiting Client', label: 'Awaiting Client' },
+      { value: 'Revised Quotation', label: 'Revised Quotation' },
+      { value: 'Won', label: 'Won' },
+      { value: 'Lost', label: 'Lost' },
+    ];
+    if (formStatus === 'Draft') {
+      list.unshift({ value: 'Draft', label: 'Draft' });
+    }
+    return list;
+  }, [formStatus]);
+
+  const statusDropdownOptions = [
+    { value: 'All', label: 'All Statuses' },
+    { value: 'In Progress', label: 'In Progress' },
+    { value: 'Awaiting Client', label: 'Awaiting Client' },
+    { value: 'Revised Quotation', label: 'Revised Quotation' },
+    { value: 'Won', label: 'Won' },
+    { value: 'Lost', label: 'Lost' },
+  ];
 
   return (
     <Box>
-      {/* Top Header */}
-      <Group justify="space-between" align="center" mb="lg" wrap="wrap" gap="sm">
+      {/* Top Section Summary & Actions matching Proposal design */}
+      <Group justify="space-between" align="center" mb="md" wrap="wrap" gap="md">
         <div>
-          <Group gap="xs" align="center">
-            <ThemeIcon size="lg" radius="md" color="violet" variant="light">
-              <IconScale size={20} />
-            </ThemeIcon>
-            <div>
-              <Text fw={800} size="18px" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                Deal Negotiation & Commercials
-              </Text>
-              <Text size="xs" c="dimmed">
-                Track counter-offers, concessions, and pricing alignment for {lead.name}
-              </Text>
-            </div>
-          </Group>
+          <Text fw={800} size="18px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+            Negotiation
+          </Text>
+          <Text size="xs" c="dimmed">
+            Manage commercial negotiations, pricing terms, and scope revisions with {lead ? lead.name : 'the client'}.
+          </Text>
         </div>
 
-        <Group gap="xs">
-          <Button
-            size="sm"
-            variant="default"
-            onClick={() => {
-              setEditAgreedPrice(negotiation.currentAgreedAmount);
-              setEditStatus(negotiation.status);
-              setEditValuesModal(true);
-            }}
-            style={{ borderRadius: 10, fontWeight: 600, borderColor: isDark ? '#374151' : '#E2E8F0' }}
-          >
-            Adjust Commercials
-          </Button>
+        <Group gap="sm">
+          {canCreate && (
+            <Button
+              size="sm"
+              leftSection={<IconPlus size={14} />}
+              onClick={handleOpenCreateModal}
+              style={{
+                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                color: '#FFF',
+                borderRadius: 10,
+                fontWeight: 700,
+              }}
+            >
+              Create Negotiation
+            </Button>
+          )}
 
-          <Button
-            size="sm"
-            leftSection={<IconPlus size={15} />}
-            onClick={() => setModalOpened(true)}
-            style={{
-              background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)',
-              color: '#FFF',
-              borderRadius: 10,
-              fontWeight: 700,
-              boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)',
-            }}
-          >
-            Log Discussion
-          </Button>
-
-          <Button
-            size="sm"
-            variant="default"
-            rightSection={<IconArrowRight size={15} />}
-            onClick={() => onNavigateSection('contract')}
-            style={{ borderRadius: 10, fontWeight: 600, borderColor: isDark ? '#374151' : '#E2E8F0' }}
-          >
-            Go to Contract
-          </Button>
+          {onNavigateSection && (
+            <Button
+              size="sm"
+              variant="light"
+              color="blue"
+              rightSection={<IconArrowRight size={14} />}
+              onClick={() => onNavigateSection('contracts')}
+              style={{ borderRadius: 10, fontWeight: 700 }}
+            >
+              Proceed to Contracts
+            </Button>
+          )}
         </Group>
       </Group>
 
-      {/* KPI Cards Grid */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="md" mb="lg">
+      {/* Main Table Content matching Proposals Table Design */}
+      {loading ? (
+        <Center py={60}>
+          <Stack align="center" gap="sm">
+            <Loader size="lg" color="blue" />
+            <Text size="sm" c="dimmed">Loading negotiation records...</Text>
+          </Stack>
+        </Center>
+      ) : filteredNegotiations.length === 0 ? (
         <Paper
-          p="md"
-          radius="14px"
+          radius="lg"
+          p="3rem"
           style={{
-            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
+            background: isDark ? '#111827' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+            textAlign: 'center',
+            marginTop: 16,
           }}
         >
-          <Text size="xs" fw={700} c="dimmed" mb={4}>
-            ORIGINAL QUOTE
+          <ThemeIcon size={56} radius="xl" color="indigo" variant="light" mb="md" style={{ margin: '0 auto' }}>
+            <IconScale size={28} />
+          </ThemeIcon>
+          <Text fw={700} size="16px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+            No Negotiations Found
           </Text>
-          <Text size="20px" fw={800} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-            ₹{negotiation.originalQuotedAmount.toLocaleString('en-IN')}
+          <Text size="sm" c="dimmed" mt={4} mb="lg">
+            No commercial negotiations have been created for {lead ? lead.name : 'this deal'} yet.
           </Text>
-          <Text size="11px" c="dimmed" mt={2}>
-            First proposal benchmark
-          </Text>
-        </Paper>
-
-        <Paper
-          p="md"
-          radius="14px"
-          style={{
-            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-          }}
-        >
-          <Text size="xs" fw={700} c="dimmed" mb={4}>
-            AGREED DEAL VALUE
-          </Text>
-          <Text size="20px" fw={900} style={{ color: '#10B981' }}>
-            ₹{negotiation.currentAgreedAmount.toLocaleString('en-IN')}
-          </Text>
-          <Text size="11px" c="dimmed" mt={2}>
-            Commercial target for contract
-          </Text>
-        </Paper>
-
-        <Paper
-          p="md"
-          radius="14px"
-          style={{
-            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-          }}
-        >
-          <Text size="xs" fw={700} c="dimmed" mb={4}>
-            DISCOUNT GRANTED
-          </Text>
-          <Group gap={6} align="baseline">
-            <Text size="20px" fw={800} style={{ color: '#F59E0B' }}>
-              {negotiation.discountPercentage}%
-            </Text>
-            <Text size="xs" c="dimmed">
-              (-₹{(negotiation.originalQuotedAmount - negotiation.currentAgreedAmount).toLocaleString('en-IN')})
-            </Text>
-          </Group>
-          <Text size="11px" c="dimmed" mt={2}>
-            Margin protection intact
-          </Text>
-        </Paper>
-
-        <Paper
-          p="md"
-          radius="14px"
-          style={{
-            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-          }}
-        >
-          <Text size="xs" fw={700} c="dimmed" mb={4}>
-            STAGE STATUS
-          </Text>
-          <Badge
-            size="lg"
-            variant="light"
-            color={negotiation.status === 'Terms Agreed' ? 'green' : 'violet'}
-            style={{ fontWeight: 700 }}
-          >
-            {negotiation.status}
-          </Badge>
-          <Text size="11px" c="dimmed" mt={6}>
-            Contact: {negotiation.decisionMaker}
-          </Text>
-        </Paper>
-      </SimpleGrid>
-
-      {/* Agreed Concessions Summary */}
-      <Paper
-        p="md"
-        radius="14px"
-        mb="lg"
-        style={{
-          backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-          border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-        }}
-      >
-        <Group justify="space-between" align="center" mb="xs">
-          <Text size="xs" fw={800} style={{ color: isDark ? '#C4B5FD' : '#6D28D9', letterSpacing: '0.04em' }}>
-            AGREED COMMERCIAL CONCESSIONS & SCOPE ALIGNMENT
-          </Text>
-          <Badge size="sm" color="violet" variant="outline">
-            {negotiation.keyConcessions.length} Concessions
-          </Badge>
-        </Group>
-
-        <Stack gap="xs">
-          {negotiation.keyConcessions.map((c, idx) => (
-            <Group key={idx} gap="xs" align="center">
-              <ThemeIcon size="xs" radius="xl" color="green">
-                <IconCheck size={10} />
-              </ThemeIcon>
-              <Text size="13px" style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
-                {c}
-              </Text>
-            </Group>
-          ))}
-        </Stack>
-      </Paper>
-
-      {/* Negotiation Entries Timeline */}
-      <Paper
-        p="xl"
-        radius="16px"
-        style={{
-          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-          border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-        }}
-      >
-        <Group justify="space-between" align="center" mb="md">
-          <Text fw={700} size="15px" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-            Discussion Log & Negotiation History
-          </Text>
-          <Badge variant="dot" color="indigo">
-            {negotiation.entries.length} Logged Entries
-          </Badge>
-        </Group>
-
-        <Stack gap="md">
-          {negotiation.entries.map((entry) => (
-            <Box
-              key={entry.id}
-              p="md"
+          {canCreate && (
+            <Button
+              size="sm"
+              leftSection={<IconPlus size={15} />}
+              onClick={handleOpenCreateModal}
               style={{
-                backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-                border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-                borderRadius: 12,
+                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                color: '#FFF',
+                borderRadius: 10,
+                fontWeight: 700,
               }}
             >
-              <Group justify="space-between" align="center" mb={6}>
-                <Group gap="xs">
-                  <Badge size="xs" color="violet" variant="light">
-                    {entry.type.toUpperCase()}
-                  </Badge>
-                  <Text fw={700} size="13px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-                    {entry.topic}
-                  </Text>
+              Create First Negotiation
+            </Button>
+          )}
+        </Paper>
+      ) : (
+        <>
+          {/* DESKTOP TABLE VIEW */}
+          <Paper
+            visibleFrom="sm"
+            radius="lg"
+            style={{
+              background: isDark ? '#111827' : '#FFFFFF',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              overflow: 'hidden',
+              boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 4px rgba(0,0,0,0.03)',
+              marginTop: 16,
+            }}
+          >
+            <Table.ScrollContainer minWidth={950}>
+              <Table verticalSpacing="md" horizontalSpacing="lg" highlightOnHover>
+                <Table.Thead
+                  style={{
+                    background: isDark ? '#0F172A' : '#FBFBFC',
+                    borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #F1F5F9',
+                  }}
+                >
+                  <Table.Tr>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                      LEAD NAME
+                    </Table.Th>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                      NEGOTIATION DATE
+                    </Table.Th>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                      NEXT FOLLOW-UP DATE
+                    </Table.Th>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                      COMMERCIAL DETAILS
+                    </Table.Th>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                      STATUS
+                    </Table.Th>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textAlign: 'right' }}>
+                      ACTIONS
+                    </Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {paginatedNegotiations.map((item) => (
+                    <Table.Tr
+                      key={item.id}
+                      style={{
+                        borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
+                      }}
+                    >
+                      {/* 1. LEAD NAME */}
+                      <Table.Td>
+                        <Group gap="sm" wrap="nowrap">
+                          <Box
+                            style={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: 10,
+                              background: isDark ? 'rgba(79, 70, 229, 0.18)' : '#EEF2FF',
+                              color: isDark ? '#A5B4FC' : '#4F46E5',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: 14,
+                              flexShrink: 0,
+                              border: isDark ? '1px solid rgba(99, 102, 241, 0.25)' : '1px solid #E0E7FF',
+                            }}
+                          >
+                            <IconScale size={19} stroke={1.8} />
+                          </Box>
+                          <Stack gap={2}>
+                            <Text
+                              size="sm"
+                              fw={700}
+                              style={{
+                                color: isDark ? '#F8FAFC' : '#0F172A',
+                                cursor: 'pointer',
+                              }}
+                              onClick={() => setDetailsNegotiation(item)}
+                            >
+                              {item.leadName || item.clientName || 'Client Deal'}
+                            </Text>
+                            <Group gap={6} wrap="nowrap">
+                              {item.quotationNumber ? (
+                                <Badge size="xs" variant="light" color="indigo" radius="sm">
+                                  📄 {item.quotationNumber}
+                                </Badge>
+                              ) : item.proposalNumber ? (
+                                <Badge size="xs" variant="light" color="indigo" radius="sm">
+                                  📄 {item.proposalNumber}
+                                </Badge>
+                              ) : null}
+                              {item.assignedToName && (
+                                <>
+                                  <Text size="11px" c="dimmed">•</Text>
+                                  <Text size="11px" c="dimmed">
+                                    👤 {item.assignedToName}
+                                  </Text>
+                                </>
+                              )}
+                              {item.scopeChanges && (
+                                <>
+                                  <Text size="11px" c="dimmed">•</Text>
+                                  <Text size="11px" c="dimmed" lineClamp={1} style={{ maxWidth: 160 }}>
+                                    {item.scopeChanges}
+                                  </Text>
+                                </>
+                              )}
+                            </Group>
+                          </Stack>
+                        </Group>
+                      </Table.Td>
+
+                      {/* 2. NEGOTIATION DATE */}
+                      <Table.Td>
+                        <Stack gap={2}>
+                          <Group gap={6} align="center">
+                            <IconCalendar size={13} style={{ color: isDark ? '#94A3B8' : '#64748B' }} />
+                            <Text size="xs" fw={600} style={{ color: isDark ? '#E2E8F0' : '#1E293B' }}>
+                              {formatDisplayDate(item.negotiationDate)}
+                            </Text>
+                          </Group>
+                          {item.deliveryTimeline && (
+                            <Text size="11px" c="dimmed">
+                              Timeline: {item.deliveryTimeline}
+                            </Text>
+                          )}
+                        </Stack>
+                      </Table.Td>
+
+                      {/* 3. NEXT FOLLOW-UP DATE (Conditional on Awaiting Client) */}
+                      <Table.Td>
+                        {item.status === 'Awaiting Client' ? (
+                          item.nextFollowUpDate ? (
+                            <Badge size="sm" variant="light" color="orange" radius="sm">
+                              🕒 {formatDisplayDate(item.nextFollowUpDate)}
+                            </Badge>
+                          ) : (
+                            <Badge size="sm" variant="light" color="gray" radius="sm">
+                              Pending Date
+                            </Badge>
+                          )
+                        ) : (
+                          <Text size="xs" c="dimmed">
+                            —
+                          </Text>
+                        )}
+                      </Table.Td>
+
+                      {/* 4. COMMERCIAL DETAILS */}
+                      <Table.Td>
+                        <Stack gap={2}>
+                          <Text size="sm" fw={800} style={{ color: isDark ? '#38BDF8' : '#2563EB' }}>
+                            ₹{Number(item.expectedFinalAmount || item.quotedAmount || 0).toLocaleString('en-IN')}
+                          </Text>
+                          <Text size="11px" c="dimmed">
+                            Quoted: ₹{Number(item.quotedAmount || 0).toLocaleString('en-IN')}
+                            {Number(item.discountPercentage || 0) > 0 ? ` (${item.discountPercentage}% off)` : ''}
+                            {item.paymentTerms ? ` • ${item.paymentTerms}` : ''}
+                          </Text>
+                        </Stack>
+                      </Table.Td>
+
+                      {/* 5. STATUS */}
+                      <Table.Td>
+                        {renderStatusBadge(item.status)}
+                      </Table.Td>
+
+                      {/* 6. ACTIONS */}
+                      <Table.Td style={{ textAlign: 'right' }}>
+                        <Group justify="flex-end" gap={6} wrap="nowrap">
+                          <Tooltip label="View Details" withArrow>
+                            <ActionIcon
+                              variant="subtle"
+                              color="blue"
+                              size="md"
+                              radius="md"
+                              onClick={() => setDetailsNegotiation(item)}
+                            >
+                              <IconEye size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+
+                          <Tooltip label="Download Terms" withArrow>
+                            <ActionIcon
+                              variant="subtle"
+                              color="indigo"
+                              size="md"
+                              radius="md"
+                              onClick={() => handleDownloadSummary(item)}
+                            >
+                              <IconDownload size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+
+                          {item.status !== 'Won' && (
+                            <Tooltip label="Mark Accepted" withArrow>
+                              <ActionIcon
+                                variant="subtle"
+                                color="teal"
+                                size="md"
+                                radius="md"
+                                onClick={() => handleQuickMarkWon(item)}
+                              >
+                                <IconCheck size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+
+                          {canEdit && (
+                            <Tooltip label="Edit Negotiation" withArrow>
+                              <ActionIcon
+                                variant="subtle"
+                                color="blue"
+                                size="md"
+                                radius="md"
+                                onClick={() => handleOpenEditModal(item)}
+                              >
+                                <IconEdit size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+
+                          {canDelete && (
+                            <Tooltip label="Delete Negotiation" withArrow>
+                              <ActionIcon
+                                variant="subtle"
+                                color="red"
+                                size="md"
+                                radius="md"
+                                onClick={() => setDeleteTarget(item)}
+                              >
+                                <IconTrash size={16} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          </Paper>
+
+          {/* MOBILE CARDS VIEW */}
+          <Stack gap="md" hiddenFrom="sm" mt="md">
+            {paginatedNegotiations.map((item) => (
+              <Paper
+                key={item.id}
+                p="md"
+                radius="lg"
+                style={{
+                  background: isDark ? '#111827' : '#FFFFFF',
+                  border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+                  boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 4px rgba(0,0,0,0.03)',
+                }}
+              >
+                <Group justify="space-between" align="flex-start" mb="xs">
+                  <div>
+                    <Text size="sm" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                      {item.leadName || item.clientName || 'Client Deal'}
+                    </Text>
+                    {item.quotationNumber ? (
+                      <Group gap={6} mt={2}>
+                        <Badge size="xs" variant="light" color="indigo" radius="sm">
+                          📄 {item.quotationNumber}
+                        </Badge>
+                      </Group>
+                    ) : item.proposalNumber ? (
+                      <Group gap={6} mt={2}>
+                        <Badge size="xs" variant="light" color="indigo" radius="sm">
+                          📄 {item.proposalNumber}
+                        </Badge>
+                      </Group>
+                    ) : null}
+                  </div>
+                  {renderStatusBadge(item.status)}
                 </Group>
-                <Text size="xs" c="dimmed">
-                  {entry.date} • {entry.author}
+
+                <SimpleGrid cols={2} spacing="xs" my="xs">
+                  <div>
+                    <Text size="11px" c="dimmed">
+                      Negotiation Date
+                    </Text>
+                    <Text size="xs" fw={600} style={{ color: isDark ? '#E2E8F0' : '#1E293B' }}>
+                      {formatDisplayDate(item.negotiationDate)}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text size="11px" c="dimmed">
+                      Next Follow-up Date
+                    </Text>
+                    {item.status === 'Awaiting Client' ? (
+                      <Badge size="xs" variant="light" color="orange">
+                        🕒 {formatDisplayDate(item.nextFollowUpDate)}
+                      </Badge>
+                    ) : (
+                      <Text size="xs" c="dimmed">—</Text>
+                    )}
+                  </div>
+                  <div>
+                    <Text size="11px" c="dimmed">
+                      Expected Final Amount
+                    </Text>
+                    <Text size="xs" fw={800} style={{ color: isDark ? '#38BDF8' : '#2563EB' }}>
+                      ₹{Number(item.expectedFinalAmount || item.quotedAmount || 0).toLocaleString('en-IN')}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text size="11px" c="dimmed">
+                      Quoted / Terms
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      ₹{Number(item.quotedAmount || 0).toLocaleString('en-IN')} • {item.paymentTerms || 'Milestone Based'}
+                    </Text>
+                  </div>
+                </SimpleGrid>
+
+                <Divider my="xs" />
+
+                <Group justify="flex-end" gap={6}>
+                  <ActionIcon variant="subtle" color="blue" size="sm" onClick={() => setDetailsNegotiation(item)}>
+                    <IconEye size={15} />
+                  </ActionIcon>
+                  {canEdit && (
+                    <ActionIcon variant="subtle" color="blue" size="sm" onClick={() => handleOpenEditModal(item)}>
+                      <IconEdit size={15} />
+                    </ActionIcon>
+                  )}
+                  {canDelete && (
+                    <ActionIcon variant="subtle" color="red" size="sm" onClick={() => setDeleteTarget(item)}>
+                      <IconTrash size={15} />
+                    </ActionIcon>
+                  )}
+                </Group>
+              </Paper>
+            ))}
+          </Stack>
+
+          {filteredNegotiations.length > pageSize && (
+            <Group justify="space-between" align="center" mt="lg">
+              <Text size="xs" c="dimmed">
+                Showing {Math.min((page - 1) * pageSize + 1, filteredNegotiations.length)} to{' '}
+                {Math.min(page * pageSize, filteredNegotiations.length)} of {filteredNegotiations.length} records
+              </Text>
+              <Pagination
+                total={totalPages}
+                value={page}
+                onChange={setPage}
+                color="blue"
+                radius="md"
+                size="sm"
+              />
+            </Group>
+          )}
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. CREATE / EDIT MODAL                                                    */}
+      {/* ========================      {/* ========================================================================= */}
+      {/* 4. CREATE / EDIT MODAL (MATCHING PROPOSAL MODAL DESIGN)                  */}
+      {/* ========================================================================= */}
+      <Modal
+        opened={modalOpen}
+        onClose={() => {
+          if (!submitting) {
+            setModalOpen(false);
+            setEditingNegotiation(null);
+          }
+        }}
+        size="880px"
+        radius="lg"
+        centered
+        withCloseButton={false}
+        styles={{
+          content: {
+            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column',
+          },
+          body: {
+            padding: '26px 30px',
+            maxHeight: 'calc(92vh - 20px)',
+            overflowY: 'auto',
+          },
+        }}
+        closeOnClickOutside={!submitting}
+      >
+        {/* Header matching Create Proposal Modal */}
+        <Group justify="space-between" align="flex-start" mb="lg">
+          <Group gap="sm" align="center">
+            <Box
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                background: isDark ? 'rgba(37, 99, 235, 0.2)' : '#EFF6FF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isDark ? '#60A5FA' : '#2563EB',
+              }}
+            >
+              <IconFileDescription size={22} stroke={1.8} />
+            </Box>
+            <div>
+              <Text fw={800} size="19px" style={{ color: isDark ? '#F8FAFC' : '#0F172A', lineHeight: 1.2 }}>
+                {editingNegotiation ? 'Edit Negotiation' : 'Create Negotiation'}
+              </Text>
+              <Text size="xs" c="dimmed" mt={2}>
+                Enter negotiation details
+              </Text>
+            </div>
+          </Group>
+
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="md"
+            radius="100px"
+            onClick={() => {
+              setModalOpen(false);
+              setEditingNegotiation(null);
+            }}
+          >
+            <IconX size={18} />
+          </ActionIcon>
+        </Group>
+
+        <Box component="form" onSubmit={handleSubmit}>
+          <Stack gap="md">
+            {/* ================================================================= */}
+            {/* SECTION 1: BASIC DETAILS                                          */}
+            {/* ================================================================= */}
+            <Box>
+              <Group gap="xs" mb="xs">
+                <ThemeIcon size="xs" radius="xl" color="blue" variant="light">
+                  <IconFileDescription size={12} />
+                </ThemeIcon>
+                <Text size="xs" fw={700} tt="uppercase" style={{ letterSpacing: '0.05em', color: isDark ? '#93C5FD' : '#2563EB' }}>
+                  1. Basic Details
                 </Text>
               </Group>
+              <Divider mb="sm" color={isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'} />
 
-              <Text size="13px" style={{ color: isDark ? '#CBD5E1' : '#475569', lineHeight: 1.5 }}>
-                {entry.notes}
-              </Text>
+              <Stack gap="sm">
+                {/* Row 1: Negotiation ID & Lead / Client Name */}
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <TextInput
+                    label="Negotiation ID"
+                    placeholder="Auto-generated ID"
+                    value={formNegotiationId}
+                    readOnly
+                    disabled
+                    radius="md"
+                    description="Automatically generated unique ID"
+                  />
+                  <Select
+                    label="Lead / Client Name"
+                    withAsterisk
+                    placeholder="Select lead or client"
+                    data={leadOptions}
+                    searchable
+                    value={leadOrContactKey}
+                    onChange={handleLeadSelect}
+                    error={errors.leadName}
+                    radius="md"
+                    required
+                  />
+                </SimpleGrid>
 
-              {entry.priceImpact && (
-                <Text size="xs" fw={700} color={entry.priceImpact < 0 ? 'orange' : 'green'} mt={6}>
-                  Price Impact: {entry.priceImpact < 0 ? '-' : '+'}₹{Math.abs(entry.priceImpact).toLocaleString('en-IN')}
-                </Text>
-              )}
+                {/* Row 2: Quotation / Proposal & Assigned Employee */}
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <Select
+                    label="Quotation / Proposal"
+                    placeholder="Link quotation or proposal (optional)"
+                    data={quotationOptions}
+                    searchable
+                    clearable
+                    value={quotationOrProposal}
+                    onChange={handleQuotationSelect}
+                    radius="md"
+                  />
+                  <Select
+                    label="Assigned Employee"
+                    withAsterisk
+                    placeholder="Select assigned employee"
+                    data={employeeOptions}
+                    searchable
+                    value={assignedEmployeeKey}
+                    onChange={handleEmployeeSelect}
+                    error={errors.assignedToName}
+                    radius="md"
+                    required
+                  />
+                </SimpleGrid>
+
+                {/* Row 3: Negotiation Date & Status */}
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <MeetingDatePicker
+                    label="Negotiation Date"
+                    placeholder="dd-mm-yyyy"
+                    value={formNegotiationDate}
+                    onChange={(val) => {
+                      setFormNegotiationDate(val);
+                      if (errors.negotiationDate) setErrors((prev) => ({ ...prev, negotiationDate: '' }));
+                    }}
+                    error={errors.negotiationDate}
+                    required
+                    zIndex={3000}
+                  />
+                  <Select
+                    label="Status"
+                    withAsterisk
+                    data={negotiationStatusOptions}
+                    value={formStatus}
+                    onChange={handleStatusChange}
+                    allowDeselect={false}
+                    required
+                    radius="md"
+                  />
+                </SimpleGrid>
+              </Stack>
             </Box>
-          ))}
-        </Stack>
-      </Paper>
 
-      {/* Modal: Log Discussion */}
-      <Modal
-        opened={modalOpened}
-        onClose={() => setModalOpened(false)}
-        size="md"
-        radius="16px"
-        title={
-          <Group gap="xs">
-            <ThemeIcon color="violet" size="md" radius="md">
-              <IconMessageDots size={16} />
-            </ThemeIcon>
-            <Text fw={700} size="16px">
-              Log Negotiation Discussion
-            </Text>
-          </Group>
-        }
-      >
-        <Stack gap="md">
-          <TextInput
-            label="Topic / Focus"
-            placeholder="e.g. Budget discount request, milestone modification"
-            value={newTopic}
-            onChange={(e) => setNewTopic(e.target.value)}
-            required
-          />
+            {/* ================================================================= */}
+            {/* SECTION 2: COMMERCIAL DETAILS                                     */}
+            {/* ================================================================= */}
+            <Box mt="xs">
+              <Group gap="xs" mb="xs">
+                <ThemeIcon size="xs" radius="xl" color="teal" variant="light">
+                  <IconCurrencyRupee size={12} />
+                </ThemeIcon>
+                <Text size="xs" fw={700} tt="uppercase" style={{ letterSpacing: '0.05em', color: isDark ? '#6EE7B7' : '#059669' }}>
+                  2. Commercial Details
+                </Text>
+              </Group>
+              <Divider mb="sm" color={isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'} />
 
-          <Select
-            label="Discussion Type"
-            value={newType}
-            onChange={(v) => setNewType(v || 'pricing')}
-            data={[
-              { value: 'pricing', label: 'Pricing & Commercials' },
-              { value: 'scope', label: 'Scope Modification' },
-              { value: 'terms', label: 'Payment Terms & Milestones' },
-              { value: 'general', label: 'General Alignment' },
-            ]}
-          />
+              <Stack gap="sm">
+                {/* Row 1: Quoted Amount, Discount (%), Expected Final Amount */}
+                <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                  <NumberInput
+                    label="Quoted Amount"
+                    withAsterisk
+                    placeholder="e.g. 85,000"
+                    value={formQuotedAmount}
+                    onChange={handleQuotedAmountChange}
+                    min={0}
+                    thousandSeparator=","
+                    prefix="₹ "
+                    radius="md"
+                    required
+                  />
+                  <NumberInput
+                    label="Discount (%)"
+                    placeholder="e.g. 10%"
+                    value={formDiscountPercentage}
+                    onChange={handleDiscountChange}
+                    min={0}
+                    max={100}
+                    suffix="%"
+                    radius="md"
+                  />
+                  <NumberInput
+                    label="Expected Final Amount"
+                    placeholder="e.g. 76,500"
+                    value={formExpectedFinalAmount}
+                    onChange={handleExpectedFinalAmountChange}
+                    min={0}
+                    thousandSeparator=","
+                    prefix="₹ "
+                    radius="md"
+                  />
+                </SimpleGrid>
 
-          <NumberInput
-            label="Price Impact (₹)"
-            description="Use negative value for discount concession, e.g. -15000"
-            value={newPriceImpact}
-            onChange={(v) => setNewPriceImpact(Number(v) || 0)}
-          />
+                {/* Row 2: Payment Terms & Delivery Timeline */}
+                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                  <Select
+                    label="Payment Terms"
+                    placeholder="Select payment terms"
+                    data={paymentTermList}
+                    value={formPaymentTerms}
+                    onChange={(val) => setFormPaymentTerms(val || 'Milestone Based')}
+                    searchable
+                    radius="md"
+                  />
+                  <TextInput
+                    label="Delivery Timeline"
+                    placeholder="e.g. 45 Days, 6 Weeks, 3 Months"
+                    value={formDeliveryTimeline}
+                    onChange={(e) => setFormDeliveryTimeline(e.currentTarget.value)}
+                    radius="md"
+                  />
+                </SimpleGrid>
 
-          <Textarea
-            label="Discussion Notes & Client Response"
-            placeholder="Details of client counter-offer, objections or agreed concessions..."
-            value={newNotes}
-            onChange={(e) => setNewNotes(e.target.value)}
-            minRows={3}
-            required
-          />
+                {/* Row 3: Project Scope Changes */}
+                <Textarea
+                  label="Project Scope Changes"
+                  placeholder="Describe any additions, removals, or modifications requested by the client..."
+                  value={formScopeChanges}
+                  onChange={(e) => setFormScopeChanges(e.currentTarget.value)}
+                  minRows={2}
+                  radius="md"
+                />
+              </Stack>
+            </Box>
 
-          <Group justify="flex-end" mt="sm">
-            <Button variant="default" onClick={() => setModalOpened(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddLog}
-              style={{
-                background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)',
-                color: '#FFF',
-                fontWeight: 700,
-              }}
-            >
-              Save Log Entry ✓
-            </Button>
-          </Group>
-        </Stack>
+            {/* ================================================================= */}
+            {/* SECTION 3: DISCUSSION DETAILS                                     */}
+            {/* ================================================================= */}
+            <Box mt="xs">
+              <Group gap="xs" mb="xs">
+                <ThemeIcon size="xs" radius="xl" color="violet" variant="light">
+                  <IconMessageCircle size={12} />
+                </ThemeIcon>
+                <Text size="xs" fw={700} tt="uppercase" style={{ letterSpacing: '0.05em', color: isDark ? '#C4B5FD' : '#7C3AED' }}>
+                  3. Discussion Details
+                </Text>
+              </Group>
+              <Divider mb="sm" color={isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'} />
+
+              <Stack gap="sm">
+                <Textarea
+                  label="Client Requirements / Objections"
+                  placeholder="Record client concerns, requested changes, and objections..."
+                  value={formClientRequirements}
+                  onChange={(e) => setFormClientRequirements(e.currentTarget.value)}
+                  minRows={2}
+                  radius="md"
+                />
+
+                <Textarea
+                  label="Negotiation Notes"
+                  placeholder="Record discussion summaries, commitments, and decisions..."
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.currentTarget.value)}
+                  minRows={2}
+                  radius="md"
+                />
+
+                {/* CONDITIONAL FIELD: Next Follow-up Date (Required ONLY when status is Awaiting Client) */}
+                {formStatus === 'Awaiting Client' && (
+                  <MeetingDatePicker
+                    label="Next Follow-up Date"
+                    placeholder="dd-mm-yyyy"
+                    value={formNextFollowUpDate}
+                    onChange={(val) => {
+                      setFormNextFollowUpDate(val);
+                      if (errors.nextFollowUpDate) setErrors((prev) => ({ ...prev, nextFollowUpDate: '' }));
+                    }}
+                    error={errors.nextFollowUpDate}
+                    required
+                    zIndex={3000}
+                  />
+                )}
+
+                {/* CONDITIONAL FIELD: Reason for Lost Deal (Required ONLY when status is Lost) */}
+                {formStatus === 'Lost' && (
+                  <TextInput
+                    label="Reason for Lost Deal"
+                    withAsterisk
+                    placeholder="e.g. Budget constraints, opted for competitor, project postponed"
+                    value={formLossReason}
+                    onChange={(e) => {
+                      setFormLossReason(e.currentTarget.value);
+                      if (errors.lossReason) setErrors((prev) => ({ ...prev, lossReason: '' }));
+                    }}
+                    error={errors.lossReason}
+                    required
+                    radius="md"
+                  />
+                )}
+              </Stack>
+            </Box>
+
+            {/* Action Buttons: Cancel & Create Negotiation */}
+            <Group justify="flex-end" gap="sm" mt="lg" pb="xs">
+              <Button
+                variant="default"
+                radius="md"
+                onClick={() => {
+                  setModalOpen(false);
+                  setEditingNegotiation(null);
+                }}
+                disabled={submitting}
+                style={{
+                  fontWeight: 600,
+                  minWidth: 90,
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                radius="md"
+                loading={submitting}
+                style={{
+                  background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                  color: '#FFFFFF',
+                  fontWeight: 600,
+                  minWidth: 140,
+                }}
+              >
+                {editingNegotiation ? 'Update Negotiation' : 'Create Negotiation'}
+              </Button>
+            </Group>
+          </Stack>
+        </Box>
       </Modal>
 
-      {/* Modal: Adjust Commercials */}
+      {/* ========================================================================= */}
+      {/* 5. DETAILS MODAL (MATCHING QUOTATION MODAL DESIGN & POPUP SIZE)           */}
+      {/* ========================================================================= */}
       <Modal
-        opened={editValuesModal}
-        onClose={() => setEditValuesModal(false)}
-        size="sm"
-        radius="16px"
-        title={<Text fw={700}>Adjust Commercial Agreement</Text>}
+        opened={Boolean(detailsNegotiation)}
+        onClose={() => setDetailsNegotiation(null)}
+        size="860px"
+        padding="xl"
+        radius="lg"
+        centered
+        withCloseButton={false}
+        styles={{
+          header: { display: 'none' },
+          body: {
+            padding: 0,
+            maxHeight: 'calc(90vh - 20px)',
+            overflowY: 'auto',
+          },
+          content: {
+            backgroundColor: isDark ? '#111827' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
+            borderRadius: '16px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+          },
+        }}
       >
-        <Stack gap="md">
-          <NumberInput
-            label="Agreed Deal Value (₹)"
-            value={editAgreedPrice}
-            onChange={(v) => setEditAgreedPrice(Number(v) || 0)}
-            min={0}
-            required
-          />
+        {detailsNegotiation && (
+          <Box p={{ base: 'md', sm: 'xl' }} pb={{ base: 'xl', sm: '2xl' }}>
+            {/* Modal Top Header */}
+            <Group justify="space-between" align="center" mb="lg">
+              <Group gap="sm">
+                <Box
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                    color: '#FFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
+                  }}
+                >
+                  <IconScale size={24} />
+                </Box>
+                <div>
+                  <Text fw={800} size="18px" style={{ color: isDark ? '#F8FAFC' : '#0F172A', lineHeight: 1.2 }}>
+                    Negotiation Details
+                  </Text>
+                  <Text size="xs" c="dimmed" mt={2}>
+                    Negotiation Ref: <span style={{ fontWeight: 700, color: '#3B82F6' }}>{detailsNegotiation.negotiationId}</span>
+                  </Text>
+                </div>
+              </Group>
 
-          <Select
-            label="Negotiation Status"
-            value={editStatus}
-            onChange={(v) => setEditStatus(v || 'Terms Agreed')}
-            data={['In Discussion', 'Counter-Offer Received', 'Terms Agreed', 'Stalled']}
-          />
+              {/* Status Selector */}
+              <Group gap="xs">
+                <Select
+                  size="xs"
+                  data={['Draft', 'In Progress', 'Awaiting Client', 'Revised Quotation', 'Won', 'Lost']}
+                  value={detailsNegotiation.status || 'In Progress'}
+                  onChange={(val) => val && handleDetailsStatusChange(val)}
+                  style={{ width: 150 }}
+                  styles={{
+                    input: {
+                      fontWeight: 700,
+                      borderRadius: 8,
+                      borderColor: isDark ? '#334155' : '#CBD5E1',
+                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                      color: isDark ? '#F8FAFC' : '#0F172A',
+                    },
+                  }}
+                />
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="lg"
+                  radius="md"
+                  onClick={() => setDetailsNegotiation(null)}
+                >
+                  <IconCheck size={18} />
+                </ActionIcon>
+              </Group>
+            </Group>
 
-          <Group justify="flex-end" mt="sm">
-            <Button variant="default" onClick={() => setEditValuesModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveTerms}
+            <Divider mb="lg" color={isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'} />
+
+            {/* Read-only Information Grid */}
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mb="lg">
+              <TextInput
+                label="Negotiation ID"
+                value={detailsNegotiation.negotiationId}
+                readOnly
+                leftSection={<IconFileText size={16} color="#64748B" />}
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                    fontWeight: 600,
+                  },
+                }}
+              />
+
+              <TextInput
+                label="Lead / Client Name"
+                value={detailsNegotiation.leadName || detailsNegotiation.clientName || 'N/A'}
+                readOnly
+                leftSection={<IconUser size={16} color="#64748B" />}
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                    fontWeight: 600,
+                  },
+                }}
+              />
+
+              <TextInput
+                label="Quotation / Proposal"
+                value={detailsNegotiation.quotationNumber || detailsNegotiation.proposalNumber || 'None Linked'}
+                readOnly
+                leftSection={<IconFileDescription size={16} color="#64748B" />}
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                    fontWeight: 600,
+                  },
+                }}
+              />
+
+              <TextInput
+                label="Assigned Employee"
+                value={detailsNegotiation.assignedToName || 'Unassigned'}
+                readOnly
+                leftSection={<IconUserCheck size={16} color="#64748B" />}
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                    fontWeight: 600,
+                  },
+                }}
+              />
+
+              <TextInput
+                label="Negotiation Date"
+                value={formatDisplayDate(detailsNegotiation.negotiationDate)}
+                readOnly
+                leftSection={<IconCalendar size={16} color="#64748B" />}
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                    fontWeight: 600,
+                  },
+                }}
+              />
+
+              <TextInput
+                label="Payment Terms"
+                value={detailsNegotiation.paymentTerms || 'Milestone Based'}
+                readOnly
+                leftSection={<IconClock size={16} color="#64748B" />}
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                    fontWeight: 600,
+                  },
+                }}
+              />
+
+              <TextInput
+                label="Delivery Timeline"
+                value={detailsNegotiation.deliveryTimeline || 'N/A'}
+                readOnly
+                leftSection={<IconTruckDelivery size={16} color="#64748B" />}
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                    fontWeight: 600,
+                  },
+                }}
+              />
+
+              {detailsNegotiation.nextFollowUpDate && (
+                <TextInput
+                  label="Next Follow-up Date"
+                  value={formatDisplayDate(detailsNegotiation.nextFollowUpDate)}
+                  readOnly
+                  leftSection={<IconCalendarEvent size={16} color="#EAB308" />}
+                  styles={{
+                    input: {
+                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                      color: isDark ? '#FCD34D' : '#B45309',
+                      borderColor: isDark ? '#334155' : '#E2E8F0',
+                      fontWeight: 600,
+                    },
+                  }}
+                />
+              )}
+
+              {detailsNegotiation.status === 'Lost' && detailsNegotiation.lossReason && (
+                <TextInput
+                  label="Reason for Lost Deal"
+                  value={detailsNegotiation.lossReason}
+                  readOnly
+                  leftSection={<IconAlertCircle size={16} color="#EF4444" />}
+                  styles={{
+                    input: {
+                      backgroundColor: isDark ? '#1E293B' : '#FEF2F2',
+                      color: isDark ? '#FCA5A5' : '#DC2626',
+                      borderColor: isDark ? '#7F1D1D' : '#FECACA',
+                      fontWeight: 600,
+                    },
+                  }}
+                />
+              )}
+            </SimpleGrid>
+
+            {/* Financial Summary Card */}
+            <Paper
+              p="md"
+              radius="md"
+              mb="lg"
               style={{
-                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                color: '#FFF',
-                fontWeight: 700,
+                background: isDark ? '#1E293B' : '#F8FAFC',
+                border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
               }}
             >
-              Update Terms ✓
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+                <div>
+                  <Text size="11px" c="dimmed" fw={600}>
+                    Quoted Amount
+                  </Text>
+                  <Text size="sm" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                    {formatCurrency(detailsNegotiation.quotedAmount)}
+                  </Text>
+                </div>
+                <div>
+                  <Text size="11px" c="dimmed" fw={600}>
+                    Discount (%)
+                  </Text>
+                  <Text size="sm" fw={700} style={{ color: '#E11D48' }}>
+                    {detailsNegotiation.discountPercentage ? `${detailsNegotiation.discountPercentage}%` : '0%'}
+                  </Text>
+                </div>
+                <div>
+                  <Text size="11px" c="dimmed" fw={600}>
+                    Expected Final Amount
+                  </Text>
+                  <Text size="md" fw={800} style={{ color: '#2563EB' }}>
+                    {formatCurrency(detailsNegotiation.expectedFinalAmount)}
+                  </Text>
+                </div>
+              </SimpleGrid>
+            </Paper>
+
+            {/* Scope Changes & Discussion Notes (if present) */}
+            {(detailsNegotiation.scopeChanges || detailsNegotiation.clientRequirements || detailsNegotiation.notes) && (
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mb="lg">
+                {detailsNegotiation.scopeChanges && (
+                  <Textarea
+                    label="Project Scope Changes"
+                    value={detailsNegotiation.scopeChanges}
+                    readOnly
+                    minRows={2}
+                    styles={{
+                      input: {
+                        backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                        fontWeight: 500,
+                      },
+                    }}
+                  />
+                )}
+                {detailsNegotiation.clientRequirements && (
+                  <Textarea
+                    label="Client Requirements / Objections"
+                    value={detailsNegotiation.clientRequirements}
+                    readOnly
+                    minRows={2}
+                    styles={{
+                      input: {
+                        backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                        fontWeight: 500,
+                      },
+                    }}
+                  />
+                )}
+                {detailsNegotiation.notes && (
+                  <Textarea
+                    label="Negotiation Notes"
+                    value={detailsNegotiation.notes}
+                    readOnly
+                    minRows={2}
+                    styles={{
+                      input: {
+                        backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                        color: isDark ? '#F8FAFC' : '#0F172A',
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                        fontWeight: 500,
+                      },
+                    }}
+                  />
+                )}
+              </SimpleGrid>
+            )}
+
+            {/* History Timeline */}
+            {detailsNegotiation.discussionHistory && detailsNegotiation.discussionHistory.length > 0 && (
+              <Box mb="lg">
+                <Text fw={700} size="sm" mb="xs" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                  History Timeline ({detailsNegotiation.discussionHistory.length})
+                </Text>
+                <Paper
+                  p="md"
+                  radius="md"
+                  style={{
+                    background: isDark ? '#1E293B' : '#F8FAFC',
+                    border: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E2E8F0',
+                  }}
+                >
+                  <Timeline active={detailsNegotiation.discussionHistory.length} bulletSize={18} lineWidth={2}>
+                    {detailsNegotiation.discussionHistory.map((item, idx) => (
+                      <Timeline.Item
+                        key={item.id || idx}
+                        bullet={<IconMessageCircle size={10} />}
+                        title={<Text size="xs" fw={700}>{item.topic || 'Update'}</Text>}
+                      >
+                        <Text size="11px" c="dimmed">
+                          {item.author} • {formatDisplayDate(item.date)}
+                        </Text>
+                        <Text size="xs" mt={2}>{item.notes}</Text>
+                      </Timeline.Item>
+                    ))}
+                  </Timeline>
+                </Paper>
+              </Box>
+            )}
+
+            {/* Footer Buttons */}
+            <Divider mb="lg" color={isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9'} />
+            <Group justify="space-between" align="center">
+              <Button
+                variant="default"
+                onClick={() => setDetailsNegotiation(null)}
+                style={{ borderRadius: 10, fontWeight: 600 }}
+              >
+                Close
+              </Button>
+              <Group gap="xs">
+                {canDelete && (
+                  <Button
+                    color="red"
+                    variant="light"
+                    leftSection={<IconTrash size={15} />}
+                    onClick={() => {
+                      const tgt = detailsNegotiation;
+                      setDetailsNegotiation(null);
+                      setDeleteTarget(tgt);
+                    }}
+                    style={{ borderRadius: 10, fontWeight: 600 }}
+                  >
+                    Delete
+                  </Button>
+                )}
+                {canEdit && (
+                  <Button
+                    color="blue"
+                    leftSection={<IconEdit size={15} />}
+                    onClick={() => {
+                      const tgt = detailsNegotiation;
+                      setDetailsNegotiation(null);
+                      handleOpenEditModal(tgt);
+                    }}
+                    style={{
+                      borderRadius: 10,
+                      fontWeight: 700,
+                      background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                    }}
+                  >
+                    Edit Negotiation
+                  </Button>
+                )}
+              </Group>
+            </Group>
+          </Box>
+        )}
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* 6. DELETE CONFIRMATION MODAL                                              */}
+      {/* ========================================================================= */}
+      <Modal
+        opened={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        title={
+          <Group gap="xs">
+            <IconAlertTriangle size={18} color="#EF4444" />
+            <Text fw={700}>Delete Negotiation</Text>
+          </Group>
+        }
+        radius="lg"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Are you sure you want to delete negotiation record{' '}
+            <b>{deleteTarget?.negotiationId}</b> ({deleteTarget?.leadName})?
+          </Text>
+          <Group justify="flex-end" gap="sm">
+            <Button variant="default" onClick={() => setDeleteTarget(null)} disabled={deleteLoading}>
+              Cancel
+            </Button>
+            <Button color="red" onClick={handleConfirmDelete} loading={deleteLoading}>
+              Delete Record
             </Button>
           </Group>
         </Stack>
@@ -837,367 +2552,1801 @@ export const LeadNegotiationSection: React.FC<LeadNegotiationSectionProps> = ({
 };
 
 
+
 // =========================================================================
 // 3. LEAD CONTRACT SECTION
 // =========================================================================
 
+type ActiveContractTabType =
+  | 'ALL'
+  | 'ACTIVE'
+  | 'PENDING_APPROVAL'
+  | 'SENT_FOR_SIGNATURE'
+  | 'SIGNED'
+  | 'COMPLETED'
+  | 'TERMINATED';
+
 interface LeadContractSectionProps {
   lead: Lead;
-  isDark: boolean;
-  contract: LeadContract;
-  onUpdateContract: (contract: LeadContract) => void;
-  onNavigateSection: (section: any) => void;
+  isDark?: boolean;
+  contract?: LeadContract;
+  onUpdateContract?: (contract: LeadContract) => void;
+  onNavigateSection?: (section: any) => void;
 }
 
 export const LeadContractSection: React.FC<LeadContractSectionProps> = ({
   lead,
-  isDark,
-  contract,
+  isDark: propIsDark,
+  contract: legacyContract,
   onUpdateContract,
   onNavigateSection,
 }) => {
-  const [editModalOpened, setEditModalOpened] = useState(false);
-  const [contractValue, setContractValue] = useState<number>(contract.contractValue);
-  const [durationMonths, setDurationMonths] = useState<number>(contract.durationMonths);
-  const [paymentTerms, setPaymentTerms] = useState<string>(contract.paymentTerms);
-  const [slaTerms, setSlaTerms] = useState<string>(contract.slaTerms);
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
+  const isDark = propIsDark !== undefined ? propIsDark : computedColorScheme === 'dark';
 
-  const handleToggleSign = () => {
-    const isNowSigned = !contract.signedByClient;
-    const updated: LeadContract = {
-      ...contract,
-      signedByClient: isNowSigned,
-      clientSignedDate: isNowSigned ? new Date().toISOString().split('T')[0] : undefined,
-      status: isNowSigned ? 'Signed' : 'Draft',
-    };
-    onUpdateContract(updated);
-    notifications.show({
-      title: isNowSigned ? 'Contract Signed & Executed' : 'Contract Status Reset',
-      message: isNowSigned
-        ? `Signed by ${contract.clientSignerName || lead.name}. Contract is now legally binding.`
-        : 'Contract returned to draft status.',
-      color: isNowSigned ? 'teal' : 'gray',
-    });
+  // Contexts
+  const { employees } = useEmployee();
+  const { contacts } = useContact();
+  const { leads } = useLead();
+  const { can, isSuperAdmin } = usePermissions();
+
+  const canCreate = isSuperAdmin || can('leads', 'create');
+  const canEdit = isSuperAdmin || can('leads', 'edit');
+  const canDelete = isSuperAdmin || can('leads', 'delete');
+
+  // Contracts & Data State
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [stats, setStats] = useState<ContractStats | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [proposals, setProposals] = useState<LeadProposal[]>([]);
+  const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
+
+  // Filter States
+  const [activeTab, setActiveTab] = useState<ActiveContractTabType>('ALL');
+  const [searchInput, setSearchInput] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [contractTypeFilter, setContractTypeFilter] = useState<string>('All');
+  const [approvalFilter, setApprovalFilter] = useState<string>('All');
+  const [signatureFilter, setSignatureFilter] = useState<string>('All');
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>(DEFAULT_DATE_FILTER);
+  const [page, setPage] = useState<number>(1);
+  const pageSize = 10;
+
+  // Modals
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [editingContract, setEditingContract] = useState<Contract | null>(null);
+  const [detailsContract, setDetailsContract] = useState<Contract | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Contract | null>(null);
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+
+  // Form State - 5 Sections
+  // Section A: Contract Information
+  const [formContractId, setFormContractId] = useState<string>('');
+  const [formTitle, setFormTitle] = useState<string>('');
+  const [formContractType, setFormContractType] = useState<ContractType>('Software Development');
+  const [formClientName, setFormClientName] = useState<string>('');
+  const [formLeadId, setFormLeadId] = useState<string>('');
+  const [formProposalId, setFormProposalId] = useState<string>('');
+  const [formProposalTitle, setFormProposalTitle] = useState<string>('');
+  const [formNegotiationId, setFormNegotiationId] = useState<string>('');
+  const [formNegotiationTitle, setFormNegotiationTitle] = useState<string>('');
+  const [assignedEmployeeKey, setAssignedEmployeeKey] = useState<string>('');
+  const [formAssignedTo, setFormAssignedTo] = useState<string>('');
+  const [formAssignedToName, setFormAssignedToName] = useState<string>('');
+  const [formContractDate, setFormContractDate] = useState<string>(new Date().toISOString().split('T')[0]);
+
+  // Section B: Project & Scope Details
+  const [formProjectName, setFormProjectName] = useState<string>('');
+  const [formStartDate, setFormStartDate] = useState<string>('');
+  const [formEndDate, setFormEndDate] = useState<string>('');
+  const [formScopeOfWork, setFormScopeOfWork] = useState<string>('');
+  const [formDeliverables, setFormDeliverables] = useState<string>('');
+
+  // Section C: Contract Terms
+  const [formContractValue, setFormContractValue] = useState<number>(0);
+
+  // Section D: Documents & Signatures
+  const [formContractDocument, setFormContractDocument] = useState<string>('');
+  const [formDocumentFileUrl, setFormDocumentFileUrl] = useState<string>('');
+  const [formAttachments, setFormAttachments] = useState<string[]>([]);
+  const [formClientSignatoryName, setFormClientSignatoryName] = useState<string>('');
+  const [formCompanySignatoryName, setFormCompanySignatoryName] = useState<string>('');
+  const [formSignatureStatus, setFormSignatureStatus] = useState<ContractSignatureStatus>('Pending');
+  const [formSignedDate, setFormSignedDate] = useState<string>('');
+  const [formApprovalStatus, setFormApprovalStatus] = useState<ContractApprovalStatus>('Draft');
+  const [formApprovedBy, setFormApprovedBy] = useState<string>('');
+  const [formApprovalDate, setFormApprovalDate] = useState<string>('');
+
+  // Section E: Contract Status
+  const [formStatus, setFormStatus] = useState<ContractStatus>('Draft');
+
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  const generateContractNumber = () => {
+    const year = new Date().getFullYear();
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    return `CNT-${year}-${randomNum}`;
   };
 
-  const handleSaveEdits = () => {
-    const updated: LeadContract = {
-      ...contract,
-      contractValue,
-      durationMonths,
-      paymentTerms,
-      slaTerms,
-    };
-    onUpdateContract(updated);
-    setEditModalOpened(false);
-    notifications.show({
-      title: 'Contract Updated',
-      message: 'Agreement parameters have been saved.',
-      color: 'teal',
+  // Load contracts and linked lead data
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [contractsRes, statsRes, negsRes] = await Promise.all([
+        leadService.getContracts({
+          leadId: lead?.id || undefined,
+          limit: 100,
+        }),
+        leadService.getContractStats(lead?.id).catch(() => null),
+        leadService.getNegotiations({ leadId: lead?.id || undefined, limit: 50 }).catch(() => null),
+      ]);
+
+      setContracts(contractsRes.data || []);
+      if (statsRes) setStats(statsRes);
+      if (negsRes && negsRes.data) setNegotiations(negsRes.data);
+    } catch (err: any) {
+      notifications.show({
+        title: 'Error Loading Contracts',
+        message: err.message || 'Could not fetch contracts list',
+        color: 'red',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [lead?.id]);
+
+  useEffect(() => {
+    loadData();
+    // Also fetch proposals for prefilling
+    leadService.getProposals()
+      .then((res) => {
+        if (Array.isArray(res)) {
+          setProposals(res.filter((p: any) => !lead?.id || p.leadId === lead.id || p.leadName === lead.name));
+        }
+      })
+      .catch(() => {});
+  }, [loadData, lead?.id, lead?.name]);
+
+  // Tab counts
+  const totalCount = contracts.length;
+  const activeCount = useMemo(
+    () => contracts.filter((c) => (c.status || '').toLowerCase() === 'active').length,
+    [contracts]
+  );
+  const pendingApprovalCount = useMemo(
+    () => contracts.filter((c) => (c.approvalStatus || '').toLowerCase() === 'pending approval' || (c.status || '').toLowerCase() === 'pending approval').length,
+    [contracts]
+  );
+  const sentForSignatureCount = useMemo(
+    () => contracts.filter((c) => (c.status || '').toLowerCase() === 'sent for signature').length,
+    [contracts]
+  );
+  const signedCount = useMemo(
+    () => contracts.filter((c) => (c.signatureStatus || '').toLowerCase() === 'signed').length,
+    [contracts]
+  );
+  const completedCount = useMemo(
+    () => contracts.filter((c) => (c.status || '').toLowerCase() === 'completed').length,
+    [contracts]
+  );
+  const terminatedCount = useMemo(
+    () => contracts.filter((c) => (c.status || '').toLowerCase() === 'terminated' || (c.status || '').toLowerCase() === 'expired').length,
+    [contracts]
+  );
+
+  const totalContractValueSum = useMemo(
+    () => contracts.reduce((acc, curr) => acc + (Number(curr.contractValue) || 0), 0),
+    [contracts]
+  );
+
+  // Filtered List
+  const filteredContracts = useMemo(() => {
+    return contracts.filter((cnt) => {
+      // 1. Tab filter
+      if (activeTab === 'ACTIVE' && (cnt.status || '').toLowerCase() !== 'active') return false;
+      if (activeTab === 'PENDING_APPROVAL' && (cnt.approvalStatus || '').toLowerCase() !== 'pending approval' && (cnt.status || '').toLowerCase() !== 'pending approval') return false;
+      if (activeTab === 'SENT_FOR_SIGNATURE' && (cnt.status || '').toLowerCase() !== 'sent for signature') return false;
+      if (activeTab === 'SIGNED' && (cnt.signatureStatus || '').toLowerCase() !== 'signed') return false;
+      if (activeTab === 'COMPLETED' && (cnt.status || '').toLowerCase() !== 'completed') return false;
+      if (activeTab === 'TERMINATED' && (cnt.status || '').toLowerCase() !== 'terminated' && (cnt.status || '').toLowerCase() !== 'expired') return false;
+
+      // 2. Dropdown Status filter
+      if (statusFilter !== 'All') {
+        if ((cnt.status || '').toLowerCase() !== statusFilter.toLowerCase()) return false;
+      }
+
+      // 3. Contract Type filter
+      if (contractTypeFilter !== 'All') {
+        if ((cnt.contractType || '').toLowerCase() !== contractTypeFilter.toLowerCase()) return false;
+      }
+
+      // 4. Approval Status filter
+      if (approvalFilter !== 'All') {
+        if ((cnt.approvalStatus || '').toLowerCase() !== approvalFilter.toLowerCase()) return false;
+      }
+
+      // 5. Signature Status filter
+      if (signatureFilter !== 'All') {
+        if ((cnt.signatureStatus || '').toLowerCase() !== signatureFilter.toLowerCase()) return false;
+      }
+
+      // 6. Date filter
+      if (!isDateMatchingFilter(cnt.contractDate || cnt.createdAt, dateFilter)) {
+        return false;
+      }
+
+      // 7. Search filter
+      if (searchInput.trim()) {
+        const q = searchInput.toLowerCase();
+        const matchId = (cnt.contractId || '').toLowerCase().includes(q);
+        const matchTitle = (cnt.title || '').toLowerCase().includes(q);
+        const matchClient = (cnt.clientName || '').toLowerCase().includes(q);
+        const matchProject = (cnt.projectName || '').toLowerCase().includes(q);
+        const matchType = (cnt.contractType || '').toLowerCase().includes(q);
+        const matchScope = (cnt.scopeOfWork || '').toLowerCase().includes(q);
+        const matchEmp = (cnt.assignedToName || '').toLowerCase().includes(q);
+
+        if (!matchId && !matchTitle && !matchClient && !matchProject && !matchType && !matchScope && !matchEmp) {
+          return false;
+        }
+      }
+
+      return true;
     });
+  }, [contracts, activeTab, statusFilter, contractTypeFilter, approvalFilter, signatureFilter, dateFilter, searchInput]);
+
+  const totalPages = Math.ceil(filteredContracts.length / pageSize) || 1;
+  const paginatedContracts = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredContracts.slice(start, start + pageSize);
+  }, [filteredContracts, page, pageSize]);
+
+  // Options
+  const contractTypeOptions = [
+    { value: 'Software Development', label: 'Software Development' },
+    { value: 'IT Product Sales', label: 'IT Product Sales' },
+    { value: 'Implementation', label: 'Implementation' },
+    { value: 'Maintenance', label: 'Maintenance' },
+    { value: 'Support', label: 'Support' },
+    { value: 'Other', label: 'Other' },
+  ];
+
+  const approvalStatusOptions = [
+    { value: 'Draft', label: 'Draft' },
+    { value: 'Pending Approval', label: 'Pending Approval' },
+    { value: 'Approved', label: 'Approved' },
+    { value: 'Rejected', label: 'Rejected' },
+  ];
+
+  const signatureStatusOptions = [
+    { value: 'Pending', label: 'Pending' },
+    { value: 'Partially Signed', label: 'Partially Signed' },
+    { value: 'Signed', label: 'Signed' },
+  ];
+
+  const contractStatusOptions = [
+    { value: 'Draft', label: 'Draft' },
+    { value: 'Pending Approval', label: 'Pending Approval' },
+    { value: 'Sent for Signature', label: 'Sent for Signature' },
+    { value: 'Partially Signed', label: 'Partially Signed' },
+    { value: 'Active', label: 'Active' },
+    { value: 'Completed', label: 'Completed' },
+    { value: 'Expired', label: 'Expired' },
+    { value: 'Terminated', label: 'Terminated' },
+  ];
+
+  const proposalSelectOptions: ComboboxItem[] = useMemo(() => {
+    return proposals.map((p: any) => ({
+      value: p.id || p.proposalNumber || p.proposalId,
+      label: `${p.proposalNumber || p.proposalId || 'Proposal'} — ${p.title || 'Proposal'} (₹${Number(p.totalAmount || 0).toLocaleString('en-IN')})`,
+    }));
+  }, [proposals]);
+
+  const negotiationSelectOptions: ComboboxItem[] = useMemo(() => {
+    return negotiations.map((n) => ({
+      value: n.id,
+      label: `${n.negotiationId} — ${n.clientName || n.leadName || 'Deal'} (₹${Number(n.expectedFinalAmount || n.quotedAmount || 0).toLocaleString('en-IN')})`,
+    }));
+  }, [negotiations]);
+
+  const employeeOptions: ComboboxItem[] = useMemo(() => {
+    return employees.map((e) => ({
+      value: `emp:${e.id}`,
+      label: `${e.name} (${e.designation || e.role || 'Staff'})`,
+    }));
+  }, [employees]);
+
+  // Open Create Modal
+  const handleOpenCreateModal = () => {
+    setEditingContract(null);
+    const newId = generateContractNumber();
+    setFormContractId(newId);
+
+    const defaultTitle = lead?.category === 'Product'
+      ? `${lead.productList?.[0] || 'IT CRM'} Service Agreement`
+      : `${lead?.serviceList?.[0] || 'IT Software Development'} Master Services Agreement (MSA)`;
+    setFormTitle(defaultTitle);
+    setFormContractType('Software Development');
+    setFormClientName(lead?.companyName || lead?.name || '');
+    setFormLeadId(lead?.id || '');
+
+    // Check if there is an accepted proposal or negotiation to prefill
+    const latestNeg = negotiations[0];
+    const latestProp = proposals[0] as any;
+    let initialVal = 0;
+
+    if (latestNeg) {
+      setFormNegotiationId(latestNeg.id);
+      setFormNegotiationTitle(latestNeg.negotiationId);
+      initialVal = Number(latestNeg.expectedFinalAmount || latestNeg.quotedAmount || 0);
+    } else if (latestProp) {
+      setFormProposalId(latestProp.id || latestProp.proposalNumber || '');
+      setFormProposalTitle(latestProp.proposalNumber || latestProp.title || '');
+      initialVal = Number(latestProp.totalAmount || 0);
+    } else if (legacyContract && legacyContract.contractValue) {
+      initialVal = legacyContract.contractValue;
+    }
+
+    setFormContractValue(initialVal || 120000);
+
+    const defaultEmp = employees[0];
+    setFormAssignedTo(defaultEmp?.id || defaultEmp?.empCode || '');
+    setFormAssignedToName(defaultEmp?.name || 'Authorized Officer');
+    setAssignedEmployeeKey(defaultEmp ? `emp:${defaultEmp.id}` : '');
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const oneYearLaterStr = new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0];
+
+    setFormContractDate(todayStr);
+    setFormProjectName(lead?.companyName ? `${lead.companyName} CRM Platform` : 'Enterprise Software Solution');
+    setFormStartDate(todayStr);
+    setFormEndDate(oneYearLaterStr);
+    setFormScopeOfWork('End-to-end requirement scoping, database architecture, backend API configuration, custom frontend interfaces, and secure user access management.');
+    setFormDeliverables('Full Source Code, Production Deployment on Cloud, QA & Testing Reports, Administrator & User Manuals, 30-Day Post-Go-Live Support.');
+
+    setFormContractDocument('MSA_Executed_Contract.pdf');
+    setFormDocumentFileUrl('');
+    setFormAttachments(['Scope_Document.pdf', 'SLA_Terms.pdf']);
+    setFormClientSignatoryName(lead?.name || 'Authorized Client Representative');
+    setFormCompanySignatoryName(defaultEmp?.name || 'OneAssist CRM Hub Executive');
+    setFormSignatureStatus('Pending');
+    setFormSignedDate('');
+    setFormApprovalStatus('Draft');
+    setFormApprovedBy(defaultEmp?.name || 'Manager');
+    setFormApprovalDate('');
+    setFormStatus('Draft');
+
+    setErrors({});
+    setModalOpen(true);
   };
 
-  const handleDownload = () => {
+  // Open Edit Modal
+  const handleOpenEditModal = (cnt: Contract) => {
+    setEditingContract(cnt);
+    setFormContractId(cnt.contractId || '');
+    setFormTitle(cnt.title || '');
+    setFormContractType((cnt.contractType as ContractType) || 'Software Development');
+    setFormClientName(cnt.clientName || lead?.companyName || lead?.name || '');
+    setFormLeadId(cnt.leadId || lead?.id || '');
+    setFormProposalId(cnt.proposalId || '');
+    setFormProposalTitle(cnt.proposalTitle || '');
+    setFormNegotiationId(cnt.negotiationId || '');
+    setFormNegotiationTitle(cnt.negotiationTitle || '');
+
+    setFormAssignedTo(cnt.assignedTo || '');
+    setFormAssignedToName(cnt.assignedToName || '');
+    setAssignedEmployeeKey(cnt.assignedTo ? `emp:${cnt.assignedTo}` : `custom:${cnt.assignedToName}`);
+
+    setFormContractDate(cnt.contractDate || new Date().toISOString().split('T')[0]);
+    setFormProjectName(cnt.projectName || '');
+    setFormStartDate(cnt.startDate || '');
+    setFormEndDate(cnt.endDate || '');
+    setFormScopeOfWork(cnt.scopeOfWork || '');
+    setFormDeliverables(cnt.deliverables || '');
+
+    setFormContractValue(Number(cnt.contractValue) || 0);
+
+    setFormContractDocument(cnt.contractDocument || '');
+    setFormDocumentFileUrl('');
+    setFormAttachments(cnt.attachments || []);
+    setFormClientSignatoryName(cnt.clientSignatoryName || '');
+    setFormCompanySignatoryName(cnt.companySignatoryName || '');
+    setFormSignatureStatus((cnt.signatureStatus as ContractSignatureStatus) || 'Pending');
+    setFormSignedDate(cnt.signedDate || '');
+    setFormApprovalStatus((cnt.approvalStatus as ContractApprovalStatus) || 'Draft');
+    setFormApprovedBy(cnt.approvedBy || '');
+    setFormApprovalDate(cnt.approvalDate || '');
+    setFormStatus((cnt.status as ContractStatus) || 'Draft');
+
+    setErrors({});
+    setModalOpen(true);
+  };
+
+  // Employee selector
+  const handleEmployeeSelect = (val: string | null) => {
+    if (!val) {
+      setAssignedEmployeeKey('');
+      setFormAssignedTo('');
+      setFormAssignedToName('');
+      return;
+    }
+    setAssignedEmployeeKey(val);
+    if (val.startsWith('emp:')) {
+      const id = val.replace('emp:', '');
+      const found = employees.find((e) => e.id === id);
+      if (found) {
+        setFormAssignedTo(found.id);
+        setFormAssignedToName(found.name);
+      }
+    } else {
+      setFormAssignedTo('');
+      setFormAssignedToName(val);
+    }
+  };
+
+  // Proposal link selection
+  const handleProposalSelect = (val: string | null) => {
+    if (!val) {
+      setFormProposalId('');
+      setFormProposalTitle('');
+      return;
+    }
+    const prop = proposals.find((p: any) => (p.id || p.proposalNumber || p.proposalId) === val);
+    if (prop) {
+      setFormProposalId(prop.id || (prop as any).proposalNumber || '');
+      setFormProposalTitle((prop as any).proposalNumber || prop.title || 'Proposal');
+      if (prop.totalAmount && formContractValue === 0) {
+        setFormContractValue(Number(prop.totalAmount));
+      }
+      if (prop.title && !formProjectName) {
+        setFormProjectName(prop.title);
+      }
+    } else {
+      setFormProposalId(val);
+      setFormProposalTitle(val);
+    }
+  };
+
+  // Negotiation link selection
+  const handleNegotiationSelect = (val: string | null) => {
+    if (!val) {
+      setFormNegotiationId('');
+      setFormNegotiationTitle('');
+      return;
+    }
+    const neg = negotiations.find((n) => n.id === val);
+    if (neg) {
+      setFormNegotiationId(neg.id);
+      setFormNegotiationTitle(neg.negotiationId);
+      if (neg.expectedFinalAmount) {
+        setFormContractValue(Number(neg.expectedFinalAmount));
+      } else if (neg.quotedAmount) {
+        setFormContractValue(Number(neg.quotedAmount));
+      }
+      if (neg.scopeChanges && !formScopeOfWork) {
+        setFormScopeOfWork(neg.scopeChanges);
+      }
+    } else {
+      setFormNegotiationId(val);
+      setFormNegotiationTitle(val);
+    }
+  };
+
+  // File upload simulation
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 25 * 1024 * 1024) {
+      notifications.show({
+        title: 'File Too Large',
+        message: 'Please upload a contract document smaller than 25MB.',
+        color: 'red',
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormContractDocument(file.name);
+      setFormDocumentFileUrl(reader.result as string);
+      notifications.show({
+        title: 'Contract Document Attached',
+        message: `${file.name} ready for digital signing.`,
+        color: 'teal',
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Submit Modal
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: { [key: string]: string } = {};
+
+    if (!formTitle.trim()) newErrors.title = 'Contract Title is required';
+    if (!formContractDate) newErrors.contractDate = 'Contract Date is required';
+    if (formContractValue < 0) newErrors.contractValue = 'Contract Value cannot be negative';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      notifications.show({
+        title: 'Validation Error',
+        message: 'Please resolve the highlighted fields before saving.',
+        color: 'red',
+      });
+      return;
+    }
+
+    const payload: Partial<ContractFormData> = {
+      contractId: formContractId.trim() || undefined,
+      title: formTitle.trim(),
+      contractType: formContractType,
+      leadId: formLeadId || lead.id,
+      clientName: formClientName.trim() || lead.companyName || lead.name,
+      proposalId: formProposalId || undefined,
+      proposalTitle: formProposalTitle || undefined,
+      negotiationId: formNegotiationId || undefined,
+      negotiationTitle: formNegotiationTitle || undefined,
+      assignedTo: formAssignedTo || undefined,
+      assignedToName: formAssignedToName.trim() || 'Authorized Staff',
+      contractDate: formContractDate,
+
+      projectName: formProjectName.trim() || undefined,
+      startDate: formStartDate || undefined,
+      endDate: formEndDate || undefined,
+      scopeOfWork: formScopeOfWork.trim() || undefined,
+      deliverables: formDeliverables.trim() || undefined,
+      contractValue: Number(formContractValue) || 0,
+
+      contractDocument: formContractDocument.trim() || undefined,
+      attachments: formAttachments.length > 0 ? formAttachments : undefined,
+      clientSignatoryName: formClientSignatoryName.trim() || undefined,
+      companySignatoryName: formCompanySignatoryName.trim() || undefined,
+      signatureStatus: formSignatureStatus,
+      signedDate: formSignedDate || undefined,
+      approvalStatus: formApprovalStatus,
+      approvedBy: formApprovedBy.trim() || undefined,
+      approvalDate: formApprovalDate || undefined,
+
+      status: formStatus,
+    };
+
+    setSubmitting(true);
+    try {
+      if (editingContract) {
+        await leadService.updateContract(editingContract.id, payload);
+        notifications.show({
+          title: 'Contract Updated',
+          message: `Contract ${editingContract.contractId} updated successfully.`,
+          color: 'blue',
+        });
+      } else {
+        const created = await leadService.createContract(payload);
+        notifications.show({
+          title: 'Contract Created',
+          message: `New contract ${created.contractId} created successfully.`,
+          color: 'teal',
+        });
+      }
+
+      // Sync with parent state if provided
+      if (onUpdateContract && legacyContract) {
+        onUpdateContract({
+          ...legacyContract,
+          contractValue: Number(formContractValue) || legacyContract.contractValue,
+          title: formTitle,
+          status: formStatus === 'Active' ? 'Active' : formSignatureStatus === 'Signed' ? 'Signed' : 'Draft',
+        });
+      }
+
+      setModalOpen(false);
+      setEditingContract(null);
+      await loadData();
+    } catch (err: any) {
+      notifications.show({
+        title: 'Save Failed',
+        message: err.message || 'Could not save contract.',
+        color: 'red',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Confirm Delete
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await leadService.deleteContract(deleteTarget.id);
+      notifications.show({
+        title: 'Contract Deleted',
+        message: `Contract ${deleteTarget.contractId} has been removed.`,
+        color: 'blue',
+      });
+      setDeleteTarget(null);
+      await loadData();
+    } catch (err: any) {
+      notifications.show({
+        title: 'Delete Failed',
+        message: err.message || 'Could not delete contract.',
+        color: 'red',
+      });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Quick Signature Toggle
+  const handleQuickSign = async (cnt: Contract) => {
+    const isNowSigned = cnt.signatureStatus !== 'Signed';
+    const newSigStatus = isNowSigned ? 'Signed' : 'Pending';
+    const newStatus = isNowSigned ? 'Active' : 'Draft';
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    try {
+      await leadService.updateContract(cnt.id, {
+        signatureStatus: newSigStatus,
+        status: newStatus,
+        signedDate: isNowSigned ? todayStr : undefined,
+      });
+
+      notifications.show({
+        title: isNowSigned ? 'Contract Signed & Active! 🎉' : 'Signature Reset',
+        message: isNowSigned
+          ? `Contract ${cnt.contractId} signed by ${cnt.clientSignatoryName || 'Client'}. Now legally active.`
+          : `Contract ${cnt.contractId} signature reset to pending.`,
+        color: isNowSigned ? 'teal' : 'gray',
+      });
+
+      if (onUpdateContract && legacyContract) {
+        onUpdateContract({
+          ...legacyContract,
+          signedByClient: isNowSigned,
+          status: isNowSigned ? 'Signed' : 'Draft',
+        });
+      }
+
+      await loadData();
+    } catch (err: any) {
+      notifications.show({
+        title: 'Status Update Failed',
+        message: err.message || 'Could not update signature status.',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleDownload = (cnt: Contract) => {
     notifications.show({
       title: 'Agreement PDF',
-      message: `Downloading executed copy of ${contract.contractNumber}...`,
+      message: `Downloading executed copy of ${cnt.contractId} (${cnt.title})...`,
       color: 'blue',
     });
   };
 
+  const formatDisplayDate = (dateString?: string | null) => {
+    if (!dateString) return '—';
+    try {
+      const parts = dateString.split('T')[0].split('-');
+      if (parts.length === 3 && parts[0].length === 4) {
+        const d = new Date(dateString);
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+      return dateString;
+    } catch {
+      return dateString;
+    }
+  };
+
+  const formatCurrency = (val?: number | null) => {
+    if (val === undefined || val === null || isNaN(val)) return '₹0';
+    return `₹${Number(val).toLocaleString('en-IN')}`;
+  };
+
+  // Render Status Badges
+  const renderContractStatusBadge = (st?: string | null) => {
+    const statusVal = st || 'Draft';
+    const sLow = statusVal.toLowerCase();
+    let bg = isDark ? 'rgba(59, 130, 246, 0.16)' : '#EFF6FF';
+    let color = isDark ? '#93C5FD' : '#1D4ED8';
+    let border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
+
+    if (sLow === 'active' || sLow === 'completed') {
+      bg = isDark ? 'rgba(16, 185, 129, 0.16)' : '#F0FDF4';
+      color = isDark ? '#6EE7B7' : '#16A34A';
+      border = isDark ? 'rgba(16, 185, 129, 0.35)' : '#BBF7D0';
+    } else if (sLow === 'terminated' || sLow === 'expired' || sLow === 'rejected') {
+      bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
+      color = isDark ? '#FCA5A5' : '#DC2626';
+      border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
+    } else if (sLow === 'pending approval' || sLow === 'sent for signature') {
+      bg = isDark ? 'rgba(245, 158, 11, 0.16)' : '#FFFBEB';
+      color = isDark ? '#FCD34D' : '#D97706';
+      border = isDark ? 'rgba(245, 158, 11, 0.35)' : '#FDE68A';
+    } else if (sLow === 'partially signed') {
+      bg = isDark ? 'rgba(139, 92, 246, 0.16)' : '#F5F3FF';
+      color = isDark ? '#C4B5FD' : '#7C3AED';
+      border = isDark ? 'rgba(139, 92, 246, 0.35)' : '#DDD6FE';
+    } else if (sLow === 'draft') {
+      bg = isDark ? 'rgba(148, 163, 184, 0.16)' : '#F8FAFC';
+      color = isDark ? '#94A3B8' : '#64748B';
+      border = isDark ? 'rgba(148, 163, 184, 0.3)' : '#E2E8F0';
+    }
+
+    return (
+      <Badge
+        size="sm"
+        radius="sm"
+        style={{
+          backgroundColor: bg,
+          color,
+          border: `1px solid ${border}`,
+          fontWeight: 700,
+          textTransform: 'capitalize',
+          fontSize: '11px',
+          padding: '2px 8px',
+        }}
+      >
+        {statusVal}
+      </Badge>
+    );
+  };
+
+  const renderApprovalBadge = (st?: string | null) => {
+    const val = st || 'Draft';
+    let color = 'gray';
+    if (val === 'Approved') color = 'teal';
+    else if (val === 'Pending Approval') color = 'orange';
+    else if (val === 'Rejected') color = 'red';
+
+    return (
+      <Badge size="xs" variant="light" color={color} radius="sm">
+        {val}
+      </Badge>
+    );
+  };
+
+  const renderSignatureBadge = (st?: string | null) => {
+    const val = st || 'Pending';
+    let color = 'orange';
+    if (val === 'Signed') color = 'green';
+    else if (val === 'Partially Signed') color = 'indigo';
+
+    return (
+      <Badge size="xs" variant="filled" color={color} radius="sm">
+        {val}
+      </Badge>
+    );
+  };
+
   return (
     <Box>
-      {/* Top Header */}
-      <Group justify="space-between" align="center" mb="lg" wrap="wrap" gap="sm">
+      {/* Top Section Summary & Actions */}
+      <Group justify="space-between" align="center" mb="md" wrap="wrap" gap="md">
         <div>
           <Group gap="xs" align="center">
             <ThemeIcon size="lg" radius="md" color="teal" variant="light">
               <IconFileCheck size={20} />
             </ThemeIcon>
             <div>
-              <Text fw={800} size="18px" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-                Contract & Legal Agreement
+              <Text fw={800} size="18px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                Contracts & Legal Agreements
               </Text>
               <Text size="xs" c="dimmed">
-                Manage Master Services Agreement (MSA) and execution status for {lead.name}
+                Manage Master Services Agreements (MSA), project scopes, and digital execution for {lead ? lead.name : 'the client'}.
               </Text>
             </div>
           </Group>
         </div>
 
-        <Group gap="xs">
-          <Button
-            size="sm"
-            variant="default"
-            onClick={() => setEditModalOpened(true)}
-            style={{ borderRadius: 10, fontWeight: 600, borderColor: isDark ? '#374151' : '#E2E8F0' }}
-          >
-            Edit Terms
-          </Button>
+        <Group gap="sm">
+          {canCreate && (
+            <Button
+              size="sm"
+              leftSection={<IconPlus size={14} />}
+              onClick={handleOpenCreateModal}
+              style={{
+                background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                color: '#FFF',
+                borderRadius: 10,
+                fontWeight: 700,
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+              }}
+            >
+              Create Contract
+            </Button>
+          )}
 
-          <Button
-            size="sm"
-            variant="default"
-            leftSection={<IconDownload size={15} />}
-            onClick={handleDownload}
-            style={{ borderRadius: 10, fontWeight: 600, borderColor: isDark ? '#374151' : '#E2E8F0' }}
-          >
-            Download MSA
-          </Button>
-
-          <Button
-            size="sm"
-            leftSection={<IconCheck size={15} />}
-            onClick={handleToggleSign}
-            style={{
-              background: contract.signedByClient
-                ? 'linear-gradient(135deg, #059669 0%, #10B981 100%)'
-                : 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-              color: '#FFF',
-              borderRadius: 10,
-              fontWeight: 700,
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-            }}
-          >
-            {contract.signedByClient ? 'Executed & Signed ✓' : 'Sign Agreement ✓'}
-          </Button>
-
-          <Button
-            size="sm"
-            variant="default"
-            rightSection={<IconArrowRight size={15} />}
-            onClick={() => onNavigateSection('invoice')}
-            style={{ borderRadius: 10, fontWeight: 600, borderColor: isDark ? '#374151' : '#E2E8F0' }}
-          >
-            Go to Invoice
-          </Button>
+          {onNavigateSection && (
+            <Button
+              size="sm"
+              variant="light"
+              color="blue"
+              rightSection={<IconArrowRight size={14} />}
+              onClick={() => onNavigateSection('invoices')}
+              style={{ borderRadius: 10, fontWeight: 700 }}
+            >
+              Proceed to Invoices
+            </Button>
+          )}
         </Group>
       </Group>
 
-      {/* Contract Details Card */}
-      <Paper
-        p="xl"
-        radius="16px"
-        mb="lg"
-        style={{
-          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-          border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-          boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.3)' : '0 2px 12px rgba(0,0,0,0.03)',
-        }}
-      >
-        <Group justify="space-between" align="flex-start" wrap="wrap" gap="md" mb="md">
-          <div>
-            <Group gap="xs" align="center" mb={6}>
-              <Badge size="lg" color="teal" variant="light" style={{ fontWeight: 700 }}>
-                {contract.contractNumber}
-              </Badge>
-              <Badge
-                size="lg"
-                color={contract.signedByClient ? 'green' : 'orange'}
-                variant="filled"
-                style={{ fontWeight: 700 }}
-              >
-                {contract.signedByClient ? 'Executed / Active' : 'Pending Signature'}
-              </Badge>
-            </Group>
-            <Text fw={800} size="18px" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
-              {contract.title}
-            </Text>
-            <Text size="xs" c="dimmed" mt={4}>
-              Between <strong>OneAssist IT CRM Hub</strong> & <strong>{lead.companyName || lead.name}</strong>
-            </Text>
-          </div>
-
-          <Box style={{ textAlign: 'right' }}>
-            <Text size="xs" fw={700} c="dimmed">
-              TOTAL CONTRACT VALUE
-            </Text>
-            <Text size="24px" fw={900} style={{ color: '#10B981' }}>
-              ₹{contract.contractValue.toLocaleString('en-IN')}
-            </Text>
-            <Text size="xs" c="dimmed">
-              Duration: {contract.durationMonths} Months
-            </Text>
-          </Box>
-        </Group>
-
-        <Divider mb="lg" />
-
-        <SimpleGrid cols={{ base: 1, md: 3 }} spacing="lg" mb="lg">
-          <Box>
-            <Group gap={6} mb={4}>
-              <IconCalendar size={15} color="#6366F1" />
-              <Text size="xs" fw={700} c="dimmed">
-                EFFECTIVE PERIOD
-              </Text>
-            </Group>
-            <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-              {contract.effectiveDate} to {contract.expiryDate}
-            </Text>
-          </Box>
-
-          <Box>
-            <Group gap={6} mb={4}>
-              <IconClock size={15} color="#10B981" />
-              <Text size="xs" fw={700} c="dimmed">
-                PAYMENT MILESTONES
-              </Text>
-            </Group>
-            <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-              40% Advance / 30% UAT / 30% Go-Live
-            </Text>
-          </Box>
-
-          <Box>
-            <Group gap={6} mb={4}>
-              <IconShieldCheck size={15} color="#F59E0B" />
-              <Text size="xs" fw={700} c="dimmed">
-                SLA COMMITMENT
-              </Text>
-            </Group>
-            <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-              99.9% Uptime SLA • 4h Critical Response
-            </Text>
-          </Box>
-        </SimpleGrid>
-
-        {/* Scope and Terms Summary */}
-        <Box
-          p="md"
-          mb="lg"
+      {/* Main Table Content */}
+      {loading ? (
+        <Center py={60}>
+          <Stack align="center" gap="sm">
+            <Loader size="lg" color="teal" />
+            <Text size="sm" c="dimmed">Loading contract records...</Text>
+          </Stack>
+        </Center>
+      ) : filteredContracts.length === 0 ? (
+        <Paper
+          radius="lg"
+          p="3rem"
           style={{
-            backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-            border: isDark ? '1px solid #334155' : '1px solid #E2E8F0',
-            borderRadius: 12,
+            background: isDark ? '#111827' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+            textAlign: 'center',
+            marginTop: 16,
           }}
         >
-          <Text size="xs" fw={800} style={{ color: isDark ? '#A5B4FC' : '#4F46E5', letterSpacing: '0.04em' }} mb={4}>
-            SCOPE SUMMARY & PAYMENT CLAUSES
+          <ThemeIcon size={56} radius="xl" color="teal" variant="light" mb="md" style={{ margin: '0 auto' }}>
+            <IconFileCheck size={28} />
+          </ThemeIcon>
+          <Text fw={700} size="16px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+            No Contracts Found
           </Text>
-          <Text size="13px" style={{ color: isDark ? '#E2E8F0' : '#334155', lineHeight: 1.6 }} mb={8}>
-            {contract.scopeSummary}
+          <Text size="sm" c="dimmed" mt={4} mb="lg">
+            {searchInput || statusFilter !== 'All' || contractTypeFilter !== 'All'
+              ? 'No contracts match the selected filter criteria.'
+              : `No contracts have been executed for ${lead.name} yet.`}
           </Text>
-          <Text size="xs" c="dimmed">
-            <strong>Payment Terms:</strong> {contract.paymentTerms}
-          </Text>
-        </Box>
-
-        {/* Dual Signatures Execution Section */}
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-          {/* Client Signatory */}
-          <Paper
-            p="md"
-            radius="12px"
-            style={{
-              backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-              border: contract.signedByClient ? '1px solid #10B981' : isDark ? '1px dashed #475569' : '1px dashed #CBD5E1',
-            }}
-          >
-            <Group justify="space-between" align="center" mb={6}>
-              <Group gap={6}>
-                <IconSignature size={16} color={contract.signedByClient ? '#10B981' : '#94A3B8'} />
-                <Text size="xs" fw={700} c="dimmed">
-                  CLIENT SIGNATORY
-                </Text>
-              </Group>
-              <Badge size="xs" color={contract.signedByClient ? 'green' : 'gray'}>
-                {contract.signedByClient ? 'Signed ✓' : 'Pending Signature'}
-              </Badge>
-            </Group>
-            <Text fw={700} size="14px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-              {contract.clientSignerName || lead.name}
-            </Text>
-            <Text size="xs" c="dimmed">
-              Authorized Representative, {lead.companyName || 'Client'}
-            </Text>
-            {contract.clientSignedDate && (
-              <Text size="11px" color="teal" fw={600} mt={4}>
-                Digitally verified on {contract.clientSignedDate}
-              </Text>
-            )}
-          </Paper>
-
-          {/* Company Signatory */}
-          <Paper
-            p="md"
-            radius="12px"
-            style={{
-              backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
-              border: '1px solid #10B981',
-            }}
-          >
-            <Group justify="space-between" align="center" mb={6}>
-              <Group gap={6}>
-                <IconSignature size={16} color="#10B981" />
-                <Text size="xs" fw={700} c="dimmed">
-                  SERVICE PROVIDER SIGNATORY
-                </Text>
-              </Group>
-              <Badge size="xs" color="green">
-                Countersigned ✓
-              </Badge>
-            </Group>
-            <Text fw={700} size="14px" style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
-              {contract.companySignerName}
-            </Text>
-            <Text size="xs" c="dimmed">
-              Authorized Representative, OneAssist CRM Hub
-            </Text>
-            <Text size="11px" color="teal" fw={600} mt={4}>
-              Legally certified & counter-signed
-            </Text>
-          </Paper>
-        </SimpleGrid>
-      </Paper>
-
-      {/* Edit Terms Modal */}
-      <Modal
-        opened={editModalOpened}
-        onClose={() => setEditModalOpened(false)}
-        size="md"
-        radius="16px"
-        title={<Text fw={700}>Edit Contract Details</Text>}
-      >
-        <Stack gap="md">
-          <NumberInput
-            label="Total Contract Value (₹)"
-            value={contractValue}
-            onChange={(v) => setContractValue(Number(v) || 0)}
-            min={0}
-            required
-          />
-          <NumberInput
-            label="Duration (Months)"
-            value={durationMonths}
-            onChange={(v) => setDurationMonths(Number(v) || 12)}
-            min={1}
-            required
-          />
-          <Textarea
-            label="Payment Milestones Clause"
-            value={paymentTerms}
-            onChange={(e) => setPaymentTerms(e.target.value)}
-            minRows={2}
-          />
-          <Textarea
-            label="SLA & Support Terms"
-            value={slaTerms}
-            onChange={(e) => setSlaTerms(e.target.value)}
-            minRows={2}
-          />
-          <Group justify="flex-end" mt="sm">
-            <Button variant="default" onClick={() => setEditModalOpened(false)}>
-              Cancel
-            </Button>
+          {canCreate && (
             <Button
-              onClick={handleSaveEdits}
+              size="sm"
+              leftSection={<IconPlus size={14} />}
+              onClick={handleOpenCreateModal}
               style={{
-                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
                 color: '#FFF',
+                borderRadius: 10,
                 fontWeight: 700,
               }}
             >
-              Save Agreement ✓
+              Create First Contract
+            </Button>
+          )}
+        </Paper>
+      ) : (
+        <>
+          {/* DESKTOP TABLE VIEW */}
+          <Paper
+            visibleFrom="sm"
+            radius="lg"
+            style={{
+              background: isDark ? '#111827' : '#FFFFFF',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              overflow: 'hidden',
+              boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 4px rgba(0,0,0,0.03)',
+              marginTop: 16,
+            }}
+          >
+            <Table.ScrollContainer minWidth={850}>
+              <Table verticalSpacing="md" horizontalSpacing="md" highlightOnHover>
+                <Table.Thead
+                  style={{
+                    background: isDark ? '#0F172A' : '#FBFBFC',
+                    borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #F1F5F9',
+                  }}
+                >
+                  <Table.Tr>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                      CONTRACT TITLE
+                    </Table.Th>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                      CLIENT NAME
+                    </Table.Th>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                      CONTRACT VALUE
+                    </Table.Th>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                      CONTRACT DATE
+                    </Table.Th>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                      CONTRACT STATUS
+                    </Table.Th>
+                    <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textAlign: 'right' }}>
+                      ACTIONS
+                    </Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {paginatedContracts.map((item) => (
+                    <Table.Tr
+                      key={item.id}
+                      style={{
+                        borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
+                      }}
+                    >
+                      {/* 1. CONTRACT TITLE */}
+                      <Table.Td>
+                        <Group gap="sm" wrap="nowrap">
+                          <Box
+                            style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: 8,
+                              background: isDark ? 'rgba(16, 185, 129, 0.18)' : '#ECFDF5',
+                              color: isDark ? '#6EE7B7' : '#059669',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              flexShrink: 0,
+                            }}
+                          >
+                            <IconFileCheck size={17} />
+                          </Box>
+                          <div>
+                            <Text
+                              size="sm"
+                              fw={700}
+                              style={{
+                                color: isDark ? '#F8FAFC' : '#0F172A',
+                                cursor: 'pointer',
+                                maxWidth: 220,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                              onClick={() => setDetailsContract(item)}
+                            >
+                              {item.title}
+                            </Text>
+                            {item.projectName && (
+                              <Text size="11px" c="dimmed">
+                                {item.projectName}
+                              </Text>
+                            )}
+                          </div>
+                        </Group>
+                      </Table.Td>
+
+                      {/* 3. CLIENT NAME */}
+                      <Table.Td>
+                        <Text size="sm" fw={600} style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
+                          {item.clientName || lead.name}
+                        </Text>
+                      </Table.Td>
+
+                      {/* 4. CONTRACT VALUE */}
+                      <Table.Td>
+                        <Text size="sm" fw={800} style={{ color: '#10B981' }}>
+                          {formatCurrency(item.contractValue)}
+                        </Text>
+                      </Table.Td>
+
+                      {/* 5. CONTRACT DATE */}
+                      <Table.Td>
+                        <Text size="xs" fw={500} style={{ color: isDark ? '#CBD5E1' : '#475569' }}>
+                          {formatDisplayDate(item.contractDate)}
+                        </Text>
+                      </Table.Td>
+
+                      {/* 6. CONTRACT STATUS */}
+                      <Table.Td>
+                        {renderContractStatusBadge(item.status)}
+                      </Table.Td>
+
+                      {/* 12. ACTIONS */}
+                      <Table.Td style={{ textAlign: 'right' }}>
+                        <Group gap={4} justify="flex-end" wrap="nowrap">
+                          {/* Quick Sign Toggle */}
+                          <Tooltip label={item.signatureStatus === 'Signed' ? 'Signed (Click to Reset)' : 'Click to Execute & Sign'}>
+                            <ActionIcon
+                              size="sm"
+                              radius="md"
+                              color={item.signatureStatus === 'Signed' ? 'teal' : 'gray'}
+                              variant={item.signatureStatus === 'Signed' ? 'filled' : 'light'}
+                              onClick={() => handleQuickSign(item)}
+                            >
+                              <IconCheck size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+
+                          {/* View details */}
+                          <Tooltip label="View Full Details">
+                            <ActionIcon
+                              size="sm"
+                              radius="md"
+                              color="blue"
+                              variant="subtle"
+                              onClick={() => setDetailsContract(item)}
+                            >
+                              <IconEye size={15} />
+                            </ActionIcon>
+                          </Tooltip>
+
+                          {/* Edit */}
+                          {canEdit && (
+                            <Tooltip label="Edit Contract">
+                              <ActionIcon
+                                size="sm"
+                                radius="md"
+                                color="indigo"
+                                variant="subtle"
+                                onClick={() => handleOpenEditModal(item)}
+                              >
+                                <IconEdit size={15} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+
+                          {/* Download */}
+                          <Tooltip label="Download Agreement">
+                            <ActionIcon
+                              size="sm"
+                              radius="md"
+                              color="teal"
+                              variant="subtle"
+                              onClick={() => handleDownload(item)}
+                            >
+                              <IconDownload size={15} />
+                            </ActionIcon>
+                          </Tooltip>
+
+                          {/* Delete */}
+                          {canDelete && (
+                            <Tooltip label="Delete Contract">
+                              <ActionIcon
+                                size="sm"
+                                radius="md"
+                                color="red"
+                                variant="subtle"
+                                onClick={() => setDeleteTarget(item)}
+                              >
+                                <IconTrash size={15} />
+                              </ActionIcon>
+                            </Tooltip>
+                          )}
+                        </Group>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
+          </Paper>
+
+          {/* MOBILE CARD VIEW */}
+          <Stack hiddenFrom="sm" gap="md" mt="md">
+            {paginatedContracts.map((item) => (
+              <Card
+                key={item.id}
+                padding="md"
+                radius="lg"
+                style={{
+                  background: isDark ? '#111827' : '#FFFFFF',
+                  border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+                }}
+              >
+                <Group justify="space-between" align="flex-start" mb="xs">
+                  <div>
+                    <Text fw={700} size="sm" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                      {item.title}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      {item.clientName || lead.name}
+                    </Text>
+                  </div>
+                  <Text fw={900} size="md" style={{ color: '#10B981' }}>
+                    {formatCurrency(item.contractValue)}
+                  </Text>
+                </Group>
+
+                <Group gap={6} mb="sm" wrap="wrap">
+                  <Badge size="xs" variant="light" color="indigo">{item.contractType}</Badge>
+                  {renderApprovalBadge(item.approvalStatus)}
+                  {renderSignatureBadge(item.signatureStatus)}
+                  {renderContractStatusBadge(item.status)}
+                </Group>
+
+                <Divider mb="xs" />
+
+                <Group justify="space-between" align="center">
+                  <Text size="11px" c="dimmed">
+                    Date: {formatDisplayDate(item.contractDate)}
+                  </Text>
+                  <Group gap={6}>
+                    <ActionIcon size="sm" color="blue" variant="subtle" onClick={() => setDetailsContract(item)}>
+                      <IconEye size={14} />
+                    </ActionIcon>
+                    {canEdit && (
+                      <ActionIcon size="sm" color="indigo" variant="subtle" onClick={() => handleOpenEditModal(item)}>
+                        <IconEdit size={14} />
+                      </ActionIcon>
+                    )}
+                    <ActionIcon size="sm" color="teal" variant="subtle" onClick={() => handleQuickSign(item)}>
+                      <IconCheck size={14} />
+                    </ActionIcon>
+                  </Group>
+                </Group>
+              </Card>
+            ))}
+          </Stack>
+
+          {/* Pagination */}
+          {filteredContracts.length > pageSize && (
+            <Group justify="space-between" align="center" mt="lg">
+              <Text size="xs" c="dimmed">
+                Showing {Math.min((page - 1) * pageSize + 1, filteredContracts.length)} to{' '}
+                {Math.min(page * pageSize, filteredContracts.length)} of {filteredContracts.length} records
+              </Text>
+              <Pagination
+                total={totalPages}
+                value={page}
+                onChange={setPage}
+                color="teal"
+                radius="md"
+                size="sm"
+              />
+            </Group>
+          )}
+        </>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. CREATE / EDIT CONTRACT MODAL (SECTIONS A TO E)                         */}
+      {/* ========================================================================= */}
+      <Modal
+        opened={modalOpen}
+        onClose={() => {
+          if (!submitting) {
+            setModalOpen(false);
+            setEditingContract(null);
+          }
+        }}
+        size="900px"
+        radius="lg"
+        centered
+        withCloseButton={false}
+        styles={{
+          content: {
+            backgroundColor: isDark ? '#1F2937' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            maxHeight: '92vh',
+            display: 'flex',
+            flexDirection: 'column',
+          },
+          body: {
+            padding: '26px 30px',
+            maxHeight: 'calc(92vh - 20px)',
+            overflowY: 'auto',
+          },
+        }}
+        closeOnClickOutside={!submitting}
+      >
+        {/* Header */}
+        <Group justify="space-between" align="flex-start" mb="lg">
+          <Group gap="sm" align="center">
+            <Box
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                background: isDark ? 'rgba(16, 185, 129, 0.2)' : '#ECFDF5',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isDark ? '#6EE7B7' : '#059669',
+              }}
+            >
+              <IconFileCheck size={22} stroke={1.8} />
+            </Box>
+            <div>
+              <Text fw={800} size="19px" style={{ color: isDark ? '#F8FAFC' : '#0F172A', lineHeight: 1.2 }}>
+                {editingContract ? 'Edit Contract' : 'Create Contract'}
+              </Text>
+              <Text size="xs" c="dimmed" mt={2}>
+                Complete contract information, scope parameters, terms, and digital signatories.
+              </Text>
+            </div>
+          </Group>
+
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size="md"
+            radius="100px"
+            onClick={() => {
+              setModalOpen(false);
+              setEditingContract(null);
+            }}
+          >
+            <IconX size={18} />
+          </ActionIcon>
+        </Group>
+
+        <Box component="form" onSubmit={handleSubmit}>
+          <Stack gap="lg">
+            {/* ================================================================= */}
+            {/* SECTION A: CONTRACT INFORMATION                                   */}
+            {/* ================================================================= */}
+            <Paper
+              p="md"
+              radius="md"
+              style={{
+                background: isDark ? '#111827' : '#F8FAFC',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              }}
+            >
+              <Text size="xs" fw={800} style={{ color: isDark ? '#6EE7B7' : '#059669', letterSpacing: '0.04em' }} mb="sm">
+                A. CONTRACT INFORMATION
+              </Text>
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <TextInput
+                  label="Contract ID"
+                  value={formContractId}
+                  onChange={(e) => setFormContractId(e.target.value)}
+                  readOnly
+                  radius="md"
+                  description="Auto-generated unique contract ID"
+                />
+
+                <TextInput
+                  label="Contract Title"
+                  placeholder="e.g. Master Services Agreement"
+                  value={formTitle}
+                  onChange={(e) => {
+                    setFormTitle(e.target.value);
+                    if (errors.title) setErrors((prev) => ({ ...prev, title: '' }));
+                  }}
+                  error={errors.title}
+                  required
+                  radius="md"
+                />
+
+                <Select
+                  label="Contract Type"
+                  data={contractTypeOptions}
+                  value={formContractType}
+                  onChange={(v) => setFormContractType((v as ContractType) || 'Software Development')}
+                  required
+                  radius="md"
+                />
+
+                <TextInput
+                  label="Client Name"
+                  placeholder="Client / Company Name"
+                  value={formClientName}
+                  onChange={(e) => setFormClientName(e.target.value)}
+                  radius="md"
+                  description="Associated CRM client record"
+                />
+
+                <div>
+                  <Text size="xs" fw={500} mb={4} style={{ color: isDark ? '#D1D5DB' : '#374151' }}>
+                    Related Lead
+                  </Text>
+                  <Paper
+                    p="xs"
+                    radius="md"
+                    style={{
+                      background: isDark ? '#1F2937' : '#FFFFFF',
+                      border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <Badge size="xs" color="teal" variant="light">{lead.leadId || 'LEAD'}</Badge>
+                    <Text size="xs" fw={700} style={{ color: isDark ? '#F8FAFC' : '#111827' }}>
+                      {lead.name} {lead.companyName ? `(${lead.companyName})` : ''}
+                    </Text>
+                  </Paper>
+                </div>
+
+                <Select
+                  label="Related Proposal"
+                  placeholder="Link an existing proposal"
+                  data={[{ value: '', label: 'None' }, ...proposalSelectOptions]}
+                  value={formProposalId}
+                  onChange={handleProposalSelect}
+                  radius="md"
+                  clearable
+                />
+
+                <Select
+                  label="Related Negotiation"
+                  placeholder="Link an existing negotiation"
+                  data={[{ value: '', label: 'None' }, ...negotiationSelectOptions]}
+                  value={formNegotiationId}
+                  onChange={handleNegotiationSelect}
+                  radius="md"
+                  clearable
+                />
+
+                <Select
+                  label="Assigned Employee"
+                  placeholder="Select responsible employee"
+                  data={employeeOptions}
+                  value={assignedEmployeeKey}
+                  onChange={handleEmployeeSelect}
+                  radius="md"
+                  searchable
+                />
+
+                <Box>
+                  <MeetingDatePicker
+                    label="Contract Date"
+                    value={formContractDate}
+                    onChange={(date) => {
+                      setFormContractDate(date);
+                      if (errors.contractDate) setErrors((prev) => ({ ...prev, contractDate: '' }));
+                    }}
+                    placeholder="YYYY-MM-DD"
+                    required
+                  />
+                  {errors.contractDate && (
+                    <Text size="xs" c="red" mt={2}>
+                      {errors.contractDate}
+                    </Text>
+                  )}
+                </Box>
+              </SimpleGrid>
+            </Paper>
+
+            {/* ================================================================= */}
+            {/* SECTION B: PROJECT & SCOPE DETAILS                                */}
+            {/* ================================================================= */}
+            <Paper
+              p="md"
+              radius="md"
+              style={{
+                background: isDark ? '#111827' : '#F8FAFC',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              }}
+            >
+              <Text size="xs" fw={800} style={{ color: isDark ? '#60A5FA' : '#2563EB', letterSpacing: '0.04em' }} mb="sm">
+                B. PROJECT & SCOPE DETAILS
+              </Text>
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mb="md">
+                <TextInput
+                  label="Project Name"
+                  placeholder="e.g. ERP Implementation Project"
+                  value={formProjectName}
+                  onChange={(e) => setFormProjectName(e.target.value)}
+                  radius="md"
+                />
+
+                <SimpleGrid cols={2} spacing="xs">
+                  <MeetingDatePicker
+                    label="Start Date"
+                    value={formStartDate}
+                    onChange={setFormStartDate}
+                    placeholder="YYYY-MM-DD"
+                  />
+                  <MeetingDatePicker
+                    label="End Date"
+                    value={formEndDate}
+                    onChange={setFormEndDate}
+                    placeholder="YYYY-MM-DD"
+                  />
+                </SimpleGrid>
+              </SimpleGrid>
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <Textarea
+                  label="Scope of Work"
+                  placeholder="Detailed statement of work and module boundaries"
+                  value={formScopeOfWork}
+                  onChange={(e) => setFormScopeOfWork(e.target.value)}
+                  minRows={3}
+                  radius="md"
+                />
+
+                <Textarea
+                  label="Deliverables"
+                  placeholder="Source code, documentation, deployment scripts, reports"
+                  value={formDeliverables}
+                  onChange={(e) => setFormDeliverables(e.target.value)}
+                  minRows={3}
+                  radius="md"
+                />
+              </SimpleGrid>
+            </Paper>
+
+            {/* ================================================================= */}
+            {/* SECTION C: CONTRACT TERMS                                         */}
+            {/* ================================================================= */}
+            <Paper
+              p="md"
+              radius="md"
+              style={{
+                background: isDark ? '#111827' : '#F8FAFC',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              }}
+            >
+              <Text size="xs" fw={800} style={{ color: isDark ? '#F59E0B' : '#D97706', letterSpacing: '0.04em' }} mb="sm">
+                C. CONTRACT TERMS
+              </Text>
+
+              <NumberInput
+                label="Contract Value (₹)"
+                placeholder="Total Agreement Value"
+                value={formContractValue}
+                onChange={(v) => {
+                  setFormContractValue(Number(v) || 0);
+                  if (errors.contractValue) setErrors((prev) => ({ ...prev, contractValue: '' }));
+                }}
+                error={errors.contractValue}
+                min={0}
+                thousandSeparator=","
+                prefix="₹ "
+                required
+                radius="md"
+                style={{ maxWidth: 360 }}
+              />
+            </Paper>
+
+            {/* ================================================================= */}
+            {/* SECTION D: DOCUMENTS & SIGNATURES                                 */}
+            {/* ================================================================= */}
+            <Paper
+              p="md"
+              radius="md"
+              style={{
+                background: isDark ? '#111827' : '#F8FAFC',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              }}
+            >
+              <Text size="xs" fw={800} style={{ color: isDark ? '#A5B4FC' : '#4F46E5', letterSpacing: '0.04em' }} mb="sm">
+                D. DOCUMENTS & SIGNATURES
+              </Text>
+
+              {/* Document upload simulation */}
+              <Box mb="md">
+                <Text size="xs" fw={500} mb={4} style={{ color: isDark ? '#D1D5DB' : '#374151' }}>
+                  Contract Document
+                </Text>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                  accept=".pdf,.doc,.docx"
+                />
+                <Group gap="sm" align="center">
+                  <Button
+                    size="xs"
+                    variant="default"
+                    leftSection={<IconUpload size={14} />}
+                    onClick={() => fileInputRef.current?.click()}
+                    radius="md"
+                  >
+                    Upload Document
+                  </Button>
+                  {formContractDocument && (
+                    <Badge size="sm" variant="light" color="teal">
+                      {formContractDocument}
+                    </Badge>
+                  )}
+                </Group>
+              </Box>
+
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                <TextInput
+                  label="Client Signatory Name"
+                  placeholder="Authorized Client Representative"
+                  value={formClientSignatoryName}
+                  onChange={(e) => setFormClientSignatoryName(e.target.value)}
+                  radius="md"
+                />
+
+                <TextInput
+                  label="Company Signatory Name"
+                  placeholder="Service Provider Representative"
+                  value={formCompanySignatoryName}
+                  onChange={(e) => setFormCompanySignatoryName(e.target.value)}
+                  radius="md"
+                />
+
+                <Select
+                  label="Signature Status"
+                  data={signatureStatusOptions}
+                  value={formSignatureStatus}
+                  onChange={(v) => setFormSignatureStatus((v as ContractSignatureStatus) || 'Pending')}
+                  radius="md"
+                />
+
+                <MeetingDatePicker
+                  label="Signed Date"
+                  value={formSignedDate}
+                  onChange={setFormSignedDate}
+                  placeholder="YYYY-MM-DD"
+                />
+
+                <Select
+                  label="Approval Status"
+                  data={approvalStatusOptions}
+                  value={formApprovalStatus}
+                  onChange={(v) => setFormApprovalStatus((v as ContractApprovalStatus) || 'Draft')}
+                  radius="md"
+                />
+
+                <SimpleGrid cols={2} spacing="xs">
+                  <TextInput
+                    label="Approved By"
+                    placeholder="Approving Director"
+                    value={formApprovedBy}
+                    onChange={(e) => setFormApprovedBy(e.target.value)}
+                    radius="md"
+                  />
+                  <MeetingDatePicker
+                    label="Approval Date"
+                    value={formApprovalDate}
+                    onChange={setFormApprovalDate}
+                    placeholder="YYYY-MM-DD"
+                  />
+                </SimpleGrid>
+              </SimpleGrid>
+            </Paper>
+
+            {/* ================================================================= */}
+            {/* SECTION E: CONTRACT STATUS                                        */}
+            {/* ================================================================= */}
+            <Paper
+              p="md"
+              radius="md"
+              style={{
+                background: isDark ? '#111827' : '#F8FAFC',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              }}
+            >
+              <Text size="xs" fw={800} style={{ color: isDark ? '#F472B6' : '#DB2777', letterSpacing: '0.04em' }} mb="sm">
+                E. CONTRACT STATUS
+              </Text>
+
+              <Select
+                label="Overall Contract Status"
+                data={contractStatusOptions}
+                value={formStatus}
+                onChange={(v) => setFormStatus((v as ContractStatus) || 'Draft')}
+                radius="md"
+                description="Governs the active lifecycle stage of the legal agreement"
+              />
+            </Paper>
+
+            {/* Form Action Buttons */}
+            <Group justify="flex-end" gap="sm" mt="md">
+              <Button
+                variant="default"
+                onClick={() => {
+                  setModalOpen(false);
+                  setEditingContract(null);
+                }}
+                disabled={submitting}
+                radius="md"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                loading={submitting}
+                radius="md"
+                style={{
+                  background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                  color: '#FFF',
+                  fontWeight: 700,
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                }}
+              >
+                {editingContract ? 'Save Changes ✓' : 'Create Contract ✓'}
+              </Button>
+            </Group>
+          </Stack>
+        </Box>
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* 5. VIEW CONTRACT DETAILS MODAL                                            */}
+      {/* ========================================================================= */}
+      <Modal
+        opened={!!detailsContract}
+        onClose={() => setDetailsContract(null)}
+        size="880px"
+        radius="lg"
+        centered
+        title={
+          <Group gap="xs">
+            <ThemeIcon color="teal" variant="light" size="md" radius="md">
+              <IconFileCheck size={18} />
+            </ThemeIcon>
+            <div>
+              <Text fw={800} size="md">
+                Contract Overview: {detailsContract?.contractId}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {detailsContract?.title}
+              </Text>
+            </div>
+          </Group>
+        }
+      >
+        {detailsContract && (
+          <Stack gap="md">
+            {/* Top Overview Ribbon */}
+            <Paper
+              p="md"
+              radius="md"
+              style={{
+                background: isDark ? '#0F172A' : '#F8FAFC',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              }}
+            >
+              <Group justify="space-between" align="center" wrap="wrap">
+                <div>
+                  <Group gap="xs" mb={4}>
+                    <Badge size="lg" color="teal" variant="outline">
+                      {detailsContract.contractId}
+                    </Badge>
+                    <Badge size="sm" color="indigo" variant="light">
+                      {detailsContract.contractType}
+                    </Badge>
+                    {renderContractStatusBadge(detailsContract.status)}
+                  </Group>
+                  <Text fw={800} size="16px">
+                    {detailsContract.title}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    Client: <strong>{detailsContract.clientName || lead.name}</strong> • Assigned: {detailsContract.assignedToName || 'Staff'}
+                  </Text>
+                </div>
+
+                <Box style={{ textAlign: 'right' }}>
+                  <Text size="xs" fw={700} c="dimmed">
+                    CONTRACT VALUE
+                  </Text>
+                  <Text size="22px" fw={900} style={{ color: '#10B981' }}>
+                    {formatCurrency(detailsContract.contractValue)}
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    Effective: {formatDisplayDate(detailsContract.startDate)} to {formatDisplayDate(detailsContract.endDate)}
+                  </Text>
+                </Box>
+              </Group>
+            </Paper>
+
+            {/* Scope Details */}
+            <Paper p="md" radius="md" style={{ background: isDark ? '#111827' : '#FFFFFF', border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0' }}>
+              <Text size="xs" fw={800} c="dimmed" mb="xs">PROJECT & SCOPE DETAILS</Text>
+              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm" mb="sm">
+                <div>
+                  <Text size="xs" c="dimmed">Project Name</Text>
+                  <Text size="sm" fw={600}>{detailsContract.projectName || '—'}</Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">Contract Date</Text>
+                  <Text size="sm" fw={600}>{formatDisplayDate(detailsContract.contractDate)}</Text>
+                </div>
+                <div>
+                  <Text size="xs" c="dimmed">Project Period</Text>
+                  <Text size="sm" fw={600}>
+                    {formatDisplayDate(detailsContract.startDate)} to {formatDisplayDate(detailsContract.endDate)}
+                  </Text>
+                </div>
+              </SimpleGrid>
+              {detailsContract.scopeOfWork && (
+                <Box mt="xs">
+                  <Text size="xs" c="dimmed">Scope of Work</Text>
+                  <Text size="xs" mt={2}>{detailsContract.scopeOfWork}</Text>
+                </Box>
+              )}
+              {detailsContract.deliverables && (
+                <Box mt="xs">
+                  <Text size="xs" c="dimmed">Deliverables</Text>
+                  <Text size="xs" mt={2}>{detailsContract.deliverables}</Text>
+                </Box>
+              )}
+            </Paper>
+
+            {/* Signatures & Execution Status */}
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <Paper p="md" radius="md" style={{ background: isDark ? '#0F172A' : '#F8FAFC', border: detailsContract.signatureStatus === 'Signed' ? '1px solid #10B981' : '1px dashed #CBD5E1' }}>
+                <Group justify="space-between" mb={4}>
+                  <Text size="xs" fw={700} c="dimmed">CLIENT SIGNATORY</Text>
+                  {renderSignatureBadge(detailsContract.signatureStatus)}
+                </Group>
+                <Text size="sm" fw={700}>{detailsContract.clientSignatoryName || lead.name}</Text>
+                <Text size="xs" c="dimmed">{detailsContract.clientName || 'Authorized Client Entity'}</Text>
+                {detailsContract.signedDate && (
+                  <Text size="11px" c="teal" fw={600} mt={4}>
+                    Executed on {formatDisplayDate(detailsContract.signedDate)}
+                  </Text>
+                )}
+              </Paper>
+
+              <Paper p="md" radius="md" style={{ background: isDark ? '#0F172A' : '#F8FAFC', border: '1px solid #10B981' }}>
+                <Group justify="space-between" mb={4}>
+                  <Text size="xs" fw={700} c="dimmed">SERVICE PROVIDER SIGNATORY</Text>
+                  {renderApprovalBadge(detailsContract.approvalStatus)}
+                </Group>
+                <Text size="sm" fw={700}>{detailsContract.companySignatoryName || 'OneAssist CRM Hub Executive'}</Text>
+                <Text size="xs" c="dimmed">Authorized Representative</Text>
+                {detailsContract.approvedBy && (
+                  <Text size="11px" c="teal" fw={600} mt={4}>
+                    Approved by {detailsContract.approvedBy} {detailsContract.approvalDate ? `(${formatDisplayDate(detailsContract.approvalDate)})` : ''}
+                  </Text>
+                )}
+              </Paper>
+            </SimpleGrid>
+
+            {/* Footer Actions */}
+            <Group justify="flex-end" gap="sm">
+              <Button
+                variant="default"
+                size="sm"
+                leftSection={<IconDownload size={15} />}
+                onClick={() => handleDownload(detailsContract)}
+              >
+                Download Agreement
+              </Button>
+              <Button
+                size="sm"
+                leftSection={<IconCheck size={15} />}
+                onClick={() => {
+                  handleQuickSign(detailsContract);
+                  setDetailsContract(null);
+                }}
+                style={{
+                  background: detailsContract.signatureStatus === 'Signed'
+                    ? 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)'
+                    : 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                  color: '#FFF',
+                  fontWeight: 700,
+                }}
+              >
+                {detailsContract.signatureStatus === 'Signed' ? 'Reset Signature' : 'Execute & Sign ✓'}
+              </Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
+
+      {/* ========================================================================= */}
+      {/* 6. DELETE CONFIRMATION MODAL                                              */}
+      {/* ========================================================================= */}
+      <Modal
+        opened={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        title={
+          <Group gap="xs">
+            <IconAlertTriangle color="red" size={20} />
+            <Text fw={700}>Delete Contract</Text>
+          </Group>
+        }
+        size="md"
+        radius="md"
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Are you sure you want to permanently delete contract{' '}
+            <strong>{deleteTarget?.contractId}</strong> ({deleteTarget?.title})? This action cannot be undone.
+          </Text>
+          <Group justify="flex-end" gap="sm">
+            <Button variant="default" onClick={() => setDeleteTarget(null)} disabled={deleteLoading}>
+              Cancel
+            </Button>
+            <Button color="red" onClick={handleConfirmDelete} loading={deleteLoading}>
+              Delete Permanently
             </Button>
           </Group>
         </Stack>
