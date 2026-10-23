@@ -6,6 +6,14 @@ import {
   LeadStats,
   LeadMetadata,
   LeadProposal,
+  Negotiation,
+  NegotiationFormData,
+  NegotiationStats,
+  NegotiationFilters,
+  Contract,
+  ContractFormData,
+  ContractStats,
+  ContractFilters,
 } from '../types/lead';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -195,6 +203,159 @@ export const leadService = {
     return fetchWithCookies<{ success: boolean; message: string; data: any }>(`/leads/proposals/${encodeURIComponent(id)}`, {
       method: 'DELETE',
     });
+  },
+
+  // ----------------------------------------------------
+  // NEGOTIATIONS (Inside Lead Service)
+  // ----------------------------------------------------
+  getNegotiations: async (
+    filters: NegotiationFilters = {}
+  ): Promise<{
+    data: Negotiation[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> => {
+    const params = new URLSearchParams();
+    if (filters.search && filters.search.trim()) params.append('search', filters.search.trim());
+    if (filters.status && filters.status !== 'ALL' && filters.status !== 'All') params.append('status', filters.status);
+    if (filters.leadId && filters.leadId !== 'ALL') params.append('leadId', filters.leadId);
+    if (filters.contactId && filters.contactId !== 'ALL') params.append('contactId', filters.contactId);
+    if (filters.assignedTo && filters.assignedTo !== 'ALL') params.append('assignedTo', filters.assignedTo);
+    if (filters.date) params.append('date', filters.date);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.page) params.append('page', String(filters.page));
+    if (filters.limit) params.append('limit', String(filters.limit));
+    if (filters.sortBy) params.append('sortBy', filters.sortBy);
+    if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+
+    const qs = params.toString();
+    const endpoint = `/leads/negotiations${qs ? `?${qs}` : ''}`;
+    const res = await fetchWithCookies<{
+      success: boolean;
+      data: Negotiation[];
+      pagination: { total: number; page: number; limit: number; totalPages: number };
+    }>(endpoint);
+
+    return {
+      data: res.data || [],
+      pagination: res.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 },
+    };
+  },
+
+  getNegotiationStats: async (): Promise<NegotiationStats> => {
+    const res = await fetchWithCookies<{ success: boolean; data: NegotiationStats; stats: NegotiationStats }>('/leads/negotiations/stats');
+    return res.data || res.stats;
+  },
+
+  getNegotiationById: async (id: string): Promise<Negotiation> => {
+    const res = await fetchWithCookies<{ success: boolean; data: Negotiation }>(`/leads/negotiations/${encodeURIComponent(id)}`);
+    return res.data;
+  },
+
+  createNegotiation: async (data: Partial<NegotiationFormData>): Promise<Negotiation> => {
+    const res = await fetchWithCookies<{ success: boolean; data: Negotiation }>('/leads/negotiations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  },
+
+  updateNegotiation: async (id: string, data: Partial<NegotiationFormData>): Promise<Negotiation> => {
+    const res = await fetchWithCookies<{ success: boolean; data: Negotiation }>(`/leads/negotiations/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  },
+
+  deleteNegotiation: async (id: string): Promise<boolean> => {
+    await fetchWithCookies<{ success: boolean; message: string }>(`/leads/negotiations/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    return true;
+  },
+
+  // ----------------------------------------------------
+  // CONTRACTS (Inside Lead Service)
+  // ----------------------------------------------------
+  getContracts: async (
+    filters: ContractFilters = {}
+  ): Promise<{
+    data: Contract[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  }> => {
+    const params = new URLSearchParams();
+    if (filters.search && filters.search.trim()) params.append('search', filters.search.trim());
+    if (filters.status && filters.status !== 'ALL' && filters.status !== 'All') params.append('status', filters.status);
+    if (filters.contractType && filters.contractType !== 'ALL' && filters.contractType !== 'All') params.append('contractType', filters.contractType);
+    if (filters.approvalStatus && filters.approvalStatus !== 'ALL' && filters.approvalStatus !== 'All') params.append('approvalStatus', filters.approvalStatus);
+    if (filters.signatureStatus && filters.signatureStatus !== 'ALL' && filters.signatureStatus !== 'All') params.append('signatureStatus', filters.signatureStatus);
+    if (filters.leadId && filters.leadId !== 'ALL') params.append('leadId', filters.leadId);
+    if (filters.assignedTo && filters.assignedTo !== 'ALL') params.append('assignedTo', filters.assignedTo);
+    if (filters.date) params.append('date', filters.date);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    if (filters.page) params.append('page', String(filters.page));
+    if (filters.limit) params.append('limit', String(filters.limit));
+    if (filters.sortBy) params.append('sortBy', filters.sortBy);
+    if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+
+    const qs = params.toString();
+    const endpoint = `/leads/contracts${qs ? `?${qs}` : ''}`;
+    const res = await fetchWithCookies<{
+      success: boolean;
+      data: Contract[];
+      pagination: { total: number; page: number; limit: number; totalPages: number };
+    }>(endpoint);
+
+    return {
+      data: res.data || [],
+      pagination: res.pagination || { total: 0, page: 1, limit: 10, totalPages: 1 },
+    };
+  },
+
+  getContractStats: async (leadId?: string): Promise<ContractStats> => {
+    const qs = leadId ? `?leadId=${encodeURIComponent(leadId)}` : '';
+    const res = await fetchWithCookies<{ success: boolean; data: ContractStats; stats: ContractStats }>(`/leads/contracts/stats${qs}`);
+    return res.data || res.stats;
+  },
+
+  getContractById: async (id: string): Promise<Contract> => {
+    const res = await fetchWithCookies<{ success: boolean; data: Contract }>(`/leads/contracts/${encodeURIComponent(id)}`);
+    return res.data;
+  },
+
+  createContract: async (data: Partial<ContractFormData>): Promise<Contract> => {
+    const res = await fetchWithCookies<{ success: boolean; data: Contract }>('/leads/contracts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  },
+
+  updateContract: async (id: string, data: Partial<ContractFormData>): Promise<Contract> => {
+    const res = await fetchWithCookies<{ success: boolean; data: Contract }>(`/leads/contracts/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return res.data;
+  },
+
+  deleteContract: async (id: string): Promise<boolean> => {
+    await fetchWithCookies<{ success: boolean; message: string }>(`/leads/contracts/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    return true;
   },
 };
 

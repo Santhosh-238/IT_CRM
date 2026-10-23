@@ -33,6 +33,7 @@ export interface QuotationItem {
   quantity: number;
   unitPrice: number;
   discount: number;
+  discountType?: 'percentage' | 'fixed';
   taxRate: number;
   taxAmount: number;
   totalAmount: number;

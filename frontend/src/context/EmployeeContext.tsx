@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Employee, EmployeeStats, EmployeeStatus } from '../types/employee';
 import {
   fetchEmployeesApi,
@@ -39,8 +39,8 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-  // Fetch employees from API
-  const fetchEmployees = async (filters?: any) => {
+  // Fetch employees from API (Memoized with useCallback)
+  const fetchEmployees = useCallback(async (filters?: any) => {
     setLoading(true);
     try {
       const res = await fetchEmployeesApi(filters);
@@ -50,17 +50,17 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Fetch statistics from API
-  const fetchEmployeeStats = async () => {
+  // Fetch statistics from API (Memoized with useCallback)
+  const fetchEmployeeStats = useCallback(async () => {
     try {
       const stats = await fetchEmployeeStatsApi();
       setEmployeeStats(stats);
     } catch (err) {
       console.error('Failed to load employee stats:', err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchEmployees();

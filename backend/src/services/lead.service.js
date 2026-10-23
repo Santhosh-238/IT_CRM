@@ -1,7 +1,16 @@
 import { prisma } from '../config/prisma.js';
 import { delCache } from '../config/redis.js';
 import { LeadModel } from '../models/lead.model.js';
-import { generateLeadId, buildLeadFilterQuery, formatLeadResponse } from '../utils/lead.util.js';
+import {
+  generateLeadId,
+  buildLeadFilterQuery,
+  formatLeadResponse,
+  generateNegotiationId,
+  formatNegotiationResponse,
+  generateContractId,
+  formatContractResponse,
+  buildContractFilterQuery,
+} from '../utils/lead.util.js';
 
 /**
  * 1. List leads with search, filters, pagination, and sorting
@@ -444,6 +453,808 @@ export async function deleteLeadProposalService(id) {
 }
 export const deleteProposalService = deleteLeadProposalService;
 
+// =============================================================================
+// NEGOTIATIONS (Inside Lead Service)
+// =============================================================================
+
+/**
+ * 13. GET ALL NEGOTIATIONS
+ */
+export async function getLeadNegotiationsService(queryParams = {}) {
+  const {
+    search,
+    status,
+    leadId,
+    contactId,
+    assignedTo,
+    date,
+    startDate,
+    endDate,
+    page = 1,
+    limit = 10,
+    sortBy = 'createdAt',
+    sortOrder = 'desc',
+  } = queryParams;
+
+  const where = {};
+
+  if (status && status !== 'ALL' && status !== 'All') {
+    where.status = { equals: status, mode: 'insensitive' };
+  }
+
+  if (leadId && leadId !== 'ALL' && leadId !== 'All') {
+    where.leadId = leadId;
+  }
+  if (contactId && contactId !== 'ALL' && contactId !== 'All') {
+    where.contactId = contactId;
+  }
+
+  if (assignedTo && assignedTo !== 'ALL' && assignedTo !== 'All') {
+    where.OR = [
+      { assignedTo },
+      { assignedToName: { contains: assignedTo, mode: 'insensitive' } },
+    ];
+  }
+
+  if (date) {
+    where.negotiationDate = date;
+  } else if (startDate && endDate) {
+    where.negotiationDate = {
+      gte: startDate,
+      lte: endDate,
+    };
+  }
+
+  if (search && search.trim()) {
+    const q = search.trim();
+    const searchConditions = [
+      { negotiationId: { contains: q, mode: 'insensitive' } },
+      { leadName: { contains: q, mode: 'insensitive' } },
+      { clientName: { contains: q, mode: 'insensitive' } },
+      { quotationNumber: { contains: q, mode: 'insensitive' } },
+      { proposalNumber: { contains: q, mode: 'insensitive' } },
+      { assignedToName: { contains: q, mode: 'insensitive' } },
+      { paymentTerms: { contains: q, mode: 'insensitive' } },
+      { notes: { contains: q, mode: 'insensitive' } },
+      { clientRequirements: { contains: q, mode: 'insensitive' } },
+    ];
+
+    if (where.OR) {
+      where.AND = [{ OR: where.OR }, { OR: searchConditions }];
+      delete where.OR;
+    } else {
+      where.OR = searchConditions;
+    }
+  }
+
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const pageSize = Math.max(1, parseInt(limit, 10) || 10);
+  const skip = (pageNum - 1) * pageSize;
+
+  const validSortFields = [
+    'negotiationId',
+    'negotiationDate',
+    'quotedAmount',
+    'expectedFinalAmount',
+    'discountPercentage',
+    'status',
+    'nextFollowUpDate',
+    'createdAt',
+    'updatedAt',
+  ];
+  const orderField = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+  const orderDir = sortOrder?.toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+  const [records, total] = await Promise.all([
+    prisma.negotiation.findMany({
+      where,
+      skip,
+      take: pageSize,
+      orderBy: { [orderField]: orderDir },
+    }),
+    prisma.negotiation.count({ where }),
+  ]);
+
+  return {
+    data: records.map(formatNegotiationResponse),
+    pagination: {
+      total,
+      page: pageNum,
+      limit: pageSize,
+      totalPages: Math.ceil(total / pageSize) || 1,
+    },
+  };
+}
+export const getNegotiationsService = getLeadNegotiationsService;
+
+/**
+ * 14. GET NEGOTIATION STATS
+ */
+export async function getLeadNegotiationStatsService() {
+  const [all, inProgress, awaitingClient, revisedQuotation, won, lost] = await Promise.all([
+    prisma.negotiation.findMany({
+      select: { quotedAmount: true, expectedFinalAmount: true, status: true },
+    }),
+    prisma.negotiation.count({ where: { status: { equals: 'In Progress', mode: 'insensitive' } } }),
+    prisma.negotiation.count({ where: { status: { equals: 'Awaiting Client', mode: 'insensitive' } } }),
+    prisma.negotiation.count({ where: { status: { equals: 'Revised Quotation', mode: 'insensitive' } } }),
+    prisma.negotiation.count({ where: { status: { equals: 'Won', mode: 'insensitive' } } }),
+    prisma.negotiation.count({ where: { status: { equals: 'Lost', mode: 'insensitive' } } }),
+  ]);
+
+  const totalQuotedValue = all.reduce((sum, item) => sum + (Number(item.quotedAmount) || 0), 0);
+  const totalExpectedValue = all.reduce((sum, item) => sum + (Number(item.expectedFinalAmount) || 0), 0);
+
+  return {
+    total: all.length,
+    inProgress,
+    awaitingClient,
+    revisedQuotation,
+    won,
+    lost,
+    totalQuotedValue,
+    totalExpectedValue,
+  };
+}
+export const getNegotiationStatsService = getLeadNegotiationStatsService;
+
+/**
+ * 15. GET NEGOTIATION BY ID
+ */
+export async function getLeadNegotiationByIdService(id) {
+  const record = await prisma.negotiation.findFirst({
+    where: {
+      OR: [{ id }, { negotiationId: id }],
+    },
+  });
+
+  if (!record) {
+    const error = new Error('Negotiation record not found');
+    error.status = 404;
+    throw error;
+  }
+
+  return formatNegotiationResponse(record);
+}
+export const getNegotiationByIdService = getLeadNegotiationByIdService;
+
+/**
+ * 16. CREATE NEGOTIATION
+ */
+export async function createLeadNegotiationService(data, user = {}) {
+  const {
+    negotiationId,
+    leadId,
+    leadName,
+    clientName,
+    contactId,
+    quotationId,
+    quotationNumber,
+    proposalId,
+    proposalNumber,
+    assignedTo,
+    assignedToName,
+    negotiationDate,
+    status = 'In Progress',
+    quotedAmount = 0,
+    expectedFinalAmount,
+    discountPercentage = 0,
+    paymentTerms = 'Milestone Based',
+    scopeChanges = '',
+    deliveryTimeline = '',
+    clientRequirements = '',
+    notes = '',
+    nextFollowUpDate,
+    lossReason = '',
+  } = data;
+
+  if (!leadName || !leadName.trim()) {
+    const err = new Error('Lead / Client Name is required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!negotiationDate) {
+    const err = new Error('Negotiation Date is required');
+    err.status = 400;
+    throw err;
+  }
+
+  // Conditional follow-up date validation: required when status is "Awaiting Client"
+  if (status === 'Awaiting Client' && (!nextFollowUpDate || !nextFollowUpDate.trim())) {
+    const err = new Error('Next Follow-up Date is required when status is Awaiting Client');
+    err.status = 400;
+    throw err;
+  }
+
+  const numQuoted = Math.max(0, parseFloat(quotedAmount) || 0);
+  let numDiscountPct = Math.max(0, parseFloat(discountPercentage) || 0);
+  let numExpected =
+    expectedFinalAmount !== undefined && expectedFinalAmount !== null && expectedFinalAmount !== ''
+      ? Math.max(0, parseFloat(expectedFinalAmount))
+      : null;
+
+  let calcDiscountAmount = 0;
+  if (numExpected !== null && numExpected !== undefined && numQuoted > 0) {
+    calcDiscountAmount = Math.max(0, numQuoted - numExpected);
+    numDiscountPct = Math.round(((numQuoted - numExpected) / numQuoted) * 100);
+  } else {
+    calcDiscountAmount = (numQuoted * numDiscountPct) / 100;
+    numExpected = Math.max(0, numQuoted - calcDiscountAmount);
+  }
+
+  const generatedId = await generateNegotiationId(prisma);
+
+  const authorName = user?.name || assignedToName || 'System';
+  const initialHistoryEntry = {
+    id: `entry-${Date.now()}`,
+    date: negotiationDate || new Date().toISOString().split('T')[0],
+    author: authorName,
+    topic: 'Negotiation Created',
+    notes: notes?.trim() || `Negotiation initiated with status "${status}" at ₹${numExpected.toLocaleString('en-IN')}.`,
+    status,
+    createdAt: new Date().toISOString(),
+  };
+
+  const created = await prisma.negotiation.create({
+    data: {
+      negotiationId: (negotiationId && negotiationId.trim()) || generatedId,
+      leadId: leadId || null,
+      leadName: leadName.trim(),
+      clientName: clientName?.trim() || leadName.trim(),
+      contactId: contactId || null,
+      quotationId: quotationId || null,
+      quotationNumber: quotationNumber?.trim() || null,
+      proposalId: proposalId || null,
+      proposalNumber: proposalNumber?.trim() || null,
+      assignedTo: assignedTo || null,
+      assignedToName: assignedToName?.trim() || 'Admin Employee',
+      negotiationDate,
+      status,
+      quotedAmount: numQuoted,
+      expectedFinalAmount: numExpected,
+      discountPercentage: numDiscountPct,
+      discountAmount: calcDiscountAmount,
+      paymentTerms: paymentTerms || 'Milestone Based',
+      scopeChanges: scopeChanges?.trim() || null,
+      deliveryTimeline: deliveryTimeline?.trim() || null,
+      clientRequirements: clientRequirements?.trim() || null,
+      notes: notes?.trim() || null,
+      nextFollowUpDate: nextFollowUpDate ? nextFollowUpDate.trim() : null,
+      discussionHistory: [initialHistoryEntry],
+      lossReason: status === 'Lost' ? lossReason?.trim() || null : null,
+    },
+  });
+
+  return formatNegotiationResponse(created);
+}
+export const createNegotiationService = createLeadNegotiationService;
+
+/**
+ * 17. UPDATE NEGOTIATION
+ */
+export async function updateLeadNegotiationService(id, data, user = {}) {
+  const existing = await prisma.negotiation.findFirst({
+    where: {
+      OR: [{ id }, { negotiationId: id }],
+    },
+  });
+
+  if (!existing) {
+    const error = new Error('Negotiation record not found');
+    error.status = 404;
+    throw error;
+  }
+
+  const {
+    leadId,
+    leadName,
+    clientName,
+    contactId,
+    quotationId,
+    quotationNumber,
+    proposalId,
+    proposalNumber,
+    assignedTo,
+    assignedToName,
+    negotiationDate,
+    status,
+    quotedAmount,
+    expectedFinalAmount,
+    discountPercentage,
+    paymentTerms,
+    scopeChanges,
+    deliveryTimeline,
+    clientRequirements,
+    notes,
+    nextFollowUpDate,
+    lossReason,
+  } = data;
+
+  const targetStatus = status !== undefined ? status : existing.status;
+
+  if (targetStatus === 'Awaiting Client') {
+    const checkDate = nextFollowUpDate !== undefined ? nextFollowUpDate : existing.nextFollowUpDate;
+    if (!checkDate || !checkDate.trim()) {
+      const err = new Error('Next Follow-up Date is required when status is Awaiting Client');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  const numQuoted = quotedAmount !== undefined ? Math.max(0, parseFloat(quotedAmount) || 0) : existing.quotedAmount;
+  let numDiscountPct =
+    discountPercentage !== undefined
+      ? Math.max(0, parseFloat(discountPercentage) || 0)
+      : existing.discountPercentage;
+  let numExpected =
+    expectedFinalAmount !== undefined
+      ? Math.max(0, parseFloat(expectedFinalAmount) || 0)
+      : existing.expectedFinalAmount;
+
+  let calcDiscountAmount = existing.discountAmount;
+  if (expectedFinalAmount !== undefined && numQuoted > 0) {
+    calcDiscountAmount = Math.max(0, numQuoted - numExpected);
+    numDiscountPct = Math.round(((numQuoted - numExpected) / numQuoted) * 100);
+  } else if (discountPercentage !== undefined && numQuoted > 0) {
+    calcDiscountAmount = (numQuoted * numDiscountPct) / 100;
+    numExpected = Math.max(0, numQuoted - calcDiscountAmount);
+  }
+
+  const finalFollowUpDate =
+    nextFollowUpDate !== undefined
+      ? nextFollowUpDate
+        ? nextFollowUpDate.trim()
+        : null
+      : existing.nextFollowUpDate;
+
+  const existingHistory = Array.isArray(existing.discussionHistory) ? existing.discussionHistory : [];
+  let updatedHistory = existingHistory;
+
+  if (notes && notes.trim() !== existing.notes) {
+    const authorName = user?.name || assignedToName || existing.assignedToName || 'System';
+    const newEntry = {
+      id: `entry-${Date.now()}`,
+      date: new Date().toISOString().split('T')[0],
+      author: authorName,
+      topic: targetStatus !== existing.status ? `Status changed to ${targetStatus}` : 'Discussion Logged',
+      notes: notes.trim(),
+      status: targetStatus,
+      createdAt: new Date().toISOString(),
+    };
+    updatedHistory = [newEntry, ...existingHistory];
+  }
+
+  const updatePayload = {
+    ...(leadId !== undefined && { leadId }),
+    ...(leadName !== undefined && { leadName: leadName.trim() }),
+    ...(clientName !== undefined && { clientName: clientName.trim() }),
+    ...(contactId !== undefined && { contactId }),
+    ...(quotationId !== undefined && { quotationId }),
+    ...(quotationNumber !== undefined && { quotationNumber: quotationNumber?.trim() || null }),
+    ...(proposalId !== undefined && { proposalId }),
+    ...(proposalNumber !== undefined && { proposalNumber: proposalNumber?.trim() || null }),
+    ...(assignedTo !== undefined && { assignedTo }),
+    ...(assignedToName !== undefined && { assignedToName: assignedToName.trim() }),
+    ...(negotiationDate !== undefined && { negotiationDate }),
+    ...(status !== undefined && { status }),
+    quotedAmount: numQuoted,
+    expectedFinalAmount: numExpected,
+    discountPercentage: numDiscountPct,
+    discountAmount: calcDiscountAmount,
+    ...(paymentTerms !== undefined && { paymentTerms }),
+    ...(scopeChanges !== undefined && { scopeChanges: scopeChanges?.trim() || null }),
+    ...(deliveryTimeline !== undefined && { deliveryTimeline: deliveryTimeline?.trim() || null }),
+    ...(clientRequirements !== undefined && { clientRequirements: clientRequirements?.trim() || null }),
+    ...(notes !== undefined && { notes: notes?.trim() || null }),
+    nextFollowUpDate: finalFollowUpDate,
+    discussionHistory: updatedHistory,
+    ...(lossReason !== undefined && { lossReason: lossReason?.trim() || null }),
+  };
+
+  const updated = await prisma.negotiation.update({
+    where: { id: existing.id },
+    data: updatePayload,
+  });
+
+  return formatNegotiationResponse(updated);
+}
+export const updateNegotiationService = updateLeadNegotiationService;
+
+/**
+ * 18. DELETE NEGOTIATION
+ */
+export async function deleteLeadNegotiationService(id) {
+  const existing = await prisma.negotiation.findFirst({
+    where: {
+      OR: [{ id }, { negotiationId: id }],
+    },
+  });
+
+  if (!existing) {
+    const error = new Error('Negotiation record not found');
+    error.status = 404;
+    throw error;
+  }
+
+  await prisma.negotiation.delete({
+    where: { id: existing.id },
+  });
+
+  return { id: existing.id, negotiationId: existing.negotiationId };
+}
+export const deleteNegotiationService = deleteLeadNegotiationService;
+
+/**
+ * 19. LIST CONTRACTS (UNDER LEAD MODULE)
+ */
+export async function getLeadContractsService(queryParams = {}) {
+  const {
+    sortBy = 'createdAt',
+    sortOrder = 'desc',
+    page = 1,
+    limit = 10,
+  } = queryParams;
+
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(1000, Math.max(1, parseInt(limit, 10) || 10));
+  const skip = (pageNum - 1) * limitNum;
+
+  const where = buildContractFilterQuery(queryParams);
+
+  const validSortFields = [
+    'createdAt',
+    'updatedAt',
+    'contractDate',
+    'startDate',
+    'endDate',
+    'contractValue',
+    'title',
+    'clientName',
+    'status',
+    'approvalStatus',
+    'signatureStatus',
+  ];
+  const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
+  const finalSortOrder = sortOrder.toLowerCase() === 'asc' ? 'asc' : 'desc';
+
+  const [total, records] = await Promise.all([
+    prisma.contract.count({ where }),
+    prisma.contract.findMany({
+      where,
+      orderBy: { [finalSortBy]: finalSortOrder },
+      skip,
+      take: limitNum,
+    }),
+  ]);
+
+  return {
+    data: records.map(formatContractResponse),
+    pagination: {
+      total,
+      page: pageNum,
+      limit: limitNum,
+      totalPages: Math.ceil(total / limitNum) || 1,
+    },
+  };
+}
+export const getContractsService = getLeadContractsService;
+
+/**
+ * 20. GET CONTRACT STATS
+ */
+export async function getLeadContractStatsService(leadId = null) {
+  const where = leadId && leadId !== 'ALL' && leadId !== 'All' ? { leadId } : {};
+
+  const [
+    total,
+    draft,
+    pendingApproval,
+    sentForSignature,
+    partiallySigned,
+    active,
+    completed,
+    expired,
+    terminated,
+    contracts,
+  ] = await Promise.all([
+    prisma.contract.count({ where }),
+    prisma.contract.count({ where: { ...where, status: 'Draft' } }),
+    prisma.contract.count({ where: { ...where, status: 'Pending Approval' } }),
+    prisma.contract.count({ where: { ...where, status: 'Sent for Signature' } }),
+    prisma.contract.count({ where: { ...where, status: 'Partially Signed' } }),
+    prisma.contract.count({ where: { ...where, status: 'Active' } }),
+    prisma.contract.count({ where: { ...where, status: 'Completed' } }),
+    prisma.contract.count({ where: { ...where, status: 'Expired' } }),
+    prisma.contract.count({ where: { ...where, status: 'Terminated' } }),
+    prisma.contract.findMany({
+      where,
+      select: { contractValue: true },
+    }),
+  ]);
+
+  const totalContractValue = contracts.reduce((acc, c) => acc + (Number(c.contractValue) || 0), 0);
+
+  return {
+    total,
+    draft,
+    pendingApproval,
+    sentForSignature,
+    partiallySigned,
+    active,
+    completed,
+    expired,
+    terminated,
+    totalContractValue,
+  };
+}
+export const getContractStatsService = getLeadContractStatsService;
+
+/**
+ * 21. GET CONTRACT BY ID
+ */
+export async function getLeadContractByIdService(id) {
+  const record = await prisma.contract.findFirst({
+    where: {
+      OR: [{ id }, { contractId: id }],
+    },
+  });
+
+  if (!record) {
+    const error = new Error('Contract record not found');
+    error.status = 404;
+    throw error;
+  }
+
+  return formatContractResponse(record);
+}
+export const getContractByIdService = getLeadContractByIdService;
+
+/**
+ * 22. CREATE CONTRACT
+ */
+export async function createLeadContractService(data, user = {}) {
+  const {
+    contractId,
+    title,
+    contractType = 'Software Development',
+    clientName,
+    leadId,
+    leadName,
+    contactId,
+    proposalId,
+    proposalNumber,
+    negotiationId,
+    negotiationNumber,
+    assignedTo,
+    assignedToName,
+    contractDate,
+    projectName,
+    projectDescription,
+    scopeOfWork,
+    deliverables,
+    responsibilities,
+    startDate,
+    endDate,
+    specialConditions,
+    contractValue = 0,
+    warrantyTerms,
+    confidentialityClause,
+    terminationClause,
+    additionalTerms,
+    documentName,
+    documentUrl,
+    documentSize,
+    attachments = [],
+    clientSignatoryName,
+    companySignatoryName = 'OmniTech Solutions Representative',
+    signatureStatus = 'Pending',
+    signedDate,
+    approvalStatus = 'Draft',
+    approvedBy,
+    approvalDate,
+    status = 'Draft',
+  } = data;
+
+  if (!title || !title.trim()) {
+    const err = new Error('Contract Title is required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!contractDate) {
+    const err = new Error('Contract Date is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const generatedId = await generateContractId(prisma);
+  const numValue = Math.max(0, parseFloat(contractValue) || 0);
+
+  const created = await prisma.contract.create({
+    data: {
+      contractId: (contractId && contractId.trim()) || generatedId,
+      title: title.trim(),
+      contractType: contractType || 'Software Development',
+      clientName: (clientName && clientName.trim()) || (leadName && leadName.trim()) || 'Client',
+      leadId: leadId || null,
+      leadName: leadName ? leadName.trim() : null,
+      contactId: contactId || null,
+      proposalId: proposalId || null,
+      proposalNumber: proposalNumber ? proposalNumber.trim() : null,
+      negotiationId: negotiationId || null,
+      negotiationNumber: negotiationNumber ? negotiationNumber.trim() : null,
+      assignedTo: assignedTo || null,
+      assignedToName: (assignedToName && assignedToName.trim()) || user?.name || 'Assigned Staff',
+      contractDate: contractDate || new Date().toISOString().split('T')[0],
+      projectName: projectName ? projectName.trim() : null,
+      projectDescription: projectDescription ? projectDescription.trim() : null,
+      scopeOfWork: scopeOfWork ? scopeOfWork.trim() : null,
+      deliverables: deliverables ? deliverables.trim() : null,
+      responsibilities: responsibilities ? responsibilities.trim() : null,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      specialConditions: specialConditions ? specialConditions.trim() : null,
+      contractValue: numValue,
+      warrantyTerms: warrantyTerms ? warrantyTerms.trim() : null,
+      confidentialityClause: confidentialityClause ? confidentialityClause.trim() : null,
+      terminationClause: terminationClause ? terminationClause.trim() : null,
+      additionalTerms: additionalTerms ? additionalTerms.trim() : null,
+      documentName: documentName || null,
+      documentUrl: documentUrl || null,
+      documentSize: documentSize || null,
+      attachments: Array.isArray(attachments) ? attachments : [],
+      clientSignatoryName: clientSignatoryName ? clientSignatoryName.trim() : null,
+      companySignatoryName: companySignatoryName ? companySignatoryName.trim() : 'OmniTech Solutions Representative',
+      signatureStatus: signatureStatus || 'Pending',
+      signedDate: signedDate || null,
+      approvalStatus: approvalStatus || 'Draft',
+      approvedBy: approvedBy ? approvedBy.trim() : null,
+      approvalDate: approvalDate || null,
+      status: status || 'Draft',
+    },
+  });
+
+  return formatContractResponse(created);
+}
+export const createContractService = createLeadContractService;
+
+/**
+ * 23. UPDATE CONTRACT
+ */
+export async function updateLeadContractService(id, data, user = {}) {
+  const existing = await prisma.contract.findFirst({
+    where: {
+      OR: [{ id }, { contractId: id }],
+    },
+  });
+
+  if (!existing) {
+    const error = new Error('Contract record not found');
+    error.status = 404;
+    throw error;
+  }
+
+  const {
+    title,
+    contractType,
+    clientName,
+    leadId,
+    leadName,
+    contactId,
+    proposalId,
+    proposalNumber,
+    negotiationId,
+    negotiationNumber,
+    assignedTo,
+    assignedToName,
+    contractDate,
+    projectName,
+    projectDescription,
+    scopeOfWork,
+    deliverables,
+    responsibilities,
+    startDate,
+    endDate,
+    specialConditions,
+    contractValue,
+    warrantyTerms,
+    confidentialityClause,
+    terminationClause,
+    additionalTerms,
+    documentName,
+    documentUrl,
+    documentSize,
+    attachments,
+    clientSignatoryName,
+    companySignatoryName,
+    signatureStatus,
+    signedDate,
+    approvalStatus,
+    approvedBy,
+    approvalDate,
+    status,
+  } = data;
+
+  const numValue =
+    contractValue !== undefined && contractValue !== null && contractValue !== ''
+      ? Math.max(0, parseFloat(contractValue))
+      : existing.contractValue;
+
+  const updatePayload = {
+    ...(title !== undefined && { title: title.trim() }),
+    ...(contractType !== undefined && { contractType }),
+    ...(clientName !== undefined && { clientName: clientName.trim() }),
+    ...(leadId !== undefined && { leadId }),
+    ...(leadName !== undefined && { leadName: leadName?.trim() || null }),
+    ...(contactId !== undefined && { contactId }),
+    ...(proposalId !== undefined && { proposalId }),
+    ...(proposalNumber !== undefined && { proposalNumber: proposalNumber?.trim() || null }),
+    ...(negotiationId !== undefined && { negotiationId }),
+    ...(negotiationNumber !== undefined && { negotiationNumber: negotiationNumber?.trim() || null }),
+    ...(assignedTo !== undefined && { assignedTo }),
+    ...(assignedToName !== undefined && { assignedToName: assignedToName.trim() }),
+    ...(contractDate !== undefined && { contractDate }),
+    ...(projectName !== undefined && { projectName: projectName?.trim() || null }),
+    ...(projectDescription !== undefined && { projectDescription: projectDescription?.trim() || null }),
+    ...(scopeOfWork !== undefined && { scopeOfWork: scopeOfWork?.trim() || null }),
+    ...(deliverables !== undefined && { deliverables: deliverables?.trim() || null }),
+    ...(responsibilities !== undefined && { responsibilities: responsibilities?.trim() || null }),
+    ...(startDate !== undefined && { startDate: startDate || null }),
+    ...(endDate !== undefined && { endDate: endDate || null }),
+    ...(specialConditions !== undefined && { specialConditions: specialConditions?.trim() || null }),
+    contractValue: numValue,
+    ...(warrantyTerms !== undefined && { warrantyTerms: warrantyTerms?.trim() || null }),
+    ...(confidentialityClause !== undefined && { confidentialityClause: confidentialityClause?.trim() || null }),
+    ...(terminationClause !== undefined && { terminationClause: terminationClause?.trim() || null }),
+    ...(additionalTerms !== undefined && { additionalTerms: additionalTerms?.trim() || null }),
+    ...(documentName !== undefined && { documentName }),
+    ...(documentUrl !== undefined && { documentUrl }),
+    ...(documentSize !== undefined && { documentSize }),
+    ...(attachments !== undefined && { attachments: Array.isArray(attachments) ? attachments : [] }),
+    ...(clientSignatoryName !== undefined && { clientSignatoryName: clientSignatoryName?.trim() || null }),
+    ...(companySignatoryName !== undefined && { companySignatoryName: companySignatoryName?.trim() || null }),
+    ...(signatureStatus !== undefined && { signatureStatus }),
+    ...(signedDate !== undefined && { signedDate: signedDate || null }),
+    ...(approvalStatus !== undefined && { approvalStatus }),
+    ...(approvedBy !== undefined && { approvedBy: approvedBy?.trim() || null }),
+    ...(approvalDate !== undefined && { approvalDate: approvalDate || null }),
+    ...(status !== undefined && { status }),
+  };
+
+  const updated = await prisma.contract.update({
+    where: { id: existing.id },
+    data: updatePayload,
+  });
+
+  return formatContractResponse(updated);
+}
+export const updateContractService = updateLeadContractService;
+
+/**
+ * 24. DELETE CONTRACT
+ */
+export async function deleteLeadContractService(id) {
+  const existing = await prisma.contract.findFirst({
+    where: {
+      OR: [{ id }, { contractId: id }],
+    },
+  });
+
+  if (!existing) {
+    const error = new Error('Contract record not found');
+    error.status = 404;
+    throw error;
+  }
+
+  await prisma.contract.delete({
+    where: { id: existing.id },
+  });
+
+  return { id: existing.id, contractId: existing.contractId };
+}
+export const deleteContractService = deleteLeadContractService;
+
 export default {
   getLeadsService,
   getLeadByIdService,
@@ -462,5 +1273,30 @@ export default {
   createProposalService,
   updateProposalService,
   deleteProposalService,
+  getLeadNegotiationsService,
+  getLeadNegotiationStatsService,
+  getLeadNegotiationByIdService,
+  createLeadNegotiationService,
+  updateLeadNegotiationService,
+  deleteLeadNegotiationService,
+  getNegotiationsService,
+  getNegotiationStatsService,
+  getNegotiationByIdService,
+  createNegotiationService,
+  updateNegotiationService,
+  deleteNegotiationService,
+  getLeadContractsService,
+  getLeadContractStatsService,
+  getLeadContractByIdService,
+  createLeadContractService,
+  updateLeadContractService,
+  deleteLeadContractService,
+  getContractsService,
+  getContractStatsService,
+  getContractByIdService,
+  createContractService,
+  updateContractService,
+  deleteContractService,
 };
+
 

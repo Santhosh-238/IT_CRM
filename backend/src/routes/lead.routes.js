@@ -14,6 +14,18 @@ import {
   createLeadProposal,
   updateLeadProposal,
   deleteLeadProposal,
+  getLeadNegotiations,
+  getLeadNegotiationStats,
+  getLeadNegotiationById,
+  createLeadNegotiation,
+  updateLeadNegotiation,
+  deleteLeadNegotiation,
+  getLeadContracts,
+  getLeadContractStats,
+  getLeadContractById,
+  createLeadContract,
+  updateLeadContract,
+  deleteLeadContract,
 } from '../controllers/lead.controller.js';
 
 const router = Router();
@@ -70,7 +82,93 @@ router.delete(
   deleteLeadProposal
 );
 
-// 4. List leads with filters, pagination, search
+// 4. Negotiations under Lead Module
+router.get(
+  '/negotiations/stats',
+  requireAuth,
+  authorizePermission('leads', 'view'),
+  getLeadNegotiationStats
+);
+
+router.get(
+  '/negotiations',
+  requireAuth,
+  authorizePermission('leads', 'view'),
+  getLeadNegotiations
+);
+
+router.get(
+  '/negotiations/:id',
+  requireAuth,
+  authorizePermission('leads', 'view'),
+  getLeadNegotiationById
+);
+
+router.post(
+  '/negotiations',
+  requireAuth,
+  authorizePermission('leads', 'create'),
+  createLeadNegotiation
+);
+
+router.put(
+  '/negotiations/:id',
+  requireAuth,
+  authorizePermission('leads', 'edit'),
+  updateLeadNegotiation
+);
+
+router.delete(
+  '/negotiations/:id',
+  requireAuth,
+  authorizePermission('leads', 'delete'),
+  deleteLeadNegotiation
+);
+
+// 5. Contracts under Lead Module
+router.get(
+  '/contracts/stats',
+  requireAuth,
+  authorizePermission('leads', 'view'),
+  getLeadContractStats
+);
+
+router.get(
+  '/contracts',
+  requireAuth,
+  authorizePermission('leads', 'view'),
+  getLeadContracts
+);
+
+router.get(
+  '/contracts/:id',
+  requireAuth,
+  authorizePermission('leads', 'view'),
+  getLeadContractById
+);
+
+router.post(
+  '/contracts',
+  requireAuth,
+  authorizePermission('leads', 'create'),
+  createLeadContract
+);
+
+router.put(
+  '/contracts/:id',
+  requireAuth,
+  authorizePermission('leads', 'edit'),
+  updateLeadContract
+);
+
+router.delete(
+  '/contracts/:id',
+  requireAuth,
+  authorizePermission('leads', 'delete'),
+  deleteLeadContract
+);
+
+// 6. List leads with filters, pagination, search
 router.get(
   '/',
   requireAuth,

@@ -16,6 +16,7 @@ import { CallLogsPage } from '../../pages/calls';
 import { CustomersPage, CustomerDetailsPage } from '../../pages/customers';
 import { SettingsPage } from '../../pages/settings';
 import { BillingPage } from '../../pages/billing';
+import { LeadNegotiationSection } from '../../pages/leads/components/LeadDealSections';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
 import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
@@ -91,6 +92,7 @@ export const AppLayout: React.FC = () => {
       { nav: 'call-logs', id: 'call_logs' },
       { nav: 'customers', id: 'customers' },
       { nav: 'projects', id: 'projects' },
+      { nav: 'negotiations', id: 'negotiations' },
       { nav: 'employees', id: 'employee_management' },
       { nav: 'access-control', id: 'access_control' },
       { nav: 'settings', id: 'settings' },
@@ -462,6 +464,17 @@ export const AppLayout: React.FC = () => {
           );
         }
         return <CallLogsPage />;
+      case 'negotiations':
+      case 'negotiation':
+        if (!can('negotiations', 'view') && !can('leads', 'view') && !isSuperAdmin) {
+          return (
+            <AccessRestrictedView
+              moduleName="Negotiations"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
+        return <LeadNegotiationSection />;
       case 'customers':
       case 'customer':
       case 'customers-all':

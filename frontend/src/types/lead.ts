@@ -213,6 +213,108 @@ export interface LeadProposal {
   createdAt: string;
 }
 
+export type NegotiationStatus =
+  | 'Draft'
+  | 'In Progress'
+  | 'Awaiting Client'
+  | 'Revised Quotation'
+  | 'Won'
+  | 'Lost';
+
+export interface NegotiationDiscussionEntry {
+  id: string;
+  date: string;
+  author: string;
+  topic?: string;
+  notes: string;
+  priceImpact?: number;
+  status?: string;
+  createdAt?: string;
+}
+
+export interface Negotiation {
+  id: string;
+  negotiationId: string; // e.g. NEG-1001
+  leadId?: string | null;
+  leadName: string;
+  clientName?: string | null;
+  contactId?: string | null;
+  quotationId?: string | null;
+  quotationNumber?: string | null;
+  proposalId?: string | null;
+  proposalNumber?: string | null;
+  assignedTo?: string | null;
+  assignedToName: string;
+  negotiationDate: string; // YYYY-MM-DD
+  status: NegotiationStatus;
+  quotedAmount: number;
+  expectedFinalAmount: number;
+  discountPercentage: number;
+  discountAmount: number;
+  paymentTerms?: string | null;
+  scopeChanges?: string | null;
+  deliveryTimeline?: string | null;
+  clientRequirements?: string | null;
+  notes?: string | null;
+  nextFollowUpDate?: string | null;
+  discussionHistory?: NegotiationDiscussionEntry[];
+  lossReason?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NegotiationFormData {
+  negotiationId?: string;
+  leadId?: string;
+  leadName: string;
+  clientName?: string;
+  contactId?: string;
+  quotationId?: string;
+  quotationNumber?: string;
+  proposalId?: string;
+  proposalNumber?: string;
+  assignedTo?: string;
+  assignedToName: string;
+  negotiationDate: string;
+  status: NegotiationStatus;
+  quotedAmount: number;
+  expectedFinalAmount: number;
+  discountPercentage: number;
+  paymentTerms?: string;
+  scopeChanges?: string;
+  deliveryTimeline?: string;
+  clientRequirements?: string;
+  notes?: string;
+  nextFollowUpDate?: string;
+  lossReason?: string;
+}
+
+export interface NegotiationStats {
+  total: number;
+  inProgress: number;
+  awaitingClient: number;
+  revisedQuotation: number;
+  won: number;
+  lost: number;
+  totalQuotedValue: number;
+  totalExpectedValue: number;
+}
+
+export interface NegotiationFilters {
+  status?: string;
+  search?: string;
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  leadId?: string;
+  contactId?: string;
+  assignedTo?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
 export interface NegotiationEntry {
   id: string;
   date: string;
@@ -235,25 +337,177 @@ export interface LeadNegotiation {
   entries: NegotiationEntry[];
 }
 
-export interface LeadContract {
+
+export type ContractType =
+  | 'Software Development'
+  | 'IT Product Sales'
+  | 'Implementation'
+  | 'Maintenance'
+  | 'Support'
+  | 'Other';
+
+export type ContractApprovalStatus =
+  | 'Draft'
+  | 'Pending Approval'
+  | 'Approved'
+  | 'Rejected';
+
+export type ContractSignatureStatus =
+  | 'Pending'
+  | 'Partially Signed'
+  | 'Signed';
+
+export type ContractStatus =
+  | 'Draft'
+  | 'Pending Approval'
+  | 'Sent for Signature'
+  | 'Partially Signed'
+  | 'Active'
+  | 'Completed'
+  | 'Expired'
+  | 'Terminated';
+
+export interface Contract {
   id: string;
-  leadId: string;
-  contractNumber: string;
+  contractId?: string;
   title: string;
+  contractType?: ContractType | string;
+  leadId: string;
+  clientName?: string | null;
+  proposalId?: string | null;
+  proposalTitle?: string | null;
+  negotiationId?: string | null;
+  negotiationTitle?: string | null;
+  assignedTo?: string | null;
+  assignedToName?: string | null;
+  contractDate?: string;
+
+  // Project & Scope Details
+  projectName?: string | null;
+  projectDescription?: string | null;
+  scopeOfWork?: string | null;
+  deliverables?: string | null;
+  responsibilities?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  specialConditions?: string | null;
+
+  // Contract Terms
   contractValue: number;
-  effectiveDate: string;
-  expiryDate: string;
-  durationMonths: number;
-  status: 'Draft' | 'Sent for Signing' | 'Signed' | 'Active';
-  signedByClient: boolean;
-  clientSignerName?: string;
+  warrantyTerms?: string | null;
+  confidentialityClause?: string | null;
+  terminationClause?: string | null;
+  additionalTerms?: string | null;
+
+  // Documents & Signatures
+  contractDocument?: string | null;
+  attachments?: string[];
+  clientSignatoryName?: string | null;
+  companySignatoryName?: string | null;
+  signatureStatus?: ContractSignatureStatus | string;
+  signedDate?: string | null;
+  approvalStatus?: ContractApprovalStatus | string;
+  approvedBy?: string | null;
+  approvalDate?: string | null;
+
+  // Status
+  status: ContractStatus | string;
+
+  // Timestamps
+  createdAt?: string;
+  updatedAt?: string;
+
+  // Compatibility fields for legacy references
+  contractNumber?: string;
+  effectiveDate?: string;
+  expiryDate?: string;
+  durationMonths?: number;
+  signedByClient?: boolean;
   clientSignedDate?: string;
-  signedByCompany: boolean;
+  signedByCompany?: boolean;
   companySignerName?: string;
-  paymentTerms: string;
-  slaTerms: string;
-  scopeSummary: string;
+  clientSignerName?: string;
+  paymentTerms?: string;
+  slaTerms?: string;
+  scopeSummary?: string;
 }
+
+export interface ContractFormData {
+  contractId?: string;
+  title: string;
+  contractType: ContractType | string;
+  leadId: string;
+  clientName?: string;
+  proposalId?: string;
+  proposalTitle?: string;
+  negotiationId?: string;
+  negotiationTitle?: string;
+  assignedTo?: string;
+  assignedToName?: string;
+  contractDate: string;
+
+  // Project & Scope Details
+  projectName?: string;
+  projectDescription?: string;
+  scopeOfWork?: string;
+  deliverables?: string;
+  responsibilities?: string;
+  startDate?: string;
+  endDate?: string;
+  specialConditions?: string;
+
+  // Contract Terms
+  contractValue: number;
+  warrantyTerms?: string;
+  confidentialityClause?: string;
+  terminationClause?: string;
+  additionalTerms?: string;
+
+  // Documents & Signatures
+  contractDocument?: string;
+  attachments?: string[];
+  clientSignatoryName?: string;
+  companySignatoryName?: string;
+  signatureStatus: ContractSignatureStatus | string;
+  signedDate?: string;
+  approvalStatus: ContractApprovalStatus | string;
+  approvedBy?: string;
+  approvalDate?: string;
+
+  // Status
+  status: ContractStatus | string;
+}
+
+export interface ContractStats {
+  total: number;
+  draft: number;
+  pendingApproval: number;
+  approved: number;
+  active: number;
+  signed: number;
+  completed: number;
+  terminated: number;
+  totalContractValue: number;
+}
+
+export interface ContractFilters {
+  status?: string;
+  contractType?: string;
+  approvalStatus?: string;
+  signatureStatus?: string;
+  search?: string;
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+  leadId?: string;
+  assignedTo?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export type LeadContract = Contract;
 
 export interface LeadInvoiceItem {
   id: string;
