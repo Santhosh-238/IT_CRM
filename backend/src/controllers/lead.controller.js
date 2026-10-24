@@ -434,6 +434,64 @@ export async function updateLeadContract(req, res) {
 export const updateContract = updateLeadContract;
 
 /**
+ * 23b. Submit contract for approval
+ * POST /api/leads/contracts/:id/submit OR /api/contracts/:id/submit
+ */
+export async function submitLeadContractApproval(req, res) {
+  try {
+    const contract = await leadService.submitLeadContractApprovalService(req.params.id, req.user);
+    return res.status(200).json({
+      success: true,
+      message: 'Contract submitted for approval successfully',
+      data: contract,
+    });
+  } catch (error) {
+    console.error('submitLeadContractApproval error:', error);
+    return sendError(res, error.message || 'Failed to submit contract for approval', error.status || 400);
+  }
+}
+export const submitContractApproval = submitLeadContractApproval;
+
+/**
+ * 23c. Approve contract
+ * POST /api/leads/contracts/:id/approve OR /api/contracts/:id/approve
+ */
+export async function approveLeadContract(req, res) {
+  try {
+    const contract = await leadService.approveLeadContractService(req.params.id, req.user);
+    return res.status(200).json({
+      success: true,
+      message: 'Contract approved successfully',
+      data: contract,
+    });
+  } catch (error) {
+    console.error('approveLeadContract error:', error);
+    return sendError(res, error.message || 'Failed to approve contract', error.status || 400);
+  }
+}
+export const approveContract = approveLeadContract;
+
+/**
+ * 23d. Reject contract
+ * POST /api/leads/contracts/:id/reject OR /api/contracts/:id/reject
+ */
+export async function rejectLeadContract(req, res) {
+  try {
+    const { rejectionReason } = req.body || {};
+    const contract = await leadService.rejectLeadContractService(req.params.id, rejectionReason, req.user);
+    return res.status(200).json({
+      success: true,
+      message: 'Contract rejected successfully',
+      data: contract,
+    });
+  } catch (error) {
+    console.error('rejectLeadContract error:', error);
+    return sendError(res, error.message || 'Failed to reject contract', error.status || 400);
+  }
+}
+export const rejectContract = rejectLeadContract;
+
+/**
  * 24. Delete contract
  * DELETE /api/leads/contracts/:id OR /api/contracts/:id
  */
@@ -487,12 +545,18 @@ export default {
   getLeadContractById,
   createLeadContract,
   updateLeadContract,
+  submitLeadContractApproval,
+  approveLeadContract,
+  rejectLeadContract,
   deleteLeadContract,
   getContracts,
   getContractStats,
   getContractById,
   createContract,
   updateContract,
+  submitContractApproval,
+  approveContract,
+  rejectContract,
   deleteContract,
 };
 

@@ -25,6 +25,9 @@ import {
   getLeadContractById,
   createLeadContract,
   updateLeadContract,
+  submitLeadContractApproval,
+  approveLeadContract,
+  rejectLeadContract,
   deleteLeadContract,
 } from '../controllers/lead.controller.js';
 
@@ -159,6 +162,27 @@ router.put(
   requireAuth,
   authorizePermission('leads', 'edit'),
   updateLeadContract
+);
+
+router.post(
+  '/contracts/:id/submit',
+  requireAuth,
+  authorizePermission('leads', 'create'),
+  submitLeadContractApproval
+);
+
+router.post(
+  '/contracts/:id/approve',
+  requireAuth,
+  authorizePermission('leads', 'approve'),
+  approveLeadContract
+);
+
+router.post(
+  '/contracts/:id/reject',
+  requireAuth,
+  authorizePermission('leads', 'approve'),
+  rejectLeadContract
 );
 
 router.delete(

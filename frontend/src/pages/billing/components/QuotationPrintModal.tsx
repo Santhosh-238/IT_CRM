@@ -14,6 +14,7 @@ import {
 } from '@mantine/core';
 import { IconPrinter } from '@tabler/icons-react';
 import { Quotation } from '../../../types/billing';
+import { printQuotationDirect } from '../utils/quotationPrint';
 
 interface QuotationPrintModalProps {
   opened: boolean;
@@ -93,7 +94,7 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
   if (!quotation) return null;
 
   const handlePrint = () => {
-    window.print();
+    printQuotationDirect(quotation);
   };
 
   const quotationDateFormatted = quotation.quotationDate
@@ -146,18 +147,11 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
     computedTaxAmount += lineTax;
 
     let discountDisplay = '—';
-    if (rawDiscount > 0) {
-      if (discountType === 'percentage') {
-        discountDisplay = `${rawDiscount}% (₹${lineDiscAmt.toLocaleString('en-IN', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })})`;
-      } else {
-        discountDisplay = `₹${rawDiscount.toLocaleString('en-IN', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        })}`;
-      }
+    if (lineDiscAmt > 0) {
+      discountDisplay = `₹ ${lineDiscAmt.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`;
     }
 
     return {
@@ -212,20 +206,45 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
     <Modal
       opened={opened}
       onClose={onClose}
-      size="xl"
+      size="960px"
+      styles={{
+        content: {
+          borderRadius: 16,
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.18)',
+          overflow: 'hidden',
+          maxWidth: '94vw',
+          maxHeight: '92vh',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+        header: {
+          padding: '14px 24px',
+          backgroundColor: '#FFFFFF',
+          borderBottom: '1px solid #E2E8F0',
+        },
+        body: {
+          padding: '24px 28px',
+          backgroundColor: '#FFFFFF',
+          overflowY: 'auto',
+          maxHeight: 'calc(92vh - 65px)',
+        },
+      }}
       title={
-        <Group justify="space-between" style={{ width: '100%' }}>
-          <Text fw={700} size="md">
+        <Group justify="space-between" align="center" style={{ width: '100%', paddingRight: 32 }}>
+          <Text fw={700} size="15px" style={{ color: '#0F172A' }}>
             Quotation Document: {quotation.quotationNumber}
           </Text>
           <Button
-            leftSection={<IconPrinter size={16} />}
+            leftSection={<IconPrinter size={15} />}
             size="xs"
             variant="filled"
             style={{
               background: '#7C3AED',
               color: '#FFFFFF',
               fontWeight: 700,
+              borderRadius: 8,
+              height: 32,
+              padding: '0 14px',
             }}
             onClick={handlePrint}
           >
@@ -234,25 +253,21 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
         </Group>
       }
       centered
-      radius="md"
+      radius="lg"
     >
-      <Box p="xs">
-        {/* Printable Paper Canvas matching requested template */}
-        <Paper
-          ref={printRef}
-          p="2rem"
-          withBorder
-          radius="sm"
-          className="printable-document"
-          style={{
-            background: '#FFFFFF',
-            color: '#0F172A',
-            fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-            maxWidth: 820,
-            margin: '0 auto',
-          }}
-        >
+      {/* Printable Canvas */}
+      <Box
+        ref={printRef}
+        className="printable-document"
+        style={{
+          width: '100%',
+          maxWidth: 880,
+          margin: '0 auto',
+          background: '#FFFFFF',
+          color: '#0F172A',
+          fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        }}
+      >
           {/* Header Row: Quotation Title & Number (Left) vs Logo (Right) */}
           <Group justify="space-between" align="flex-start" mb="md">
             <Box>
@@ -287,41 +302,46 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
               </Group>
             </Box>
 
-            {/* Top Right Logo matching reference */}
+            {/* Top Right Logo: OneAssist Technologies */}
             <Group gap="xs" align="center">
               <Box
                 style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 6,
-                  background: '#0F172A',
+                  width: 44,
+                  height: 44,
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(14, 165, 233, 0.12))',
+                  border: '1px solid rgba(79, 70, 229, 0.25)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#FFFFFF',
-                  fontWeight: 900,
-                  fontSize: 22,
-                  fontFamily: 'sans-serif',
+                  padding: 4,
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.12)',
+                  flexShrink: 0,
                 }}
               >
-                F
+                <img
+                  src="/oneassist-logo.png"
+                  alt="OneAssist Technologies"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
               </Box>
               <Box>
                 <Text
                   fw={900}
-                  size="15px"
+                  size="16px"
                   c="#0F172A"
-                  style={{ letterSpacing: '0.08em', lineHeight: 1.1 }}
+                  style={{ letterSpacing: '-0.02em', lineHeight: 1.15 }}
                 >
-                  FOOBAR
+                  OneAssist <Text span inherit c="#0EA5E9">CRM</Text>
                 </Text>
                 <Text
-                  fw={900}
-                  size="15px"
-                  c="#0F172A"
-                  style={{ letterSpacing: '0.08em', lineHeight: 1.1 }}
+                  fw={700}
+                  size="9.5px"
+                  c="#64748B"
+                  tt="uppercase"
+                  style={{ letterSpacing: '0.06em', lineHeight: 1.1 }}
                 >
-                  LABS
+                  Technologies Pvt Ltd
                 </Text>
               </Box>
             </Group>
@@ -329,7 +349,7 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
 
           {/* Quotation By & Quotation To Gray Boxes */}
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md" mt="md" mb="xs">
-            {/* Left Card: Quotation by */}
+            {/* Left Card: Quotation by OneAssist */}
             <Box
               p="sm"
               style={{
@@ -343,7 +363,7 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                   Quotation by
                 </Text>
                 <Text size="11px" fw={700} c="#0F172A">
-                  Foobar Labs
+                  OneAssist Technologies Pvt Ltd
                 </Text>
               </Group>
               <Group align="flex-start" wrap="nowrap" mb={6}>
@@ -351,7 +371,15 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                   Address
                 </Text>
                 <Text size="11px" c="#334155" style={{ lineHeight: 1.4 }}>
-                  52-59, HSR Layout, 3rd Floor Orion mall, Bengaluru, Karnataka, India - 560055
+                  104, Tech Park, Guindy, Chennai, Tamil Nadu, India - 600032
+                </Text>
+              </Group>
+              <Group align="flex-start" wrap="nowrap" mb={4}>
+                <Text size="11px" c="#64748B" style={{ width: 80, flexShrink: 0 }}>
+                  GSTIN
+                </Text>
+                <Text size="11px" fw={600} c="#0F172A">
+                  33AAAAA0000A1Z5
                 </Text>
               </Group>
               <Group align="flex-start" wrap="nowrap">
@@ -359,7 +387,7 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                   PAN
                 </Text>
                 <Text size="11px" fw={600} c="#0F172A">
-                  ABCED1234F
+                  AAAAA0000A
                 </Text>
               </Group>
             </Box>
@@ -378,7 +406,7 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                   Quotation to
                 </Text>
                 <Text size="11px" fw={700} c="#0F172A">
-                  {quotation.companyName || quotation.contactName || 'Studio Den'}
+                  {quotation.companyName || quotation.contactName || 'Client'}
                 </Text>
               </Group>
               <Group align="flex-start" wrap="nowrap" mb={6}>
@@ -386,16 +414,15 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                   Address
                 </Text>
                 <Text size="11px" c="#334155" style={{ lineHeight: 1.4 }}>
-                  {quotation.clientAddress ||
-                    '305, 3rd Floor Orion mall, Bengaluru, Karnataka, India - 560055'}
+                  {quotation.clientAddress || 'Client Registered Address'}
                 </Text>
               </Group>
               <Group align="flex-start" wrap="nowrap">
                 <Text size="11px" c="#64748B" style={{ width: 80, flexShrink: 0 }}>
-                  PAN
+                  GSTIN / PAN
                 </Text>
                 <Text size="11px" fw={600} c="#0F172A">
-                  {quotation.clientGst || 'ABCED1234F'}
+                  {quotation.clientGst || '—'}
                 </Text>
               </Group>
             </Box>
@@ -408,7 +435,7 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                 Place of Supply
               </Text>{' '}
               <Text span fw={700} c="#0F172A" ml={6}>
-                Karnataka
+                Tamil Nadu
               </Text>
             </Text>
             <Text size="11px">
@@ -507,14 +534,6 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                       <Text size="12px" fw={600} c="#0F172A">
                         {idx + 1}. {item.itemName}
                       </Text>
-                      {item.description && (
-                        <Text size="11px" c="#64748B" mt={2} ml={16}>
-                          {item.description}
-                        </Text>
-                      )}
-                      <Text size="10px" c="#94A3B8" mt={2} ml={16}>
-                        GST @ {item.taxRate}%
-                      </Text>
                     </Table.Td>
                     <Table.Td
                       style={{
@@ -541,8 +560,8 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                         padding: '9px 12px',
                         fontSize: 12,
                         textAlign: 'right',
-                        color: item.rawDiscount > 0 ? '#16A34A' : '#94A3B8',
-                        fontWeight: item.rawDiscount > 0 ? 600 : 400,
+                        color: item.lineDiscAmt > 0 ? '#0F172A' : '#94A3B8',
+                        fontWeight: item.lineDiscAmt > 0 ? 600 : 400,
                       }}
                     >
                       {item.discountDisplay}
@@ -593,20 +612,11 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                 )}
               </Box>
 
-              <Box mb="lg">
-                <Text size="13px" fw={700} style={{ color: '#7C3AED' }} mb={6}>
-                  Additional Notes
-                </Text>
-                <Text size="11px" c="#475569" style={{ lineHeight: 1.6 }}>
-                  {quotation.notes ||
-                    'It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using Content here, content here.'}
-                </Text>
-              </Box>
 
               <Text size="11px" c="#475569" mt="xl">
                 For any enquiries, email us on{' '}
                 <Text span fw={700} c="#0F172A">
-                  info@foobarlabs.com
+                  billing@oneassist.tech
                 </Text>{' '}
                 or call us on{' '}
                 <Text span fw={700} c="#0F172A">
@@ -630,10 +640,10 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
 
                 {/* 2. Total Item-wise Discount */}
                 <Group justify="space-between">
-                  <Text size="xs" fw={500} c={totalItemDiscount > 0 ? '#16A34A' : '#64748B'}>
+                  <Text size="xs" fw={500} c="#0F172A">
                     Total Item-wise Discount
                   </Text>
-                  <Text size="xs" fw={600} c={totalItemDiscount > 0 ? '#16A34A' : '#64748B'}>
+                  <Text size="xs" fw={600} c="#0F172A">
                     {totalItemDiscount > 0
                       ? `- ₹${totalItemDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                       : '₹0.00'}
@@ -642,15 +652,10 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
 
                 {/* 3. Overall Discount */}
                 <Group justify="space-between">
-                  <Text size="xs" fw={500} c={overallDiscAmt > 0 ? '#16A34A' : '#64748B'}>
+                  <Text size="xs" fw={500} c="#0F172A">
                     Overall Discount
-                    {overallDiscType === 'percentage' && overallDiscVal > 0
-                      ? ` (${overallDiscVal}%)`
-                      : overallDiscType === 'fixed' && overallDiscAmt > 0
-                      ? ' (Fixed)'
-                      : ''}
                   </Text>
-                  <Text size="xs" fw={600} c={overallDiscAmt > 0 ? '#16A34A' : '#64748B'}>
+                  <Text size="xs" fw={600} c="#0F172A">
                     {overallDiscAmt > 0
                       ? `- ₹${overallDiscAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                       : '₹0.00'}
@@ -728,34 +733,38 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                       strokeLinecap="round"
                     />
                   </svg>
-                  <Text size="11px" c="#64748B" mt={2} fw={500}>
-                    Authorized Signature
+                  <Text size="10.5px" fw={600} c="#0F172A" mt={4}>
+                    For OneAssist Technologies Pvt Ltd
+                  </Text>
+                  <Text size="11px" c="#64748B" fw={500}>
+                    Authorized Signatory
                   </Text>
                 </Box>
               </Stack>
             </Grid.Col>
           </Grid>
-        </Paper>
       </Box>
 
       {/* Embedded print CSS */}
       <style>{`
         @media print {
           body * {
-            visibility: hidden !important;
+            visibility: hidden;
           }
           .printable-document, .printable-document * {
             visibility: visible !important;
           }
           .printable-document {
-            position: absolute !important;
+            position: fixed !important;
             left: 0 !important;
             top: 0 !important;
-            width: 100% !important;
+            width: 100vw !important;
             margin: 0 !important;
-            padding: 15mm !important;
+            padding: 10mm 12mm !important;
             box-shadow: none !important;
             border: none !important;
+            background: #ffffff !important;
+            z-index: 999999 !important;
           }
         }
       `}</style>

@@ -14,6 +14,7 @@ import {
   Badge,
   Grid,
   SimpleGrid,
+  ThemeIcon,
   useComputedColorScheme,
 } from '@mantine/core';
 import {
@@ -69,10 +70,11 @@ export const ProposalModal: React.FC<ProposalModalProps> = ({
 
   // Proposal Document & Valuation State
   const [proposalTitle, setProposalTitle] = useState<string>('');
-  const [proposalAmount, setProposalAmount] = useState<number>(85000);
+  const [proposalAmount, setProposalAmount] = useState<number | ''>('');
   const [documentFileName, setDocumentFileName] = useState<string>('');
   const [documentFileUrl, setDocumentFileUrl] = useState<string>('');
   const [documentFileSize, setDocumentFileSize] = useState<string>('');
+  const [isDragging, setIsDragging] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [notes, setNotes] = useState<string>('');
@@ -92,12 +94,18 @@ export const ProposalModal: React.FC<ProposalModalProps> = ({
       setClientAddress(lead.address || '');
 
       setProposalDate(proposal.issueDate || new Date().toISOString().split('T')[0]);
-      setValidUntil(proposal.validUntil || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]);
+      setValidUntil(proposal.validUntil || '');
       setStatus(proposal.status || 'Draft');
       setPaymentTerms((proposal as any).paymentTerms || 'Net 30 Days');
 
       setProposalTitle(proposal.title || `${lead.companyName || lead.name} Solution Proposal`);
-      setProposalAmount(Number(proposal.totalAmount || proposal.subtotal) || 85000);
+      setProposalAmount(
+        proposal.totalAmount != null
+          ? Number(proposal.totalAmount)
+          : proposal.subtotal != null
+          ? Number(proposal.subtotal)
+          : ''
+      );
       setDocumentFileName(proposal.documentName || '');
       setDocumentFileUrl(proposal.documentUrl || '');
       setDocumentFileSize(proposal.documentSize || '');
@@ -117,24 +125,18 @@ export const ProposalModal: React.FC<ProposalModalProps> = ({
       setClientAddress(lead.address || '');
 
       setProposalDate(new Date().toISOString().split('T')[0]);
-      setValidUntil(new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]);
+      setValidUntil('');
       setStatus('Draft');
-      setPaymentTerms('Net 30 Days');
+      setPaymentTerms('');
 
-      const defaultTitle =
-        lead.category === 'Product'
-          ? `${lead.productList?.[0] || 'IT CRM'} Solution Proposal`
-          : `${lead.serviceList?.[0] || 'Software Implementation'} Proposal`;
-      setProposalTitle(defaultTitle);
-      setProposalAmount(85000);
+      setProposalTitle('');
+      setProposalAmount('');
       setDocumentFileName('');
       setDocumentFileUrl('');
       setDocumentFileSize('');
 
       setNotes('');
-      setTermsConditions(
-        '1. Proposal valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
-      );
+      setTermsConditions('');
 
       // Attempt to look up matching contact for GSTIN
       contactService
@@ -159,8 +161,7 @@ export const ProposalModal: React.FC<ProposalModalProps> = ({
     }
   }, [opened, proposal, lead]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const processSelectedFile = (file: File) => {
     if (!file) return;
 
     if (file.size > 25 * 1024 * 1024) {
@@ -192,6 +193,33 @@ export const ProposalModal: React.FC<ProposalModalProps> = ({
     reader.readAsDataURL(file);
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processSelectedFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processSelectedFile(file);
+    }
+  };
+
   const handleRemoveFile = () => {
     setDocumentFileName('');
     setDocumentFileUrl('');
@@ -220,6 +248,16 @@ export const ProposalModal: React.FC<ProposalModalProps> = ({
 
     if (!contactName.trim()) {
       notifications.show({ color: 'red', message: 'Client or Contact Name is required' });
+      return;
+    }
+
+    if (proposalAmount === '' || Number(proposalAmount) <= 0) {
+      notifications.show({ color: 'red', message: 'Proposed Value / Budget is required' });
+      return;
+    }
+
+    if (!validUntil || !validUntil.trim()) {
+      notifications.show({ color: 'red', message: 'Valid Until date is required' });
       return;
     }
 
@@ -390,7 +428,11 @@ export const ProposalModal: React.FC<ProposalModalProps> = ({
             <TextInput
               label="Proposal Title"
               withAsterisk
-              placeholder="e.g. IT CRM & Digital Solution Proposal"
+              placeholder={
+                lead.category === 'Product'
+                  ? `${lead.productList?.[0] || 'IT CRM'} Solution Proposal`
+                  : `${lead.serviceList?.[0] || 'Software Implementation'} Proposal`
+              }
               value={proposalTitle}
               onChange={(e) => setProposalTitle(e.currentTarget.value)}
               radius="md"
@@ -443,7 +485,7 @@ export const ProposalModal: React.FC<ProposalModalProps> = ({
               withAsterisk
               placeholder="e.g. 85,000"
               value={proposalAmount}
-              onChange={(val) => setProposalAmount(Number(val) || 0)}
+              onChange={(val) => setProposalAmount(val === '' ? '' : Number(val))}
               min={0}
               thousandSeparator=","
               prefix="₹ "
@@ -504,38 +546,76 @@ export const ProposalModal: React.FC<ProposalModalProps> = ({
             {!documentFileName ? (
               <Box
                 onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
                 style={{
-                  height: 38,
-                  borderRadius: 8,
-                  border: isDark ? '1px dashed rgba(99, 102, 241, 0.45)' : '1px dashed #CBD5E1',
+                  minHeight: 78,
+                  borderRadius: 10,
+                  border: isDragging
+                    ? '2px dashed #4F46E5'
+                    : isDark
+                    ? '1.5px dashed rgba(99, 102, 241, 0.5)'
+                    : '1.5px dashed #CBD5E1',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '0 12px',
-                  background: isDark ? '#1F2937' : '#F9FAFB',
+                  padding: '14px 18px',
+                  background: isDragging
+                    ? isDark
+                      ? 'rgba(79, 70, 229, 0.2)'
+                      : 'rgba(79, 70, 229, 0.08)'
+                    : isDark
+                    ? '#1F2937'
+                    : '#F8FAFC',
                   cursor: 'pointer',
-                  transition: 'border-color 0.15s ease',
+                  transition: 'all 0.2s ease',
+                  boxShadow: isDragging ? '0 0 0 3px rgba(79, 70, 229, 0.15)' : 'none',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#6366F1';
+                  if (!isDragging) {
+                    e.currentTarget.style.borderColor = '#6366F1';
+                    e.currentTarget.style.background = isDark ? '#263346' : '#F1F5F9';
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = isDark ? 'rgba(99, 102, 241, 0.45)' : '#CBD5E1';
+                  if (!isDragging) {
+                    e.currentTarget.style.borderColor = isDark ? 'rgba(99, 102, 241, 0.5)' : '#CBD5E1';
+                    e.currentTarget.style.background = isDark ? '#1F2937' : '#F8FAFC';
+                  }
                 }}
               >
-                <Text size="xs" c="dimmed">
-                  Attach proposal document (PDF, Word, Excel, etc.)...
-                </Text>
+                <Group gap="md" align="center" wrap="nowrap" style={{ flex: 1, minWidth: 0, marginRight: 16 }}>
+                  <ThemeIcon
+                    size={42}
+                    radius="md"
+                    variant="light"
+                    color="indigo"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <IconUpload size={22} stroke={1.8} />
+                  </ThemeIcon>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <Text size="sm" fw={600} style={{ color: isDark ? '#F1F5F9' : '#1E293B', lineHeight: 1.3 }}>
+                      Attach proposal document
+                    </Text>
+                    <Text size="xs" c="dimmed" mt={3} style={{ lineHeight: 1.3 }}>
+                      Click to browse or drag & drop (PDF, Word, Excel, PPT, images up to 25MB)
+                    </Text>
+                  </div>
+                </Group>
+
                 <Button
-                  size="compact-xs"
+                  size="sm"
                   variant="light"
                   color="indigo"
                   radius="md"
-                  leftSection={<IconUpload size={12} />}
+                  leftSection={<IconUpload size={15} />}
                   onClick={(e) => {
                     e.stopPropagation();
                     fileInputRef.current?.click();
                   }}
+                  style={{ flexShrink: 0, fontWeight: 600 }}
                 >
                   Upload Document
                 </Button>
@@ -543,47 +623,71 @@ export const ProposalModal: React.FC<ProposalModalProps> = ({
             ) : (
               <Box
                 style={{
-                  height: 38,
-                  borderRadius: 8,
+                  minHeight: 74,
+                  borderRadius: 10,
                   border: isDark ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid #C7D2FE',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '0 12px',
+                  padding: '12px 18px',
                   background: isDark ? 'rgba(79, 70, 229, 0.12)' : '#EFF6FF',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                <Group gap={8} style={{ overflow: 'hidden', flex: 1, marginRight: 8 }}>
-                  <IconFileDescription size={18} color={isDark ? '#818CF8' : '#4F46E5'} />
-                  <Text size="xs" fw={600} lineClamp={1}>
-                    {documentFileName}
-                  </Text>
-                  {documentFileSize && (
-                    <Badge size="xs" variant="light" color="indigo">
-                      {documentFileSize}
-                    </Badge>
-                  )}
+                <Group gap="md" align="center" wrap="nowrap" style={{ overflow: 'hidden', flex: 1, minWidth: 0, marginRight: 16 }}>
+                  <ThemeIcon size={42} radius="md" variant="light" color="indigo" style={{ flexShrink: 0 }}>
+                    <IconFileDescription size={22} color={isDark ? '#818CF8' : '#4F46E5'} />
+                  </ThemeIcon>
+                  <div style={{ overflow: 'hidden', minWidth: 0, flex: 1 }}>
+                    <Text size="sm" fw={700} lineClamp={1} style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
+                      {documentFileName}
+                    </Text>
+                    <Group gap="xs" mt={3} wrap="nowrap">
+                      {documentFileSize && (
+                        <Badge size="xs" variant="light" color="indigo" radius="sm">
+                          {documentFileSize}
+                        </Badge>
+                      )}
+                      <Text size="xs" c="teal" fw={600}>
+                        ✓ Attached & ready to submit
+                      </Text>
+                    </Group>
+                  </div>
                 </Group>
-                <Group gap={6}>
+
+                <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
                   {documentFileUrl && (
-                    <ActionIcon
-                      size="sm"
-                      variant="subtle"
+                    <Button
+                      size="xs"
+                      variant="light"
                       color="indigo"
+                      radius="md"
+                      leftSection={<IconEye size={14} />}
                       onClick={handleOpenDocument}
                       title="Preview"
                     >
-                      <IconEye size={14} />
-                    </ActionIcon>
+                      View
+                    </Button>
                   )}
+                  <Button
+                    size="xs"
+                    variant="subtle"
+                    color="indigo"
+                    radius="md"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Choose a different document"
+                  >
+                    Change
+                  </Button>
                   <ActionIcon
-                    size="sm"
+                    size="md"
                     variant="subtle"
                     color="red"
+                    radius="md"
                     onClick={handleRemoveFile}
-                    title="Remove"
+                    title="Remove file"
                   >
-                    <IconTrash size={14} />
+                    <IconTrash size={16} />
                   </ActionIcon>
                 </Group>
               </Box>

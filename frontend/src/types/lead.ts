@@ -353,9 +353,9 @@ export interface LeadNegotiation {
 export type ContractType =
   | 'Software Development'
   | 'IT Product Sales'
-  | 'Implementation'
-  | 'Maintenance'
-  | 'Support'
+  | 'IT Services'
+  | 'AMC/Support'
+  | 'Subscription/License'
   | 'Other';
 
 export type ContractApprovalStatus =
@@ -367,29 +367,68 @@ export type ContractApprovalStatus =
 export type ContractSignatureStatus =
   | 'Pending'
   | 'Partially Signed'
-  | 'Signed';
+  | 'Signed'
+  | 'Rejected';
 
 export type ContractStatus =
   | 'Draft'
   | 'Pending Approval'
-  | 'Sent for Signature'
-  | 'Partially Signed'
+  | 'Approved'
+  | 'Pending Signature'
   | 'Active'
+  | 'On Hold'
   | 'Completed'
-  | 'Expired'
-  | 'Terminated';
+  | 'Terminated'
+  | 'Expired';
+
+export type ContractPaymentMethod =
+  | 'Full Payment'
+  | 'Partial Payment'
+  | 'Milestone-Based Payment';
+
+export type ContractPaymentDueTerms =
+  | 'Due on Receipt'
+  | 'Net 15'
+  | 'Net 30'
+  | 'Custom';
+
+export interface ContractDocumentRevision {
+  version: string;
+  documentName: string;
+  documentUrl?: string | null;
+  uploadedBy?: string;
+  uploadedAt?: string;
+  notes?: string;
+}
+
+export interface ContractProductItem {
+  id?: string;
+  name: string;
+  quantity: number;
+  unit?: string;
+  partNumber?: string;
+  unitPrice?: number;
+  description?: string;
+}
 
 export interface Contract {
   id: string;
   contractId?: string;
   title: string;
   contractType?: ContractType | string;
-  leadId: string;
   clientName?: string | null;
+  leadId?: string | null;
+  leadName?: string | null;
+  contactId?: string | null;
+  customerId?: string | null;
+  quotationId?: string | null;
+  quotationNumber?: string | null;
   proposalId?: string | null;
   proposalTitle?: string | null;
+  proposalNumber?: string | null;
   negotiationId?: string | null;
   negotiationTitle?: string | null;
+  negotiationNumber?: string | null;
   assignedTo?: string | null;
   assignedToName?: string | null;
   contractDate?: string;
@@ -399,28 +438,66 @@ export interface Contract {
   projectDescription?: string | null;
   scopeOfWork?: string | null;
   deliverables?: string | null;
+  acceptanceCriteria?: string | null;
   responsibilities?: string | null;
   startDate?: string | null;
   endDate?: string | null;
   specialConditions?: string | null;
 
-  // Contract Terms
-  contractValue: number;
+  // Type-Specific Fields
+  productDetails?: ContractProductItem[];
+  deliveryDetails?: string | null;
   warrantyTerms?: string | null;
+  supportPeriod?: string | null;
+  slaTerms?: string | null;
+  responseTime?: string | null;
+  licenseQuantity?: number;
+  subscriptionStartDate?: string | null;
+  subscriptionEndDate?: string | null;
+  renewalDetails?: string | null;
+
+  // Commercial & Payment Terms
+  contractValue: number;
+  currency?: string;
+  discountAmount?: number;
+  taxAmount?: number;
+  taxRate?: number;
+  taxIncluded?: boolean;
+  finalContractAmount?: number;
+  paymentMethod?: ContractPaymentMethod | string;
+  paymentDueTerms?: ContractPaymentDueTerms | string;
+  customPaymentDueTerms?: string | null;
+  advancePaymentType?: 'amount' | 'percentage';
+  advancePaymentValue?: number;
+  advancePaymentAmount?: number;
+  quotationValueMismatchConfirmed?: boolean;
+
+  // Legal Clauses
   confidentialityClause?: string | null;
   terminationClause?: string | null;
   additionalTerms?: string | null;
 
   // Documents & Signatures
   contractDocument?: string | null;
+  documentName?: string | null;
+  documentUrl?: string | null;
+  documentSize?: string | null;
+  documentVersion?: string;
+  documentVersions?: ContractDocumentRevision[];
   attachments?: string[];
   clientSignatoryName?: string | null;
+  clientSignatoryEmail?: string | null;
   companySignatoryName?: string | null;
+  companySignatoryEmail?: string | null;
   signatureStatus?: ContractSignatureStatus | string;
   signedDate?: string | null;
+
+  // Approval Workflow
   approvalStatus?: ContractApprovalStatus | string;
   approvedBy?: string | null;
   approvalDate?: string | null;
+  rejectionReason?: string | null;
+  internalNotes?: string | null;
 
   // Status
   status: ContractStatus | string;
@@ -440,7 +517,6 @@ export interface Contract {
   companySignerName?: string;
   clientSignerName?: string;
   paymentTerms?: string;
-  slaTerms?: string;
   scopeSummary?: string;
 }
 
@@ -448,12 +524,19 @@ export interface ContractFormData {
   contractId?: string;
   title: string;
   contractType: ContractType | string;
-  leadId: string;
-  clientName?: string;
+  clientName: string;
+  leadId?: string;
+  leadName?: string;
+  contactId?: string;
+  customerId?: string;
+  quotationId?: string;
+  quotationNumber?: string;
   proposalId?: string;
   proposalTitle?: string;
+  proposalNumber?: string;
   negotiationId?: string;
   negotiationTitle?: string;
+  negotiationNumber?: string;
   assignedTo?: string;
   assignedToName?: string;
   contractDate: string;
@@ -463,31 +546,72 @@ export interface ContractFormData {
   projectDescription?: string;
   scopeOfWork?: string;
   deliverables?: string;
+  acceptanceCriteria?: string;
   responsibilities?: string;
-  startDate?: string;
-  endDate?: string;
+  startDate: string;
+  endDate: string;
   specialConditions?: string;
 
-  // Contract Terms
-  contractValue: number;
+  // Type-Specific Fields
+  productDetails?: ContractProductItem[];
+  deliveryDetails?: string;
   warrantyTerms?: string;
+  supportPeriod?: string;
+  slaTerms?: string;
+  responseTime?: string;
+  licenseQuantity?: number;
+  subscriptionStartDate?: string;
+  subscriptionEndDate?: string;
+  renewalDetails?: string;
+
+  // Commercial & Payment Terms
+  contractValue: number;
+  currency?: string;
+  discountAmount?: number;
+  taxAmount?: number;
+  taxRate?: number;
+  taxIncluded?: boolean;
+  finalContractAmount?: number;
+  paymentMethod?: ContractPaymentMethod | string;
+  paymentDueTerms?: ContractPaymentDueTerms | string;
+  customPaymentDueTerms?: string;
+  advancePaymentType?: 'amount' | 'percentage';
+  advancePaymentValue?: number;
+  advancePaymentAmount?: number;
+  quotationValueMismatchConfirmed?: boolean;
+
+  // Legal Clauses
   confidentialityClause?: string;
   terminationClause?: string;
   additionalTerms?: string;
 
   // Documents & Signatures
   contractDocument?: string;
+  documentName?: string;
+  documentUrl?: string;
+  documentSize?: string;
+  documentVersion?: string;
+  documentVersions?: ContractDocumentRevision[];
+  versionNotes?: string;
   attachments?: string[];
   clientSignatoryName?: string;
+  clientSignatoryEmail?: string;
   companySignatoryName?: string;
+  companySignatoryEmail?: string;
   signatureStatus: ContractSignatureStatus | string;
   signedDate?: string;
+
+  // Approval Workflow
   approvalStatus: ContractApprovalStatus | string;
   approvedBy?: string;
   approvalDate?: string;
+  rejectionReason?: string;
+  internalNotes?: string;
 
   // Status
   status: ContractStatus | string;
+  isApprovalSubmission?: boolean;
+  isApprovalAction?: boolean;
 }
 
 export interface ContractStats {

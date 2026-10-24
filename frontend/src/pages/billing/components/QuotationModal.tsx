@@ -36,33 +36,17 @@ import {
   IconEye,
   IconFile,
   IconArrowLeft,
+  IconArrowRight,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { Quotation, QuotationItem, BillingProduct } from '../../../types/billing';
+import { Quotation, QuotationItem, ProductType } from '../../../types/billing';
 import { billingService } from '../../../services/billingService';
 import { contactService } from '../../../services/contactService';
+import { settingsService } from '../../../services/settingsService';
 import { Contact } from '../../../types/contact';
 import { Lead } from '../../../types/lead';
-
-interface ParsedModule {
-  name: string;
-  description: string;
-}
-
-const getProductModules = (product?: BillingProduct | null): ParsedModule[] => {
-  if (!product || !product.modules || !Array.isArray(product.modules)) return [];
-  return product.modules
-    .map((m: any) => {
-      if (typeof m === 'string') {
-        return { name: m, description: '' };
-      }
-      return {
-        name: m?.name || '',
-        description: m?.description || '',
-      };
-    })
-    .filter((m) => m.name && m.name.trim() !== '');
-};
+import { MasterProject, MasterModuleItem } from '../../../types/settings';
+import { MeetingDatePicker } from '../../meetings/components/MeetingDatePicker';
 
 interface QuotationModalProps {
   opened: boolean;
@@ -71,6 +55,7 @@ interface QuotationModalProps {
   onSuccess: (savedQuote?: Quotation) => void;
   initialLead?: Lead | null;
   embedded?: boolean;
+  onNavigateSection?: (section: any) => void;
 }
 
 export const QuotationModal: React.FC<QuotationModalProps> = ({
@@ -80,16 +65,19 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
   onSuccess,
   initialLead,
   embedded = false,
+  onNavigateSection,
 }) => {
   const isDark = useComputedColorScheme('light') === 'dark';
   const [submitting, setSubmitting] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [products, setProducts] = useState<BillingProduct[]>([]);
-  const [selectedCatalogueId, setSelectedCatalogueId] = useState<string | null>(null);
+  const [masterProjects, setMasterProjects] = useState<MasterProject[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [customRowIndices, setCustomRowIndices] = useState<number[]>([]);
 
-  const selectedCatalogueProduct = products.find((p) => p.id === selectedCatalogueId);
-  const selectedProductModules = getProductModules(selectedCatalogueProduct);
+  const selectedProject = masterProjects.find(
+    (p) => p.id === selectedProjectId || p.projectCode === selectedProjectId
+  );
+  const projectModules = selectedProject?.modules || [];
 
   const toggleCustomRow = (idx: number) => {
     setCustomRowIndices((prev) =>
@@ -108,19 +96,13 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
   const [quotationDate, setQuotationDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
-  const [validUntil, setValidUntil] = useState<string>(
-    new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  );
+  const [validUntil, setValidUntil] = useState<string>('');
   const [status, setStatus] = useState<string>('Draft');
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>('percentage');
   const [discountValue, setDiscountValue] = useState<number>(0);
-  const [paymentTerms, setPaymentTerms] = useState<string>('Net 30 Days');
+  const [paymentTerms, setPaymentTerms] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [termsConditions, setTermsConditions] = useState<string>(
-    initialLead
-      ? '1. Proposal valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
-      : '1. Quotation valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
-  );
+  const [termsConditions, setTermsConditions] = useState<string>('');
 
   const [items, setItems] = useState<QuotationItem[]>([
     {
@@ -161,8 +143,28 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
         }
       }).catch(() => {});
 
-      billingService.getProductsServices({ status: 'Active' }).then((data) => {
-        if (data) setProducts(data);
+      settingsService.getMasterProjects().then((res) => {
+        if (res && res.success && Array.isArray(res.data)) {
+          setMasterProjects(res.data);
+          // If lead has product or service matching a master project, auto-select it
+          if (initialLead) {
+            const leadItem =
+              initialLead.product ||
+              initialLead.service ||
+              initialLead.productList?.[0] ||
+              initialLead.serviceList?.[0];
+            if (leadItem) {
+              const matchedProj = res.data.find(
+                (p) =>
+                  p.name.toLowerCase().includes(leadItem.toLowerCase()) ||
+                  leadItem.toLowerCase().includes(p.name.toLowerCase())
+              );
+              if (matchedProj) {
+                setSelectedProjectId(matchedProj.id);
+              }
+            }
+          }
+        }
       }).catch(() => {});
     }
   }, [opened, initialLead]);
@@ -180,7 +182,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
       setClientGst(quotation.clientGst || '');
       setClientAddress(quotation.clientAddress || '');
       setQuotationDate(quotation.quotationDate?.split('T')[0] || new Date().toISOString().split('T')[0]);
-      setValidUntil(quotation.validUntil?.split('T')[0] || new Date().toISOString().split('T')[0]);
+      setValidUntil(quotation.validUntil?.split('T')[0] || '');
       setStatus(quotation.status || 'Draft');
       setDiscountType(quotation.discountType || 'percentage');
       setDiscountValue(Number(quotation.discountValue) || 0);
@@ -236,35 +238,27 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
             : '')
       );
       setQuotationDate(new Date().toISOString().split('T')[0]);
-      setValidUntil(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+      setValidUntil('');
       setStatus('Draft');
       setDiscountType('percentage');
       setDiscountValue(0);
-      setPaymentTerms('Net 30 Days');
+      setPaymentTerms('');
       setNotes('');
-      setTermsConditions(
-        initialLead
-          ? '1. Proposal valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
-          : '1. Quotation valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
-      );
-      setSelectedCatalogueId(null);
+      setTermsConditions('');
+      setSelectedProjectId(null);
       setCustomRowIndices([]);
-      const defaultItemName =
-        initialLead.category === 'Product'
-          ? initialLead.productList?.[0] || 'IT CRM Software Enterprise License'
-          : initialLead.serviceList?.[0] || 'Custom Software Development & Implementation';
       setItems([
         {
-          itemName: defaultItemName,
+          itemName: '',
           itemType: 'Service',
-          description: 'Initial scope, implementation, and deployment deliverables',
+          description: '',
           quantity: 1,
-          unitPrice: 85000,
+          unitPrice: 0,
           discount: 0,
           discountType: 'percentage',
           taxRate: 18,
-          taxAmount: 15300,
-          totalAmount: 100300,
+          taxAmount: 0,
+          totalAmount: 0,
         },
       ]);
     } else {
@@ -277,16 +271,14 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
       setClientGst('');
       setClientAddress('');
       setQuotationDate(new Date().toISOString().split('T')[0]);
-      setValidUntil(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+      setValidUntil('');
       setStatus('Draft');
       setDiscountType('percentage');
       setDiscountValue(0);
-      setPaymentTerms('Net 30 Days');
+      setPaymentTerms('');
       setNotes('');
-      setTermsConditions(
-        '1. Quotation valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law.'
-      );
-      setSelectedCatalogueId(null);
+      setTermsConditions('');
+      setSelectedProjectId(null);
       setCustomRowIndices([]);
       setItems([
         {
@@ -352,49 +344,70 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
   };
 
   // Smart suggestions for item names (products + modules)
+  // Smart suggestions for item names (from selected project or all catalog projects)
   const autocompleteOptions = useMemo(() => {
     const list: string[] = [];
-    for (const p of products) {
-      if (p.name && !list.includes(p.name)) {
-        list.push(p.name);
+    if (selectedProject) {
+      for (const m of selectedProject.modules || []) {
+        const mName = typeof m === 'string' ? m : m.name;
+        if (mName && !list.includes(mName)) {
+          list.push(mName);
+        }
       }
-      const mods = getProductModules(p);
-      for (const m of mods) {
-        if (m.name && !list.includes(m.name)) {
-          list.push(m.name);
+      if (selectedProject.name && !list.includes(selectedProject.name)) {
+        list.push(selectedProject.name);
+      }
+    } else {
+      for (const p of masterProjects) {
+        for (const m of p.modules || []) {
+          const mName = typeof m === 'string' ? m : m.name;
+          if (mName && !list.includes(mName)) {
+            list.push(mName);
+          }
+        }
+        if (p.name && !list.includes(p.name)) {
+          list.push(p.name);
         }
       }
     }
     return list;
-  }, [products]);
+  }, [masterProjects, selectedProject]);
+
+  const resolveProductType = (type?: string): ProductType => {
+    if (!type) return 'Service';
+    return type.toLowerCase().includes('product') ? 'Product' : 'Service';
+  };
 
   const handleItemSelect = (idx: number, val: string) => {
     const updated = [...items];
     updated[idx].itemName = val;
 
-    // Check if it matches a catalogue product
-    const prod = products.find((p) => p.name.toLowerCase() === val.toLowerCase());
-    if (prod) {
-      updated[idx].productId = prod.id;
-      updated[idx].itemCode = prod.itemCode;
-      updated[idx].itemType = prod.type || 'Product';
-      if (prod.unitPrice !== undefined && prod.unitPrice > 0) {
-        updated[idx].unitPrice = prod.unitPrice;
+    // Check if it matches a master project name
+    const proj = masterProjects.find((p) => p.name.toLowerCase() === val.toLowerCase());
+    if (proj) {
+      updated[idx].itemType = resolveProductType(proj.projectType);
+      if (proj.basePrice && (!updated[idx].unitPrice || updated[idx].unitPrice === 0)) {
+        updated[idx].unitPrice = Number(proj.basePrice);
       }
-      if (prod.description && !updated[idx].description) {
-        updated[idx].description = prod.description;
-      }
-      if (prod.taxRate !== undefined) {
-        updated[idx].taxRate = prod.taxRate;
+      if (proj.description && !updated[idx].description) {
+        updated[idx].description = proj.description;
       }
     } else {
-      // Check if it matches a module
-      for (const p of products) {
-        const mods = getProductModules(p);
-        const mod = mods.find((m) => m.name.toLowerCase() === val.toLowerCase());
-        if (mod) {
-          if (mod.description && !updated[idx].description) {
-            updated[idx].description = mod.description;
+      // Check if it matches a module in selectedProject or any project
+      const searchPool = selectedProject ? [selectedProject] : masterProjects;
+      for (const p of searchPool) {
+        const foundMod = (p.modules || []).find((m) => {
+          const mName = typeof m === 'string' ? m : m.name;
+          return mName.toLowerCase() === val.toLowerCase();
+        });
+        if (foundMod) {
+          if (typeof foundMod !== 'string') {
+            if (foundMod.description && !updated[idx].description) {
+              updated[idx].description = foundMod.description;
+            }
+            if (foundMod.price && (!updated[idx].unitPrice || updated[idx].unitPrice === 0)) {
+              updated[idx].unitPrice = Number(foundMod.price);
+            }
           }
           break;
         }
@@ -423,56 +436,26 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     setItems(updated);
   };
 
-  const handleAddAllModules = (prod: BillingProduct) => {
-    const mods = getProductModules(prod);
-    if (mods.length === 0) return;
+  const handleAddSingleModule = (mod: MasterModuleItem | string) => {
+    const modName = typeof mod === 'string' ? mod : mod.name;
+    const modDesc = typeof mod === 'string' ? '' : mod.description || '';
+    const modPrice = typeof mod === 'string' ? 0 : Number(mod.price) || 0;
 
     const isFirstItemEmpty =
       items.length === 1 && !items[0].itemName.trim() && (items[0].unitPrice === 0 || !items[0].unitPrice);
 
-    const newItems: QuotationItem[] = mods.map((m) => ({
-      productId: prod.id,
-      itemCode: prod.itemCode,
-      itemName: m.name,
-      itemType: prod.type,
-      description: m.description || prod.description || '',
-      quantity: 1,
-      unitPrice: 0,
-      discount: 0,
-      taxRate: 18,
-      taxAmount: 0,
-      totalAmount: 0,
-    }));
-
-    if (isFirstItemEmpty) {
-      setItems(newItems);
-    } else {
-      setItems([...items, ...newItems]);
-    }
-
-    notifications.show({
-      color: 'teal',
-      message: `Added all ${newItems.length} modules from "${prod.name}"`,
-    });
-  };
-
-  const handleAddProductLineItem = (prod: BillingProduct) => {
-    const isFirstItemEmpty =
-      items.length === 1 && !items[0].itemName.trim() && (items[0].unitPrice === 0 || !items[0].unitPrice);
-
-    const price = prod.unitPrice || 0;
-    const taxRate = prod.taxRate !== undefined ? prod.taxRate : 18;
+    const price = modPrice > 0 ? modPrice : 0;
+    const taxRate = 18;
     const taxAmt = Number(((price * taxRate) / 100).toFixed(2));
 
     const newItem: QuotationItem = {
-      productId: prod.id,
-      itemCode: prod.itemCode,
-      itemName: prod.name,
-      itemType: prod.type || 'Product',
-      description: prod.description || '',
+      itemName: modName,
+      itemType: resolveProductType(selectedProject?.projectType),
+      description: modDesc || (selectedProject ? `${selectedProject.name} - ${modName} module` : ''),
       quantity: 1,
       unitPrice: price,
       discount: 0,
+      discountType: 'percentage',
       taxRate: taxRate,
       taxAmount: taxAmt,
       totalAmount: Number((price + taxAmt).toFixed(2)),
@@ -486,7 +469,47 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
 
     notifications.show({
       color: 'teal',
-      message: `Added "${prod.name}" to line items (₹${price.toLocaleString('en-IN')})`,
+      message: `Added module "${modName}" to line items`,
+    });
+  };
+
+  const handleAddAllProjectModules = (proj: MasterProject) => {
+    const mods = proj.modules || [];
+    if (mods.length === 0) return;
+
+    const isFirstItemEmpty =
+      items.length === 1 && !items[0].itemName.trim() && (items[0].unitPrice === 0 || !items[0].unitPrice);
+
+    const newItems: QuotationItem[] = mods.map((m) => {
+      const modName = typeof m === 'string' ? m : m.name;
+      const modDesc = typeof m === 'string' ? '' : m.description || '';
+      const modPrice = typeof m === 'string' ? 0 : Number(m.price) || 0;
+      const taxRate = 18;
+      const taxAmt = Number(((modPrice * taxRate) / 100).toFixed(2));
+
+      return {
+        itemName: modName,
+        itemType: resolveProductType(proj.projectType),
+        description: modDesc || `${proj.name} - ${modName} module`,
+        quantity: 1,
+        unitPrice: modPrice,
+        discount: 0,
+        discountType: 'percentage',
+        taxRate: taxRate,
+        taxAmount: taxAmt,
+        totalAmount: Number((modPrice + taxAmt).toFixed(2)),
+      };
+    });
+
+    if (isFirstItemEmpty) {
+      setItems(newItems);
+    } else {
+      setItems([...items, ...newItems]);
+    }
+
+    notifications.show({
+      color: 'teal',
+      message: `Added all ${newItems.length} modules from "${proj.name}"`,
     });
   };
 
@@ -551,16 +574,20 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
   }, 0);
   const grandTotal = Number((taxableSubtotal + totalTax).toFixed(2));
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveQuotationData = async (): Promise<Quotation | null> => {
     if (!contactName.trim()) {
       notifications.show({ color: 'red', message: 'Client or Contact Name is required' });
-      return;
+      return null;
+    }
+
+    if (!validUntil || !validUntil.trim()) {
+      notifications.show({ color: 'red', message: 'Valid Until date is required' });
+      return null;
     }
 
     if (items.some((it) => !it.itemName.trim() || Number(it.quantity) <= 0)) {
       notifications.show({ color: 'red', message: 'All items must have a valid name and quantity greater than 0' });
-      return;
+      return null;
     }
 
     try {
@@ -604,12 +631,32 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
         });
       }
 
-      onSuccess(savedQuote);
-      onClose();
+      return savedQuote || null;
     } catch (err: any) {
       notifications.show({ color: 'red', message: err.message || 'Failed to save quotation' });
+      return null;
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const saved = await saveQuotationData();
+    if (saved) {
+      onSuccess(saved);
+      onClose();
+    }
+  };
+
+  const handleSaveAndNavigate = async (targetSection: 'contracts' | 'negotiation') => {
+    const saved = await saveQuotationData();
+    if (saved) {
+      onSuccess(saved);
+      onClose();
+      if (onNavigateSection) {
+        onNavigateSection(targetSection);
+      }
     }
   };
 
@@ -767,32 +814,33 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
 
           {/* Validity & Dates */}
           <Grid gutter="xs">
-            <Grid.Col span={{ base: 12, sm: 3 }}>
-              <TextInput
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <MeetingDatePicker
                 label={initialLead ? 'Proposal Date' : 'Quotation Date'}
-                type="date"
+                placeholder="dd-mm-yyyy"
                 value={quotationDate}
-                onChange={(e) => setQuotationDate(e.currentTarget.value)}
+                onChange={(val) => setQuotationDate(val)}
                 required
-                radius="md"
+                zIndex={3000}
               />
             </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 3 }}>
-              <TextInput
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <MeetingDatePicker
                 label="Valid Until"
-                type="date"
+                placeholder="dd-mm-yyyy"
                 value={validUntil}
-                onChange={(e) => setValidUntil(e.currentTarget.value)}
+                onChange={(val) => setValidUntil(val)}
                 required
-                radius="md"
+                zIndex={3000}
               />
             </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 3 }}>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
               <Select
                 label="Status"
                 data={[
                   { value: 'Draft', label: 'Draft' },
                   { value: 'Sent', label: 'Sent to Client' },
+                  { value: 'Changes Required', label: 'Changes Required' },
                   { value: 'Accepted', label: 'Accepted' },
                   { value: 'Rejected', label: 'Rejected' },
                   { value: 'Expired', label: 'Expired' },
@@ -800,15 +848,12 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                 value={status}
                 onChange={(val) => setStatus(val || 'Draft')}
                 radius="md"
-              />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 3 }}>
-              <TextInput
-                label="Payment Terms"
-                placeholder="e.g. Net 30 Days"
-                value={paymentTerms}
-                onChange={(e) => setPaymentTerms(e.currentTarget.value)}
-                radius="md"
+                styles={{
+                  input: {
+                    height: 44,
+                    borderRadius: 10,
+                  },
+                }}
               />
             </Grid.Col>
           </Grid>
@@ -845,7 +890,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
               </Button>
             </Group>
 
-            {/* Quick Add from Catalogue Toolbar */}
+            {/* Project Name & Module Selection Toolbar */}
             <Paper
               p="xs"
               radius="md"
@@ -856,44 +901,60 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
               }}
             >
               <Group justify="space-between" align="center" wrap="wrap" gap="xs">
-                <Group gap="xs" align="center">
+                <Group gap="xs" align="center" wrap="wrap">
                   <Badge variant="light" color="indigo" radius="sm" size="sm">
-                    Select Catalogue:
+                    Project Name:
                   </Badge>
                   <Select
-                    placeholder="Choose Product or Service to filter modules..."
-                    data={products.map((p) => ({
+                    placeholder="Choose Project..."
+                    data={masterProjects.map((p) => ({
                       value: p.id,
-                      label: `${p.name} (${p.type})`,
+                      label: p.name,
                     }))}
-                    value={selectedCatalogueId}
-                    onChange={setSelectedCatalogueId}
+                    value={selectedProjectId}
+                    onChange={(val) => setSelectedProjectId(val)}
                     searchable
                     clearable
                     size="xs"
                     radius="md"
-                    style={{ width: 300 }}
+                    style={{ width: 270 }}
                   />
+
+                  {selectedProject && projectModules.length > 0 && (
+                    <Select
+                      placeholder="Select a module to add..."
+                      data={projectModules.map((m) => {
+                        const mName = typeof m === 'string' ? m : m.name;
+                        return { value: mName, label: `+ Add ${mName}` };
+                      })}
+                      value={null}
+                      onChange={(val) => {
+                        if (val) {
+                          const found = projectModules.find(
+                            (m) => (typeof m === 'string' ? m : m.name) === val
+                          );
+                          if (found) handleAddSingleModule(found);
+                        }
+                      }}
+                      searchable
+                      clearable
+                      size="xs"
+                      radius="md"
+                      style={{ width: 230 }}
+                    />
+                  )}
                 </Group>
 
-                {selectedCatalogueProduct && (
+                {selectedProject && projectModules.length > 0 && (
                   <Button
                     variant="light"
                     color="indigo"
                     size="compact-xs"
                     radius="sm"
                     leftSection={<IconPlus size={12} />}
-                    onClick={() => {
-                      if (selectedProductModules.length > 0) {
-                        handleAddAllModules(selectedCatalogueProduct);
-                      } else {
-                        handleAddProductLineItem(selectedCatalogueProduct);
-                      }
-                    }}
+                    onClick={() => handleAddAllProjectModules(selectedProject)}
                   >
-                    {selectedProductModules.length > 0
-                      ? `Add All ${selectedCatalogueProduct.name} Modules (${selectedProductModules.length})`
-                      : `+ Add "${selectedCatalogueProduct.name}" (₹${selectedCatalogueProduct.unitPrice?.toLocaleString('en-IN')})`}
+                    Add All {selectedProject.name} Modules ({projectModules.length})
                   </Button>
                 )}
               </Group>
@@ -960,7 +1021,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                         <Table.Td>
                           <NumberInput
                             placeholder="Enter rate"
-                            value={item.unitPrice}
+                            value={item.unitPrice === 0 ? '' : item.unitPrice}
                             onChange={(val) => updateItem(idx, 'unitPrice', val)}
                             min={0}
                             size="xs"
@@ -983,7 +1044,8 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                               comboboxProps={{ withinPortal: false }}
                             />
                             <NumberInput
-                              value={item.discount}
+                              value={item.discount === 0 ? '' : item.discount}
+                              placeholder="0"
                               onChange={(val) => updateItem(idx, 'discount', Number(val) || 0)}
                               min={0}
                               size="xs"
@@ -1099,20 +1161,24 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
             <Grid.Col span={{ base: 12, sm: 6 }}>
               <Textarea
                 label="Notes / Client Remarks"
-                placeholder="Internal notes or project remarks"
+                placeholder="Internal notes or project remarks..."
                 value={notes}
                 onChange={(e) => setNotes(e.currentTarget.value)}
-                minRows={2}
+                minRows={4}
+                autosize
                 radius="md"
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 6 }}>
               <Textarea
                 label="Terms & Conditions"
-                placeholder="Payment terms, delivery timeline..."
+                placeholder={
+                  "1. Quotation valid for 30 days from issue.\n2. 50% advance along with confirmed Purchase Order.\n3. Taxes extra as applicable by law."
+                }
                 value={termsConditions}
                 onChange={(e) => setTermsConditions(e.currentTarget.value)}
-                minRows={2}
+                minRows={4}
+                autosize
                 radius="md"
               />
             </Grid.Col>
@@ -1144,6 +1210,43 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
             >
               {quotation ? 'Update Quotation' : 'Create Quotation'}
             </Button>
+
+            {/* Conditional Navigation Buttons based on quotation status */}
+            {status === 'Accepted' && onNavigateSection && (
+              <Button
+                type="button"
+                color="teal"
+                radius="md"
+                loading={submitting}
+                rightSection={<IconArrowRight size={15} />}
+                onClick={() => handleSaveAndNavigate('contracts')}
+                style={{
+                  fontWeight: 600,
+                  minWidth: 160,
+                  background: 'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                }}
+              >
+                Proceed to Contract
+              </Button>
+            )}
+
+            {status === 'Changes Required' && onNavigateSection && (
+              <Button
+                type="button"
+                color="blue"
+                radius="md"
+                loading={submitting}
+                rightSection={<IconArrowRight size={15} />}
+                onClick={() => handleSaveAndNavigate('negotiation')}
+                style={{
+                  fontWeight: 600,
+                  minWidth: 170,
+                  background: 'linear-gradient(135deg, #2563EB 0%, #3B82F6 100%)',
+                }}
+              >
+                Proceed to Negotiation
+              </Button>
+            )}
           </Group>
         </Stack>
       </form>

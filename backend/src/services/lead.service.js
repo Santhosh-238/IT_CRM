@@ -1145,6 +1145,9 @@ export async function createLeadContractService(data, user = {}) {
     leadId,
     leadName,
     contactId,
+    customerId,
+    quotationId,
+    quotationNumber,
     proposalId,
     proposalNumber,
     negotiationId,
@@ -1156,31 +1159,85 @@ export async function createLeadContractService(data, user = {}) {
     projectDescription,
     scopeOfWork,
     deliverables,
+    acceptanceCriteria,
     responsibilities,
     startDate,
     endDate,
     specialConditions,
-    contractValue = 0,
+    // Type-specific fields
+    productDetails = [],
+    deliveryDetails,
     warrantyTerms,
+    supportPeriod,
+    slaTerms,
+    responseTime,
+    licenseQuantity = 1,
+    subscriptionStartDate,
+    subscriptionEndDate,
+    renewalDetails,
+    // Commercial fields
+    contractValue = 0,
+    currency = 'INR',
+    discountAmount = 0,
+    taxAmount = 0,
+    taxRate = 18.0,
+    taxIncluded = false,
+    finalContractAmount,
+    paymentMethod = 'Full Payment',
+    paymentDueTerms = 'Net 30',
+    customPaymentDueTerms,
+    advancePaymentType = 'percentage',
+    advancePaymentValue = 0,
+    advancePaymentAmount,
+    quotationValueMismatchConfirmed = false,
+    // Legal & clauses
     confidentialityClause,
     terminationClause,
     additionalTerms,
+    // Document & signatures
     documentName,
     documentUrl,
     documentSize,
+    documentVersion = 'v1.0',
+    documentVersions = [],
     attachments = [],
     clientSignatoryName,
+    clientSignatoryEmail,
     companySignatoryName = 'OmniTech Solutions Representative',
+    companySignatoryEmail,
     signatureStatus = 'Pending',
     signedDate,
+    // Approval
     approvalStatus = 'Draft',
-    approvedBy,
-    approvalDate,
+    internalNotes,
+    // Status
     status = 'Draft',
   } = data;
 
+  // 1. Mandatory Field Validations
   if (!title || !title.trim()) {
     const err = new Error('Contract Title is required');
+    err.status = 400;
+    throw err;
+  }
+
+  const allowedTypes = [
+    'Software Development',
+    'IT Product Sales',
+    'IT Services',
+    'AMC/Support',
+    'Subscription/License',
+    'Other',
+  ];
+  if (!contractType || !allowedTypes.includes(contractType)) {
+    const err = new Error(`Contract Type must be one of: ${allowedTypes.join(', ')}`);
+    err.status = 400;
+    throw err;
+  }
+
+  const resolvedClient = (clientName && clientName.trim()) || (leadName && leadName.trim());
+  if (!resolvedClient) {
+    const err = new Error('Client Name is required');
     err.status = 400;
     throw err;
   }
@@ -1191,18 +1248,137 @@ export async function createLeadContractService(data, user = {}) {
     throw err;
   }
 
+  if (!startDate) {
+    const err = new Error('Project Start Date is required');
+    err.status = 400;
+    throw err;
+  }
+
+  if (!endDate) {
+    const err = new Error('Project End Date is required');
+    err.status = 400;
+    throw err;
+  }
+
+  // 2. Date Range Validation: End Date must be later than Start Date
+  const startTs = new Date(startDate).getTime();
+  const endTs = new Date(endDate).getTime();
+  if (isNaN(startTs) || isNaN(endTs) || endTs <= startTs) {
+    const err = new Error('End Date must be later than Start Date');
+    err.status = 400;
+    throw err;
+  }
+
+  // 3. Prevent duplicate contract for the same quotation if specified
+  if (quotationId && quotationId.trim()) {
+    const existingQuotationContract = await prisma.contract.findFirst({
+      where: { quotationId: quotationId.trim() },
+    });
+    if (existingQuotationContract) {
+      const err = new Error(`A contract (${existingQuotationContract.contractId}) is already linked to this quotation.`);
+      err.status = 409;
+      throw err;
+    }
+  }
+
+  // 4. Commercial Calculations
+  const numBaseValue = Math.max(0, parseFloat(contractValue) || 0);
+  const numDiscount = Math.max(0, parseFloat(discountAmount) || 0);
+  const numTax = Math.max(0, parseFloat(taxAmount) || 0);
+  const numTaxRate = Math.max(0, parseFloat(taxRate) || 18.0);
+  const isTaxInc = Boolean(taxIncluded);
+
+  // Calculate final contract amount
+  let calculatedFinalAmount = 0;
+  if (isTaxInc) {
+    calculatedFinalAmount = Math.max(0, numBaseValue - numDiscount);
+  } else {
+    calculatedFinalAmount = Math.max(0, numBaseValue - numDiscount + numTax);
+  }
+  const resolvedFinalAmount =
+    finalContractAmount !== undefined && finalContractAmount !== null && finalContractAmount !== ''
+      ? Math.max(0, parseFloat(finalContractAmount))
+      : calculatedFinalAmount;
+
+  // Calculate advance payment
+  const numAdvVal = Math.max(0, parseFloat(advancePaymentValue) || 0);
+  let computedAdvAmount = 0;
+  if (advancePaymentType === 'percentage') {
+    computedAdvAmount = (resolvedFinalAmount * numAdvVal) / 100;
+  } else {
+    computedAdvAmount = Math.min(resolvedFinalAmount, numAdvVal);
+  }
+
+  // 5. Signature Validation
+  if (signatureStatus === 'Signed') {
+    if (!clientSignatoryName || !clientSignatoryName.trim()) {
+      const err = new Error('Client Signatory Name is required to mark the contract as Signed');
+      err.status = 400;
+      throw err;
+    }
+    if (!clientSignatoryEmail || !clientSignatoryEmail.trim()) {
+      const err = new Error('Client Signatory Email is required to mark the contract as Signed');
+      err.status = 400;
+      throw err;
+    }
+    if (!companySignatoryName || !companySignatoryName.trim()) {
+      const err = new Error('Company Signatory Name is required to mark the contract as Signed');
+      err.status = 400;
+      throw err;
+    }
+    if (!companySignatoryEmail || !companySignatoryEmail.trim()) {
+      const err = new Error('Company Signatory Email is required to mark the contract as Signed');
+      err.status = 400;
+      throw err;
+    }
+    if (!signedDate) {
+      const err = new Error('Signed Date is required when contract is marked as Signed');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  // 6. Approval Workflow initialization: Default to Draft unless submitted for approval
+  let initialApprovalStatus = approvalStatus === 'Pending Approval' ? 'Pending Approval' : 'Draft';
+  let initialApprovedBy = null;
+  let initialApprovalDate = null;
+
+  // Lifecycle status matching approval
+  let initialStatus = 'Draft';
+  if (initialApprovalStatus === 'Pending Approval') {
+    initialStatus = 'Pending Approval';
+  }
+
+  // Document version tracking initialization
+  const initialVersions = Array.isArray(documentVersions) && documentVersions.length > 0
+    ? documentVersions
+    : documentName
+    ? [
+        {
+          version: documentVersion || 'v1.0',
+          documentName,
+          documentUrl: documentUrl || null,
+          uploadedBy: user?.name || user?.email || 'Staff',
+          uploadedAt: new Date().toISOString(),
+          notes: 'Initial executed version',
+        },
+      ]
+    : [];
+
   const generatedId = await generateContractId(prisma);
-  const numValue = Math.max(0, parseFloat(contractValue) || 0);
 
   const created = await prisma.contract.create({
     data: {
       contractId: (contractId && contractId.trim()) || generatedId,
       title: title.trim(),
-      contractType: contractType || 'Software Development',
-      clientName: (clientName && clientName.trim()) || (leadName && leadName.trim()) || 'Client',
+      contractType,
+      clientName: resolvedClient,
       leadId: leadId || null,
       leadName: leadName ? leadName.trim() : null,
       contactId: contactId || null,
+      customerId: customerId || null,
+      quotationId: quotationId || null,
+      quotationNumber: quotationNumber ? quotationNumber.trim() : null,
       proposalId: proposalId || null,
       proposalNumber: proposalNumber ? proposalNumber.trim() : null,
       negotiationId: negotiationId || null,
@@ -1214,27 +1390,67 @@ export async function createLeadContractService(data, user = {}) {
       projectDescription: projectDescription ? projectDescription.trim() : null,
       scopeOfWork: scopeOfWork ? scopeOfWork.trim() : null,
       deliverables: deliverables ? deliverables.trim() : null,
+      acceptanceCriteria: acceptanceCriteria ? acceptanceCriteria.trim() : null,
       responsibilities: responsibilities ? responsibilities.trim() : null,
       startDate: startDate || null,
       endDate: endDate || null,
       specialConditions: specialConditions ? specialConditions.trim() : null,
-      contractValue: numValue,
+
+      // Type-specific
+      productDetails: Array.isArray(productDetails) ? productDetails : [],
+      deliveryDetails: deliveryDetails ? deliveryDetails.trim() : null,
       warrantyTerms: warrantyTerms ? warrantyTerms.trim() : null,
+      supportPeriod: supportPeriod ? supportPeriod.trim() : null,
+      slaTerms: slaTerms ? slaTerms.trim() : null,
+      responseTime: responseTime ? responseTime.trim() : null,
+      licenseQuantity: parseInt(licenseQuantity, 10) || 1,
+      subscriptionStartDate: subscriptionStartDate || null,
+      subscriptionEndDate: subscriptionEndDate || null,
+      renewalDetails: renewalDetails ? renewalDetails.trim() : null,
+
+      // Commercial
+      contractValue: numBaseValue,
+      currency: currency || 'INR',
+      discountAmount: numDiscount,
+      taxAmount: numTax,
+      taxRate: numTaxRate,
+      taxIncluded: isTaxInc,
+      finalContractAmount: resolvedFinalAmount,
+      paymentMethod: paymentMethod || 'Full Payment',
+      paymentDueTerms: paymentDueTerms || 'Net 30',
+      customPaymentDueTerms: customPaymentDueTerms ? customPaymentDueTerms.trim() : null,
+      advancePaymentType: advancePaymentType || 'percentage',
+      advancePaymentValue: numAdvVal,
+      advancePaymentAmount: computedAdvAmount,
+      quotationValueMismatchConfirmed: Boolean(quotationValueMismatchConfirmed),
+
+      // Clauses
       confidentialityClause: confidentialityClause ? confidentialityClause.trim() : null,
       terminationClause: terminationClause ? terminationClause.trim() : null,
       additionalTerms: additionalTerms ? additionalTerms.trim() : null,
+
+      // Documents & Signatures
       documentName: documentName || null,
       documentUrl: documentUrl || null,
       documentSize: documentSize || null,
+      documentVersion: documentVersion || 'v1.0',
+      documentVersions: initialVersions,
       attachments: Array.isArray(attachments) ? attachments : [],
       clientSignatoryName: clientSignatoryName ? clientSignatoryName.trim() : null,
+      clientSignatoryEmail: clientSignatoryEmail ? clientSignatoryEmail.trim() : null,
       companySignatoryName: companySignatoryName ? companySignatoryName.trim() : 'OmniTech Solutions Representative',
+      companySignatoryEmail: companySignatoryEmail ? companySignatoryEmail.trim() : null,
       signatureStatus: signatureStatus || 'Pending',
-      signedDate: signedDate || null,
-      approvalStatus: approvalStatus || 'Draft',
-      approvedBy: approvedBy ? approvedBy.trim() : null,
-      approvalDate: approvalDate || null,
-      status: status || 'Draft',
+      signedDate: signatureStatus === 'Signed' ? signedDate : null,
+
+      // Approval
+      approvalStatus: initialApprovalStatus,
+      approvedBy: initialApprovedBy,
+      approvalDate: initialApprovalDate,
+      internalNotes: internalNotes ? internalNotes.trim() : null,
+
+      // Status
+      status: initialStatus,
     },
   });
 
@@ -1265,6 +1481,9 @@ export async function updateLeadContractService(id, data, user = {}) {
     leadId,
     leadName,
     contactId,
+    customerId,
+    quotationId,
+    quotationNumber,
     proposalId,
     proposalNumber,
     negotiationId,
@@ -1276,33 +1495,223 @@ export async function updateLeadContractService(id, data, user = {}) {
     projectDescription,
     scopeOfWork,
     deliverables,
+    acceptanceCriteria,
     responsibilities,
     startDate,
     endDate,
     specialConditions,
-    contractValue,
+    productDetails,
+    deliveryDetails,
     warrantyTerms,
+    supportPeriod,
+    slaTerms,
+    responseTime,
+    licenseQuantity,
+    subscriptionStartDate,
+    subscriptionEndDate,
+    renewalDetails,
+    contractValue,
+    currency,
+    discountAmount,
+    taxAmount,
+    taxRate,
+    taxIncluded,
+    finalContractAmount,
+    paymentMethod,
+    paymentDueTerms,
+    customPaymentDueTerms,
+    advancePaymentType,
+    advancePaymentValue,
+    advancePaymentAmount,
+    quotationValueMismatchConfirmed,
     confidentialityClause,
     terminationClause,
     additionalTerms,
     documentName,
     documentUrl,
     documentSize,
+    documentVersion,
+    documentVersions,
     attachments,
     clientSignatoryName,
+    clientSignatoryEmail,
     companySignatoryName,
+    companySignatoryEmail,
     signatureStatus,
     signedDate,
     approvalStatus,
     approvedBy,
     approvalDate,
+    rejectionReason,
+    internalNotes,
     status,
+    isApprovalSubmission,
+    isApprovalAction,
   } = data;
 
-  const numValue =
+  // 1. Date Range Validation if updated
+  const finalStart = startDate !== undefined ? startDate : existing.startDate;
+  const finalEnd = endDate !== undefined ? endDate : existing.endDate;
+  if (finalStart && finalEnd) {
+    const startTs = new Date(finalStart).getTime();
+    const endTs = new Date(finalEnd).getTime();
+    if (!isNaN(startTs) && !isNaN(endTs) && endTs <= startTs) {
+      const err = new Error('End Date must be later than Start Date');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  // 2. Commercial Calculations
+  const numBaseValue =
     contractValue !== undefined && contractValue !== null && contractValue !== ''
       ? Math.max(0, parseFloat(contractValue))
       : existing.contractValue;
+  const numDiscount =
+    discountAmount !== undefined && discountAmount !== null && discountAmount !== ''
+      ? Math.max(0, parseFloat(discountAmount))
+      : existing.discountAmount || 0;
+  const numTax =
+    taxAmount !== undefined && taxAmount !== null && taxAmount !== ''
+      ? Math.max(0, parseFloat(taxAmount))
+      : existing.taxAmount || 0;
+  const numTaxRate =
+    taxRate !== undefined && taxRate !== null && taxRate !== ''
+      ? Math.max(0, parseFloat(taxRate))
+      : existing.taxRate || 18.0;
+  const isTaxInc = taxIncluded !== undefined ? Boolean(taxIncluded) : existing.taxIncluded;
+
+  let calculatedFinal = isTaxInc
+    ? Math.max(0, numBaseValue - numDiscount)
+    : Math.max(0, numBaseValue - numDiscount + numTax);
+
+  const resolvedFinalAmount =
+    finalContractAmount !== undefined && finalContractAmount !== null && finalContractAmount !== ''
+      ? Math.max(0, parseFloat(finalContractAmount))
+      : calculatedFinal;
+
+  const resolvedAdvType = advancePaymentType !== undefined ? advancePaymentType : existing.advancePaymentType;
+  const numAdvVal =
+    advancePaymentValue !== undefined && advancePaymentValue !== null && advancePaymentValue !== ''
+      ? Math.max(0, parseFloat(advancePaymentValue))
+      : existing.advancePaymentValue || 0;
+  let computedAdvAmount = 0;
+  if (resolvedAdvType === 'percentage') {
+    computedAdvAmount = (resolvedFinalAmount * numAdvVal) / 100;
+  } else {
+    computedAdvAmount = Math.min(resolvedFinalAmount, numAdvVal);
+  }
+
+  // 3. Signature Validation
+  const effectiveSigStatus = signatureStatus !== undefined ? signatureStatus : existing.signatureStatus;
+  const effectiveClientName = clientSignatoryName !== undefined ? clientSignatoryName : existing.clientSignatoryName;
+  const effectiveClientEmail = clientSignatoryEmail !== undefined ? clientSignatoryEmail : existing.clientSignatoryEmail;
+  const effectiveCompanyName = companySignatoryName !== undefined ? companySignatoryName : existing.companySignatoryName;
+  const effectiveCompanyEmail = companySignatoryEmail !== undefined ? companySignatoryEmail : existing.companySignatoryEmail;
+  const effectiveSignedDate = signedDate !== undefined ? signedDate : existing.signedDate;
+
+  if (effectiveSigStatus === 'Signed') {
+    if (!effectiveClientName || !effectiveClientName.trim()) {
+      const err = new Error('Client Signatory Name is required to mark the contract as Signed');
+      err.status = 400;
+      throw err;
+    }
+    if (!effectiveClientEmail || !effectiveClientEmail.trim()) {
+      const err = new Error('Client Signatory Email is required to mark the contract as Signed');
+      err.status = 400;
+      throw err;
+    }
+    if (!effectiveCompanyName || !effectiveCompanyName.trim()) {
+      const err = new Error('Company Signatory Name is required to mark the contract as Signed');
+      err.status = 400;
+      throw err;
+    }
+    if (!effectiveCompanyEmail || !effectiveCompanyEmail.trim()) {
+      const err = new Error('Company Signatory Email is required to mark the contract as Signed');
+      err.status = 400;
+      throw err;
+    }
+    if (!effectiveSignedDate) {
+      const err = new Error('Signed Date is required when contract is marked as Signed');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  // 4. Approval Workflow State Management
+  let nextApprovalStatus = existing.approvalStatus;
+  let nextApprovedBy = existing.approvedBy;
+  let nextApprovalDate = existing.approvalDate;
+  let nextRejectionReason = rejectionReason !== undefined ? (rejectionReason ? rejectionReason.trim() : null) : existing.rejectionReason;
+
+  if (isApprovalSubmission || approvalStatus === 'Pending Approval') {
+    nextApprovalStatus = 'Pending Approval';
+    nextApprovedBy = null;
+    nextApprovalDate = null;
+    nextRejectionReason = null;
+  } else if (approvalStatus === 'Approved') {
+    nextApprovalStatus = 'Approved';
+    nextApprovedBy = user?.name || user?.email || 'Authorized Officer';
+    nextApprovalDate = new Date().toISOString();
+    nextRejectionReason = null;
+  } else if (approvalStatus === 'Rejected') {
+    nextApprovalStatus = 'Rejected';
+    nextApprovedBy = user?.name || user?.email || 'Authorized Officer';
+    nextApprovalDate = new Date().toISOString();
+    if (!nextRejectionReason) {
+      nextRejectionReason = 'Contract terms rejected during executive review';
+    }
+  } else if (approvalStatus === 'Draft') {
+    nextApprovalStatus = 'Draft';
+    nextApprovedBy = null;
+    nextApprovalDate = null;
+  }
+
+  // 5. Lifecycle Status Synchronization
+  let nextStatus = status !== undefined ? status : existing.status;
+  if (isApprovalSubmission || nextApprovalStatus === 'Pending Approval') {
+    nextStatus = 'Pending Approval';
+  } else if (nextApprovalStatus === 'Approved') {
+    if (effectiveSigStatus === 'Signed') {
+      const today = new Date().toISOString().split('T')[0];
+      if (finalEnd && finalEnd < today) {
+        nextStatus = 'Expired';
+      } else {
+        nextStatus = 'Active';
+      }
+    } else {
+      nextStatus = 'Pending Signature';
+    }
+  } else if (nextApprovalStatus === 'Rejected') {
+    nextStatus = 'Draft';
+  } else if (effectiveSigStatus === 'Signed' && nextApprovalStatus === 'Approved') {
+    nextStatus = 'Active';
+  }
+
+  // 6. Document Version Tracking
+  let finalVersions = existing.documentVersions || [];
+  if (Array.isArray(documentVersions)) {
+    finalVersions = documentVersions;
+  } else if (documentName && documentName !== existing.documentName) {
+    // A revised document has been uploaded
+    const currentVerStr = existing.documentVersion || 'v1.0';
+    const match = currentVerStr.match(/v?(\d+)\.?(\d+)?/i);
+    let nextVer = 'v1.1';
+    if (match) {
+      const major = parseInt(match[1], 10) || 1;
+      const minor = parseInt(match[2] || '0', 10) + 1;
+      nextVer = `v${major}.${minor}`;
+    }
+    const newVersionEntry = {
+      version: documentVersion || nextVer,
+      documentName,
+      documentUrl: documentUrl || null,
+      uploadedBy: user?.name || user?.email || 'Staff',
+      uploadedAt: new Date().toISOString(),
+      notes: data.versionNotes || `Revised document upload (${documentVersion || nextVer})`,
+    };
+    finalVersions = [...(Array.isArray(finalVersions) ? finalVersions : []), newVersionEntry];
+  }
 
   const updatePayload = {
     ...(title !== undefined && { title: title.trim() }),
@@ -1311,6 +1720,9 @@ export async function updateLeadContractService(id, data, user = {}) {
     ...(leadId !== undefined && { leadId }),
     ...(leadName !== undefined && { leadName: leadName?.trim() || null }),
     ...(contactId !== undefined && { contactId }),
+    ...(customerId !== undefined && { customerId }),
+    ...(quotationId !== undefined && { quotationId }),
+    ...(quotationNumber !== undefined && { quotationNumber: quotationNumber?.trim() || null }),
     ...(proposalId !== undefined && { proposalId }),
     ...(proposalNumber !== undefined && { proposalNumber: proposalNumber?.trim() || null }),
     ...(negotiationId !== undefined && { negotiationId }),
@@ -1322,27 +1734,68 @@ export async function updateLeadContractService(id, data, user = {}) {
     ...(projectDescription !== undefined && { projectDescription: projectDescription?.trim() || null }),
     ...(scopeOfWork !== undefined && { scopeOfWork: scopeOfWork?.trim() || null }),
     ...(deliverables !== undefined && { deliverables: deliverables?.trim() || null }),
+    ...(acceptanceCriteria !== undefined && { acceptanceCriteria: acceptanceCriteria?.trim() || null }),
     ...(responsibilities !== undefined && { responsibilities: responsibilities?.trim() || null }),
     ...(startDate !== undefined && { startDate: startDate || null }),
     ...(endDate !== undefined && { endDate: endDate || null }),
     ...(specialConditions !== undefined && { specialConditions: specialConditions?.trim() || null }),
-    contractValue: numValue,
+
+    // Type-specific
+    ...(productDetails !== undefined && { productDetails: Array.isArray(productDetails) ? productDetails : [] }),
+    ...(deliveryDetails !== undefined && { deliveryDetails: deliveryDetails?.trim() || null }),
     ...(warrantyTerms !== undefined && { warrantyTerms: warrantyTerms?.trim() || null }),
+    ...(supportPeriod !== undefined && { supportPeriod: supportPeriod?.trim() || null }),
+    ...(slaTerms !== undefined && { slaTerms: slaTerms?.trim() || null }),
+    ...(responseTime !== undefined && { responseTime: responseTime?.trim() || null }),
+    ...(licenseQuantity !== undefined && { licenseQuantity: parseInt(licenseQuantity, 10) || 1 }),
+    ...(subscriptionStartDate !== undefined && { subscriptionStartDate: subscriptionStartDate || null }),
+    ...(subscriptionEndDate !== undefined && { subscriptionEndDate: subscriptionEndDate || null }),
+    ...(renewalDetails !== undefined && { renewalDetails: renewalDetails?.trim() || null }),
+
+    // Commercial
+    contractValue: numBaseValue,
+    ...(currency !== undefined && { currency }),
+    discountAmount: numDiscount,
+    taxAmount: numTax,
+    taxRate: numTaxRate,
+    taxIncluded: isTaxInc,
+    finalContractAmount: resolvedFinalAmount,
+    ...(paymentMethod !== undefined && { paymentMethod }),
+    ...(paymentDueTerms !== undefined && { paymentDueTerms }),
+    ...(customPaymentDueTerms !== undefined && { customPaymentDueTerms: customPaymentDueTerms?.trim() || null }),
+    advancePaymentType: resolvedAdvType,
+    advancePaymentValue: numAdvVal,
+    advancePaymentAmount: computedAdvAmount,
+    ...(quotationValueMismatchConfirmed !== undefined && { quotationValueMismatchConfirmed: Boolean(quotationValueMismatchConfirmed) }),
+
+    // Clauses
     ...(confidentialityClause !== undefined && { confidentialityClause: confidentialityClause?.trim() || null }),
     ...(terminationClause !== undefined && { terminationClause: terminationClause?.trim() || null }),
     ...(additionalTerms !== undefined && { additionalTerms: additionalTerms?.trim() || null }),
+
+    // Documents & Signatures
     ...(documentName !== undefined && { documentName }),
     ...(documentUrl !== undefined && { documentUrl }),
     ...(documentSize !== undefined && { documentSize }),
+    documentVersion: documentVersion !== undefined ? documentVersion : existing.documentVersion || 'v1.0',
+    documentVersions: finalVersions,
     ...(attachments !== undefined && { attachments: Array.isArray(attachments) ? attachments : [] }),
     ...(clientSignatoryName !== undefined && { clientSignatoryName: clientSignatoryName?.trim() || null }),
+    ...(clientSignatoryEmail !== undefined && { clientSignatoryEmail: clientSignatoryEmail?.trim() || null }),
     ...(companySignatoryName !== undefined && { companySignatoryName: companySignatoryName?.trim() || null }),
-    ...(signatureStatus !== undefined && { signatureStatus }),
-    ...(signedDate !== undefined && { signedDate: signedDate || null }),
-    ...(approvalStatus !== undefined && { approvalStatus }),
-    ...(approvedBy !== undefined && { approvedBy: approvedBy?.trim() || null }),
-    ...(approvalDate !== undefined && { approvalDate: approvalDate || null }),
-    ...(status !== undefined && { status }),
+    ...(companySignatoryEmail !== undefined && { companySignatoryEmail: companySignatoryEmail?.trim() || null }),
+    signatureStatus: effectiveSigStatus,
+    signedDate: effectiveSigStatus === 'Signed' ? effectiveSignedDate : null,
+
+    // Approval
+    approvalStatus: nextApprovalStatus,
+    approvedBy: nextApprovedBy,
+    approvalDate: nextApprovalDate,
+    rejectionReason: nextRejectionReason,
+    ...(internalNotes !== undefined && { internalNotes: internalNotes?.trim() || null }),
+
+    // Status
+    status: nextStatus,
   };
 
   const updated = await prisma.contract.update({
@@ -1353,6 +1806,57 @@ export async function updateLeadContractService(id, data, user = {}) {
   return formatContractResponse(updated);
 }
 export const updateContractService = updateLeadContractService;
+
+/**
+ * 23b. SUBMIT CONTRACT FOR APPROVAL
+ */
+export async function submitLeadContractApprovalService(id, user = {}) {
+  return updateLeadContractService(
+    id,
+    {
+      isApprovalSubmission: true,
+      approvalStatus: 'Pending Approval',
+    },
+    user
+  );
+}
+export const submitContractApprovalService = submitLeadContractApprovalService;
+
+/**
+ * 23c. APPROVE CONTRACT
+ */
+export async function approveLeadContractService(id, user = {}) {
+  return updateLeadContractService(
+    id,
+    {
+      isApprovalAction: true,
+      approvalStatus: 'Approved',
+    },
+    user
+  );
+}
+export const approveContractService = approveLeadContractService;
+
+/**
+ * 23d. REJECT CONTRACT
+ */
+export async function rejectLeadContractService(id, rejectionReason, user = {}) {
+  if (!rejectionReason || !rejectionReason.trim()) {
+    const error = new Error('Rejection reason is required');
+    error.status = 400;
+    throw error;
+  }
+  return updateLeadContractService(
+    id,
+    {
+      isApprovalAction: true,
+      approvalStatus: 'Rejected',
+      rejectionReason: rejectionReason.trim(),
+    },
+    user
+  );
+}
+export const rejectContractService = rejectLeadContractService;
 
 /**
  * 24. DELETE CONTRACT
@@ -1413,12 +1917,18 @@ export default {
   getLeadContractByIdService,
   createLeadContractService,
   updateLeadContractService,
+  submitLeadContractApprovalService,
+  approveLeadContractService,
+  rejectLeadContractService,
   deleteLeadContractService,
   getContractsService,
   getContractStatsService,
   getContractByIdService,
   createContractService,
   updateContractService,
+  submitContractApprovalService,
+  approveContractService,
+  rejectContractService,
   deleteContractService,
 };
 

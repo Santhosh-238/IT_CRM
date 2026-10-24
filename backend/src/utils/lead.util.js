@@ -194,7 +194,17 @@ export function formatContractResponse(record) {
   return {
     ...record,
     contractValue: Number(record.contractValue) || 0,
+    discountAmount: Number(record.discountAmount) || 0,
+    taxAmount: Number(record.taxAmount) || 0,
+    taxRate: Number(record.taxRate) || 18.0,
+    taxIncluded: Boolean(record.taxIncluded),
+    finalContractAmount: Number(record.finalContractAmount) || 0,
+    advancePaymentValue: Number(record.advancePaymentValue) || 0,
+    advancePaymentAmount: Number(record.advancePaymentAmount) || 0,
+    licenseQuantity: Number(record.licenseQuantity) || 1,
     attachments: Array.isArray(record.attachments) ? record.attachments : [],
+    documentVersions: Array.isArray(record.documentVersions) ? record.documentVersions : [],
+    productDetails: Array.isArray(record.productDetails) ? record.productDetails : [],
   };
 }
 
@@ -206,6 +216,7 @@ export function buildContractFilterQuery(queryParams = {}) {
     search = '',
     leadId,
     contactId,
+    quotationId,
     status,
     contractType,
     approvalStatus,
@@ -224,6 +235,10 @@ export function buildContractFilterQuery(queryParams = {}) {
 
   if (contactId && contactId !== 'All' && contactId !== 'ALL' && contactId.trim() !== '') {
     andConditions.push({ contactId: contactId.trim() });
+  }
+
+  if (quotationId && quotationId !== 'All' && quotationId !== 'ALL' && quotationId.trim() !== '') {
+    andConditions.push({ quotationId: quotationId.trim() });
   }
 
   if (assignedTo && assignedTo !== 'All' && assignedTo !== 'ALL' && assignedTo.trim() !== '') {
@@ -268,10 +283,12 @@ export function buildContractFilterQuery(queryParams = {}) {
         { leadName: { contains: q, mode: 'insensitive' } },
         { projectName: { contains: q, mode: 'insensitive' } },
         { assignedToName: { contains: q, mode: 'insensitive' } },
+        { quotationNumber: { contains: q, mode: 'insensitive' } },
         { proposalNumber: { contains: q, mode: 'insensitive' } },
         { negotiationNumber: { contains: q, mode: 'insensitive' } },
         { scopeOfWork: { contains: q, mode: 'insensitive' } },
         { deliverables: { contains: q, mode: 'insensitive' } },
+        { acceptanceCriteria: { contains: q, mode: 'insensitive' } },
         { responsibilities: { contains: q, mode: 'insensitive' } },
         { specialConditions: { contains: q, mode: 'insensitive' } },
       ],

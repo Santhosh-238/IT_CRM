@@ -120,6 +120,10 @@ export const QuotationsView: React.FC<QuotationsViewProps> = ({ onAddNew }) => {
       bg = isDark ? 'rgba(249, 115, 22, 0.16)' : '#FFF7ED';
       color = isDark ? '#FB923C' : '#C2410C';
       border = isDark ? 'rgba(249, 115, 22, 0.35)' : '#FFEDD5';
+    } else if (sLow.includes('changes') || sLow.includes('required')) {
+      bg = isDark ? 'rgba(249, 115, 22, 0.16)' : '#FFF7ED';
+      color = isDark ? '#FB923C' : '#EA580C';
+      border = isDark ? 'rgba(249, 115, 22, 0.35)' : '#FED7AA';
     }
 
     return (

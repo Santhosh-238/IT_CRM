@@ -725,57 +725,99 @@ model Negotiation {
 // =============================================================================
 
 model Contract {
-  id                    String   @id @default(uuid())
-  contractId            String   @unique // e.g. "CNT-2026-1001"
-  title                 String   // Contract Title
-  contractType          String   @default("Software Development") // "Software Development" | "IT Product Sales" | "Implementation" | "Maintenance" | "Support" | "Other"
-  clientName            String   // Client Name
-  leadId                String?  @map("lead_id") // Reference to CRM Lead
-  leadName              String?  // Lead Name
-  contactId             String?  // Reference to CRM Contact
-  proposalId            String?  // Reference to Proposal
-  proposalNumber        String?  // Linked Proposal Number
-  negotiationId         String?  // Reference to Negotiation
-  negotiationNumber     String?  // Linked Negotiation Number
-  assignedTo            String?  // Assigned Employee ID
-  assignedToName        String   // Assigned Employee Name
-  contractDate          String   // YYYY-MM-DD
+  id                               String   @id @default(uuid())
+  contractId                       String   @unique // e.g. "CNT-2026-1001"
+  title                            String   // Contract Title
+  contractType                     String   @default("Software Development") // "Software Development" | "IT Product Sales" | "IT Services" | "AMC/Support" | "Subscription/License" | "Other"
+  clientName                       String   // Client Name
+  leadId                           String?  @map("lead_id") // Reference to CRM Lead
+  leadName                         String?  // Lead Name
+  contactId                        String?  // Reference to CRM Contact
+  customerId                       String?  // Reference to Customer
+  quotationId                      String?  // Reference to Quotation
+  quotationNumber                  String?  // Linked Quotation Number
+  proposalId                       String?  // Reference to Proposal
+  proposalNumber                   String?  // Linked Proposal Number
+  negotiationId                    String?  // Reference to Negotiation
+  negotiationNumber                String?  // Linked Negotiation Number
+  assignedTo                       String?  // Assigned Employee ID
+  assignedToName                   String   // Assigned Employee Name
+  contractDate                     String   // YYYY-MM-DD
   
   // Project & Scope Details
-  projectName           String?
-  projectDescription    String?
-  scopeOfWork           String?
-  deliverables          String?
-  responsibilities      String?
-  startDate             String?  // YYYY-MM-DD
-  endDate               String?  // YYYY-MM-DD
-  specialConditions     String?
+  projectName                      String?
+  projectDescription               String?
+  scopeOfWork                      String?
+  deliverables                     String?  // Contractual deliverables description
+  acceptanceCriteria               String?  // Criteria for acceptance and sign-off
+  responsibilities                 String?
+  startDate                        String?  // YYYY-MM-DD
+  endDate                          String?  // YYYY-MM-DD
+  specialConditions                String?
+
+  // Contract Type Specific Additional Fields
+  // 1. IT Product Sales
+  productDetails                   Json?    @default("[]") // Array of products, quantities, delivery details
+  deliveryDetails                  String?  // Delivery address, shipping method, schedule
+  warrantyTerms                    String?  // Warranty terms & conditions
+  // 2. AMC/Support
+  supportPeriod                    String?  // e.g. "12 Months (24/7 Coverage)"
+  slaTerms                         String?  // Service Level Agreement
+  responseTime                     String?  // e.g. "Critical: <1hr, High: <4hrs, Normal: <8hrs"
+  // 3. Subscription/License & Renewal
+  licenseQuantity                  Int?     @default(1)
+  subscriptionStartDate            String?  // YYYY-MM-DD
+  subscriptionEndDate              String?  // YYYY-MM-DD
+  renewalDetails                   String?  // Renewal notice period, auto-renewal clause, terms
   
-  // Contract Terms
-  contractValue         Float    @default(0)
-  warrantyTerms         String?
-  confidentialityClause String?
-  terminationClause     String?
-  additionalTerms       String?
+  // Commercial & Payment Terms
+  contractValue                    Float    @default(0) // Base contract value
+  currency                         String   @default("INR") // Configured currency
+  discountAmount                   Float    @default(0) // Discount amount
+  taxAmount                        Float    @default(0) // GST/Tax amount
+  taxRate                          Float    @default(18.0) // Tax percentage
+  taxIncluded                      Boolean  @default(false) // GST Inclusive vs Exclusive
+  finalContractAmount              Float    @default(0) // Calculated final amount
+  paymentMethod                    String   @default("Full Payment") // "Full Payment" | "Partial Payment" | "Milestone-Based Payment"
+  paymentDueTerms                  String   @default("Net 30") // "Due on Receipt" | "Net 15" | "Net 30" | "Custom"
+  customPaymentDueTerms            String?
+  advancePaymentType               String?  @default("percentage") // "amount" | "percentage"
+  advancePaymentValue              Float    @default(0) // percentage or fixed amount
+  advancePaymentAmount             Float    @default(0) // computed advance amount
+  quotationValueMismatchConfirmed  Boolean  @default(false) // Authorized confirmation when contract value differs from quotation
+
+  // Legal Clauses
+  confidentialityClause            String?
+  terminationClause                String?
+  additionalTerms                  String?
   
   // Documents & Signatures
-  documentName          String?
-  documentUrl           String?
-  documentSize          String?
-  attachments           Json?    @default("[]")
-  clientSignatoryName   String?
-  companySignatoryName  String?  @default("OmniTech Solutions Representative")
-  signatureStatus       String   @default("Pending") // "Pending" | "Partially Signed" | "Signed"
-  signedDate            String?
-  approvalStatus        String   @default("Draft") // "Draft" | "Pending Approval" | "Approved" | "Rejected"
-  approvedBy            String?
-  approvalDate          String?
+  documentName                     String?
+  documentUrl                      String?
+  documentSize                     String?
+  documentVersion                  String   @default("v1.0")
+  documentVersions                 Json?    @default("[]") // [{ version, documentName, documentUrl, uploadedBy, uploadedAt, notes }]
+  attachments                      Json?    @default("[]")
+  clientSignatoryName              String?
+  clientSignatoryEmail             String?
+  companySignatoryName             String?  @default("OmniTech Solutions Representative")
+  companySignatoryEmail            String?
+  signatureStatus                  String   @default("Pending") // "Pending" | "Partially Signed" | "Signed" | "Rejected"
+  signedDate                       String?
+
+  // Approval Workflow
+  approvalStatus                   String   @default("Draft") // "Draft" | "Pending Approval" | "Approved" | "Rejected"
+  approvedBy                       String?
+  approvalDate                     String?
+  rejectionReason                  String?
+  internalNotes                    String?
   
-  // Contract Status
-  status                String   @default("Draft") // "Draft" | "Pending Approval" | "Sent for Signature" | "Partially Signed" | "Active" | "Completed" | "Expired" | "Terminated"
+  // Contract Lifecycle Status
+  // "Draft" | "Pending Approval" | "Approved" | "Pending Signature" | "Active" | "On Hold" | "Completed" | "Terminated" | "Expired"
+  status                           String   @default("Draft")
   
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  createdAt                        DateTime @default(now())
+  updatedAt                        DateTime @updatedAt
 
   @@map("contracts")
 }
