@@ -47,6 +47,7 @@ import { Quotation, QuotationItem } from '../../../types/billing';
 import { billingService } from '../../../services/billingService';
 import { QuotationModal } from '../../billing/components/QuotationModal';
 import { QuotationPrintModal } from '../../billing/components/QuotationPrintModal';
+import { printQuotationDirect } from '../../billing/utils/quotationPrint';
 
 interface LeadQuotationSectionProps {
   lead: Lead;
@@ -123,17 +124,28 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
     }
   };
 
-  const handleDelete = (quoteId: string) => {
+  const handleDelete = async (quoteId: string) => {
     const updated = quotations.filter((q) => q.id !== quoteId);
     onUpdateQuotations(updated);
     if (selectedQuotation?.id === quoteId) {
       setSelectedQuotation(null);
     }
-    notifications.show({
-      color: 'red',
-      icon: <IconTrash size={16} />,
-      message: 'Quotation removed',
-    });
+
+    try {
+      await billingService.deleteQuotation(quoteId);
+      notifications.show({
+        color: 'teal',
+        icon: <IconTrash size={16} />,
+        message: 'Quotation deleted successfully',
+      });
+    } catch (err: any) {
+      console.warn('Backend delete quotation note:', err);
+      notifications.show({
+        color: 'teal',
+        icon: <IconTrash size={16} />,
+        message: 'Quotation removed',
+      });
+    }
   };
 
   const handleQuotationSaved = (saved?: Quotation) => {
@@ -178,6 +190,9 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
     if (s.includes('accept') || s.includes('won') || s.includes('approved')) {
       bg = isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5';
       color = isDark ? '#6EE7B7' : '#059669';
+    } else if (s.includes('changes') || s.includes('revision') || s.includes('required')) {
+      bg = isDark ? 'rgba(249, 115, 22, 0.15)' : '#FFF7ED';
+      color = isDark ? '#FB923C' : '#EA580C';
     } else if (s.includes('sent')) {
       bg = isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF';
       color = isDark ? '#A5B4FC' : '#4F46E5';
@@ -210,6 +225,10 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
     );
   };
 
+  // Active / current quotation status for conditional navigation
+  const activeQuotation = selectedQuotation || quotations[0];
+  const activeStatus = activeQuotation?.status;
+
   return (
     <Box>
       {createModalOpened ? (
@@ -223,6 +242,7 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
           quotation={editingQuotation}
           onSuccess={handleQuotationSaved}
           initialLead={lead}
+          onNavigateSection={onNavigateSection}
         />
       ) : (
         <>
@@ -252,16 +272,32 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
             Create Quotation
           </Button>
 
-          <Button
-            size="sm"
-            variant="light"
-            color="blue"
-            rightSection={<IconArrowRight size={14} />}
-            onClick={() => onNavigateSection('negotiation')}
-            style={{ borderRadius: 10, fontWeight: 700 }}
-          >
-            Proceed to Negotiation
-          </Button>
+          {/* Conditional Navigation Buttons based on current quotation status */}
+          {activeStatus === 'Accepted' && (
+            <Button
+              size="sm"
+              variant="light"
+              color="teal"
+              rightSection={<IconArrowRight size={14} />}
+              onClick={() => onNavigateSection('contracts')}
+              style={{ borderRadius: 10, fontWeight: 700 }}
+            >
+              Proceed to Contract
+            </Button>
+          )}
+
+          {activeStatus === 'Changes Required' && (
+            <Button
+              size="sm"
+              variant="light"
+              color="blue"
+              rightSection={<IconArrowRight size={14} />}
+              onClick={() => onNavigateSection('negotiation')}
+              style={{ borderRadius: 10, fontWeight: 700 }}
+            >
+              Proceed to Negotiation
+            </Button>
+          )}
         </Group>
       </Group>
 
@@ -382,7 +418,7 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
                                   color: isDark ? '#F8FAFC' : '#0F172A',
                                   cursor: 'pointer',
                                 }}
-                                onClick={() => setSelectedQuotation(quote)}
+                                onClick={() => setPrintingQuotation(quote)}
                               >
                                 {quote.quotationNumber}
                               </Text>
@@ -419,17 +455,9 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
 
                         {/* 3. VALUE / PRICING */}
                         <Table.Td>
-                          <Stack gap={1}>
-                            <Text size="sm" fw={800} style={{ color: '#2563EB', letterSpacing: '-0.02em' }}>
-                              ₹{quote.grandTotal?.toLocaleString('en-IN') || '0'}
-                            </Text>
-                            <Text size="11px" c="dimmed">
-                              Subtotal: ₹{quote.subtotal?.toLocaleString('en-IN') || '0'}
-                              {quote.discountValue && quote.discountValue > 0
-                                ? ` • Disc ${quote.discountValue}${quote.discountType === 'percentage' ? '%' : '₹'}`
-                                : ''}
-                            </Text>
-                          </Stack>
+                          <Text size="sm" fw={800} style={{ color: '#2563EB', letterSpacing: '-0.02em' }}>
+                            ₹{quote.grandTotal?.toLocaleString('en-IN') || '0'}
+                          </Text>
                         </Table.Td>
 
                         {/* 4. STATUS */}
@@ -440,13 +468,13 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
                         {/* 5. ACTIONS */}
                         <Table.Td style={{ textAlign: 'right' }}>
                           <Group justify="flex-end" gap={6} wrap="nowrap">
-                            <Tooltip label="View Quotation Details" withArrow>
+                            <Tooltip label="View Quotation PDF" withArrow>
                               <ActionIcon
                                 variant="subtle"
                                 color="blue"
                                 size="md"
                                 radius="md"
-                                onClick={() => setSelectedQuotation(quote)}
+                                onClick={() => setPrintingQuotation(quote)}
                               >
                                 <IconEye size={16} />
                               </ActionIcon>
@@ -458,7 +486,7 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
                                 color="indigo"
                                 size="md"
                                 radius="md"
-                                onClick={() => setPrintingQuotation(quote)}
+                                onClick={() => printQuotationDirect(quote)}
                               >
                                 <IconPrinter size={16} />
                               </ActionIcon>
@@ -562,16 +590,16 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
                     variant="light"
                     color="blue"
                     leftSection={<IconEye size={13} />}
-                    onClick={() => setSelectedQuotation(quote)}
+                    onClick={() => setPrintingQuotation(quote)}
                   >
-                    View
+                    View PDF
                   </Button>
                   <Button
                     size="xs"
                     variant="light"
                     color="indigo"
                     leftSection={<IconPrinter size={13} />}
-                    onClick={() => setPrintingQuotation(quote)}
+                    onClick={() => printQuotationDirect(quote)}
                   >
                     Print
                   </Button>
@@ -608,7 +636,7 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
       <Modal
         opened={!!selectedQuotation}
         onClose={() => setSelectedQuotation(null)}
-        size="860px"
+        size="1050px"
         padding="xl"
         radius="lg"
         centered
@@ -664,10 +692,10 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
               <Group gap="xs">
                 <Select
                   size="xs"
-                  data={['Draft', 'Sent', 'Under Review', 'Accepted', 'Rejected', 'Converted']}
+                  data={['Draft', 'Sent', 'Under Review', 'Changes Required', 'Accepted', 'Rejected', 'Converted']}
                   value={selectedQuotation.status || 'Draft'}
                   onChange={(val) => val && handleStatusChange(selectedQuotation.id, val)}
-                  style={{ width: 140 }}
+                  style={{ width: 160 }}
                   styles={{
                     input: {
                       fontWeight: 700,
@@ -1040,7 +1068,7 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
                 color="indigo"
                 leftSection={<IconPrinter size={15} />}
                 onClick={() => {
-                  setPrintingQuotation(selectedQuotation);
+                  if (selectedQuotation) printQuotationDirect(selectedQuotation);
                 }}
                 style={{ borderRadius: 10 }}
               >
@@ -1062,6 +1090,35 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
               >
                 Edit Quotation
               </Button>
+
+              {/* Conditional Navigation Button matching Quotation Status */}
+              {selectedQuotation?.status === 'Accepted' && (
+                <Button
+                  color="teal"
+                  rightSection={<IconArrowRight size={14} />}
+                  onClick={() => {
+                    setSelectedQuotation(null);
+                    onNavigateSection('contracts');
+                  }}
+                  style={{ borderRadius: 10, fontWeight: 700 }}
+                >
+                  Proceed to Contract
+                </Button>
+              )}
+
+              {selectedQuotation?.status === 'Changes Required' && (
+                <Button
+                  color="blue"
+                  rightSection={<IconArrowRight size={14} />}
+                  onClick={() => {
+                    setSelectedQuotation(null);
+                    onNavigateSection('negotiation');
+                  }}
+                  style={{ borderRadius: 10, fontWeight: 700 }}
+                >
+                  Proceed to Negotiation
+                </Button>
+              )}
             </Group>
           </Box>
         )}

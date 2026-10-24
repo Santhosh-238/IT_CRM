@@ -21,7 +21,7 @@ export interface BillingProduct {
   updatedAt?: string;
 }
 
-export type QuotationStatus = 'Draft' | 'Sent' | 'Under Review' | 'Accepted' | 'Rejected' | 'Expired' | 'Converted' | string;
+export type QuotationStatus = 'Draft' | 'Sent' | 'Under Review' | 'Changes Required' | 'Accepted' | 'Rejected' | 'Expired' | 'Converted' | string;
 
 export interface QuotationItem {
   id?: string;

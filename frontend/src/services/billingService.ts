@@ -66,6 +66,8 @@ export const billingService = {
     request<Quotation>('/quotations', { method: 'POST', body: JSON.stringify(data) }),
   updateQuotation: (id: string, data: Partial<Quotation>) =>
     request<Quotation>(`/quotations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteQuotation: (id: string) =>
+    request<null>(`/quotations/${id}`, { method: 'DELETE' }),
   convertQuotationToOrder: (id: string, data?: { billingMethod?: string; startDate?: string; endDate?: string }) =>
     request<SalesOrder>(`/quotations/${id}/convert`, { method: 'POST', body: JSON.stringify(data || {}) }),
 

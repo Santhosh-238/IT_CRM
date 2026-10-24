@@ -100,6 +100,16 @@ export async function updateQuotation(req, res) {
   }
 }
 
+export async function deleteQuotation(req, res) {
+  try {
+    await billingService.deleteQuotationService(req.params.id, req.user);
+    return sendSuccess(res, null, 'Quotation deleted successfully.');
+  } catch (error) {
+    console.error('deleteQuotation error:', error);
+    return sendError(res, error.message || 'Failed to delete quotation.', error.status || 400);
+  }
+}
+
 export async function convertQuotationToOrder(req, res) {
   try {
     const order = await billingService.convertQuotationToOrderService(req.params.id, req.body, req.user);

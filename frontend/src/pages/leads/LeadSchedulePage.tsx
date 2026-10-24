@@ -1514,8 +1514,8 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
               />
             </SimpleGrid>
 
-            {/* 4. Meeting Date *, Meeting Time *, Duration * */}
-            <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="sm">
+            {/* 4. Meeting Date * & Meeting Time * */}
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <MeetingDatePicker
                 label="Meeting Date"
                 placeholder="dd-mm-yyyy"
@@ -1529,16 +1529,6 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                 value={meetingTime}
                 onChange={(val) => setMeetingTime(val)}
                 required
-              />
-              <Select
-                label="Duration"
-                withAsterisk
-                data={['15 Minutes', '30 Minutes', '45 Minutes', '1 Hour', '1.5 Hours', '2 Hours']}
-                value={duration}
-                onChange={(val) => setDuration(val || '30 Minutes')}
-                allowDeselect={false}
-                required
-                radius="md"
               />
             </SimpleGrid>
 

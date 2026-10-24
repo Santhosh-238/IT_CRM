@@ -11,6 +11,7 @@ import {
   getQuotationById,
   createQuotation,
   updateQuotation,
+  deleteQuotation,
   convertQuotationToOrder,
   getSalesOrders,
   getSalesOrderById,
@@ -58,6 +59,7 @@ router.get('/quotations', requireAuth, authorizePermission('billing', 'view'), g
 router.get('/quotations/:id', requireAuth, authorizePermission('billing', 'view'), getQuotationById);
 router.post('/quotations', requireAuth, authorizePermission('billing', 'create'), createQuotation);
 router.put('/quotations/:id', requireAuth, authorizePermission('billing', 'edit'), updateQuotation);
+router.delete('/quotations/:id', requireAuth, authorizePermission('billing', 'delete'), deleteQuotation);
 router.post('/quotations/:id/convert', requireAuth, authorizePermission('billing', 'create'), convertQuotationToOrder);
 
 // =============================================================================

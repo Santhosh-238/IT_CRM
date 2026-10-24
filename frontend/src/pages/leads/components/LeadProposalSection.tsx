@@ -421,28 +421,6 @@ export const LeadProposalSection: React.FC<LeadProposalSectionProps> = ({
                             >
                               {prop.title || 'Solution Proposal'}
                             </Text>
-                            <Group gap={6} mt={2}>
-                              <Text size="11px" c="dimmed">
-                                {prop.proposalNumber}
-                              </Text>
-                              {prop.documentName ? (
-                                <>
-                                  <Text size="11px" c="dimmed">•</Text>
-                                  <Badge size="xs" variant="light" color="indigo" radius="sm">
-                                    📄 {prop.documentName}
-                                  </Badge>
-                                </>
-                              ) : (
-                                (prop.items?.length || 0) > 0 && (
-                                  <>
-                                    <Text size="11px" c="dimmed">•</Text>
-                                    <Text size="11px" c="dimmed">
-                                      {prop.items?.length} {(prop.items?.length || 0) === 1 ? 'item' : 'items'}
-                                    </Text>
-                                  </>
-                                )
-                              )}
-                            </Group>
                           </div>
                         </Group>
                       </Table.Td>
@@ -570,9 +548,6 @@ export const LeadProposalSection: React.FC<LeadProposalSectionProps> = ({
                   <div>
                     <Text size="sm" fw={700} style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
                       {prop.title || 'Solution Proposal'}
-                    </Text>
-                    <Text size="11px" c="dimmed">
-                      {prop.proposalNumber}
                     </Text>
                   </div>
                   {renderStatusBadge(prop.status)}

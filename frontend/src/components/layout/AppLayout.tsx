@@ -16,9 +16,9 @@ import { CallLogsPage } from '../../pages/calls';
 import { CustomersPage, CustomerDetailsPage } from '../../pages/customers';
 import { SettingsPage } from '../../pages/settings';
 import { BillingPage } from '../../pages/billing';
-import { LeadNegotiationSection } from '../../pages/leads/components/LeadDealSections';
 import { InvoicesPage, CreateInvoicePage, InvoiceDetailsPage } from '../../pages/invoices';
 import { Invoice } from '../../types/billing';
+import { LeadNegotiationSection, LeadContractSection } from '../../pages/leads/components/LeadDealSections';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
 import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
@@ -480,6 +480,18 @@ export const AppLayout: React.FC = () => {
           );
         }
         return <LeadNegotiationSection />;
+      case 'contracts':
+      case 'contract':
+      case 'create-contract':
+        if (!can('leads', 'view') && !isSuperAdmin) {
+          return (
+            <AccessRestrictedView
+              moduleName="Contracts"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
+        return <LeadContractSection />;
       case 'customers':
       case 'customer':
       case 'customers-all':

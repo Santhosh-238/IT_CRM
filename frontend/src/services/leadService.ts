@@ -353,6 +353,28 @@ export const leadService = {
     return res.data;
   },
 
+  submitContractForApproval: async (id: string): Promise<Contract> => {
+    const res = await fetchWithCookies<{ success: boolean; data: Contract }>(`/leads/contracts/${encodeURIComponent(id)}/submit`, {
+      method: 'POST',
+    });
+    return res.data;
+  },
+
+  approveContract: async (id: string): Promise<Contract> => {
+    const res = await fetchWithCookies<{ success: boolean; data: Contract }>(`/leads/contracts/${encodeURIComponent(id)}/approve`, {
+      method: 'POST',
+    });
+    return res.data;
+  },
+
+  rejectContract: async (id: string, rejectionReason: string): Promise<Contract> => {
+    const res = await fetchWithCookies<{ success: boolean; data: Contract }>(`/leads/contracts/${encodeURIComponent(id)}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ rejectionReason }),
+    });
+    return res.data;
+  },
+
   deleteContract: async (id: string): Promise<boolean> => {
     await fetchWithCookies<{ success: boolean; message: string }>(`/leads/contracts/${encodeURIComponent(id)}`, {
       method: 'DELETE',

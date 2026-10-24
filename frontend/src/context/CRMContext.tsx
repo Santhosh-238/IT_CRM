@@ -83,6 +83,7 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (path === 'customers' || path === 'customer' || path === 'customers-all') return 'customers';
 
     if (path === 'negotiations' || path === 'negotiation') return 'negotiations';
+    if (path === 'contracts' || path === 'contract' || path === 'create-contract') return 'contracts';
 
     if (path === 'projects/add' || path === 'add-project' || path === 'projects/create' || path === 'create-project') return 'add-project';
     if (path === 'projects/details' || path === 'project-details' || path === 'projects-details') return 'project-details';

@@ -24,6 +24,7 @@ interface MeetingTimePickerProps {
   zIndex?: number;
   styles?: any;
   leftSection?: React.ReactNode;
+  rightSection?: React.ReactNode;
   error?: React.ReactNode;
 }
 
@@ -130,6 +131,7 @@ export const MeetingTimePicker: React.FC<MeetingTimePickerProps> = ({
   zIndex = 3000,
   styles,
   leftSection,
+  rightSection,
   error,
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
@@ -302,20 +304,7 @@ export const MeetingTimePicker: React.FC<MeetingTimePickerProps> = ({
             radius="md"
             leftSection={leftSection !== undefined ? leftSection : <IconClock size={16} />}
             error={error}
-            rightSection={
-              <ActionIcon
-                variant="subtle"
-                color="gray"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setOpened((o) => !o);
-                }}
-                title="Open Time Picker"
-              >
-                <IconClock size={16} />
-              </ActionIcon>
-            }
+            rightSection={rightSection}
           />
         </Popover.Target>
 

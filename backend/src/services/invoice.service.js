@@ -446,6 +446,39 @@ export async function updateQuotationService(id, data, user) {
   return updated;
 }
 
+export async function deleteQuotationService(id, user) {
+  const quote = await prisma.quotation.findFirst({
+    where: { OR: [{ id }, { quotationNumber: id }] },
+  });
+
+  if (!quote) {
+    const err = new Error('Quotation not found.');
+    err.status = 404;
+    throw err;
+  }
+
+  // Delete line items first
+  await prisma.quotationItem.deleteMany({
+    where: { quotationId: quote.id },
+  }).catch(() => {});
+
+  // Delete quotation
+  await prisma.quotation.delete({
+    where: { id: quote.id },
+  });
+
+  await logBillingAudit(
+    'Quotation',
+    quote.id,
+    quote.quotationNumber,
+    'DELETED',
+    user?.name || user?.email || 'User',
+    `Deleted quotation ${quote.quotationNumber}`
+  ).catch(() => {});
+
+  return { message: 'Quotation deleted successfully.' };
+}
+
 /**
  * Convert Accepted Quotation to Sales Order / Contract
  */
