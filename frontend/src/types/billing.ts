@@ -161,19 +161,26 @@ export interface BillingMilestone {
   updatedAt?: string;
 }
 
-export type InvoiceStatus = 'Draft' | 'Issued' | 'Partially Paid' | 'Paid' | 'Overdue' | 'Cancelled';
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Issued' | 'Partially Paid' | 'Paid' | 'Overdue' | 'Cancelled';
+export type PaymentStatus = 'Unpaid' | 'Partially Paid' | 'Paid' | 'Overdue' | 'Cancelled';
+export type TaxType = 'INTRA_STATE' | 'INTER_STATE' | 'EXPORT_NON_GST';
+export type InvoiceType = 'One-Time' | 'Recurring';
 
 export interface InvoiceItem {
   id?: string;
   productId?: string | null;
   itemCode?: string | null;
   itemName: string;
-  itemType: ProductType;
+  itemType?: ProductType | string;
   description?: string | null;
+  hsnCode?: string | null;
   quantity: number;
+  unit?: string | null;
   unitPrice: number;
   discount: number;
+  discountPercent?: number;
   taxRate: number;
+  taxableAmount?: number;
   taxAmount: number;
   totalAmount: number;
 }
@@ -182,30 +189,66 @@ export interface Invoice {
   id: string;
   invoiceNumber: string;
   contactId?: string | null;
+  customerId?: string | null;
   contactName: string;
+  contactPerson?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
   companyName?: string | null;
+  customerTier?: string | null;
   clientGst?: string | null;
   clientAddress?: string | null;
+  clientPincode?: string | null;
+  clientCity?: string | null;
+  clientState?: string | null;
+  clientPan?: string | null;
+  consigneeName?: string | null;
+  consigneeAddress?: string | null;
+  consigneeGst?: string | null;
+  consigneeSameAsBilled?: boolean;
   leadId?: string | null;
   salesOrderId?: string | null;
   projectId?: string | null;
   projectName?: string | null;
+  projectTitle?: string | null;
+  placeOfSupply?: string | null;
   milestoneId?: string | null;
   milestoneName?: string | null;
   invoiceDate: string;
   dueDate: string;
+  invoiceType?: InvoiceType;
+  currency?: string;
+  taxType?: TaxType;
   subtotal: number;
   discountAmount: number;
+  taxableAmount?: number;
   taxAmount: number;
+  cgstAmount?: number;
+  sgstAmount?: number;
+  igstAmount?: number;
+  additionalCharges?: number;
+  advanceAmount?: number;
   grandTotal: number;
   amountPaid: number;
   outstandingBalance: number;
   status: InvoiceStatus;
+  paymentStatus?: PaymentStatus;
   paymentTerms?: string | null;
   notes?: string | null;
   termsConditions?: string | null;
+  internalRemarks?: string | null;
+  approvedBy?: string | null;
+  attachments?: Array<{ name: string; url: string; size?: string; type?: string }>;
+  companyDetails?: {
+    companyName?: string;
+    gstin?: string;
+    pincode?: string;
+    city?: string;
+    state?: string;
+    address?: string;
+    phone?: string;
+    email?: string;
+  } | null;
   bankDetails?: {
     bankName?: string;
     accountNumber?: string;
@@ -213,6 +256,7 @@ export interface Invoice {
     ifscCode?: string;
     branchName?: string;
     upiId?: string;
+    [key: string]: any;
   } | null;
   cancellationReason?: string | null;
   issuedAt?: string | null;
@@ -220,11 +264,12 @@ export interface Invoice {
   createdBy?: string | null;
   items: InvoiceItem[];
   allocations?: PaymentAllocation[];
+  activityLogs?: any[];
   createdAt: string;
   updatedAt: string;
 }
 
-export type PaymentMethod = 'Bank Transfer' | 'UPI' | 'Cheque' | 'Cash' | 'Payment Gateway';
+export type PaymentMethod = 'Bank Transfer' | 'UPI' | 'Cheque' | 'Cash' | 'Payment Gateway' | 'Credit Card';
 
 export interface PaymentAllocation {
   id?: string;
@@ -352,6 +397,9 @@ export interface BillingSettings {
   defaultTaxRate: number;
   defaultPaymentTerms: string;
   defaultTermsConditions?: string | null;
+  authorizedSignatory?: string | null;
+  signatoryDesignation?: string | null;
+  signatureUrl?: string | null;
   updatedAt?: string;
 }
 

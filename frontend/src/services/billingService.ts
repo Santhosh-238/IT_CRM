@@ -100,14 +100,32 @@ export const billingService = {
     request<BillingMilestone>(`/milestones/${id}/approve`, { method: 'POST' }),
 
   // 6. Invoices
-  getInvoices: (params?: { search?: string; status?: string; contactId?: string; salesOrderId?: string; projectId?: string }) => {
+  getInvoices: (params?: {
+    search?: string;
+    status?: string;
+    paymentStatus?: string;
+    invoiceDate?: string;
+    dueDate?: string;
+    contactId?: string;
+    customerId?: string;
+    salesOrderId?: string;
+    projectId?: string;
+    page?: number;
+    limit?: number;
+  }) => {
     const q = new URLSearchParams();
     if (params?.search) q.append('search', params.search);
     if (params?.status && params.status !== 'All') q.append('status', params.status);
+    if (params?.paymentStatus && params.paymentStatus !== 'All') q.append('paymentStatus', params.paymentStatus);
+    if (params?.invoiceDate && params.invoiceDate !== 'All') q.append('invoiceDate', params.invoiceDate);
+    if (params?.dueDate && params.dueDate !== 'All') q.append('dueDate', params.dueDate);
     if (params?.contactId && params.contactId !== 'All') q.append('contactId', params.contactId);
+    if (params?.customerId && params.customerId !== 'All') q.append('customerId', params.customerId);
     if (params?.salesOrderId && params.salesOrderId !== 'All') q.append('salesOrderId', params.salesOrderId);
     if (params?.projectId && params.projectId !== 'All') q.append('projectId', params.projectId);
-    return request<Invoice[]>(`/invoices?${q.toString()}`);
+    if (params?.page) q.append('page', String(params.page));
+    if (params?.limit) q.append('limit', String(params.limit));
+    return request<Invoice[] | { data: Invoice[]; pagination: any }>(`/invoices?${q.toString()}`);
   },
   getInvoiceById: (id: string) => request<Invoice>(`/invoices/${id}`),
   createInvoice: (data: Partial<Invoice>) =>
@@ -116,6 +134,8 @@ export const billingService = {
     request<Invoice>(`/invoices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   cancelInvoice: (id: string, reason: string) =>
     request<Invoice>(`/invoices/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  sendInvoice: (id: string) =>
+    request<Invoice>(`/invoices/${id}/send`, { method: 'POST' }),
 
   // 7. Payments
   getPayments: (params?: { search?: string; paymentMethod?: string; contactId?: string }) => {

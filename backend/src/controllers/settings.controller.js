@@ -1,4 +1,6 @@
 import * as settingsService from '../services/settings.service.js';
+import * as invoiceService from '../services/invoice.service.js';
+const billingService = invoiceService;
 import { sendSuccess, sendError } from '../utils/response.js';
 
 // ------------------------------------------------------------------
@@ -62,8 +64,48 @@ export async function deleteMasterProject(req, res) {
 
 export async function getCompanyProfile(req, res) {
   try {
-    const profile = await settingsService.getSettingService('company_profile');
-    return sendSuccess(res, profile, 'Company profile retrieved successfully');
+    const profile = await settingsService.getSettingService('company_profile') || {};
+
+    const clean = {
+      companyName: profile.companyName || '',
+      legalName: profile.legalName || '',
+      tagline: profile.tagline || '',
+      companyAddress: profile.companyAddress || profile.address || '',
+      address: profile.companyAddress || profile.address || '',
+      city: profile.city || '',
+      state: profile.state || '',
+      zip: profile.zip || '',
+      country: profile.country || '',
+      companyGst: profile.companyGst || profile.gstNumber || '',
+      gstNumber: profile.companyGst || profile.gstNumber || '',
+      companyPan: profile.companyPan || profile.panNumber || '',
+      panNumber: profile.companyPan || profile.panNumber || '',
+      cinNumber: profile.cinNumber || '',
+      companyPhone: profile.companyPhone || profile.phone || '',
+      phone: profile.companyPhone || profile.phone || '',
+      companyEmail: profile.companyEmail || profile.email || '',
+      email: profile.companyEmail || profile.email || '',
+      supportEmail: profile.supportEmail || '',
+      companyWebsite: profile.companyWebsite || profile.website || '',
+      website: profile.companyWebsite || profile.website || '',
+      companyLogoUrl: profile.companyLogoUrl || profile.logoUrl || '',
+      logoUrl: profile.companyLogoUrl || profile.logoUrl || '',
+      placeOfSupply: profile.placeOfSupply || '',
+      currency: profile.currency || 'INR',
+      timezone: profile.timezone || 'Asia/Kolkata',
+      bankName: profile.bankName || '',
+      accountNumber: profile.accountNumber || '',
+      accountHolderName: profile.accountHolderName || '',
+      ifscCode: profile.ifscCode || '',
+      branchName: profile.branchName || '',
+      accountType: profile.accountType || 'Current Account',
+      upiId: profile.upiId || '',
+      authorizedSignatory: profile.authorizedSignatory || 'Santhosh C',
+      signatoryDesignation: profile.signatoryDesignation || 'Managing Director',
+      signatureUrl: profile.signatureUrl || '',
+    };
+
+    return sendSuccess(res, clean, 'Company profile retrieved successfully');
   } catch (error) {
     console.error('getCompanyProfile error:', error);
     return sendError(res, error.message || 'Failed to fetch company profile', 500);
@@ -73,8 +115,32 @@ export async function getCompanyProfile(req, res) {
 export async function updateCompanyProfile(req, res) {
   try {
     const userId = req.user?.id || 'admin';
-    const updated = await settingsService.saveSettingService('company_profile', req.body, userId);
-    return sendSuccess(res, updated, 'Company profile updated successfully');
+    const body = req.body;
+
+    // 1. Save to system settings (company_profile)
+    const updated = await settingsService.saveSettingService('company_profile', body, userId);
+
+    // 2. Sync to billingSettings so all invoices and quotations instantly auto-fetch these details!
+    const billingUpdate = {
+      companyName: body.companyName || '',
+      companyAddress: body.companyAddress || body.address || '',
+      companyGst: body.companyGst || body.gstNumber || '',
+      companyPan: body.companyPan || body.panNumber || '',
+      companyPhone: body.companyPhone || body.phone || '',
+      companyEmail: body.companyEmail || body.email || '',
+      companyWebsite: body.companyWebsite || body.website || '',
+      companyLogoUrl: body.companyLogoUrl || body.logoUrl || '',
+      bankName: body.bankName || '',
+      accountNumber: body.accountNumber || '',
+      accountHolderName: body.accountHolderName || '',
+      ifscCode: body.ifscCode || '',
+      branchName: body.branchName || '',
+      upiId: body.upiId || '',
+    };
+
+    await billingService.updateBillingSettingsService(billingUpdate, req.user);
+
+    return sendSuccess(res, updated, 'Company profile and invoice settings updated successfully');
   } catch (error) {
     console.error('updateCompanyProfile error:', error);
     return sendError(res, error.message || 'Failed to update company profile', 400);

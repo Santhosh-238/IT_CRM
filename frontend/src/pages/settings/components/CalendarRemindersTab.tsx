@@ -21,8 +21,10 @@ import {
   Tooltip,
   Avatar,
   ScrollArea,
+  SimpleGrid,
   useComputedColorScheme,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import {
   IconCalendar,
   IconClock,
@@ -91,6 +93,8 @@ export const CalendarRemindersTab: React.FC = () => {
   const { isSuperAdmin } = usePermissions();
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
+  const isMobile = useMediaQuery('(max-width: 860px)');
+  const isSmallMobile = useMediaQuery('(max-width: 480px)');
 
   const [reminders, setReminders] = useState<ReminderItem[]>(() => {
     try {
@@ -607,32 +611,168 @@ export const CalendarRemindersTab: React.FC = () => {
     boxShadow: isDark ? 'none' : '0 1px 3px rgba(16, 24, 40, 0.05)',
   };
 
+  const renderReminderItem = (rem: ReminderItem) => {
+    const isHigh = rem.priority === 'High';
+    const isMedium = rem.priority === 'Medium';
+    const priorityColor = isHigh ? 'red' : isMedium ? 'orange' : 'indigo';
+
+    return (
+      <Paper
+        key={rem.id}
+        style={{
+          backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+          border: isDark
+            ? '1px solid rgba(255, 255, 255, 0.08)'
+            : '1px solid #EAECF0',
+          borderRadius: 10,
+          padding: '9px 12px',
+          boxShadow: isDark
+            ? '0 1px 3px rgba(0, 0, 0, 0.2)'
+            : '0 1px 2px rgba(16, 24, 40, 0.03)',
+          transition: 'all 0.15s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = isDark ? 'rgba(99, 102, 241, 0.4)' : '#C7D2FE';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#EAECF0';
+        }}
+      >
+        {/* Line 1: Title + Time + Priority + Actions */}
+        <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
+          <Text
+            fw={650}
+            size="13px"
+            truncate
+            style={{
+              color: isDark ? '#F8FAFC' : '#0F172A',
+              minWidth: 0,
+              flex: 1,
+            }}
+          >
+            {rem.title}
+          </Text>
+
+          <Group gap={6} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
+            {rem.time && (
+              <Text size="11px" fw={600} c="dimmed">
+                {rem.time}
+              </Text>
+            )}
+            <Badge
+              size="xs"
+              variant="light"
+              color={priorityColor}
+              radius="sm"
+              styles={{ label: { textTransform: 'capitalize', fontWeight: 700, fontSize: 10 } }}
+            >
+              {rem.priority}
+            </Badge>
+            <Tooltip label="Edit" withArrow position="top">
+              <ActionIcon
+                variant="subtle"
+                size="xs"
+                color="gray"
+                radius="sm"
+                onClick={() => handleOpenEdit(rem)}
+              >
+                <IconPencil size={13} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label="Delete" withArrow position="top">
+              <ActionIcon
+                variant="subtle"
+                size="xs"
+                color="red"
+                radius="sm"
+                onClick={() => handleDeleteReminder(rem.id, rem.title)}
+              >
+                <IconTrash size={13} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Group>
+
+        {/* Line 2: Compact Meta */}
+        {(rem.category || rem.assignedToName || rem.notes) && (
+          <Group
+            gap={6}
+            align="center"
+            wrap="nowrap"
+            mt={4}
+            style={{ minWidth: 0, overflow: 'hidden' }}
+          >
+            {rem.category && (
+              <Text size="11px" c="dimmed" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {rem.category}
+              </Text>
+            )}
+
+            {rem.assignedToName && rem.assignedToName !== 'Super Administrator' && (
+              <>
+                <Text size="10px" c="dimmed" style={{ flexShrink: 0 }}>•</Text>
+                <Text size="11px" c="indigo" fw={500} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  To: {rem.assignedToName}
+                </Text>
+              </>
+            )}
+
+            {rem.createdByName && rem.assignedToName !== rem.createdByName && (
+              <>
+                <Text size="10px" c="dimmed" style={{ flexShrink: 0 }}>•</Text>
+                <Text size="11px" c="dimmed" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  By: {rem.createdByName}
+                </Text>
+              </>
+            )}
+
+            {rem.notes && (
+              <>
+                <Text size="10px" c="dimmed" style={{ flexShrink: 0 }}>•</Text>
+                <Text
+                  size="11px"
+                  c="dimmed"
+                  truncate
+                  style={{ fontStyle: 'italic', minWidth: 0 }}
+                >
+                  "{rem.notes}"
+                </Text>
+              </>
+            )}
+          </Group>
+        )}
+      </Paper>
+    );
+  };
+
   const userRoleDisplay = currentUser?.role === 'SUPER_ADMIN' ? 'Admin' : currentUser?.role || 'Admin';
 
   return (
-    <Box style={{ width: '100%', maxWidth: 1160 }}>
+    <Box style={{ width: '100%' }}>
       {/* 1. Header Bar matching screenshot */}
-      <Group justify="space-between" align="center" mb="xl" wrap="wrap" gap="md">
-        <Group gap="md" align="center">
+      <Group justify="space-between" align="center" mb="md" wrap="wrap" gap="sm">
+        <Group gap="xs" align="center" wrap="nowrap" style={{ flex: isMobile ? '1 1 100%' : '1', minWidth: 0 }}>
           <Box
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
+              width: isMobile ? 34 : 38,
+              height: isMobile ? 34 : 38,
+              borderRadius: 10,
               background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#FFFFFF',
-              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.28)',
+              boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
+              flexShrink: 0,
             }}
           >
-            <IconCalendar size={24} stroke={2} />
+            <IconCalendar size={isMobile ? 18 : 20} stroke={2} />
           </Box>
-          <Box>
+          <Box style={{ minWidth: 0, flex: 1 }}>
             <Text
-              fw={800}
-              size="24px"
+              fw={750}
+              size={isMobile ? '16px' : '18px'}
+              truncate
               style={{
                 color: isDark ? '#F8FAFC' : '#0F172A',
                 letterSpacing: '-0.02em',
@@ -641,13 +781,22 @@ export const CalendarRemindersTab: React.FC = () => {
             >
               Calendar & Reminders
             </Text>
-            <Text size="13px" c={isDark ? '#94A3B8' : '#64748B'} mt={3}>
-              View dynamic shop follow-ups and schedule custom reminders
-            </Text>
+            {!isMobile && (
+              <Text size="12px" c={isDark ? '#94A3B8' : '#64748B'} mt={1}>
+                View dynamic shop follow-ups and schedule custom reminders
+              </Text>
+            )}
           </Box>
         </Group>
 
-        <Group gap="sm">
+        <Group
+          gap="xs"
+          wrap="nowrap"
+          style={{
+            width: isMobile ? '100%' : 'auto',
+            justifyContent: isMobile ? 'stretch' : 'flex-end',
+          }}
+        >
           {/* Employee Filter: Full dropdown ONLY for Super Admin; Personal Name Pill for other employees */}
           {isSuperAdmin ? (
             <Menu shadow="md" width={280} position="bottom-end" radius="md" withArrow>
@@ -657,13 +806,16 @@ export const CalendarRemindersTab: React.FC = () => {
                     backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#FFFFFF',
                     border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #EAECF0',
                     borderRadius: 100,
-                    padding: '7px 16px',
+                    padding: isMobile ? '7px 10px' : '7px 16px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8,
+                    justifyContent: 'space-between',
+                    gap: 6,
                     cursor: 'pointer',
                     boxShadow: isDark ? 'none' : '0 1px 2px rgba(16, 24, 40, 0.04)',
                     transition: 'all 0.15s ease',
+                    flex: isMobile ? 1 : undefined,
+                    minWidth: 0,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#F8FAFC';
@@ -675,7 +827,7 @@ export const CalendarRemindersTab: React.FC = () => {
                   }}
                 >
                   {selectedEmployee ? (
-                    <Group gap={6} align="center">
+                    <Group gap={6} align="center" wrap="nowrap" style={{ minWidth: 0 }}>
                       <Avatar
                         size={22}
                         radius="xl"
@@ -684,22 +836,24 @@ export const CalendarRemindersTab: React.FC = () => {
                       >
                         {selectedEmployee.name.slice(0, 2).toUpperCase()}
                       </Avatar>
-                      <Text size="13px" fw={700} style={{ color: isDark ? '#F8FAFC' : '#1E1B4B' }}>
+                      <Text size="13px" fw={700} truncate style={{ color: isDark ? '#F8FAFC' : '#1E1B4B', minWidth: 0 }}>
                         {selectedEmployee.name}
                       </Text>
-                      <Badge size="xs" variant="light" color="indigo" radius="sm">
-                        {selectedEmployee.role || 'Employee'}
-                      </Badge>
+                      {!isMobile && (
+                        <Badge size="xs" variant="light" color="indigo" radius="sm">
+                          {selectedEmployee.role || 'Employee'}
+                        </Badge>
+                      )}
                     </Group>
                   ) : (
-                    <Group gap={6} align="center">
-                      <IconUsers size={16} color={isDark ? '#94A3B8' : '#4F46E5'} />
-                      <Text size="13px" fw={600} style={{ color: isDark ? '#F8FAFC' : '#334155' }}>
-                        All Employees
+                    <Group gap={6} align="center" wrap="nowrap" style={{ minWidth: 0 }}>
+                      <IconUsers size={16} color={isDark ? '#94A3B8' : '#4F46E5'} style={{ flexShrink: 0 }} />
+                      <Text size="13px" fw={600} truncate style={{ color: isDark ? '#F8FAFC' : '#334155', minWidth: 0 }}>
+                        {isSmallMobile ? 'Employees' : 'All Employees'}
                       </Text>
                     </Group>
                   )}
-                  <IconChevronDown size={14} color="#94A3B8" />
+                  <IconChevronDown size={14} color="#94A3B8" style={{ flexShrink: 0 }} />
                 </UnstyledButton>
               </Menu.Target>
 
@@ -832,11 +986,13 @@ export const CalendarRemindersTab: React.FC = () => {
                 backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#FFFFFF',
                 border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #EAECF0',
                 borderRadius: 100,
-                padding: '7px 16px',
+                padding: isMobile ? '7px 10px' : '7px 16px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
                 boxShadow: isDark ? 'none' : '0 1px 2px rgba(16, 24, 40, 0.04)',
+                flex: isMobile ? 1 : undefined,
+                minWidth: 0,
               }}
             >
               <Avatar
@@ -847,16 +1003,17 @@ export const CalendarRemindersTab: React.FC = () => {
               >
                 {(selectedEmployee?.name || currentUser?.name || 'ME').slice(0, 2).toUpperCase()}
               </Avatar>
-              <Text size="13px" fw={700} style={{ color: isDark ? '#F8FAFC' : '#1E1B4B' }}>
+              <Text size="13px" fw={700} truncate style={{ color: isDark ? '#F8FAFC' : '#1E1B4B', minWidth: 0 }}>
                 {selectedEmployee?.name || currentUser?.name || 'My Reminders'}
               </Text>
-              <Badge size="xs" variant="light" color="indigo" radius="sm">
-                {selectedEmployee?.role || selectedEmployee?.designation || currentUser?.role || 'Employee'}
-              </Badge>
+              {!isMobile && (
+                <Badge size="xs" variant="light" color="indigo" radius="sm">
+                  {selectedEmployee?.role || selectedEmployee?.designation || currentUser?.role || 'Employee'}
+                </Badge>
+              )}
             </Box>
           )}
 
-          {/* + Add Reminder Button */}
           <Button
             color="indigo"
             radius="md"
@@ -865,34 +1022,35 @@ export const CalendarRemindersTab: React.FC = () => {
             style={{
               backgroundColor: '#4F46E5',
               fontWeight: 600,
-              height: 40,
-              padding: '0 20px',
+              height: 38,
+              padding: isSmallMobile ? '0 10px' : isMobile ? '0 14px' : '0 20px',
               boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)',
               cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
-            Add Reminder
+            {isSmallMobile ? 'Add' : 'Add Reminder'}
           </Button>
         </Group>
       </Group>
 
-      {/* 2. Main 2-Column Workspace matching screenshot */}
+      {/* 2. Main 2-Column Workspace (Stacked on Mobile, 2-Columns on Desktop) */}
       <Box
         pos="relative"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.8fr) minmax(320px, 1fr)',
-          gap: 24,
+          gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1.45fr) minmax(290px, 1fr)',
+          gap: 16,
           alignItems: 'stretch',
         }}
       >
         <LoadingOverlay visible={loading} zIndex={10} overlayProps={{ blur: 1 }} />
         {/* LEFT COLUMN: MONTHLY CALENDAR GRID */}
-        <Paper p="xl" style={cardStyle}>
+        <Paper p={isSmallMobile ? 8 : isMobile ? 10 : 'md'} style={{ ...cardStyle, overflow: 'hidden' }}>
           {/* Calendar Card Header: Month + Today Pill + Nav arrows */}
-          <Group justify="space-between" align="center" mb="lg">
+          <Group justify="space-between" align="center" mb={isMobile ? 'xs' : 'md'}>
             <Group gap="xs" align="center">
-              <Text fw={800} size="20px" style={{ color: isDark ? '#F8FAFC' : '#0F172A', letterSpacing: '-0.01em' }}>
+              <Text fw={800} size={isSmallMobile ? '15px' : isMobile ? '16px' : '18px'} style={{ color: isDark ? '#F8FAFC' : '#0F172A', letterSpacing: '-0.01em' }}>
                 {monthNames[month]} {year}
               </Text>
               <UnstyledButton
@@ -900,9 +1058,9 @@ export const CalendarRemindersTab: React.FC = () => {
                 style={{
                   backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
                   color: isDark ? '#CBD5E1' : '#475569',
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 600,
-                  padding: '4px 14px',
+                  padding: '2px 10px',
                   borderRadius: 100,
                   transition: 'all 0.15s ease',
                 }}
@@ -935,11 +1093,11 @@ export const CalendarRemindersTab: React.FC = () => {
               display: 'grid',
               gridTemplateColumns: 'repeat(7, 1fr)',
               textAlign: 'center',
-              marginBottom: 16,
+              marginBottom: 6,
             }}
           >
             {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((d) => (
-              <Text key={d} size="11px" fw={700} c="#94A3B8" style={{ letterSpacing: '0.05em' }}>
+              <Text key={d} size={isSmallMobile ? '9px' : '10.5px'} fw={700} c="#94A3B8" style={{ letterSpacing: '0.04em' }}>
                 {d}
               </Text>
             ))}
@@ -950,7 +1108,7 @@ export const CalendarRemindersTab: React.FC = () => {
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(7, 1fr)',
-              gap: 10,
+              gap: isMobile ? 3 : 6,
             }}
           >
             {/* Empty leading cells */}
@@ -958,10 +1116,12 @@ export const CalendarRemindersTab: React.FC = () => {
               <Box
                 key={`empty-${i}`}
                 style={{
-                  height: 74,
-                  borderRadius: 14,
+                  height: isSmallMobile ? 40 : isMobile ? 44 : 56,
+                  borderRadius: isSmallMobile ? 6 : 10,
                   backgroundColor: isDark ? 'rgba(255, 255, 255, 0.015)' : '#FAFAFA',
                   border: isDark ? '1px solid rgba(255, 255, 255, 0.03)' : '1px solid #F8FAFC',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
                 }}
               />
             ))}
@@ -980,9 +1140,11 @@ export const CalendarRemindersTab: React.FC = () => {
                   key={dateKey}
                   onClick={() => setSelectedDateStr(dateKey)}
                   style={{
-                    height: 74,
-                    borderRadius: 14,
-                    padding: '8px 10px',
+                    height: isSmallMobile ? 40 : isMobile ? 44 : 56,
+                    borderRadius: isSmallMobile ? 6 : 10,
+                    padding: isSmallMobile ? '2px 2px' : isMobile ? '3px 4px' : '6px 8px',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
                     cursor: 'pointer',
                     position: 'relative',
                     backgroundColor: isSelected
@@ -1021,15 +1183,15 @@ export const CalendarRemindersTab: React.FC = () => {
                     {isSelected ? (
                       <Box
                         style={{
-                          width: 22,
-                          height: 22,
+                          width: isSmallMobile ? 18 : 20,
+                          height: isSmallMobile ? 18 : 20,
                           borderRadius: '50%',
                           backgroundColor: '#4F46E5',
                           color: '#FFFFFF',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: 11,
+                          fontSize: isSmallMobile ? 9.5 : 11,
                           fontWeight: 700,
                         }}
                       >
@@ -1037,7 +1199,7 @@ export const CalendarRemindersTab: React.FC = () => {
                       </Box>
                     ) : (
                       <Text
-                        size="12px"
+                        size={isSmallMobile ? '9.5px' : '11.5px'}
                         fw={600}
                         style={{
                           color: isToday ? '#4F46E5' : isDark ? '#E2E8F0' : '#334155',
@@ -1050,13 +1212,13 @@ export const CalendarRemindersTab: React.FC = () => {
 
                   {/* Day Reminders Indicator (Max 3 dots + sleek overflow count badge) */}
                   {hasReminders && (
-                    <Box style={{ display: 'flex', gap: 3, alignItems: 'center', flexWrap: 'nowrap' }}>
-                      {dayReminders.slice(0, 3).map((r, rIdx) => (
+                    <Box style={{ display: 'flex', gap: isSmallMobile ? 2 : 3, alignItems: 'center', flexWrap: 'nowrap', overflow: 'hidden' }}>
+                      {dayReminders.slice(0, isSmallMobile ? 2 : 3).map((r, rIdx) => (
                         <Box
                           key={rIdx}
                           style={{
-                            width: 5.5,
-                            height: 5.5,
+                            width: isSmallMobile ? 3.5 : 4.5,
+                            height: isSmallMobile ? 3.5 : 4.5,
                             borderRadius: '50%',
                             backgroundColor:
                               r.priority === 'High' ? '#EF4444' : r.priority === 'Medium' ? '#F59E0B' : '#6366F1',
@@ -1064,21 +1226,21 @@ export const CalendarRemindersTab: React.FC = () => {
                           }}
                         />
                       ))}
-                      {dayReminders.length > 3 && (
+                      {dayReminders.length > (isSmallMobile ? 2 : 3) && (
                         <Text
-                          size="9px"
+                          size="8px"
                           fw={750}
                           style={{
                             color: isSelected ? '#4F46E5' : isDark ? '#94A3B8' : '#64748B',
                             backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9',
-                            padding: '1px 4px',
-                            borderRadius: 6,
-                            lineHeight: 1.1,
+                            padding: '0px 2px',
+                            borderRadius: 3,
+                            lineHeight: 1,
                             letterSpacing: '-0.02em',
                             flexShrink: 0,
                           }}
                         >
-                          +{dayReminders.length - 3}
+                          +{dayReminders.length - (isSmallMobile ? 2 : 3)}
                         </Text>
                       )}
                     </Box>
@@ -1091,22 +1253,22 @@ export const CalendarRemindersTab: React.FC = () => {
 
         {/* RIGHT COLUMN: AGENDA PANEL */}
         <Paper
-          p="xl"
+          p={isSmallMobile ? 12 : isMobile ? 'sm' : 'md'}
           style={{
             ...cardStyle,
             display: 'flex',
             flexDirection: 'column',
-            height: '100%',
-            maxHeight: 640,
-            minHeight: 520,
-            overflow: 'hidden',
+            height: isMobile ? 'auto' : '100%',
+            maxHeight: isMobile ? undefined : 580,
+            minHeight: isMobile ? undefined : 460,
+            overflow: isMobile ? 'visible' : 'hidden',
           }}
         >
           {/* Header: Agenda for Date / Subtitle / Modern Add Reminder Button */}
           <Group
             justify="space-between"
             align="center"
-            pb="md"
+            pb="sm"
             style={{
               borderBottom: isDark ? '1px solid rgba(255,255,255,0.06)' : '1px solid #F1F5F9',
               flexShrink: 0,
@@ -1116,7 +1278,7 @@ export const CalendarRemindersTab: React.FC = () => {
               <Group gap={8} align="center" wrap="nowrap">
                 <Text
                   fw={750}
-                  size="16px"
+                  size="15px"
                   style={{
                     color: isDark ? '#F8FAFC' : '#0F172A',
                     letterSpacing: '-0.02em',
@@ -1151,7 +1313,7 @@ export const CalendarRemindersTab: React.FC = () => {
                   </Badge>
                 )}
               </Group>
-              <Text size="12px" c="#94A3B8" mt={2} fw={500}>
+              <Text size="11.5px" c="#94A3B8" mt={2} fw={500}>
                 {selectedDateReminders.length === 0
                   ? 'No scheduled events'
                   : `${selectedDateReminders.length} reminder${selectedDateReminders.length > 1 ? 's' : ''} scheduled`}
@@ -1182,15 +1344,15 @@ export const CalendarRemindersTab: React.FC = () => {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '48px 16px',
+                padding: isMobile ? '24px 12px' : '48px 16px',
                 textAlign: 'center',
               }}
             >
               <Box
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 16,
+                  width: isMobile ? 46 : 56,
+                  height: isMobile ? 46 : 56,
+                  borderRadius: 14,
                   background: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F1F5F9',
                   display: 'flex',
                   alignItems: 'center',
@@ -1198,14 +1360,14 @@ export const CalendarRemindersTab: React.FC = () => {
                   color: isDark ? '#94A3B8' : '#64748B',
                 }}
               >
-                <IconCalendarEvent size={28} stroke={1.5} />
+                <IconCalendarEvent size={isMobile ? 22 : 28} stroke={1.5} />
               </Box>
-              <Text fw={700} size="14px" c={isDark ? '#E2E8F0' : '#334155'} mt="md">
+              <Text fw={700} size="14px" c={isDark ? '#E2E8F0' : '#334155'} mt={isMobile ? 'sm' : 'md'}>
                 {isSuperAdmin && selectedEmployee
                   ? `No reminders for ${selectedEmployee.name}`
                   : 'No reminders for this date'}
               </Text>
-              <Text size="12px" c="#94A3B8" mt={4} style={{ maxWidth: 260 }}>
+              <Text size="12px" c="#94A3B8" mt={3} style={{ maxWidth: 260 }}>
                 {isSuperAdmin
                   ? 'Keep your team in sync by scheduling a follow-up or task for this day.'
                   : 'Schedule your personal task, follow-up or reminder for this day.'}
@@ -1222,8 +1384,13 @@ export const CalendarRemindersTab: React.FC = () => {
                 Schedule Reminder
               </Button>
             </Box>
+          ) : isMobile ? (
+            /* On Mobile: Render naturally without nested ScrollArea so page scrolls smoothly */
+            <Stack gap="xs" mt="sm">
+              {selectedDateReminders.map((rem) => renderReminderItem(rem))}
+            </Stack>
           ) : (
-            /* Active reminders list - Scrollable container */
+            /* On Desktop: Scrollable container */
             <ScrollArea
               style={{ flex: 1, minHeight: 0 }}
               type="auto"
@@ -1232,141 +1399,7 @@ export const CalendarRemindersTab: React.FC = () => {
               mt="md"
             >
               <Stack gap="xs" pr={4} pb="xs">
-                {selectedDateReminders.map((rem) => {
-                  const isHigh = rem.priority === 'High';
-                  const isMedium = rem.priority === 'Medium';
-                  const priorityColor = isHigh ? 'red' : isMedium ? 'orange' : 'indigo';
-
-                  return (
-                    <Paper
-                      key={rem.id}
-                      style={{
-                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                        border: isDark
-                          ? '1px solid rgba(255, 255, 255, 0.08)'
-                          : '1px solid #EAECF0',
-                        borderRadius: 10,
-                        padding: '9px 12px',
-                        boxShadow: isDark
-                          ? '0 1px 3px rgba(0, 0, 0, 0.2)'
-                          : '0 1px 2px rgba(16, 24, 40, 0.03)',
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = isDark ? 'rgba(99, 102, 241, 0.4)' : '#C7D2FE';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#EAECF0';
-                      }}
-                    >
-                      {/* Line 1: Title + Time + Priority + Actions */}
-                      <Group justify="space-between" align="center" wrap="nowrap" gap="xs">
-                        {/* Title */}
-                        <Text
-                          fw={650}
-                          size="13px"
-                          truncate
-                          style={{
-                            color: isDark ? '#F8FAFC' : '#0F172A',
-                            minWidth: 0,
-                            flex: 1,
-                          }}
-                        >
-                          {rem.title}
-                        </Text>
-
-                        {/* Right: Time + Priority + Action Buttons */}
-                        <Group gap={6} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
-                          {rem.time && (
-                            <Text size="11px" fw={600} c="dimmed">
-                              {rem.time}
-                            </Text>
-                          )}
-                          <Badge
-                            size="xs"
-                            variant="light"
-                            color={priorityColor}
-                            radius="sm"
-                            styles={{ label: { textTransform: 'capitalize', fontWeight: 700, fontSize: 10 } }}
-                          >
-                            {rem.priority}
-                          </Badge>
-                          <Tooltip label="Edit" withArrow position="top">
-                            <ActionIcon
-                              variant="subtle"
-                              size="xs"
-                              color="gray"
-                              radius="sm"
-                              onClick={() => handleOpenEdit(rem)}
-                            >
-                              <IconPencil size={13} />
-                            </ActionIcon>
-                          </Tooltip>
-                          <Tooltip label="Delete" withArrow position="top">
-                            <ActionIcon
-                              variant="subtle"
-                              size="xs"
-                              color="red"
-                              radius="sm"
-                              onClick={() => handleDeleteReminder(rem.id, rem.title)}
-                            >
-                              <IconTrash size={13} />
-                            </ActionIcon>
-                          </Tooltip>
-                        </Group>
-                      </Group>
-
-                      {/* Line 2: Compact Meta (Category • Assigned / Created • Note preview) */}
-                      {(rem.category || rem.assignedToName || rem.notes) && (
-                        <Group
-                          gap={6}
-                          align="center"
-                          wrap="nowrap"
-                          mt={4}
-                          style={{ minWidth: 0, overflow: 'hidden' }}
-                        >
-                          {rem.category && (
-                            <Text size="11px" c="dimmed" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              {rem.category}
-                            </Text>
-                          )}
-
-                          {rem.assignedToName && rem.assignedToName !== 'Super Administrator' && (
-                            <>
-                              <Text size="10px" c="dimmed" style={{ flexShrink: 0 }}>•</Text>
-                              <Text size="11px" c="indigo" fw={500} style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                To: {rem.assignedToName}
-                              </Text>
-                            </>
-                          )}
-
-                          {rem.createdByName && rem.assignedToName !== rem.createdByName && (
-                            <>
-                              <Text size="10px" c="dimmed" style={{ flexShrink: 0 }}>•</Text>
-                              <Text size="11px" c="dimmed" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}>
-                                By: {rem.createdByName}
-                              </Text>
-                            </>
-                          )}
-
-                          {rem.notes && (
-                            <>
-                              <Text size="10px" c="dimmed" style={{ flexShrink: 0 }}>•</Text>
-                              <Text
-                                size="11px"
-                                c="dimmed"
-                                truncate
-                                style={{ fontStyle: 'italic', minWidth: 0 }}
-                              >
-                                "{rem.notes}"
-                              </Text>
-                            </>
-                          )}
-                        </Group>
-                      )}
-                    </Paper>
-                  );
-                })}
+                {selectedDateReminders.map((rem) => renderReminderItem(rem))}
               </Stack>
             </ScrollArea>
           )}
@@ -1379,6 +1412,10 @@ export const CalendarRemindersTab: React.FC = () => {
         onClose={() => setModalOpened(false)}
         centered
         zIndex={1000}
+        size={isMobile ? '100%' : 'md'}
+        radius={isMobile ? 'md' : 'lg'}
+        padding={isMobile ? 'sm' : 'md'}
+        fullScreen={isSmallMobile}
         title={
           <Group gap="xs">
             <ThemeIcon size={34} radius="md" color="indigo" variant="light">
@@ -1394,8 +1431,6 @@ export const CalendarRemindersTab: React.FC = () => {
             </div>
           </Group>
         }
-        radius="lg"
-        size="md"
       >
         <form onSubmit={handleSaveReminder}>
           <Stack gap="md" mt="xs">
@@ -1415,7 +1450,7 @@ export const CalendarRemindersTab: React.FC = () => {
               }}
             />
 
-            <Group grow align="flex-start">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <TextInput
                 label="Scheduled Date"
                 type="date"
@@ -1437,9 +1472,9 @@ export const CalendarRemindersTab: React.FC = () => {
                 value={formData.time || null}
                 onChange={(val) => setFormData((prev) => ({ ...prev, time: val || '' }))}
               />
-            </Group>
+            </SimpleGrid>
 
-            <Group grow align="flex-start">
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <Select
                 label="Priority"
                 placeholder="Select priority"
@@ -1468,7 +1503,7 @@ export const CalendarRemindersTab: React.FC = () => {
                   }
                 }}
               />
-            </Group>
+            </SimpleGrid>
 
             {/* Manual text type input for Custom Category when 'Other' is selected */}
             {formData.category === 'Other' && (
@@ -1505,15 +1540,24 @@ export const CalendarRemindersTab: React.FC = () => {
               label="Share With / Team Member"
               placeholder="Select Super Admin or Team Member"
               comboboxProps={{ withinPortal: true, zIndex: 1100 }}
-              data={[
-                { value: 'Super Administrator', label: 'Super Administrator (Super Admin)' },
-                ...employees
-                  .filter((e) => e.name !== 'Super Administrator')
-                  .map((e) => ({
-                    value: e.name,
-                    label: `${e.name} (${e.designation || e.role || 'Employee'})`,
-                  })),
-              ]}
+              data={(() => {
+                const seen = new Set<string>();
+                const opts: { value: string; label: string }[] = [
+                  { value: 'Super Administrator', label: 'Super Administrator (Super Admin)' },
+                ];
+                seen.add('Super Administrator');
+                employees.forEach((e) => {
+                  const val = (e.name || '').trim();
+                  if (val && !seen.has(val.toLowerCase())) {
+                    seen.add(val.toLowerCase());
+                    opts.push({
+                      value: val,
+                      label: `${e.name} (${e.designation || e.role || 'Employee'})`,
+                    });
+                  }
+                });
+                return opts;
+              })()}
               value={formData.assignedToName || 'Super Administrator'}
               onChange={(val) => setFormData((prev) => ({ ...prev, assignedToName: val || 'Super Administrator' }))}
             />

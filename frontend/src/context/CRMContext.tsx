@@ -92,6 +92,11 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (path === 'projects/reports' || path === 'projects-reports') return 'projects-reports';
     if (path === 'projects' || path === 'projects-management' || path === 'projects-all' || path === 'project') return 'projects';
 
+    if (path === 'invoices/create' || path === 'invoices/add' || path === 'create-invoice') return 'create-invoice';
+    if (path === 'invoices/details' || path === 'invoice-details') return 'invoice-details';
+    if (path === 'invoices/edit' || path === 'edit-invoice') return 'edit-invoice';
+    if (path === 'invoices' || path === 'invoice') return 'invoices';
+
     if (path === 'access-control' || path === 'access-control-matrix' || path === 'rbac') return 'access-control';
     if (path === 'settings' || path === 'setting' || path === 'master-catalog' || path === 'catalog') return 'settings';
 
@@ -135,6 +140,10 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       else if (normalizedNav === 'projects-tasks') targetPath = '/projects/tasks';
       else if (normalizedNav === 'projects-team') targetPath = '/projects/team';
       else if (normalizedNav === 'projects-reports') targetPath = '/projects/reports';
+      else if (normalizedNav === 'invoices') targetPath = '/invoices';
+      else if (normalizedNav === 'create-invoice') targetPath = '/invoices/create';
+      else if (normalizedNav === 'invoice-details') targetPath = '/invoices/details';
+      else if (normalizedNav === 'edit-invoice') targetPath = '/invoices/edit';
       else if (normalizedNav === 'access-control' || normalizedNav === 'rbac') targetPath = '/access-control';
       else if (normalizedNav === 'settings') {
         const savedTab = localStorage.getItem('crm_settings_tab');

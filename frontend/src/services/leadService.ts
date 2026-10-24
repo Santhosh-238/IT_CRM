@@ -57,6 +57,8 @@ export const leadService = {
     if (params.source && params.source !== 'All') query.append('source', params.source);
     if (params.status && params.status !== 'All') query.append('status', params.status);
     if (params.stage && params.stage !== 'All') query.append('stage', params.stage);
+    if (params.assignedTo && params.assignedTo !== 'All') query.append('assignedTo', params.assignedTo);
+    if (params.createdBy && params.createdBy !== 'All') query.append('createdBy', params.createdBy);
     if (params.sortBy) query.append('sortBy', params.sortBy);
     if (params.sortOrder) query.append('sortOrder', params.sortOrder);
     if (pagination.page) query.append('page', String(pagination.page));

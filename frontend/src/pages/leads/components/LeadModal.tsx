@@ -20,6 +20,7 @@ import {
 import { Lead, LeadFormData } from '../../../types/lead';
 import { useLead } from '../../../context/LeadContext';
 import { useCRM } from '../../../context/CRMContext';
+import { useEmployee } from '../../../context/EmployeeContext';
 
 interface LeadModalProps {
   opened: boolean;
@@ -37,8 +38,9 @@ export const LeadModal: React.FC<LeadModalProps> = ({
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
 
-  const { setActiveNav } = useCRM();
+  const { setActiveNav, currentUser } = useCRM();
   const { metadata, createLead, updateLead, setSelectedLead, loading } = useLead();
+  const { employees } = useEmployee();
   const isEditing = Boolean(lead);
 
   const initialFormState: LeadFormData = {
@@ -57,6 +59,10 @@ export const LeadModal: React.FC<LeadModalProps> = ({
     serviceList: [],
     status: 'New',
     stage: 'Initialization',
+    assignedTo: null,
+    assignedToName: null,
+    createdBy: currentUser?.id || currentUser?.email || 'admin',
+    createdByName: currentUser?.name || 'Super Admin',
   };
 
   const [formData, setFormData] = useState<LeadFormData>(initialFormState);
@@ -82,16 +88,24 @@ export const LeadModal: React.FC<LeadModalProps> = ({
         serviceList: lead.serviceList || [],
         status: lead.status || 'New',
         stage: lead.stage || 'Initialization',
+        assignedTo: lead.assignedTo || null,
+        assignedToName: lead.assignedToName || null,
+        createdBy: lead.createdBy || null,
+        createdByName: lead.createdByName || null,
       });
       setProductInputValue(Array.isArray(lead.productList) ? lead.productList.join(', ') : (lead.productList || ''));
       setServiceInputValue(Array.isArray(lead.serviceList) ? lead.serviceList.join(', ') : (lead.serviceList || ''));
     } else {
-      setFormData(initialFormState);
+      setFormData({
+        ...initialFormState,
+        createdBy: currentUser?.id || currentUser?.email || 'admin',
+        createdByName: currentUser?.name || 'Super Admin',
+      });
       setProductInputValue('');
       setServiceInputValue('');
     }
     setErrors({});
-  }, [lead, opened]);
+  }, [lead, opened, currentUser]);
 
   const handleFieldChange = (field: keyof LeadFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -351,6 +365,47 @@ export const LeadModal: React.FC<LeadModalProps> = ({
               data={metadata?.stages || ['Initialization', 'Qualification', 'Discovery', 'Demo / Presentation', 'Won', 'Lost']}
               value={formData.stage || 'Initialization'}
               onChange={(val) => handleFieldChange('stage', val || 'Initialization')}
+            />
+          </SimpleGrid>
+
+          {/* Row 8: Lead Created By & Assigned To */}
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+            <Select
+              label="Lead Created By"
+              placeholder="Select employee who created lead"
+              data={[
+                { value: currentUser?.name || 'Super Admin', label: `${currentUser?.name || 'Super Admin'} (Current User)` },
+                ...employees
+                  .filter((e) => e.name !== currentUser?.name)
+                  .map((emp) => ({
+                    value: emp.name,
+                    label: `${emp.name} ${emp.designation ? `(${emp.designation})` : ''}`,
+                  })),
+              ]}
+              value={formData.createdByName || currentUser?.name || 'Super Admin'}
+              onChange={(val) => {
+                const found = employees.find((e) => e.name === val);
+                handleFieldChange('createdByName', val || currentUser?.name || 'Super Admin');
+                handleFieldChange('createdBy', found ? found.id : (currentUser?.id || 'admin'));
+              }}
+              searchable
+            />
+
+            <Select
+              label="Assign to Person / Team Member"
+              placeholder="Select team member to assign"
+              data={employees.map((emp) => ({
+                value: emp.id,
+                label: `${emp.name} ${emp.designation ? `(${emp.designation})` : ''}`,
+              }))}
+              value={formData.assignedTo || null}
+              onChange={(val) => {
+                const found = employees.find((e) => e.id === val);
+                handleFieldChange('assignedTo', val || null);
+                handleFieldChange('assignedToName', found ? found.name : null);
+              }}
+              clearable
+              searchable
             />
           </SimpleGrid>
         </Stack>

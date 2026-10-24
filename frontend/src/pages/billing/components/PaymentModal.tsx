@@ -70,8 +70,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   useEffect(() => {
     if (opened) {
       billingService.getInvoices().then((data) => {
-        const unpaid = (data || []).filter(
-          (inv) => inv.status !== 'Cancelled' && inv.status !== 'Paid' && inv.outstandingBalance > 0
+        const invList: Invoice[] = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any)?.data)
+          ? (data as any).data
+          : [];
+        const unpaid = invList.filter(
+          (inv: Invoice) => inv.status !== 'Cancelled' && inv.status !== 'Paid' && inv.outstandingBalance > 0
         );
         setOpenInvoices(unpaid);
       }).catch(() => {});

@@ -15,7 +15,7 @@ import {
 /**
  * 1. List leads with search, filters, pagination, and sorting
  */
-export async function getLeadsService(queryParams = {}) {
+export async function getLeadsService(queryParams = {}, currentUser = null) {
   const {
     sortBy = 'createdAt',
     sortOrder = 'desc',
@@ -28,6 +28,38 @@ export async function getLeadsService(queryParams = {}) {
   const skip = (pageNum - 1) * limitNum;
 
   const where = buildLeadFilterQuery(queryParams);
+
+  // Role-Based Data Access: Super Admin sees all leads.
+  // Non-admin employees strictly see ONLY leads assigned to them!
+  const roleUpper = (currentUser?.role || '').toUpperCase();
+  const isSuperAdmin = !currentUser || roleUpper === 'SUPER_ADMIN' || roleUpper.includes('ADMIN');
+
+  if (!isSuperAdmin) {
+    const emp = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          currentUser?.email ? { email: { equals: currentUser.email, mode: 'insensitive' } } : null,
+          currentUser?.name ? { name: { equals: currentUser.name, mode: 'insensitive' } } : null,
+          currentUser?.id ? { id: currentUser.id } : null,
+        ].filter(Boolean),
+      },
+    });
+
+    const assignedMatch = [];
+    if (emp?.id) assignedMatch.push({ assignedTo: emp.id });
+    if (emp?.empCode) assignedMatch.push({ assignedTo: emp.empCode });
+    if (emp?.name) assignedMatch.push({ assignedToName: { equals: emp.name, mode: 'insensitive' } });
+    if (currentUser?.id) assignedMatch.push({ assignedTo: currentUser.id });
+    if (currentUser?.name) assignedMatch.push({ assignedToName: { equals: currentUser.name, mode: 'insensitive' } });
+
+    if (assignedMatch.length > 0) {
+      if (!where.AND) where.AND = [];
+      where.AND.push({ OR: assignedMatch });
+    } else {
+      if (!where.AND) where.AND = [];
+      where.AND.push({ id: '__none__' });
+    }
+  }
 
   const validSortFields = ['createdAt', 'updatedAt', 'name', 'companyName', 'status', 'stage'];
   const finalSortBy = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
@@ -76,13 +108,42 @@ export async function getLeadByIdService(id) {
 /**
  * 3. Get Lead KPI Stats
  */
-export async function getLeadStatsService() {
+export async function getLeadStatsService(currentUser = null) {
+  let baseWhere = {};
+  const roleUpper = (currentUser?.role || '').toUpperCase();
+  const isSuperAdmin = !currentUser || roleUpper === 'SUPER_ADMIN' || roleUpper.includes('ADMIN');
+
+  if (!isSuperAdmin) {
+    const emp = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          currentUser?.email ? { email: { equals: currentUser.email, mode: 'insensitive' } } : null,
+          currentUser?.name ? { name: { equals: currentUser.name, mode: 'insensitive' } } : null,
+          currentUser?.id ? { id: currentUser.id } : null,
+        ].filter(Boolean),
+      },
+    });
+
+    const assignedMatch = [];
+    if (emp?.id) assignedMatch.push({ assignedTo: emp.id });
+    if (emp?.empCode) assignedMatch.push({ assignedTo: emp.empCode });
+    if (emp?.name) assignedMatch.push({ assignedToName: { equals: emp.name, mode: 'insensitive' } });
+    if (currentUser?.id) assignedMatch.push({ assignedTo: currentUser.id });
+    if (currentUser?.name) assignedMatch.push({ assignedToName: { equals: currentUser.name, mode: 'insensitive' } });
+
+    if (assignedMatch.length > 0) {
+      baseWhere = { OR: assignedMatch };
+    } else {
+      baseWhere = { id: '__none__' };
+    }
+  }
+
   const [total, newCount, inProgress, won, lost] = await Promise.all([
-    prisma.lead.count(),
-    prisma.lead.count({ where: { status: 'New' } }),
-    prisma.lead.count({ where: { status: { in: ['In Progress', 'Contacted', 'Qualified'] } } }),
-    prisma.lead.count({ where: { status: { in: ['Won', 'Closed Won', 'Completed', 'Complete'] } } }),
-    prisma.lead.count({ where: { status: { in: ['Lost', 'Disqualified'] } } }),
+    prisma.lead.count({ where: baseWhere }),
+    prisma.lead.count({ where: { ...baseWhere, status: 'New' } }),
+    prisma.lead.count({ where: { ...baseWhere, status: { in: ['In Progress', 'Contacted', 'Qualified', 'Active'] } } }),
+    prisma.lead.count({ where: { ...baseWhere, status: { in: ['Won', 'Closed Won', 'Completed', 'Complete'] } } }),
+    prisma.lead.count({ where: { ...baseWhere, status: { in: ['Lost', 'Disqualified'] } } }),
   ]);
 
   return {
@@ -109,7 +170,7 @@ export async function getLeadMetadataService() {
 /**
  * 5. Create Lead
  */
-export async function createLeadService(body) {
+export async function createLeadService(body, currentUser = null) {
   const {
     name,
     email,
@@ -126,6 +187,10 @@ export async function createLeadService(body) {
     serviceList = [],
     status = 'New',
     stage = 'Initialization',
+    assignedTo = null,
+    assignedToName = null,
+    createdBy = null,
+    createdByName = null,
   } = body;
 
   if (!name || !name.trim()) {
@@ -133,6 +198,26 @@ export async function createLeadService(body) {
     error.status = 400;
     throw error;
   }
+
+  // Resolve assigned employee details if assignedTo provided
+  let finalAssignedTo = assignedTo ? String(assignedTo).trim() : null;
+  let finalAssignedToName = assignedToName ? String(assignedToName).trim() : null;
+
+  if (finalAssignedTo && (!finalAssignedToName || finalAssignedToName === 'null' || finalAssignedToName === '')) {
+    const emp = await prisma.employee.findFirst({
+      where: {
+        OR: [{ id: finalAssignedTo }, { empCode: finalAssignedTo }],
+      },
+    });
+    if (emp) {
+      finalAssignedTo = emp.id;
+      finalAssignedToName = emp.name;
+    }
+  }
+
+  // Resolve creator details
+  const finalCreatedBy = createdBy || currentUser?.id || currentUser?.email || 'admin';
+  const finalCreatedByName = createdByName || currentUser?.name || 'Super Admin';
 
   const count = await prisma.lead.count();
   const leadId = generateLeadId(count);
@@ -155,6 +240,10 @@ export async function createLeadService(body) {
       serviceList: Array.isArray(serviceList) ? serviceList : [],
       status: status || 'New',
       stage: stage || 'Initialization',
+      assignedTo: finalAssignedTo,
+      assignedToName: finalAssignedToName,
+      createdBy: finalCreatedBy,
+      createdByName: finalCreatedByName,
     },
   });
 
@@ -169,7 +258,7 @@ export async function createLeadService(body) {
 /**
  * 6. Update Lead
  */
-export async function updateLeadService(id, body) {
+export async function updateLeadService(id, body, currentUser = null) {
   const existing = await prisma.lead.findFirst({
     where: { OR: [{ id }, { leadId: id }] },
   });
@@ -196,6 +285,10 @@ export async function updateLeadService(id, body) {
     serviceList,
     status,
     stage,
+    assignedTo,
+    assignedToName,
+    createdBy,
+    createdByName,
   } = body;
 
   const updateData = {};
@@ -214,6 +307,27 @@ export async function updateLeadService(id, body) {
   if (serviceList !== undefined) updateData.serviceList = Array.isArray(serviceList) ? serviceList : [];
   if (status !== undefined) updateData.status = status;
   if (stage !== undefined) updateData.stage = stage;
+  if (createdBy !== undefined) updateData.createdBy = createdBy;
+  if (createdByName !== undefined) updateData.createdByName = createdByName;
+
+  if (assignedTo !== undefined) {
+    if (assignedTo && assignedTo !== 'null' && assignedTo !== 'Unassigned') {
+      updateData.assignedTo = String(assignedTo).trim();
+      let resName = assignedToName ? String(assignedToName).trim() : null;
+      if (!resName) {
+        const emp = await prisma.employee.findFirst({
+          where: { OR: [{ id: updateData.assignedTo }, { empCode: updateData.assignedTo }] },
+        });
+        if (emp) resName = emp.name;
+      }
+      updateData.assignedToName = resName;
+    } else {
+      updateData.assignedTo = null;
+      updateData.assignedToName = null;
+    }
+  } else if (assignedToName !== undefined) {
+    updateData.assignedToName = assignedToName ? String(assignedToName).trim() : null;
+  }
 
   const updated = await prisma.lead.update({
     where: { id: existing.id },
@@ -231,7 +345,16 @@ export async function updateLeadService(id, body) {
 /**
  * 7. Delete Lead
  */
-export async function deleteLeadService(id) {
+export async function deleteLeadService(id, currentUser = null) {
+  const roleUpper = (currentUser?.role || '').toUpperCase();
+  const isSuperAdmin = !currentUser || roleUpper === 'SUPER_ADMIN' || roleUpper.includes('ADMIN');
+
+  if (currentUser && !isSuperAdmin) {
+    const error = new Error('Access denied. Only Super Admin can delete leads.');
+    error.status = 403;
+    throw error;
+  }
+
   const existing = await prisma.lead.findFirst({
     where: { OR: [{ id }, { leadId: id }] },
   });

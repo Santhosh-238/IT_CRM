@@ -5,6 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/client_v2"
 }
 
 model User {
@@ -202,6 +203,10 @@ model Lead {
   serviceList    String[]  @default([])
   status         String?   @default("New")
   stage          String?   @default("Initialization")
+  assignedTo     String?
+  assignedToName String?
+  createdBy      String?
+  createdByName  String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }

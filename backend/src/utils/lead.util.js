@@ -41,7 +41,7 @@ export function buildLeadFilterQuery(queryParams = {}) {
     const s = status.trim();
     if (s.toLowerCase() === 'in progress' || s.toLowerCase() === 'in_progress') {
       andConditions.push({
-        status: { in: ['In Progress', 'Contacted', 'Qualified'] },
+        status: { in: ['In Progress', 'Contacted', 'Qualified', 'Active'] },
       });
     } else if (
       s.toLowerCase() === 'completed' ||
@@ -57,6 +57,30 @@ export function buildLeadFilterQuery(queryParams = {}) {
   }
   if (stage && stage !== 'All' && stage.trim() !== '') {
     andConditions.push({ stage: { equals: stage.trim(), mode: 'insensitive' } });
+  }
+  if (queryParams.assignedTo && queryParams.assignedTo !== 'All' && queryParams.assignedTo.trim() !== '') {
+    const a = queryParams.assignedTo.trim();
+    if (a.toLowerCase() === 'unassigned') {
+      andConditions.push({
+        OR: [{ assignedTo: null }, { assignedTo: '' }],
+      });
+    } else {
+      andConditions.push({
+        OR: [
+          { assignedTo: a },
+          { assignedToName: { equals: a, mode: 'insensitive' } },
+        ],
+      });
+    }
+  }
+  if (queryParams.createdBy && queryParams.createdBy !== 'All' && queryParams.createdBy.trim() !== '') {
+    const c = queryParams.createdBy.trim();
+    andConditions.push({
+      OR: [
+        { createdBy: c },
+        { createdByName: { equals: c, mode: 'insensitive' } },
+      ],
+    });
   }
 
   if (search && search.trim() !== '') {

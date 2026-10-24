@@ -1,4 +1,5 @@
-import * as billingService from '../services/billing.service.js';
+import * as invoiceService from '../services/invoice.service.js';
+const billingService = invoiceService;
 import { sendSuccess, sendError } from '../utils/response.js';
 
 // =============================================================================
@@ -253,6 +254,16 @@ export async function cancelInvoice(req, res) {
   } catch (error) {
     console.error('cancelInvoice error:', error);
     return sendError(res, error.message || 'Failed to cancel invoice.', error.status || 400);
+  }
+}
+
+export async function sendInvoice(req, res) {
+  try {
+    const invoice = await billingService.sendInvoiceService(req.params.id, req.user);
+    return sendSuccess(res, invoice, 'Invoice sent successfully to customer.');
+  } catch (error) {
+    console.error('sendInvoice error:', error);
+    return sendError(res, error.message || 'Failed to send invoice.', error.status || 400);
   }
 }
 

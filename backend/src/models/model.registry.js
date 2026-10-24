@@ -59,6 +59,10 @@ export const SYSTEM_MODULES = [
     name: 'Negotiations',
     category: 'Main Navigation',
     description: 'Commercial deal negotiations, expected values, discounts, and client discussions.',
+    id: 'invoices',
+    name: 'Invoices',
+    category: 'Main Navigation',
+    description: 'Invoice management, GST tax calculations, payment tracking, and settlements.',
   },
 
   // 2. Administration & Security

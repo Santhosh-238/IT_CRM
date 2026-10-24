@@ -234,7 +234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
               <Stack gap={6}>
                 {can('access_control', 'view') && (
                   <NavLink
-                    label="Access Control & RBAC"
+                    label="Access Control"
                     leftSection={<IconShieldLock size={18} stroke={2} />}
                     active={activeNav === 'access-control' || activeNav === 'rbac'}
                     onClick={() => onSelectNav('access-control')}
@@ -244,7 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 )}
                 {(can('settings', 'view') || isSuperAdmin) && (
                   <NavLink
-                    label="Settings & Master Catalog"
+                    label="Settings"
                     leftSection={<IconSettings size={18} stroke={2} />}
                     active={activeNav === 'settings'}
                     onClick={() => onSelectNav('settings')}

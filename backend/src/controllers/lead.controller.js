@@ -7,7 +7,7 @@ import { sendSuccess, sendError } from '../utils/response.js';
  */
 export async function getLeads(req, res) {
   try {
-    const result = await leadService.getLeadsService(req.query);
+    const result = await leadService.getLeadsService(req.query, req.user);
     return res.status(200).json({
       success: true,
       message: 'Leads retrieved successfully',
@@ -26,7 +26,7 @@ export async function getLeads(req, res) {
  */
 export async function getLeadStats(req, res) {
   try {
-    const result = await leadService.getLeadStatsService();
+    const result = await leadService.getLeadStatsService(req.user);
     return res.status(200).json({
       success: true,
       stats: result.stats,
@@ -76,7 +76,7 @@ export async function getLeadById(req, res) {
  */
 export async function createLead(req, res) {
   try {
-    const result = await leadService.createLeadService(req.body);
+    const result = await leadService.createLeadService(req.body, req.user);
     return res.status(201).json({
       success: true,
       message: result.message,
@@ -94,7 +94,7 @@ export async function createLead(req, res) {
  */
 export async function updateLead(req, res) {
   try {
-    const result = await leadService.updateLeadService(req.params.id, req.body);
+    const result = await leadService.updateLeadService(req.params.id, req.body, req.user);
     return res.status(200).json({
       success: true,
       message: result.message,
@@ -112,7 +112,7 @@ export async function updateLead(req, res) {
  */
 export async function deleteLead(req, res) {
   try {
-    const result = await leadService.deleteLeadService(req.params.id);
+    const result = await leadService.deleteLeadService(req.params.id, req.user);
     return res.status(200).json({
       success: true,
       message: result.message,

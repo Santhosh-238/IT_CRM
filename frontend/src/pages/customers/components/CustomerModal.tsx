@@ -236,18 +236,29 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
                 placeholder="Select or assign Account Manager"
                 clearable
                 searchable
-                data={[
-                  { value: 'Unassigned', label: 'Unassigned' },
-                  ...employees.map((emp) => ({
-                    value: emp.name,
-                    label: `${emp.name} (${emp.designation || emp.department || 'Staff'})`,
-                  })),
-                  ...(formData.accountManager &&
-                  formData.accountManager !== 'Unassigned' &&
-                  !employees.some((e) => e.name === formData.accountManager)
-                    ? [{ value: formData.accountManager, label: formData.accountManager }]
-                    : []),
-                ]}
+                data={(() => {
+                  const seen = new Set<string>();
+                  const opts: { value: string; label: string }[] = [{ value: 'Unassigned', label: 'Unassigned' }];
+                  seen.add('Unassigned');
+                  employees.forEach((emp) => {
+                    const val = (emp.name || '').trim();
+                    if (val && !seen.has(val.toLowerCase())) {
+                      seen.add(val.toLowerCase());
+                      opts.push({
+                        value: val,
+                        label: `${emp.name} (${emp.designation || emp.department || 'Staff'})`,
+                      });
+                    }
+                  });
+                  if (
+                    formData.accountManager &&
+                    formData.accountManager !== 'Unassigned' &&
+                    !seen.has(formData.accountManager.trim().toLowerCase())
+                  ) {
+                    opts.push({ value: formData.accountManager, label: formData.accountManager });
+                  }
+                  return opts;
+                })()}
                 value={formData.accountManager || 'Unassigned'}
                 onChange={(val) => setFormData({ ...formData, accountManager: val || 'Unassigned' })}
               />

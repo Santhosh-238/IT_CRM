@@ -12,6 +12,7 @@ import {
   Tooltip,
   useComputedColorScheme,
   Box,
+  Menu,
 } from '@mantine/core';
 import {
   IconEdit,
@@ -21,11 +22,27 @@ import {
   IconMail,
   IconBuilding,
   IconUser,
-  IconCalendarEvent,
+  IconUserCheck,
+  IconUserX,
+  IconUserPlus,
+  IconCheck,
+  IconChevronDown,
+  IconCalendar,
+  IconFileDescription,
+  IconCalculator,
+  IconScale,
+  IconFileCheck,
+  IconReceipt,
+  IconCreditCard,
+  IconRocket,
+  IconSparkles,
 } from '@tabler/icons-react';
+import { notifications } from '@mantine/notifications';
 import { Lead } from '../../../types/lead';
 import { useCRM } from '../../../context/CRMContext';
 import { useLead } from '../../../context/LeadContext';
+import { useEmployee } from '../../../context/EmployeeContext';
+import { usePermissions } from '../../../context/AccessControlContext';
 
 interface LeadTableViewProps {
   leads: Lead[];
@@ -45,14 +62,397 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
 
-  const { setActiveNav } = useCRM();
-  const { setSelectedLead } = useLead();
+  const { setActiveNav, currentUser } = useCRM();
+  const { isSuperAdmin } = usePermissions();
+  const { setSelectedLead, updateLead, fetchLeads, metadata } = useLead();
+  const { employees } = useEmployee();
+  const [assigningId, setAssigningId] = React.useState<string | null>(null);
 
-  const handleOpenLeadSchedule = (lead: Lead, forceTab?: 'schedule' | 'pipeline') => {
+  const canManageAssignee = Boolean(
+    isSuperAdmin ||
+    currentUser?.role === 'SUPER_ADMIN' ||
+    currentUser?.role?.toUpperCase() === 'SUPER_ADMIN' ||
+    currentUser?.role?.toUpperCase() === 'SUPER ADMIN'
+  );
+
+  const canDeleteLead =
+    isSuperAdmin ||
+    currentUser?.role === 'SUPER_ADMIN' ||
+    currentUser?.role?.toUpperCase() === 'SUPER_ADMIN';
+
+  // Submodule resolution helper: tracks lead progress across the 8 internal submodules
+  const resolveLeadSubmoduleStage = (leadItem: Lead): { status: string; stage: string } => {
+    const rawStatus = (leadItem.status || '').trim();
+    const rawStage = (leadItem.stage || '').trim();
+    const sLow = rawStatus.toLowerCase();
+    const stgLow = rawStage.toLowerCase();
+
+    // 1. Explicit Complete or Won
+    if (
+      sLow === 'complete' ||
+      sLow === 'completed' ||
+      sLow === 'won' ||
+      sLow === 'closed won' ||
+      stgLow === 'completed' ||
+      stgLow === 'won'
+    ) {
+      return { status: 'Complete', stage: 'Completed' };
+    }
+
+    // 2. Check each submodule stage in pipeline order
+    if (stgLow === 'progress') return { status: 'In Progress', stage: 'Progress' };
+    if (stgLow === 'payments' || stgLow === 'payment') return { status: 'In Progress', stage: 'Payments' };
+    if (stgLow === 'invoices' || stgLow === 'invoice') return { status: 'In Progress', stage: 'Invoices' };
+    if (stgLow === 'contracts' || stgLow === 'contract' || stgLow === 'decision making') return { status: 'In Progress', stage: 'Contracts' };
+    if (stgLow === 'negotiation' || stgLow === 'negotiations' || stgLow.includes('negotiat')) return { status: 'In Progress', stage: 'Negotiation' };
+    if (stgLow === 'quotations' || stgLow === 'quotation') return { status: 'In Progress', stage: 'Quotations' };
+    if (stgLow === 'proposals' || stgLow === 'proposal') return { status: 'In Progress', stage: 'Proposals' };
+    if (stgLow === 'meetings' || stgLow === 'meeting' || stgLow === 'discovery' || stgLow.includes('demo') || stgLow.includes('requirement')) {
+      return { status: 'In Progress', stage: 'Meetings' };
+    }
+
+    // 3. Inspect deal data in localStorage if stage was unspecific or generic 'In Progress'
+    if (typeof window !== 'undefined' && leadItem.id) {
+      try {
+        const saved = localStorage.getItem(`crm_lead_deal_${leadItem.id}`);
+        if (saved) {
+          const deal = JSON.parse(saved);
+          if (deal?.progress?.overallPercentage > 50) {
+            return { status: 'In Progress', stage: 'Progress' };
+          }
+          if (Array.isArray(deal?.payments) && deal.payments.length > 0) {
+            return { status: 'In Progress', stage: 'Payments' };
+          }
+          if (Array.isArray(deal?.invoices) && deal.invoices.length > 0) {
+            return { status: 'In Progress', stage: 'Invoices' };
+          }
+          if (deal?.contract && (deal.contract.status === 'Signed' || deal.contract.status === 'Under Review')) {
+            return { status: 'In Progress', stage: 'Contracts' };
+          }
+          if (deal?.negotiation && (deal.negotiation.status === 'REVISED_QUOTATION' || deal.negotiation.status === 'AWAITING_CLIENT' || (deal.negotiation.history && deal.negotiation.history.length > 0))) {
+            return { status: 'In Progress', stage: 'Negotiation' };
+          }
+          if (Array.isArray(deal?.quotations) && deal.quotations.some((q: any) => q.status === 'Sent' || q.status === 'Accepted')) {
+            return { status: 'In Progress', stage: 'Quotations' };
+          }
+          if (Array.isArray(deal?.proposals) && deal.proposals.some((p: any) => p.status === 'Sent' || p.status === 'Accepted')) {
+            return { status: 'In Progress', stage: 'Proposals' };
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // 4. Brand new or newly qualified lead
+    if (
+      !rawStatus ||
+      sLow === 'new' ||
+      stgLow === 'initialization' ||
+      stgLow === 'qualification' ||
+      stgLow === 'new lead' ||
+      stgLow === 'new'
+    ) {
+      return { status: 'New', stage: 'New Lead' };
+    }
+
+    // 5. Default in-progress pipeline fallback is the first pipeline submodule: Meetings!
+    return {
+      status: 'In Progress',
+      stage: 'Meetings',
+    };
+  };
+
+  const SUBMODULE_STAGES = [
+    {
+      stage: 'New Lead',
+      status: 'New',
+      icon: IconSparkles,
+      color: '#0284C7',
+      lightBg: '#F0F9FF',
+      lightBorder: '#BAE6FD',
+      darkBg: 'rgba(2, 132, 199, 0.16)',
+      darkBorder: 'rgba(2, 132, 199, 0.35)',
+      darkColor: '#7DD3FC',
+    },
+    {
+      stage: 'Meetings',
+      status: 'In Progress',
+      icon: IconCalendar,
+      color: '#2563EB',
+      lightBg: '#EFF6FF',
+      lightBorder: '#BFDBFE',
+      darkBg: 'rgba(37, 99, 235, 0.16)',
+      darkBorder: 'rgba(37, 99, 235, 0.35)',
+      darkColor: '#93C5FD',
+    },
+    {
+      stage: 'Proposals',
+      status: 'In Progress',
+      icon: IconFileDescription,
+      color: '#7C3AED',
+      lightBg: '#FAF5FF',
+      lightBorder: '#DDD6FE',
+      darkBg: 'rgba(124, 58, 237, 0.16)',
+      darkBorder: 'rgba(124, 58, 237, 0.35)',
+      darkColor: '#C4B5FD',
+    },
+    {
+      stage: 'Quotations',
+      status: 'In Progress',
+      icon: IconCalculator,
+      color: '#DB2777',
+      lightBg: '#FDF2F8',
+      lightBorder: '#FBCFE8',
+      darkBg: 'rgba(219, 39, 119, 0.16)',
+      darkBorder: 'rgba(219, 39, 119, 0.35)',
+      darkColor: '#F472B6',
+    },
+    {
+      stage: 'Negotiation',
+      status: 'In Progress',
+      icon: IconScale,
+      color: '#D97706',
+      lightBg: '#FFFBEB',
+      lightBorder: '#FDE68A',
+      darkBg: 'rgba(217, 119, 6, 0.16)',
+      darkBorder: 'rgba(217, 119, 6, 0.35)',
+      darkColor: '#FCD34D',
+    },
+    {
+      stage: 'Contracts',
+      status: 'In Progress',
+      icon: IconFileCheck,
+      color: '#059669',
+      lightBg: '#ECFDF5',
+      lightBorder: '#A7F3D0',
+      darkBg: 'rgba(5, 150, 105, 0.16)',
+      darkBorder: 'rgba(5, 150, 105, 0.35)',
+      darkColor: '#6EE7B7',
+    },
+    {
+      stage: 'Invoices',
+      status: 'In Progress',
+      icon: IconReceipt,
+      color: '#4F46E5',
+      lightBg: '#EEF2FF',
+      lightBorder: '#C7D2FE',
+      darkBg: 'rgba(79, 70, 229, 0.16)',
+      darkBorder: 'rgba(79, 70, 229, 0.35)',
+      darkColor: '#A5B4FC',
+    },
+    {
+      stage: 'Payments',
+      status: 'In Progress',
+      icon: IconCreditCard,
+      color: '#0D9488',
+      lightBg: '#F0FDFA',
+      lightBorder: '#99F6E4',
+      darkBg: 'rgba(13, 148, 136, 0.16)',
+      darkBorder: 'rgba(13, 148, 136, 0.35)',
+      darkColor: '#5EEAD4',
+    },
+    {
+      stage: 'Progress',
+      status: 'In Progress',
+      icon: IconRocket,
+      color: '#EA580C',
+      lightBg: '#FFF7ED',
+      lightBorder: '#FED7AA',
+      darkBg: 'rgba(234, 88, 12, 0.16)',
+      darkBorder: 'rgba(234, 88, 12, 0.35)',
+      darkColor: '#FDBA74',
+    },
+    {
+      stage: 'Completed',
+      status: 'Complete',
+      icon: IconCheck,
+      color: '#16A34A',
+      lightBg: '#ECFDF5',
+      lightBorder: '#A7F3D0',
+      darkBg: 'rgba(22, 163, 74, 0.16)',
+      darkBorder: 'rgba(22, 163, 74, 0.35)',
+      darkColor: '#86EFAC',
+    },
+  ];
+
+  const getSubmoduleConfig = (stageOrHeading?: string | null) => {
+    const raw = (stageOrHeading || '').trim().toLowerCase();
+    if (!raw) return SUBMODULE_STAGES[1]; // Meetings
+
+    if (raw === 'proposals' || raw === 'proposal') {
+      return SUBMODULE_STAGES.find((s) => s.stage === 'Proposals') || SUBMODULE_STAGES[2];
+    }
+    if (raw === 'quotations' || raw === 'quotation') {
+      return SUBMODULE_STAGES.find((s) => s.stage === 'Quotations') || SUBMODULE_STAGES[3];
+    }
+    if (raw.includes('negotiat')) {
+      return SUBMODULE_STAGES.find((s) => s.stage === 'Negotiation') || SUBMODULE_STAGES[4];
+    }
+    if (raw.includes('contract') || raw === 'decision making') {
+      return SUBMODULE_STAGES.find((s) => s.stage === 'Contracts') || SUBMODULE_STAGES[5];
+    }
+    if (raw.includes('invoice')) {
+      return SUBMODULE_STAGES.find((s) => s.stage === 'Invoices') || SUBMODULE_STAGES[6];
+    }
+    if (raw.includes('payment')) {
+      return SUBMODULE_STAGES.find((s) => s.stage === 'Payments') || SUBMODULE_STAGES[7];
+    }
+    if (raw === 'progress') {
+      return SUBMODULE_STAGES.find((s) => s.stage === 'Progress') || SUBMODULE_STAGES[8];
+    }
+    if (raw.includes('complete') || raw === 'won' || raw === 'closed won') {
+      return SUBMODULE_STAGES.find((s) => s.stage === 'Completed') || SUBMODULE_STAGES[9];
+    }
+    if (raw.includes('new') || raw.includes('init') || raw.includes('qualif')) {
+      return SUBMODULE_STAGES.find((s) => s.stage === 'New Lead') || SUBMODULE_STAGES[0];
+    }
+    if (raw === 'meetings' || raw === 'meeting' || raw === 'discovery' || raw.includes('demo') || raw.includes('requirement')) {
+      return SUBMODULE_STAGES.find((s) => s.stage === 'Meetings') || SUBMODULE_STAGES[1];
+    }
+
+    return SUBMODULE_STAGES[1]; // Meetings
+  };
+
+  const STATUS_OPTIONS = ['New', 'In Progress', 'Complete'];
+
+  const getStatusDotColor = (statusVal?: string | null) => {
+    const s = (statusVal || '').toLowerCase();
+    if (s.includes('unqual') || s.includes('disqual') || s.includes('lost') || s.includes('cancel')) {
+      return '#EF4444';
+    }
+    if (s.includes('qualif') || s.includes('won') || s.includes('complete') || s.includes('active')) {
+      return '#10B981';
+    }
+    if (s.includes('progress') || s.includes('contact')) {
+      return '#0EA5E9';
+    }
+    if (s.includes('proposal') || s.includes('negotiat')) {
+      return '#A855F7';
+    }
+    return '#3B82F6';
+  };
+
+  const handleUpdateStatus = async (lead: Lead, newStatus: string) => {
+    try {
+      const res = await updateLead(lead.id, { status: newStatus });
+      if (res.success) {
+        notifications.show({
+          title: 'Status Updated',
+          message: `${lead.name}'s status changed to ${newStatus}`,
+          color: 'teal',
+          icon: <IconCheck size={16} />,
+        });
+        await fetchLeads();
+      }
+    } catch (err: any) {
+      notifications.show({
+        title: 'Update Failed',
+        message: err.message || 'Could not update status',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleUpdateStage = async (lead: Lead, newStage: string) => {
+    try {
+      const newStatus =
+        newStage === 'Completed'
+          ? 'Complete'
+          : newStage === 'New Lead'
+          ? 'New'
+          : 'In Progress';
+      const res = await updateLead(lead.id, { stage: newStage, status: newStatus });
+      if (res.success) {
+        notifications.show({
+          title: 'Sub-Module Stage Updated',
+          message: `${lead.name}'s pipeline stage set to ${newStage}`,
+          color: 'indigo',
+          icon: <IconCheck size={16} />,
+        });
+        await fetchLeads();
+      }
+    } catch (err: any) {
+      notifications.show({
+        title: 'Update Failed',
+        message: err.message || 'Could not update stage',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleAssignLead = async (lead: Lead, emp: { id: string; name: string }) => {
+    try {
+      setAssigningId(lead.id);
+      const res = await updateLead(lead.id, {
+        assignedTo: emp.id,
+        assignedToName: emp.name,
+      });
+      if (res.success) {
+        notifications.show({
+          title: 'Lead Assigned',
+          message: `${lead.name} has been assigned to ${emp.name}`,
+          color: 'teal',
+          icon: <IconUserCheck size={16} />,
+        });
+        await fetchLeads();
+      }
+    } catch (err: any) {
+      notifications.show({
+        title: 'Assignment Failed',
+        message: err.message || 'Could not assign lead',
+        color: 'red',
+      });
+    } finally {
+      setAssigningId(null);
+    }
+  };
+
+  const handleUnassignLead = async (lead: Lead) => {
+    try {
+      setAssigningId(lead.id);
+      const res = await updateLead(lead.id, {
+        assignedTo: null,
+        assignedToName: null,
+      });
+      if (res.success) {
+        notifications.show({
+          title: 'Assignment Removed',
+          message: `Assignment removed for ${lead.name}`,
+          color: 'blue',
+          icon: <IconUserCheck size={16} />,
+        });
+        await fetchLeads();
+      }
+    } catch (err: any) {
+      notifications.show({
+        title: 'Failed',
+        message: err.message || 'Could not remove assignment',
+        color: 'red',
+      });
+    } finally {
+      setAssigningId(null);
+    }
+  };
+
+  const handleOpenLeadSchedule = (lead: Lead, forceTab?: 'schedule' | 'pipeline' | 'progress') => {
     setSelectedLead(lead);
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('crm_selected_lead', JSON.stringify(lead));
-      sessionStorage.setItem('crm_lead_active_section', 'meetings');
+      const { stage: effStage } = resolveLeadSubmoduleStage(lead);
+      const stageMap: Record<string, string> = {
+        meetings: 'meetings',
+        proposals: 'proposals',
+        quotations: 'quotations',
+        negotiation: 'negotiation',
+        contracts: 'contracts',
+        invoices: 'invoices',
+        payments: 'payments',
+        progress: 'progress',
+      };
+      const targetSection = stageMap[effStage.toLowerCase()] || 'meetings';
+      sessionStorage.setItem('crm_lead_active_section', targetSection);
+
       const isNew = !lead.status || lead.status.toLowerCase() === 'new';
       const targetTab = forceTab || (isNew ? 'schedule' : 'pipeline');
       sessionStorage.setItem('crm_schedule_tab', targetTab);
@@ -60,40 +460,129 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
     setActiveNav('lead-schedule');
   };
 
-  // Sleek Modern STATUS Badge matching Contacts design
-  const renderStatusBadge = (statusVal?: string | null, stageVal?: string | null) => {
-    let raw = (statusVal || stageVal || 'New').trim();
-    if (raw.toLowerCase() === 'contacted') {
-      raw = 'In Progress';
-    } else if (raw.toLowerCase() === 'won' || raw.toLowerCase() === 'closed won' || raw.toLowerCase() === 'completed') {
-      raw = 'Complete';
+  // Sleek Sub-Module Stage Badge directly displaying the pipeline headings with icons
+  const renderStatusBadge = (stageOrHeading?: string | null, optionalStatus?: string | null, isInteractive = false) => {
+    let raw = (stageOrHeading || optionalStatus || 'Meetings').trim();
+    if (raw.toLowerCase() === 'in progress' || raw.toLowerCase() === 'active' || raw.toLowerCase() === 'contacted') {
+      raw = (optionalStatus && optionalStatus.toLowerCase() !== 'in progress') ? optionalStatus : 'Meetings';
     }
-    const st = raw;
-    const sLow = st.toLowerCase();
-    let bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
-    let color = isDark ? '#93C5FD' : '#1D4ED8';
-    let border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
 
-    if (sLow.includes('unqual') || sLow.includes('disqual') || sLow.includes('lost') || sLow.includes('cancel')) {
-      bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
-      color = isDark ? '#FCA5A5' : '#DC2626';
-      border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
-    } else if (sLow.includes('qualif') || sLow.includes('won') || sLow.includes('complete')) {
-      bg = isDark ? 'rgba(16, 185, 129, 0.16)' : '#ECFDF5';
-      color = isDark ? '#6EE7B7' : '#047857';
-      border = isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0';
-    } else if (sLow.includes('progress') || sLow.includes('contact')) {
-      bg = isDark ? 'rgba(14, 165, 233, 0.16)' : '#F0F9FF';
-      color = isDark ? '#7DD3FC' : '#0284C7';
-      border = isDark ? 'rgba(14, 165, 233, 0.35)' : '#BAE6FD';
-    } else if (sLow.includes('proposal') || sLow.includes('negotiat')) {
-      bg = isDark ? 'rgba(147, 51, 234, 0.14)' : '#FAF5FF';
-      color = isDark ? '#D8B4FE' : '#7E22CE';
-      border = isDark ? 'rgba(147, 51, 234, 0.25)' : '#E9D5FF';
-    } else if (sLow.includes('new') || sLow.includes('init')) {
-      bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
-      color = isDark ? '#93C5FD' : '#1D4ED8';
-      border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
+    const cfg = getSubmoduleConfig(raw);
+    const StageIcon = cfg.icon;
+    const bg = isDark ? cfg.darkBg : cfg.lightBg;
+    const color = isDark ? cfg.darkColor : cfg.color;
+    const border = isDark ? cfg.darkBorder : cfg.lightBorder;
+
+    return (
+      <Box
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 12px',
+          borderRadius: 100,
+          backgroundColor: bg,
+          color: color,
+          border: `1px solid ${border}`,
+          fontSize: 11.5,
+          fontWeight: 700,
+          letterSpacing: '0.015em',
+          whiteSpace: 'nowrap',
+          cursor: isInteractive ? 'pointer' : 'default',
+          transition: 'all 0.15s ease',
+          userSelect: 'none',
+          boxShadow: isDark ? '0 1px 2px rgba(0,0,0,0.25)' : '0 1px 2px rgba(0,0,0,0.03)',
+        }}
+      >
+        <StageIcon size={13} stroke={2.2} style={{ flexShrink: 0 }} />
+        <span>{cfg.stage}</span>
+      </Box>
+    );
+  };
+
+  // Premium Modern ASSIGNEE Badge / Interactive User Chip
+  const renderAssigneeBadge = (lead: Lead) => {
+    if (lead.assignedToName) {
+      const initial = lead.assignedToName.trim().charAt(0).toUpperCase();
+      return (
+        <Box
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 7,
+            padding: canManageAssignee ? '3px 10px 3px 4px' : '3px 12px 3px 4px',
+            borderRadius: 100,
+            background: isDark ? 'rgba(99, 102, 241, 0.12)' : '#EEF2FF',
+            border: isDark ? '1px solid rgba(99, 102, 241, 0.28)' : '1px solid #E0E7FF',
+            cursor: canManageAssignee ? 'pointer' : 'default',
+            transition: 'all 0.18s ease',
+            userSelect: 'none',
+          }}
+        >
+          <Box
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)',
+              color: '#FFFFFF',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 11,
+              fontWeight: 700,
+              boxShadow: '0 1px 3px rgba(79, 70, 229, 0.3)',
+              flexShrink: 0,
+            }}
+          >
+            {initial}
+          </Box>
+          <Text
+            size="12px"
+            fw={600}
+            style={{
+              color: isDark ? '#C7D2FE' : '#3730A3',
+              whiteSpace: 'nowrap',
+              maxWidth: 130,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {lead.assignedToName}
+          </Text>
+          {canManageAssignee && (
+            <IconChevronDown
+              size={11}
+              style={{
+                opacity: 0.65,
+                color: isDark ? '#A5B4FC' : '#4F46E5',
+                marginLeft: 1,
+              }}
+            />
+          )}
+        </Box>
+      );
+    }
+
+    if (!canManageAssignee) {
+      return (
+        <Box
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '3px 10px',
+            borderRadius: 100,
+            background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+            userSelect: 'none',
+          }}
+        >
+          <Text size="11px" fw={500} c="dimmed">
+            Unassigned
+          </Text>
+        </Box>
+      );
     }
 
     return (
@@ -101,19 +590,41 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          padding: '4px 12px',
+          gap: 6,
+          padding: '3px 11px 3px 5px',
           borderRadius: 100,
-          backgroundColor: bg,
-          color: color,
-          border: `1px solid ${border}`,
-          fontSize: 11,
-          fontWeight: 700,
-          letterSpacing: '0.02em',
-          whiteSpace: 'nowrap',
+          background: isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC',
+          border: isDark ? '1px dashed rgba(255, 255, 255, 0.2)' : '1px dashed #CBD5E1',
+          cursor: 'pointer',
+          transition: 'all 0.18s ease',
+          userSelect: 'none',
         }}
       >
-        {st}
+        <Box
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: '50%',
+            background: isDark ? 'rgba(255, 255, 255, 0.07)' : '#F1F5F9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: isDark ? '#94A3B8' : '#64748B',
+            flexShrink: 0,
+          }}
+        >
+          <IconUserPlus size={12} stroke={2} />
+        </Box>
+        <Text
+          size="11px"
+          fw={600}
+          style={{
+            color: isDark ? '#94A3B8' : '#64748B',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Assign Lead
+        </Text>
       </Box>
     );
   };
@@ -132,12 +643,12 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
     return (
       <Paper
         p="3.5rem"
-        radius="lg"
         style={{
+          borderRadius: 12,
           background: isDark ? '#111827' : '#FFFFFF',
           border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
           textAlign: 'center',
-          marginTop: 16,
+          marginTop: 12,
         }}
       >
         <Center>
@@ -188,13 +699,13 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
       {/* DESKTOP / TABLET VIEW: Full Table Container matching Contacts Design */}
       <Paper
         visibleFrom="sm"
-        radius="lg"
         style={{
+          borderRadius: 12,
           background: isDark ? '#111827' : '#FFFFFF',
           border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
           overflow: 'hidden',
-          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 4px rgba(0,0,0,0.03)',
-          marginTop: 16,
+          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 1px 4px rgba(0, 0, 0, 0.03)',
+          marginTop: 12,
         }}
       >
         <Table.ScrollContainer minWidth={750}>
@@ -216,6 +727,9 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                   CONTACT INFO
                 </Table.Th>
                 <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                  ASSIGNED TO
+                </Table.Th>
+                <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
                   STATUS
                 </Table.Th>
                 <Table.Th style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textAlign: 'right' }}>
@@ -224,7 +738,8 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {leads.map((lead) => (
+              {leads.map((lead) => {
+                return (
                 <Table.Tr
                   key={lead.id}
                   style={{
@@ -264,9 +779,15 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                         >
                           {lead.name}
                         </Text>
-                        <Text size="xs" c="dimmed">
-                          Added: {formatLastUpdate(lead.createdAt)}
-                        </Text>
+                        <Group gap={6} align="center" wrap="nowrap" mt={2}>
+                          <Text size="xs" c="dimmed">
+                            Added: {formatLastUpdate(lead.createdAt)}
+                          </Text>
+                          <Text size="xs" c="dimmed">•</Text>
+                          <Text size="xs" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                            By <span style={{ fontWeight: 600, color: isDark ? '#E2E8F0' : '#334155' }}>{lead.createdByName || 'Admin'}</span>
+                          </Text>
+                        </Group>
                       </div>
                     </Group>
                   </Table.Td>
@@ -319,32 +840,145 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                     </Stack>
                   </Table.Td>
 
-                  {/* 4. Status */}
-                  <Table.Td>
-                    <Stack gap={4} align="flex-start">
-                      {renderStatusBadge(lead.status, lead.stage)}
-                      {lead.stage && (
-                        <Text size="11px" c="dimmed" style={{ paddingLeft: 4 }}>
-                          {lead.stage}
-                        </Text>
-                      )}
-                    </Stack>
+                  {/* 4. Assigned To (Redesigned Modern Avatar Chip) */}
+                  <Table.Td onClick={(e) => e.stopPropagation()}>
+                    {canManageAssignee ? (
+                      <Menu shadow="md" width={260} position="bottom-start" withinPortal radius="md">
+                        <Menu.Target>
+                          <Tooltip label="Click to assign or reassign employee" withArrow>
+                            <Box style={{ display: 'inline-block' }}>
+                              {renderAssigneeBadge(lead)}
+                            </Box>
+                          </Tooltip>
+                        </Menu.Target>
+
+                        <Menu.Dropdown p="xs" style={{ maxHeight: 300, overflowY: 'auto' }}>
+                          <Menu.Label>Assign Lead to Team Member</Menu.Label>
+                          {employees && employees.length > 0 ? (
+                            employees.map((emp) => {
+                              const isCurrent =
+                                lead.assignedTo === emp.id ||
+                                lead.assignedToName === emp.name;
+                              const empInitial = emp.name.trim().charAt(0).toUpperCase();
+                              return (
+                                <Menu.Item
+                                  key={emp.id}
+                                  leftSection={
+                                    <Box
+                                      style={{
+                                        width: 24,
+                                        height: 24,
+                                        borderRadius: '50%',
+                                        background: isCurrent
+                                          ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)'
+                                          : 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)',
+                                        color: '#FFFFFF',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      {empInitial}
+                                    </Box>
+                                  }
+                                  rightSection={
+                                    isCurrent ? (
+                                      <Badge size="xs" color="teal" variant="light">
+                                        Assigned
+                                      </Badge>
+                                    ) : undefined
+                                  }
+                                  onClick={() => handleAssignLead(lead, emp)}
+                                >
+                                  <Box>
+                                    <Text size="13px" fw={isCurrent ? 700 : 500}>
+                                      {emp.name}
+                                    </Text>
+                                    {emp.designation && (
+                                      <Text size="10px" c="dimmed">
+                                        {emp.designation}
+                                      </Text>
+                                    )}
+                                  </Box>
+                                </Menu.Item>
+                              );
+                            })
+                          ) : (
+                            <Menu.Item disabled>No employees available</Menu.Item>
+                          )}
+
+                          {lead.assignedToName && (
+                            <>
+                              <Menu.Divider />
+                              <Menu.Item
+                                color="red"
+                                leftSection={<IconUserX size={14} />}
+                                onClick={() => handleUnassignLead(lead)}
+                              >
+                                Remove Assignment
+                              </Menu.Item>
+                            </>
+                          )}
+                        </Menu.Dropdown>
+                      </Menu>
+                    ) : (
+                      <Box style={{ display: 'inline-block' }}>
+                        {renderAssigneeBadge(lead)}
+                      </Box>
+                    )}
+                  </Table.Td>
+
+                  {/* 5. Status & Stage (Submodule Heading Badge) */}
+                  <Table.Td onClick={(e) => e.stopPropagation()}>
+                    {(() => {
+                      const { status: effStatus, stage: effStage } = resolveLeadSubmoduleStage(lead);
+                      return (
+                        <Menu shadow="md" width={230} position="bottom-start" withinPortal radius="md">
+                          <Menu.Target>
+                            <Tooltip label="Click to change pipeline stage" withArrow>
+                              <Box style={{ display: 'inline-block' }}>
+                                {renderStatusBadge(effStage, effStatus, true)}
+                              </Box>
+                            </Tooltip>
+                          </Menu.Target>
+                          <Menu.Dropdown p="xs" style={{ maxHeight: 380, overflowY: 'auto' }}>
+                            <Menu.Label>Pipeline Stage</Menu.Label>
+                            {SUBMODULE_STAGES.map((sub) => {
+                              const SubIcon = sub.icon;
+                              const isCurrentStage = effStage.toLowerCase() === sub.stage.toLowerCase();
+                              return (
+                                <Menu.Item
+                                  key={sub.stage}
+                                  leftSection={
+                                    <SubIcon size={15} color={isCurrentStage ? sub.color : (isDark ? '#94A3B8' : '#64748B')} />
+                                  }
+                                  rightSection={
+                                    isCurrentStage ? <IconCheck size={14} color={sub.color} stroke={2.5} /> : undefined
+                                  }
+                                  onClick={() => handleUpdateStage(lead, sub.stage)}
+                                  style={{
+                                    backgroundColor: isCurrentStage ? (isDark ? sub.darkBg : sub.lightBg) : undefined,
+                                    borderRadius: 6,
+                                    margin: '2px 0',
+                                  }}
+                                >
+                                  <Text size="12.5px" fw={isCurrentStage ? 700 : 500} c={isCurrentStage ? sub.color : undefined}>
+                                    {sub.stage}
+                                  </Text>
+                                </Menu.Item>
+                              );
+                            })}
+                          </Menu.Dropdown>
+                        </Menu>
+                      );
+                    })()}
                   </Table.Td>
 
                   {/* 5. Actions */}
                   <Table.Td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                    <Group gap={6} justify="flex-end">
-                      <Tooltip label="Schedule Meeting" withArrow>
-                        <ActionIcon
-                          variant="subtle"
-                          color="teal"
-                          size="md"
-                          radius="md"
-                          onClick={() => handleOpenLeadSchedule(lead, 'schedule')}
-                        >
-                          <IconCalendarEvent size={16} />
-                        </ActionIcon>
-                      </Tooltip>
+                    <Group gap={6} justify="flex-end" wrap="nowrap">
                       <Tooltip label="Edit Lead" withArrow>
                         <ActionIcon
                           variant="subtle"
@@ -356,21 +990,24 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                           <IconEdit size={16} />
                         </ActionIcon>
                       </Tooltip>
-                      <Tooltip label="Delete Lead" withArrow>
-                        <ActionIcon
-                          variant="subtle"
-                          color="red"
-                          size="md"
-                          radius="md"
-                          onClick={() => onDelete(lead)}
-                        >
-                          <IconTrash size={16} />
-                        </ActionIcon>
-                      </Tooltip>
+                      {canDeleteLead && (
+                        <Tooltip label="Delete Lead" withArrow>
+                          <ActionIcon
+                            variant="subtle"
+                            color="red"
+                            size="md"
+                            radius="md"
+                            onClick={() => onDelete(lead)}
+                          >
+                            <IconTrash size={16} />
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
                     </Group>
                   </Table.Td>
                 </Table.Tr>
-              ))}
+                );
+              })}
             </Table.Tbody>
           </Table>
         </Table.ScrollContainer>
@@ -378,7 +1015,8 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
 
       {/* MOBILE VIEW: Responsive Touch Cards List */}
       <Stack hiddenFrom="sm" gap="sm" mt="md">
-        {leads.map((lead) => (
+        {leads.map((lead) => {
+          return (
           <Paper
             key={lead.id}
             p="md"
@@ -418,13 +1056,120 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                   <Text fw={700} size="14px" truncate style={{ color: isDark ? '#F9FAFB' : '#0F172A' }}>
                     {lead.name}
                   </Text>
-                  <Text size="xs" c="dimmed">
-                    {formatLastUpdate(lead.createdAt)}
-                  </Text>
+                  <Group gap={6} align="center" wrap="wrap">
+                    <Text size="xs" c="dimmed">
+                      {formatLastUpdate(lead.createdAt)}
+                    </Text>
+                    <Text size="xs" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                      By <span style={{ fontWeight: 600, color: isDark ? '#E2E8F0' : '#334155' }}>{lead.createdByName || 'Admin'}</span>
+                    </Text>
+                  </Group>
                 </Box>
               </Group>
 
-              {renderStatusBadge(lead.status)}
+              <Box onClick={(e) => e.stopPropagation()}>
+                {(() => {
+                  const { status: effStatus, stage: effStage } = resolveLeadSubmoduleStage(lead);
+                  return (
+                    <Menu shadow="md" width={220} position="bottom-end" withinPortal radius="md">
+                      <Menu.Target>
+                        <Box style={{ display: 'inline-block' }}>
+                          {renderStatusBadge(effStage, effStatus, true)}
+                        </Box>
+                      </Menu.Target>
+                      <Menu.Dropdown p="xs" style={{ maxHeight: 320, overflowY: 'auto' }}>
+                        <Menu.Label>Pipeline Stage</Menu.Label>
+                        {SUBMODULE_STAGES.map((sub) => {
+                          const SubIcon = sub.icon;
+                          const isCurrentStage = effStage.toLowerCase() === sub.stage.toLowerCase();
+                          return (
+                            <Menu.Item
+                              key={sub.stage}
+                              leftSection={
+                                <SubIcon size={14} color={isCurrentStage ? sub.color : (isDark ? '#94A3B8' : '#64748B')} />
+                              }
+                              rightSection={
+                                isCurrentStage ? <IconCheck size={14} color={sub.color} stroke={2.5} /> : undefined
+                              }
+                              onClick={() => handleUpdateStage(lead, sub.stage)}
+                            >
+                              <Text size="12px" fw={isCurrentStage ? 700 : 400} c={isCurrentStage ? sub.color : undefined}>
+                                {sub.stage}
+                              </Text>
+                            </Menu.Item>
+                          );
+                        })}
+                      </Menu.Dropdown>
+                    </Menu>
+                  );
+                })()}
+              </Box>
+            </Group>
+
+            {/* Assigned To Row in Mobile */}
+            <Group justify="space-between" align="center" wrap="nowrap" mb="xs" onClick={(e) => e.stopPropagation()}>
+              <Text size="xs" c="dimmed">Assigned To:</Text>
+              {canManageAssignee ? (
+                <Menu shadow="md" width={240} position="bottom-end" withinPortal radius="md">
+                  <Menu.Target>
+                    <Box style={{ display: 'inline-block' }}>
+                      {renderAssigneeBadge(lead)}
+                    </Box>
+                  </Menu.Target>
+                  <Menu.Dropdown p="xs" style={{ maxHeight: 280, overflowY: 'auto' }}>
+                    <Menu.Label>Assign Lead to Team Member</Menu.Label>
+                    {employees && employees.length > 0 ? (
+                      employees.map((emp) => {
+                        const isCurrent = lead.assignedTo === emp.id || lead.assignedToName === emp.name;
+                        const empInitial = emp.name.trim().charAt(0).toUpperCase();
+                        return (
+                          <Menu.Item
+                            key={emp.id}
+                            leftSection={
+                              <Box
+                                style={{
+                                  width: 22,
+                                  height: 22,
+                                  borderRadius: '50%',
+                                  background: isCurrent
+                                    ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)'
+                                    : 'linear-gradient(135deg, #4F46E5 0%, #6366F1 100%)',
+                                  color: '#FFFFFF',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {empInitial}
+                              </Box>
+                            }
+                            rightSection={isCurrent ? <Badge size="xs" color="teal" variant="light">Assigned</Badge> : undefined}
+                            onClick={() => handleAssignLead(lead, emp)}
+                          >
+                            <Text size="13px" fw={isCurrent ? 700 : 500}>{emp.name}</Text>
+                          </Menu.Item>
+                        );
+                      })
+                    ) : (
+                      <Menu.Item disabled>No employees available</Menu.Item>
+                    )}
+                    {lead.assignedToName && (
+                      <>
+                        <Menu.Divider />
+                        <Menu.Item color="red" leftSection={<IconUserX size={14} />} onClick={() => handleUnassignLead(lead)}>
+                          Remove Assignment
+                        </Menu.Item>
+                      </>
+                    )}
+                  </Menu.Dropdown>
+                </Menu>
+              ) : (
+                <Box style={{ display: 'inline-block' }}>
+                  {renderAssigneeBadge(lead)}
+                </Box>
+              )}
             </Group>
 
             {/* Company / Profession & Stage */}
@@ -480,23 +1225,12 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
 
             {/* Action Bar */}
             <Group
-              justify="space-between"
+              justify="flex-end"
               pt="xs"
               style={{
                 borderTop: isDark ? '1px solid #1F2937' : '1px solid #F1F5F9',
               }}
             >
-              <Button
-                size="xs"
-                variant="light"
-                color="teal"
-                leftSection={<IconCalendarEvent size={14} />}
-                onClick={() => handleOpenLeadSchedule(lead, 'schedule')}
-                style={{ borderRadius: 8, fontWeight: 600 }}
-              >
-                Schedule Meeting
-              </Button>
-
               <Group gap={6}>
                 <ActionIcon
                   variant="subtle"
@@ -508,20 +1242,23 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                 >
                   <IconEdit size={16} />
                 </ActionIcon>
-                <ActionIcon
-                  variant="subtle"
-                  color="red"
-                  size="md"
-                  radius="md"
-                  onClick={() => onDelete(lead)}
-                  title="Delete Lead"
-                >
-                  <IconTrash size={16} />
-                </ActionIcon>
+                {canDeleteLead && (
+                  <ActionIcon
+                    variant="subtle"
+                    color="red"
+                    size="md"
+                    radius="md"
+                    onClick={() => onDelete(lead)}
+                    title="Delete Lead"
+                  >
+                    <IconTrash size={16} />
+                  </ActionIcon>
+                )}
               </Group>
             </Group>
           </Paper>
-        ))}
+          );
+        })}
       </Stack>
     </>
   );

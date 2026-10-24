@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Stack,
@@ -181,29 +181,51 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     'Vikram S',
   ];
 
-  const employeeOptions = [
-    { value: '', label: '— Select or Enter Manager —' },
-    ...defaultTeamList.map((name) => ({ value: name, label: `${name} (Engineering)` })),
-    ...(metadata?.employees?.map((emp: any) => ({
-      value: emp.id,
-      label: `${emp.name} (${emp.empCode})`,
-    })) || []),
-  ];
+  const employeeOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const opts: { value: string; label: string }[] = [{ value: '', label: '— Select or Enter Manager —' }];
+    seen.add('');
+    defaultTeamList.forEach((name) => {
+      if (!seen.has(name)) {
+        seen.add(name);
+        opts.push({ value: name, label: `${name} (Engineering)` });
+      }
+    });
+    (metadata?.employees || []).forEach((emp: any) => {
+      const val = String(emp.id || emp.name || '');
+      if (val && !seen.has(val)) {
+        seen.add(val);
+        opts.push({ value: val, label: `${emp.name} (${emp.empCode || 'Staff'})` });
+      }
+    });
+    return opts;
+  }, [metadata?.employees]);
 
-  const teamMemberOptions = Array.from(
-    new Set([
-      ...defaultTeamList,
-      ...(metadata?.employees?.map((e: any) => e.name) || []),
-    ])
-  ).map((name) => ({ value: name, label: name }));
+  const teamMemberOptions = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...defaultTeamList,
+        ...(metadata?.employees?.map((e: any) => e.name) || []),
+      ])
+    ).filter(Boolean).map((name) => ({ value: name, label: name }));
+  }, [metadata?.employees]);
 
-  const contactOptions = [
-    { value: '', label: '— Select from CRM Contacts (Optional) —' },
-    ...(metadata?.contacts?.map((c: any) => ({
-      value: c.id,
-      label: `${c.companyName ? `${c.companyName} (${c.name})` : c.name} - ${c.contactId}`,
-    })) || []),
-  ];
+  const contactOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const opts: { value: string; label: string }[] = [{ value: '', label: '— Select from CRM Contacts (Optional) —' }];
+    seen.add('');
+    (metadata?.contacts || []).forEach((c: any) => {
+      const val = String(c.id || '');
+      if (val && !seen.has(val)) {
+        seen.add(val);
+        opts.push({
+          value: val,
+          label: `${c.companyName ? `${c.companyName} (${c.name})` : c.name} - ${c.contactId || ''}`,
+        });
+      }
+    });
+    return opts;
+  }, [metadata?.contacts]);
 
   const statusOptions = [
     { value: 'In Progress', label: 'In Progress' },

@@ -66,7 +66,7 @@ const DEFAULT_SYSTEM_MODULES: SystemModule[] = [
   { id: 'negotiations', name: 'Negotiations', category: 'Main Navigation', description: 'Commercial terms, pricing discussions, discounts, and client follow-ups.' },
 
   // 2. Administration & Security
-  { id: 'access_control', name: 'Access Control & RBAC', category: 'Administration & Security', description: 'Role-Based Access Control, permissions matrix, and role hierarchy.' },
+  { id: 'access_control', name: 'Access Control', category: 'Administration & Security', description: 'Role-Based Access Control, permissions matrix, and role hierarchy.' },
 ];
 
 export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

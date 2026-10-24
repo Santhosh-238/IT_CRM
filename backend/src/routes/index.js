@@ -10,7 +10,7 @@ import taskRouter from './task.routes.js';
 import meetingRouter from './meeting.routes.js';
 import callLogRouter from './callLog.routes.js';
 import customerRouter from './customer.routes.js';
-import billingRouter from './billing.routes.js';
+import billingRouter, { invoiceRouter } from './invoice.routes.js';
 import crmRouter from './crm.routes.js';
 import settingsRouter from './settings.routes.js';
 
@@ -28,6 +28,7 @@ apiRouter.use('/meetings', meetingRouter);
 apiRouter.use('/call-logs', callLogRouter);
 apiRouter.use('/customers', customerRouter);
 apiRouter.use('/billing', billingRouter);
+apiRouter.use('/invoices', invoiceRouter);
 apiRouter.use('/settings', settingsRouter);
 apiRouter.use('/', crmRouter);
 

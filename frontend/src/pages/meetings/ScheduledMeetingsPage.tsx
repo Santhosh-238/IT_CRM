@@ -1093,10 +1093,20 @@ const inferDuration = (start?: string, end?: string): string => {
           <Select
             label="Associated Lead"
             placeholder="Select Lead from CRM"
-            data={effectiveLeads.map((l) => ({
-              value: l.id,
-              label: l.companyName ? `${l.name} (${l.companyName})` : l.name,
-            }))}
+            data={(() => {
+              const seen = new Set<string>();
+              const opts: { value: string; label: string }[] = [];
+              effectiveLeads.forEach((l) => {
+                if (l.id && !seen.has(l.id)) {
+                  seen.add(l.id);
+                  opts.push({
+                    value: l.id,
+                    label: l.companyName ? `${l.name} (${l.companyName})` : l.name,
+                  });
+                }
+              });
+              return opts;
+            })()}
             value={formContactId}
             onChange={(val) => {
               setFormContactId(val);
@@ -1150,10 +1160,21 @@ const inferDuration = (start?: string, end?: string): string => {
           <Select
             label="Assigned Host / User"
             placeholder="Select Host"
-            data={employees.map((e) => ({
-              value: e.id || e.empCode,
-              label: `${e.name} (${e.designation || e.role || 'Host'})`,
-            }))}
+            data={(() => {
+              const seen = new Set<string>();
+              const opts: { value: string; label: string }[] = [];
+              employees.forEach((e) => {
+                const val = e.id || e.empCode;
+                if (val && !seen.has(val)) {
+                  seen.add(val);
+                  opts.push({
+                    value: val,
+                    label: `${e.name} (${e.designation || e.role || 'Host'})`,
+                  });
+                }
+              });
+              return opts;
+            })()}
             value={formEmployeeId}
             onChange={(val) => {
               setFormEmployeeId(val);

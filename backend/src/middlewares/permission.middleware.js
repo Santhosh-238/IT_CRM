@@ -174,10 +174,10 @@ export function authorizePermission(moduleId, action = 'view') {
         return next();
       }
 
-      // Check requested module or fallback to leads/deals for billing
+      // Check requested module or fallback to leads/deals for billing/invoices
       const modulesToCheck = Array.isArray(moduleId) ? [...moduleId] : [moduleId];
-      if (modulesToCheck.includes('billing')) {
-        modulesToCheck.push('leads', 'deals');
+      if (modulesToCheck.includes('billing') || modulesToCheck.includes('invoices')) {
+        modulesToCheck.push('billing', 'invoices', 'leads', 'deals');
       }
 
       let hasAccess = false;
