@@ -25,6 +25,7 @@ import {
   IconRefresh,
   IconArrowRight,
   IconPrinter,
+  IconDownload,
   IconTrendingUp,
 } from '@tabler/icons-react';
 import {
@@ -59,6 +60,7 @@ export const BillingDashboardView: React.FC<BillingDashboardViewProps> = ({
   const [data, setData] = useState<BillingDashboardData | null>(null);
   const [loading, setLoading] = useState(false);
   const [printingInvoice, setPrintingInvoice] = useState<Invoice | null>(null);
+  const [autoPrint, setAutoPrint] = useState(false);
 
   const fetchDashboard = async () => {
     try {
@@ -85,8 +87,9 @@ export const BillingDashboardView: React.FC<BillingDashboardViewProps> = ({
     unpaidInvoicesCount: 0,
   };
 
-  const handlePrintUpcomingInvoice = async (invoiceId: string) => {
+  const handlePrintUpcomingInvoice = async (invoiceId: string, autoDownload = false) => {
     try {
+      setAutoPrint(autoDownload);
       const inv = await billingService.getInvoiceById(invoiceId);
       if (inv) setPrintingInvoice(inv);
     } catch (err: any) {
@@ -442,14 +445,28 @@ export const BillingDashboardView: React.FC<BillingDashboardViewProps> = ({
                         </Text>
                       </Table.Td>
                       <Table.Td style={{ textAlign: 'right' }}>
-                        <ActionIcon
-                          size="xs"
-                          variant="subtle"
-                          color="blue"
-                          onClick={() => handlePrintUpcomingInvoice(inv.id)}
-                        >
-                          <IconPrinter size={14} />
-                        </ActionIcon>
+                        <Group gap={4} justify="flex-end" wrap="nowrap">
+                          <Tooltip label="Download PDF">
+                            <ActionIcon
+                              size="xs"
+                              variant="subtle"
+                              color="indigo"
+                              onClick={() => handlePrintUpcomingInvoice(inv.id, true)}
+                            >
+                              <IconDownload size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+                          <Tooltip label="Print Tax Invoice">
+                            <ActionIcon
+                              size="xs"
+                              variant="subtle"
+                              color="blue"
+                              onClick={() => handlePrintUpcomingInvoice(inv.id, false)}
+                            >
+                              <IconPrinter size={14} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Group>
                       </Table.Td>
                     </Table.Tr>
                   ))
@@ -534,8 +551,12 @@ export const BillingDashboardView: React.FC<BillingDashboardViewProps> = ({
       {/* Invoice Print Modal */}
       <InvoicePrintModal
         opened={Boolean(printingInvoice)}
-        onClose={() => setPrintingInvoice(null)}
+        onClose={() => {
+          setPrintingInvoice(null);
+          setAutoPrint(false);
+        }}
         invoice={printingInvoice}
+        autoPrint={autoPrint}
       />
     </Stack>
   );

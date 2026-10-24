@@ -26,6 +26,7 @@ import {
   createInvoice,
   updateInvoice,
   cancelInvoice,
+  sendInvoice,
   getPayments,
   getPaymentById,
   recordPayment,
@@ -33,7 +34,7 @@ import {
   getBillingSettings,
   updateBillingSettings,
   getBillingAuditLogs,
-} from '../controllers/billing.controller.js';
+} from '../controllers/invoice.controller.js';
 
 const router = Router();
 
@@ -84,6 +85,7 @@ router.get('/invoices/:id', requireAuth, authorizePermission('billing', 'view'),
 router.post('/invoices', requireAuth, authorizePermission('billing', 'create'), createInvoice);
 router.put('/invoices/:id', requireAuth, authorizePermission('billing', 'edit'), updateInvoice);
 router.post('/invoices/:id/cancel', requireAuth, authorizePermission('billing', 'delete'), cancelInvoice);
+router.post('/invoices/:id/send', requireAuth, authorizePermission('billing', 'edit'), sendInvoice);
 
 // =============================================================================
 // 7. PAYMENTS
@@ -104,4 +106,14 @@ router.get('/settings', requireAuth, authorizePermission('billing', 'view'), get
 router.put('/settings', requireAuth, authorizePermission('billing', 'edit'), updateBillingSettings);
 router.get('/audit-logs', requireAuth, authorizePermission('billing', 'view'), getBillingAuditLogs);
 
+// Dedicated Invoice Router for /api/invoices
+export const invoiceRouter = Router();
+invoiceRouter.get('/', requireAuth, authorizePermission('invoices', 'view'), getInvoices);
+invoiceRouter.get('/:id', requireAuth, authorizePermission('invoices', 'view'), getInvoiceById);
+invoiceRouter.post('/', requireAuth, authorizePermission('invoices', 'create'), createInvoice);
+invoiceRouter.put('/:id', requireAuth, authorizePermission('invoices', 'edit'), updateInvoice);
+invoiceRouter.post('/:id/cancel', requireAuth, authorizePermission('invoices', 'delete'), cancelInvoice);
+invoiceRouter.post('/:id/send', requireAuth, authorizePermission('invoices', 'edit'), sendInvoice);
+
+export { router as billingRouter };
 export default router;

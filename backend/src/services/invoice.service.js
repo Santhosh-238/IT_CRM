@@ -44,7 +44,23 @@ export async function getBillingSettingsService() {
     });
   }
 
-  return settings;
+  // Enrich with company_profile system settings (authorizedSignatory, signatureUrl, etc.)
+  let profileVal = {};
+  try {
+    const profileSetting = await prisma.systemSetting.findUnique({
+      where: { settingKey: 'company_profile' },
+    });
+    if (profileSetting?.value && typeof profileSetting.value === 'object') {
+      profileVal = profileSetting.value;
+    }
+  } catch {}
+
+  return {
+    ...settings,
+    authorizedSignatory: profileVal.authorizedSignatory || 'Santhosh C',
+    signatoryDesignation: profileVal.signatoryDesignation || 'Managing Director',
+    signatureUrl: profileVal.signatureUrl || null,
+  };
 }
 
 export async function updateBillingSettingsService(data, user) {
@@ -246,100 +262,6 @@ export async function getQuotationByIdService(id) {
   return quote;
 }
 
-/**
- * Unified calculation function for Quotation totals, line items, and GST taxes
- */
-export function calculateQuotationTotals(rawItems = [], discountType = 'percentage', discountValue = 0) {
-  let grossSubtotal = 0;
-  let totalLineDiscount = 0;
-
-  const itemsWithComputed = (Array.isArray(rawItems) ? rawItems : []).map((item) => {
-    const qty = Number(item.quantity) || 1;
-    const price = Number(item.unitPrice) || 0;
-    const gross = qty * price;
-    const discVal = Number(item.discount) || 0;
-    const discType = item.discountType || 'percentage';
-
-    let lineDiscAmt = 0;
-    if (discType === 'percentage') {
-      lineDiscAmt = (gross * discVal) / 100;
-    } else {
-      lineDiscAmt = Math.min(gross, discVal);
-    }
-    lineDiscAmt = Number(lineDiscAmt.toFixed(2));
-    const lineTaxable = Math.max(0, gross - lineDiscAmt);
-    const taxRate = item.taxRate !== undefined ? Number(item.taxRate) : 18.0;
-
-    grossSubtotal += gross;
-    totalLineDiscount += lineDiscAmt;
-
-    return {
-      item,
-      qty,
-      price,
-      discVal,
-      discType,
-      lineDiscAmt,
-      lineTaxable,
-      taxRate,
-    };
-  });
-
-  const netSubtotal = Math.max(0, grossSubtotal - totalLineDiscount);
-
-  // Overall Quotation Discount
-  const discType = discountType || 'percentage';
-  const discVal = Number(discountValue) || 0;
-  let discountAmount = 0;
-  if (discType === 'percentage') {
-    discountAmount = (netSubtotal * discVal) / 100;
-  } else {
-    discountAmount = Math.min(netSubtotal, discVal);
-  }
-  discountAmount = Number(discountAmount.toFixed(2));
-
-  const taxableAmount = Math.max(0, netSubtotal - discountAmount);
-  const factor = netSubtotal > 0 ? taxableAmount / netSubtotal : 1;
-
-  let totalTax = 0;
-  const itemsToCreate = itemsWithComputed.map((calc) => {
-    const effectiveBase = calc.lineTaxable * factor;
-    const lineTax = Number(((effectiveBase * calc.taxRate) / 100).toFixed(2));
-    const lineTotal = Number((calc.lineTaxable + lineTax).toFixed(2));
-    totalTax += lineTax;
-
-    return {
-      productId: calc.item.productId || null,
-      itemCode: calc.item.itemCode || null,
-      itemName: calc.item.itemName?.trim() || 'Item',
-      itemType: calc.item.itemType || 'Product',
-      description: calc.item.description ? calc.item.description.trim() : null,
-      quantity: calc.qty,
-      unitPrice: calc.price,
-      discount: calc.discVal,
-      discountType: calc.discType || 'percentage',
-      taxRate: calc.taxRate,
-      taxAmount: lineTax,
-      totalAmount: lineTotal,
-    };
-  });
-
-  totalTax = Number(totalTax.toFixed(2));
-  const grandTotal = Number((taxableAmount + totalTax).toFixed(2));
-
-  return {
-    grossSubtotal: Number(grossSubtotal.toFixed(2)),
-    totalLineDiscount: Number(totalLineDiscount.toFixed(2)),
-    subtotal: Number(netSubtotal.toFixed(2)),
-    discountType: discType,
-    discountValue: discVal,
-    discountAmount,
-    taxAmount: totalTax,
-    grandTotal,
-    itemsToCreate,
-  };
-}
-
 export async function createQuotationService(data, user) {
   if (!data.contactName?.trim()) {
     const err = new Error('Client / Contact Name is required.');
@@ -358,9 +280,48 @@ export async function createQuotationService(data, user) {
     data: { quotationNextNumber: nextNum + 1 },
   });
 
-  // Calculate Totals using unified helper
+  // Calculate Line Items
   const rawItems = Array.isArray(data.items) && data.items.length > 0 ? data.items : [];
-  const totals = calculateQuotationTotals(rawItems, data.discountType, data.discountValue);
+  let subtotal = 0;
+  let totalTax = 0;
+
+  const itemsToCreate = rawItems.map((item) => {
+    const qty = Number(item.quantity) || 1;
+    const price = Number(item.unitPrice) || 0;
+    const itemDisc = Number(item.discount) || 0;
+    const lineSubtotal = Math.max(0, qty * price - itemDisc);
+    const taxRate = item.taxRate !== undefined ? Number(item.taxRate) : 18.0;
+    const taxAmt = Number(((lineSubtotal * taxRate) / 100).toFixed(2));
+    const totalAmount = lineSubtotal + taxAmt;
+
+    subtotal += lineSubtotal;
+    totalTax += taxAmt;
+
+    return {
+      productId: item.productId || null,
+      itemCode: item.itemCode || null,
+      itemName: item.itemName?.trim() || 'Item',
+      itemType: item.itemType || 'Product',
+      description: item.description ? item.description.trim() : null,
+      quantity: qty,
+      unitPrice: price,
+      discount: itemDisc,
+      taxRate: taxRate,
+      taxAmount: taxAmt,
+      totalAmount: totalAmount,
+    };
+  });
+
+  // Quotation-level Discount
+  let discountAmount = 0;
+  if (data.discountType === 'percentage') {
+    discountAmount = (subtotal * (Number(data.discountValue) || 0)) / 100;
+  } else {
+    discountAmount = Number(data.discountValue) || 0;
+  }
+  discountAmount = Math.min(subtotal, Math.max(0, discountAmount));
+
+  const grandTotal = Math.max(0, subtotal - discountAmount + totalTax);
 
   const quote = await prisma.quotation.create({
     data: {
@@ -377,19 +338,19 @@ export async function createQuotationService(data, user) {
       validUntil: data.validUntil || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
       status: data.status || 'Draft',
       currency: data.currency || 'INR',
-      subtotal: totals.subtotal,
-      discountType: totals.discountType,
-      discountValue: totals.discountValue,
-      discountAmount: totals.discountAmount,
-      taxAmount: totals.taxAmount,
-      grandTotal: totals.grandTotal,
+      subtotal: Number(subtotal.toFixed(2)),
+      discountType: data.discountType || 'percentage',
+      discountValue: Number(data.discountValue) || 0,
+      discountAmount: Number(discountAmount.toFixed(2)),
+      taxAmount: Number(totalTax.toFixed(2)),
+      grandTotal: Number(grandTotal.toFixed(2)),
       paymentTerms: data.paymentTerms || settings.defaultPaymentTerms || 'Net 30',
       notes: data.notes ? data.notes.trim() : null,
       termsConditions: data.termsConditions ? data.termsConditions.trim() : settings.defaultTermsConditions,
       salesOwnerId: user?.id || null,
       salesOwnerName: user?.name || null,
       items: {
-        create: totals.itemsToCreate,
+        create: itemsToCreate,
       },
     },
     include: { items: true },
@@ -427,19 +388,50 @@ export async function updateQuotationService(id, data, user) {
   if (Array.isArray(data.items)) {
     await prisma.quotationItem.deleteMany({ where: { quotationId: existing.id } });
 
+    let subtotal = 0;
+    let totalTax = 0;
+    const itemsToCreate = data.items.map((item) => {
+      const qty = Number(item.quantity) || 1;
+      const price = Number(item.unitPrice) || 0;
+      const itemDisc = Number(item.discount) || 0;
+      const lineSubtotal = Math.max(0, qty * price - itemDisc);
+      const taxRate = item.taxRate !== undefined ? Number(item.taxRate) : 18.0;
+      const taxAmt = Number(((lineSubtotal * taxRate) / 100).toFixed(2));
+      const totalAmount = lineSubtotal + taxAmt;
+
+      subtotal += lineSubtotal;
+      totalTax += taxAmt;
+
+      return {
+        productId: item.productId || null,
+        itemCode: item.itemCode || null,
+        itemName: item.itemName?.trim() || 'Item',
+        itemType: item.itemType || 'Product',
+        description: item.description ? item.description.trim() : null,
+        quantity: qty,
+        unitPrice: price,
+        discount: itemDisc,
+        taxRate: taxRate,
+        taxAmount: taxAmt,
+        totalAmount: totalAmount,
+      };
+    });
+
     const discType = data.discountType || existing.discountType;
     const discVal = data.discountValue !== undefined ? Number(data.discountValue) : existing.discountValue;
-    const totals = calculateQuotationTotals(data.items, discType, discVal);
+    let discountAmount = discType === 'percentage' ? (subtotal * discVal) / 100 : discVal;
+    discountAmount = Math.min(subtotal, Math.max(0, discountAmount));
+    const grandTotal = Math.max(0, subtotal - discountAmount + totalTax);
 
     updateData = {
       ...updateData,
-      subtotal: totals.subtotal,
-      discountType: totals.discountType,
-      discountValue: totals.discountValue,
-      discountAmount: totals.discountAmount,
-      taxAmount: totals.taxAmount,
-      grandTotal: totals.grandTotal,
-      items: { create: totals.itemsToCreate },
+      subtotal: Number(subtotal.toFixed(2)),
+      discountType: discType,
+      discountValue: discVal,
+      discountAmount: Number(discountAmount.toFixed(2)),
+      taxAmount: Number(totalTax.toFixed(2)),
+      grandTotal: Number(grandTotal.toFixed(2)),
+      items: { create: itemsToCreate },
     };
   }
 
@@ -922,20 +914,27 @@ export async function approveMilestoneService(id, user) {
  * -----------------------------------------------------------------------------
  */
 export async function getInvoicesService(query = {}) {
-  const { status, search, contactId, salesOrderId, projectId } = query;
+  const { status, paymentStatus, search, contactId, customerId, salesOrderId, projectId, invoiceDate, dueDate, page, limit } = query;
   const where = {};
 
   if (status && status !== 'All') {
     where.status = { equals: status, mode: 'insensitive' };
   }
-  if (contactId && contactId !== 'All') {
-    where.contactId = contactId;
+  const effectiveCustId = customerId || contactId;
+  if (effectiveCustId && effectiveCustId !== 'All') {
+    where.contactId = effectiveCustId;
   }
   if (salesOrderId && salesOrderId !== 'All') {
     where.salesOrderId = salesOrderId;
   }
   if (projectId && projectId !== 'All') {
     where.projectId = projectId;
+  }
+  if (invoiceDate && invoiceDate !== 'All') {
+    where.invoiceDate = invoiceDate;
+  }
+  if (dueDate && dueDate !== 'All') {
+    where.dueDate = dueDate;
   }
   if (search && search.trim()) {
     const q = search.trim();
@@ -944,10 +943,15 @@ export async function getInvoicesService(query = {}) {
       { contactName: { contains: q, mode: 'insensitive' } },
       { companyName: { contains: q, mode: 'insensitive' } },
       { milestoneName: { contains: q, mode: 'insensitive' } },
+      { clientGst: { contains: q, mode: 'insensitive' } },
     ];
   }
 
-  const invoices = await prisma.invoice.findMany({
+  const today = new Date().toISOString().split('T')[0];
+
+  const totalCount = await prisma.invoice.count({ where });
+
+  const findArgs = {
     where,
     include: {
       items: true,
@@ -955,28 +959,100 @@ export async function getInvoicesService(query = {}) {
         include: {
           payment: {
             select: {
+              id: true,
               paymentNumber: true,
               paymentDate: true,
               paymentMethod: true,
               transactionReference: true,
+              amountReceived: true,
+              notes: true,
+              bankName: true,
+              recordedBy: true,
             },
           },
         },
       },
     },
     orderBy: { createdAt: 'desc' },
-  });
+  };
 
-  // Check for auto-overdue transition on fetched records
-  const today = new Date().toISOString().split('T')[0];
+  if (page && limit) {
+    const p = Math.max(1, parseInt(page, 10) || 1);
+    const l = Math.max(1, parseInt(limit, 10) || 10);
+    findArgs.skip = (p - 1) * l;
+    findArgs.take = l;
+  }
+
+  const invoices = await prisma.invoice.findMany(findArgs);
+
+  // Process invoices with computed paymentStatus and unpacked metadata
   const processed = invoices.map((inv) => {
-    if (inv.status === 'Issued' && inv.dueDate < today && inv.outstandingBalance > 0) {
-      return { ...inv, status: 'Overdue' };
+    let effectiveStatus = inv.status;
+    let computedPaymentStatus = 'Unpaid';
+
+    if (effectiveStatus === 'Cancelled') {
+      computedPaymentStatus = 'Cancelled';
+    } else if (inv.outstandingBalance === 0 && inv.grandTotal > 0) {
+      computedPaymentStatus = 'Paid';
+      if (effectiveStatus !== 'Paid') effectiveStatus = 'Paid';
+    } else if (inv.dueDate < today && inv.outstandingBalance > 0) {
+      computedPaymentStatus = 'Overdue';
+      if (effectiveStatus === 'Issued' || effectiveStatus === 'Draft') {
+        effectiveStatus = 'Overdue';
+      }
+    } else if (inv.amountPaid > 0 && inv.outstandingBalance > 0) {
+      computedPaymentStatus = 'Partially Paid';
+      if (effectiveStatus !== 'Partially Paid') effectiveStatus = 'Partially Paid';
+    } else {
+      computedPaymentStatus = 'Unpaid';
     }
-    return inv;
+
+    const meta = inv.bankDetails && typeof inv.bankDetails === 'object' ? inv.bankDetails : {};
+
+    return {
+      ...inv,
+      status: effectiveStatus,
+      paymentStatus: meta.paymentStatus || computedPaymentStatus,
+      invoiceType: meta.invoiceType || 'One-Time',
+      currency: meta.currency || 'INR',
+      taxType: meta.taxType || (inv.clientGst?.startsWith('33') ? 'INTRA_STATE' : 'INTER_STATE'),
+      cgstAmount: meta.cgstAmount ?? Number((inv.taxAmount / 2).toFixed(2)),
+      sgstAmount: meta.sgstAmount ?? Number((inv.taxAmount / 2).toFixed(2)),
+      igstAmount: meta.igstAmount ?? 0,
+      additionalCharges: meta.additionalCharges ?? 0,
+      taxableAmount: meta.taxableAmount ?? Number((inv.subtotal - inv.discountAmount).toFixed(2)),
+      internalRemarks: meta.internalRemarks || null,
+      approvedBy: meta.approvedBy || null,
+      attachments: Array.isArray(meta.attachments) ? meta.attachments : [],
+      customerTier: meta.customerTier || null,
+      contactPerson: meta.contactPerson || inv.contactName,
+      customerDetails: meta.customerDetails || null,
+    };
   });
 
-  return processed;
+  // In-memory payment status filtering if explicitly requested
+  let filtered = processed;
+  if (paymentStatus && paymentStatus !== 'All') {
+    filtered = processed.filter(
+      (inv) => inv.paymentStatus.toLowerCase() === paymentStatus.toLowerCase()
+    );
+  }
+
+  if (page && limit) {
+    const p = Math.max(1, parseInt(page, 10) || 1);
+    const l = Math.max(1, parseInt(limit, 10) || 10);
+    return {
+      data: filtered,
+      pagination: {
+        total: totalCount,
+        page: p,
+        limit: l,
+        totalPages: Math.ceil(totalCount / l) || 1,
+      },
+    };
+  }
+
+  return filtered;
 }
 
 export async function getInvoiceByIdService(id) {
@@ -998,101 +1074,218 @@ export async function getInvoiceByIdService(id) {
     throw err;
   }
 
-  return invoice;
+  const today = new Date().toISOString().split('T')[0];
+  let effectiveStatus = invoice.status;
+  let computedPaymentStatus = 'Unpaid';
+
+  if (effectiveStatus === 'Cancelled') {
+    computedPaymentStatus = 'Cancelled';
+  } else if (invoice.outstandingBalance === 0 && invoice.grandTotal > 0) {
+    computedPaymentStatus = 'Paid';
+    effectiveStatus = 'Paid';
+  } else if (invoice.dueDate < today && invoice.outstandingBalance > 0) {
+    computedPaymentStatus = 'Overdue';
+    if (effectiveStatus === 'Issued' || effectiveStatus === 'Draft') {
+      effectiveStatus = 'Overdue';
+    }
+  } else if (invoice.amountPaid > 0 && invoice.outstandingBalance > 0) {
+    computedPaymentStatus = 'Partially Paid';
+    effectiveStatus = 'Partially Paid';
+  } else {
+    computedPaymentStatus = 'Unpaid';
+  }
+
+  const meta = invoice.bankDetails && typeof invoice.bankDetails === 'object' ? invoice.bankDetails : {};
+
+  // Fetch audit history for this invoice
+  const activityLogs = await prisma.billingAuditLog.findMany({
+    where: {
+      OR: [
+        { entityId: invoice.id },
+        { entityNumber: invoice.invoiceNumber },
+      ],
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  return {
+    ...invoice,
+    status: effectiveStatus,
+    paymentStatus: meta.paymentStatus || computedPaymentStatus,
+    invoiceType: meta.invoiceType || 'One-Time',
+    currency: meta.currency || 'INR',
+    taxType: meta.taxType || (invoice.clientGst?.startsWith('33') ? 'INTRA_STATE' : 'INTER_STATE'),
+    cgstAmount: meta.cgstAmount ?? Number((invoice.taxAmount / 2).toFixed(2)),
+    sgstAmount: meta.sgstAmount ?? Number((invoice.taxAmount / 2).toFixed(2)),
+    igstAmount: meta.igstAmount ?? 0,
+    additionalCharges: meta.additionalCharges ?? 0,
+    taxableAmount: meta.taxableAmount ?? Number((invoice.subtotal - invoice.discountAmount).toFixed(2)),
+    internalRemarks: meta.internalRemarks || null,
+    approvedBy: meta.approvedBy || null,
+    attachments: Array.isArray(meta.attachments) ? meta.attachments : [],
+    customerTier: meta.customerTier || null,
+    contactPerson: meta.contactPerson || invoice.contactName,
+    activityLogs,
+  };
 }
 
 export async function createInvoiceService(data, user) {
-  if (!data.contactName?.trim()) {
-    const err = new Error('Client / Contact Name is required.');
+  if (!data.contactName?.trim() && !data.companyName?.trim()) {
+    const err = new Error('Customer or Contact Name is required.');
     err.status = 400;
     throw err;
   }
 
   const settings = await getBillingSettingsService();
-  const nextNum = settings.invoiceNextNumber || 1;
-  const padded = String(nextNum).padStart(6, '0');
-  const invoiceNumber = `${settings.invoicePrefix || 'INV-2026-'}${padded}`;
+  let invoiceNumber = data.invoiceNumber?.trim();
 
-  await prisma.billingSettings.update({
-    where: { id: settings.id },
-    data: { invoiceNextNumber: nextNum + 1 },
-  });
+  if (!invoiceNumber) {
+    const nextNum = settings.invoiceNextNumber || 1001;
+    const padded = String(nextNum).padStart(6, '0');
+    invoiceNumber = `${settings.invoicePrefix || 'INV-2026-'}${padded}`;
 
-  // Items and Calculation
+    await prisma.billingSettings.update({
+      where: { id: settings.id },
+      data: { invoiceNextNumber: nextNum + 1 },
+    });
+  }
+
+  // Ensure unique invoice number
+  const existingNum = await prisma.invoice.findUnique({ where: { invoiceNumber } });
+  if (existingNum) {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    invoiceNumber = `${invoiceNumber}-${randomSuffix}`;
+  }
+
+  // Determine GST Tax Type: INTRA_STATE vs INTER_STATE vs EXPORT_NON_GST
+  const taxType = data.taxType || (
+    data.clientGst?.startsWith('33') || data.clientState?.toLowerCase().includes('tamil nadu')
+      ? 'INTRA_STATE'
+      : 'INTER_STATE'
+  );
+
+  // Line Items Calculation
   const rawItems = Array.isArray(data.items) && data.items.length > 0 ? data.items : [];
   let subtotal = 0;
+  let totalLineDiscounts = 0;
   let totalTax = 0;
+  let totalCgst = 0;
+  let totalSgst = 0;
+  let totalIgst = 0;
 
   const itemsToCreate = rawItems.map((item) => {
     const qty = Number(item.quantity) || 1;
     const price = Number(item.unitPrice) || 0;
-    const itemDisc = Number(item.discount) || 0;
-    const lineSub = Math.max(0, qty * price - itemDisc);
+    const discPct = Number(item.discountPercent || item.discountPercentage || 0);
+    let lineDisc = Number(item.discount) || 0;
+    if (discPct > 0) {
+      lineDisc = Number(((qty * price * discPct) / 100).toFixed(2));
+    }
+    const taxableLine = Math.max(0, qty * price - lineDisc);
     const taxRate = item.taxRate !== undefined ? Number(item.taxRate) : 18.0;
-    const taxAmt = Number(((lineSub * taxRate) / 100).toFixed(2));
-    const totalAmount = lineSub + taxAmt;
+    const taxAmt = taxType === 'EXPORT_NON_GST' ? 0 : Number(((taxableLine * taxRate) / 100).toFixed(2));
+    const totalAmount = taxableLine + taxAmt;
 
-    subtotal += lineSub;
+    subtotal += (qty * price);
+    totalLineDiscounts += lineDisc;
     totalTax += taxAmt;
+
+    if (taxType === 'INTRA_STATE') {
+      totalCgst += Number((taxAmt / 2).toFixed(2));
+      totalSgst += Number((taxAmt / 2).toFixed(2));
+    } else if (taxType === 'INTER_STATE') {
+      totalIgst += taxAmt;
+    }
 
     return {
       productId: item.productId || null,
       itemCode: item.itemCode || null,
-      itemName: item.itemName?.trim() || 'Billing Item',
-      itemType: item.itemType || 'Product',
-      description: item.description ? item.description.trim() : null,
+      itemName: item.itemName?.trim() || 'Software Service Deliverable',
+      itemType: item.itemType || 'Service',
+      description: item.description?.trim() || null,
       quantity: qty,
       unitPrice: price,
-      discount: itemDisc,
+      discount: lineDisc,
       taxRate,
       taxAmount: taxAmt,
       totalAmount,
     };
   });
 
-  const discountAmount = Number(data.discountAmount) || 0;
-  const grandTotal = Math.max(0, subtotal - discountAmount + totalTax);
+  const overallDiscount = Number(data.discountAmount || 0);
+  const totalDiscount = totalLineDiscounts + overallDiscount;
+  const taxableAmount = Math.max(0, subtotal - totalDiscount);
+  const additionalCharges = Number(data.additionalCharges || 0);
+  const grandTotal = Math.max(0, taxableAmount + totalTax + additionalCharges);
+
+  const initialPaymentAmount = Math.max(0, Math.min(grandTotal, Number(data.amountPaid || data.advanceAmount || 0)));
+  const outstandingBalance = Math.max(0, Number((grandTotal - initialPaymentAmount).toFixed(2)));
+
+  let status = data.status || 'Draft';
+  if (initialPaymentAmount >= grandTotal && grandTotal > 0) {
+    status = 'Paid';
+  } else if (initialPaymentAmount > 0) {
+    status = 'Partially Paid';
+  }
+
+  const paymentStatus = outstandingBalance === 0 && grandTotal > 0
+    ? 'Paid'
+    : (initialPaymentAmount > 0 ? 'Partially Paid' : 'Unpaid');
 
   const bankDetails = {
-    bankName: settings.bankName,
-    accountNumber: settings.accountNumber,
-    accountHolderName: settings.accountHolderName,
-    ifscCode: settings.ifscCode,
-    branchName: settings.branchName,
-    upiId: settings.upiId,
+    bankName: data.bankDetails?.bankName || settings.bankName || 'HDFC Bank',
+    accountNumber: data.bankDetails?.accountNumber || settings.accountNumber || '50200012345678',
+    accountHolderName: data.bankDetails?.accountHolderName || settings.accountHolderName || 'OmniTech Solutions Pvt Ltd',
+    ifscCode: data.bankDetails?.ifscCode || settings.ifscCode || 'HDFC0001234',
+    branchName: data.bankDetails?.branchName || settings.branchName || 'Tidel Park Branch',
+    upiId: data.bankDetails?.upiId || settings.upiId || 'omnitech@hdfcbank',
+    invoiceType: data.invoiceType || 'One-Time',
+    currency: data.currency || 'INR',
+    paymentStatus,
+    taxType,
+    cgstAmount: Number(totalCgst.toFixed(2)),
+    sgstAmount: Number(totalSgst.toFixed(2)),
+    igstAmount: Number(totalIgst.toFixed(2)),
+    additionalCharges,
+    taxableAmount: Number(taxableAmount.toFixed(2)),
+    internalRemarks: data.internalRemarks?.trim() || null,
+    approvedBy: data.approvedBy?.trim() || null,
+    attachments: Array.isArray(data.attachments) ? data.attachments : [],
+    customerTier: data.customerTier || 'Enterprise',
+    contactPerson: data.contactPerson?.trim() || data.contactName?.trim(),
   };
 
   const invoice = await prisma.invoice.create({
     data: {
       invoiceNumber,
-      contactId: data.contactId || null,
-      contactName: data.contactName.trim(),
+      contactId: data.customerId || data.contactId || null,
+      contactName: (data.contactName || data.contactPerson || data.companyName).trim(),
       contactEmail: data.contactEmail ? data.contactEmail.trim() : null,
       contactPhone: data.contactPhone ? data.contactPhone.trim() : null,
-      companyName: data.companyName ? data.companyName.trim() : null,
+      companyName: data.companyName ? data.companyName.trim() : data.contactName?.trim(),
       clientGst: data.clientGst ? data.clientGst.trim() : null,
       clientAddress: data.clientAddress ? data.clientAddress.trim() : null,
       leadId: data.leadId || null,
       salesOrderId: data.salesOrderId || null,
       projectId: data.projectId || null,
-      projectName: data.projectName ? data.projectName.trim() : null,
+      projectName: data.projectName?.trim() || null,
       milestoneId: data.milestoneId || null,
-      milestoneName: data.milestoneName ? data.milestoneName.trim() : null,
+      milestoneName: data.milestoneName?.trim() || null,
       invoiceDate: data.invoiceDate || new Date().toISOString().split('T')[0],
       dueDate: data.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
       subtotal: Number(subtotal.toFixed(2)),
-      discountAmount: Number(discountAmount.toFixed(2)),
+      discountAmount: Number(totalDiscount.toFixed(2)),
       taxAmount: Number(totalTax.toFixed(2)),
       grandTotal: Number(grandTotal.toFixed(2)),
-      amountPaid: 0,
-      outstandingBalance: Number(grandTotal.toFixed(2)),
-      status: data.status || 'Issued',
+      amountPaid: Number(initialPaymentAmount.toFixed(2)),
+      outstandingBalance: Number(outstandingBalance.toFixed(2)),
+      status,
       paymentTerms: data.paymentTerms || settings.defaultPaymentTerms || 'Net 30',
       notes: data.notes ? data.notes.trim() : null,
       termsConditions: data.termsConditions ? data.termsConditions.trim() : settings.defaultTermsConditions,
       bankDetails,
-      issuedAt: new Date(),
-      createdBy: user?.name || user?.email || 'User',
+      issuedAt: status !== 'Draft' ? new Date() : null,
+      createdBy: user?.name || user?.email || data.createdBy || 'Admin',
       items: {
         create: itemsToCreate,
       },
@@ -1100,23 +1293,227 @@ export async function createInvoiceService(data, user) {
     include: { items: true },
   });
 
-  // If created for a milestone, link milestone and set invoiced amount
-  if (data.milestoneId) {
-    await prisma.billingMilestone.update({
-      where: { id: data.milestoneId },
+  // If initial advance/payment was recorded, create payment entity & allocation
+  if (initialPaymentAmount > 0) {
+    const nextPayNum = settings.paymentNextNumber || 1001;
+    const payNum = `${settings.paymentPrefix || 'PAY-2026-'}${String(nextPayNum).padStart(6, '0')}`;
+    await prisma.billingSettings.update({
+      where: { id: settings.id },
+      data: { paymentNextNumber: nextPayNum + 1 },
+    });
+
+    await prisma.payment.create({
       data: {
-        invoiceId: invoice.id,
-        invoicedAmount: invoice.grandTotal,
+        paymentNumber: payNum,
+        contactId: invoice.contactId,
+        clientName: invoice.companyName || invoice.contactName,
+        paymentDate: data.paymentDate || invoice.invoiceDate,
+        amountReceived: initialPaymentAmount,
+        paymentMethod: data.paymentMethod || 'Bank Transfer',
+        transactionReference: data.transactionReference ? data.transactionReference.trim() : null,
+        bankName: data.bankName || 'HDFC Bank',
+        notes: data.paymentNotes || 'Initial payment recorded during invoice creation',
+        recordedBy: user?.name || user?.email || 'Admin',
+        status: 'Completed',
+        allocations: {
+          create: [
+            {
+              invoiceId: invoice.id,
+              amountAllocated: initialPaymentAmount,
+            },
+          ],
+        },
       },
-    }).catch(() => {});
+    });
+
+    await logBillingAudit(
+      'Payment',
+      invoice.id,
+      payNum,
+      'PAYMENT_RECORDED',
+      user?.name || 'Admin',
+      `Initial payment of ₹${initialPaymentAmount} recorded for invoice ${invoice.invoiceNumber}`
+    );
   }
 
-  await logBillingAudit('Invoice', invoice.id, invoice.invoiceNumber, 'CREATED', user?.name || user?.email || 'User', `Created invoice for ₹${invoice.grandTotal}`);
+  await logBillingAudit(
+    'Invoice',
+    invoice.id,
+    invoice.invoiceNumber,
+    'CREATED',
+    user?.name || user?.email || 'User',
+    `Created ${status} invoice for ${invoice.companyName || invoice.contactName} - Grand Total: ₹${invoice.grandTotal}`
+  );
 
   return invoice;
 }
 
 export async function updateInvoiceService(id, data, user) {
+  const existing = await prisma.invoice.findFirst({
+    where: { OR: [{ id }, { invoiceNumber: id }] },
+    include: { items: true },
+  });
+
+  if (!existing) {
+    const err = new Error('Invoice not found.');
+    err.status = 404;
+    throw err;
+  }
+
+  const isDraft = existing.status === 'Draft';
+  const meta = existing.bankDetails && typeof existing.bankDetails === 'object' ? { ...existing.bankDetails } : {};
+
+  // Update metadata fields
+  if (data.invoiceType) meta.invoiceType = data.invoiceType;
+  if (data.currency) meta.currency = data.currency;
+  if (data.taxType) meta.taxType = data.taxType;
+  if (data.internalRemarks !== undefined) meta.internalRemarks = data.internalRemarks;
+  if (data.approvedBy !== undefined) meta.approvedBy = data.approvedBy;
+  if (data.attachments !== undefined) meta.attachments = data.attachments;
+  if (data.contactPerson !== undefined) meta.contactPerson = data.contactPerson;
+
+  // Allow full re-calculation and saving of line items whenever items are provided
+  if (Array.isArray(data.items) && data.items.length > 0) {
+    const taxType = data.taxType || meta.taxType || 'INTRA_STATE';
+    let subtotal = 0;
+    let totalLineDiscounts = 0;
+    let totalTax = 0;
+    let totalCgst = 0;
+    let totalSgst = 0;
+    let totalIgst = 0;
+
+    const itemsToCreate = data.items.map((item) => {
+      const qty = Number(item.quantity) || 1;
+      const price = Number(item.unitPrice) || 0;
+      const discPct = Number(item.discountPercent || item.discountPercentage || 0);
+      let lineDisc = Number(item.discount) || 0;
+      if (discPct > 0) {
+        lineDisc = Number(((qty * price * discPct) / 100).toFixed(2));
+      }
+      const taxableLine = Math.max(0, qty * price - lineDisc);
+      const taxRate = item.taxRate !== undefined ? Number(item.taxRate) : 18.0;
+      const taxAmt = taxType === 'EXPORT_NON_GST' ? 0 : Number(((taxableLine * taxRate) / 100).toFixed(2));
+      const totalAmount = taxableLine + taxAmt;
+
+      subtotal += (qty * price);
+      totalLineDiscounts += lineDisc;
+      totalTax += taxAmt;
+
+      if (taxType === 'INTRA_STATE') {
+        totalCgst += Number((taxAmt / 2).toFixed(2));
+        totalSgst += Number((taxAmt / 2).toFixed(2));
+      } else if (taxType === 'INTER_STATE') {
+        totalIgst += taxAmt;
+      }
+
+      return {
+        productId: item.productId || null,
+        itemCode: item.itemCode || null,
+        itemName: item.itemName?.trim() || 'Software Service Deliverable',
+        itemType: item.itemType || 'Service',
+        description: item.description?.trim() || null,
+        quantity: qty,
+        unitPrice: price,
+        discount: lineDisc,
+        taxRate,
+        taxAmount: taxAmt,
+        totalAmount,
+      };
+    });
+
+    const overallDiscount = Number(data.discountAmount ?? existing.discountAmount ?? 0);
+    const totalDiscount = totalLineDiscounts + overallDiscount;
+    const taxableAmount = Math.max(0, subtotal - totalDiscount);
+    const additionalCharges = Number(data.additionalCharges || meta.additionalCharges || 0);
+    const grandTotal = Math.max(0, taxableAmount + totalTax + additionalCharges);
+
+    const initialPaymentAmount = data.amountPaid !== undefined || data.advanceAmount !== undefined
+      ? Math.max(0, Math.min(grandTotal, Number(data.amountPaid ?? data.advanceAmount ?? 0)))
+      : existing.amountPaid;
+    const outstandingBalance = Math.max(0, Number((grandTotal - initialPaymentAmount).toFixed(2)));
+
+    let status = data.status || existing.status;
+    if (data.status) {
+      status = data.status;
+    } else if (initialPaymentAmount >= grandTotal && grandTotal > 0) {
+      status = 'Paid';
+    } else if (initialPaymentAmount > 0) {
+      status = 'Partially Paid';
+    }
+
+    meta.cgstAmount = Number(totalCgst.toFixed(2));
+    meta.sgstAmount = Number(totalSgst.toFixed(2));
+    meta.igstAmount = Number(totalIgst.toFixed(2));
+    meta.taxableAmount = Number(taxableAmount.toFixed(2));
+    meta.additionalCharges = additionalCharges;
+
+    // Delete old items and insert updated ones
+    await prisma.invoiceItem.deleteMany({ where: { invoiceId: existing.id } });
+
+    const updated = await prisma.invoice.update({
+      where: { id: existing.id },
+      data: {
+        contactId: data.customerId || data.contactId || existing.contactId,
+        contactName: data.contactName?.trim() || existing.contactName,
+        contactEmail: data.contactEmail !== undefined ? data.contactEmail : existing.contactEmail,
+        contactPhone: data.contactPhone !== undefined ? data.contactPhone : existing.contactPhone,
+        companyName: data.companyName?.trim() || existing.companyName,
+        clientGst: data.clientGst !== undefined ? data.clientGst : existing.clientGst,
+        clientAddress: data.clientAddress !== undefined ? data.clientAddress : existing.clientAddress,
+        projectId: data.projectId !== undefined ? data.projectId : existing.projectId,
+        projectName: data.projectName !== undefined ? data.projectName : existing.projectName,
+        invoiceDate: data.invoiceDate || existing.invoiceDate,
+        dueDate: data.dueDate || existing.dueDate,
+        paymentTerms: data.paymentTerms || existing.paymentTerms,
+        subtotal: Number(subtotal.toFixed(2)),
+        discountAmount: Number(totalDiscount.toFixed(2)),
+        taxAmount: Number(totalTax.toFixed(2)),
+        grandTotal: Number(grandTotal.toFixed(2)),
+        amountPaid: initialPaymentAmount,
+        outstandingBalance,
+        status,
+        notes: data.notes !== undefined ? data.notes : existing.notes,
+        termsConditions: data.termsConditions !== undefined ? data.termsConditions : existing.termsConditions,
+        bankDetails: meta,
+        items: {
+          create: itemsToCreate,
+        },
+      },
+      include: { items: true },
+    });
+
+    await logBillingAudit('Invoice', updated.id, updated.invoiceNumber, 'UPDATED', user?.name || user?.email || 'User', 'Updated Draft invoice items, calculations & terms');
+    return updated;
+  }
+
+  // Non-draft or header-only update
+  let headerAmountPaid = existing.amountPaid;
+  let headerOutstanding = existing.outstandingBalance;
+  if (data.amountPaid !== undefined || data.advanceAmount !== undefined) {
+    headerAmountPaid = Math.max(0, Math.min(existing.grandTotal, Number(data.amountPaid ?? data.advanceAmount ?? 0)));
+    headerOutstanding = Math.max(0, Number((existing.grandTotal - headerAmountPaid).toFixed(2)));
+  }
+
+  const updated = await prisma.invoice.update({
+    where: { id: existing.id },
+    data: {
+      status: data.status || existing.status,
+      amountPaid: headerAmountPaid,
+      outstandingBalance: headerOutstanding,
+      notes: data.notes !== undefined ? data.notes : existing.notes,
+      termsConditions: data.termsConditions !== undefined ? data.termsConditions : existing.termsConditions,
+      dueDate: data.dueDate || existing.dueDate,
+      paymentTerms: data.paymentTerms || existing.paymentTerms,
+      bankDetails: meta,
+    },
+    include: { items: true },
+  });
+
+  await logBillingAudit('Invoice', updated.id, updated.invoiceNumber, 'UPDATED', user?.name || user?.email || 'User', 'Updated invoice terms & notes');
+  return updated;
+}
+
+export async function sendInvoiceService(id, user) {
   const existing = await prisma.invoice.findFirst({
     where: { OR: [{ id }, { invoiceNumber: id }] },
   });
@@ -1127,25 +1524,31 @@ export async function updateInvoiceService(id, data, user) {
     throw err;
   }
 
-  // Prevent silent modification of issued, paid, or partially paid invoices
-  if (existing.status !== 'Draft' && data.items) {
-    const err = new Error('Issued or Paid invoices cannot be silently altered. Cancel the invoice or issue an adjustment.');
+  if (existing.status === 'Cancelled') {
+    const err = new Error('Cannot send a cancelled invoice.');
     err.status = 400;
     throw err;
   }
 
+  const updatedStatus = existing.status === 'Draft' ? 'Sent' : existing.status;
+
   const updated = await prisma.invoice.update({
     where: { id: existing.id },
     data: {
-      notes: data.notes !== undefined ? data.notes : existing.notes,
-      termsConditions: data.termsConditions !== undefined ? data.termsConditions : existing.termsConditions,
-      dueDate: data.dueDate || existing.dueDate,
-      paymentTerms: data.paymentTerms || existing.paymentTerms,
+      status: updatedStatus,
+      issuedAt: existing.issuedAt || new Date(),
     },
     include: { items: true },
   });
 
-  await logBillingAudit('Invoice', updated.id, updated.invoiceNumber, 'UPDATED', user?.name || user?.email || 'User', 'Updated invoice terms & notes');
+  await logBillingAudit(
+    'Invoice',
+    updated.id,
+    updated.invoiceNumber,
+    'SENT',
+    user?.name || user?.email || 'User',
+    `Sent invoice to customer (${updated.contactEmail || updated.contactName}) via email notification`
+  );
 
   return updated;
 }

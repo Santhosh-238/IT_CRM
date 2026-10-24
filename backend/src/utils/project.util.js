@@ -23,9 +23,14 @@ export function buildProjectFilterQuery(queryParams = {}) {
     projectManagerId,
     client,
     manager,
+    contactId,
   } = queryParams;
 
   const andConditions = [];
+
+  if (contactId && contactId.trim() !== '') {
+    andConditions.push({ contactId: contactId.trim() });
+  }
 
   if (status && status !== 'All' && status.trim() !== '') {
     if (status === 'Active') {

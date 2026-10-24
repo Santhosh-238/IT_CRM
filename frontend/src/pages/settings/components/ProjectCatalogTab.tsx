@@ -177,7 +177,8 @@ export const ProjectCatalogTab: React.FC = () => {
           </Paper>
         ) : (
           <Paper withBorder radius="md" style={{ overflow: 'hidden' }} bg="var(--mantine-color-default)">
-            <Table highlightOnHover verticalSpacing="md" horizontalSpacing="md">
+            <Table.ScrollContainer minWidth={600}>
+              <Table highlightOnHover verticalSpacing="md" horizontalSpacing="md">
               <Table.Thead style={{ background: isDark ? 'rgba(255,255,255,0.03)' : '#F8FAFC' }}>
                 <Table.Tr>
                   <Table.Th style={{ width: 50, textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#64748B', letterSpacing: '0.05em' }}>
@@ -376,7 +377,8 @@ export const ProjectCatalogTab: React.FC = () => {
                 })}
               </Table.Tbody>
             </Table>
-          </Paper>
+          </Table.ScrollContainer>
+        </Paper>
         )}
       </Box>
 

@@ -66,6 +66,13 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = 0;
+    }
+  }, [projects, currentPage]);
 
   // Format date cleanly and guarantee no line breaking
   const formatDate = (dateStr?: string | null) => {
@@ -106,13 +113,13 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 6,
-          padding: '3px 10px',
+          gap: 5,
+          padding: '2px 8px',
           borderRadius: 16,
           backgroundColor: bg,
           color: color,
           border: border,
-          fontSize: 11,
+          fontSize: 10.5,
           fontWeight: 600,
           lineHeight: 1.2,
           whiteSpace: 'nowrap',
@@ -120,8 +127,8 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
       >
         <Box
           style={{
-            width: 6,
-            height: 6,
+            width: 5,
+            height: 5,
             borderRadius: '50%',
             backgroundColor: dot,
             flexShrink: 0,
@@ -167,13 +174,13 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 6,
-          padding: '4px 12px',
+          gap: 5,
+          padding: '2px 8px',
           borderRadius: 16,
           backgroundColor: bg,
           color: color,
           border: border,
-          fontSize: 11,
+          fontSize: 10.5,
           fontWeight: 600,
           lineHeight: 1.2,
           whiteSpace: 'nowrap',
@@ -181,8 +188,8 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
       >
         <Box
           style={{
-            width: 6,
-            height: 6,
+            width: 5,
+            height: 5,
             borderRadius: '50%',
             backgroundColor: dot,
             flexShrink: 0,
@@ -204,7 +211,7 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
       );
     }
 
-    const maxVisible = 3;
+    const maxVisible = 2;
     const visible = list.slice(0, maxVisible);
     const extraCount = list.length - maxVisible;
 
@@ -216,12 +223,12 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              padding: '2px 7px',
+              padding: '2px 6px',
               borderRadius: 6,
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
               border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
               color: isDark ? '#E2E8F0' : '#334155',
-              fontSize: '11.5px',
+              fontSize: '11px',
               fontWeight: 500,
               whiteSpace: 'nowrap',
             }}
@@ -241,18 +248,18 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                padding: '2px 7px',
+                padding: '2px 6px',
                 borderRadius: 6,
                 backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EFF6FF',
                 border: isDark ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid #DBEAFE',
                 color: isDark ? '#93C5FD' : '#2563EB',
-                fontSize: '11px',
+                fontSize: '10.5px',
                 fontWeight: 700,
                 whiteSpace: 'nowrap',
                 cursor: 'pointer',
               }}
             >
-              +{extraCount} more
+              +{extraCount}
             </Box>
           </Tooltip>
         )}
@@ -340,12 +347,11 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
   return (
     <Paper
       radius="lg"
-      mt="md"
       style={{
-        backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-        border: isDark ? '1px solid #1E293B' : '1px solid #E2E8F0',
+        backgroundColor: isDark ? '#111827' : '#FFFFFF',
+        border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
         overflow: 'hidden',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02)',
+        boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(0, 0, 0, 0.04)',
       }}
     >
       {/* Mobile Horizontal Scroll Hint */}
@@ -368,13 +374,14 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
       </Box>
 
       <Table.ScrollContainer
-        minWidth={1050}
+        ref={scrollRef}
+        minWidth={850}
         style={{
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
         }}
       >
-        <Table verticalSpacing={12} horizontalSpacing="xs" highlightOnHover>
+        <Table verticalSpacing={10} horizontalSpacing={5} highlightOnHover>
           <Table.Thead
             style={{
               backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
@@ -385,13 +392,14 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 1. Index */}
               <Table.Th
                 style={{
-                  width: 38,
+                  width: 30,
+                  minWidth: 30,
                   textAlign: 'center',
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -401,12 +409,13 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 2. Project Code */}
               <Table.Th
                 style={{
-                  minWidth: 95,
-                  fontSize: 11,
+                  width: 76,
+                  minWidth: 76,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -416,24 +425,24 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 3. Project Name */}
               <Table.Th
                 style={{
-                  minWidth: 145,
-                  fontSize: 11,
+                  minWidth: 105,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   cursor: onSortChange ? 'pointer' : 'default',
                   userSelect: 'none',
                   whiteSpace: 'nowrap',
                 }}
                 onClick={() => onSortChange && onSortChange('name')}
               >
-                <Group gap={4} wrap="nowrap">
+                <Group gap={3} wrap="nowrap">
                   <span>Project Name</span>
                   {sortBy === 'name' ? (
-                    sortOrder === 'asc' ? <IconCaretUpFilled size={12} /> : <IconCaretDownFilled size={12} />
+                    sortOrder === 'asc' ? <IconCaretUpFilled size={11} /> : <IconCaretDownFilled size={11} />
                   ) : (
-                    <IconCaretUpFilled size={12} style={{ opacity: 0.3 }} />
+                    <IconCaretUpFilled size={11} style={{ opacity: 0.3 }} />
                   )}
                 </Group>
               </Table.Th>
@@ -441,12 +450,12 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 4. Company */}
               <Table.Th
                 style={{
-                  minWidth: 135,
-                  fontSize: 11,
+                  minWidth: 95,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -456,12 +465,12 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 5. Client Name */}
               <Table.Th
                 style={{
-                  minWidth: 115,
-                  fontSize: 11,
+                  minWidth: 85,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -471,12 +480,12 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 6. Project TL */}
               <Table.Th
                 style={{
-                  minWidth: 110,
-                  fontSize: 11,
+                  minWidth: 75,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -486,12 +495,12 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 7. Team Members */}
               <Table.Th
                 style={{
-                  minWidth: 145,
-                  fontSize: 11,
+                  minWidth: 80,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -501,12 +510,13 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 8. Start Date */}
               <Table.Th
                 style={{
-                  minWidth: 105,
-                  fontSize: 11,
+                  width: 76,
+                  minWidth: 76,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -516,12 +526,13 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 9. End Date */}
               <Table.Th
                 style={{
-                  minWidth: 105,
-                  fontSize: 11,
+                  width: 76,
+                  minWidth: 76,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -531,12 +542,13 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 10. Priority */}
               <Table.Th
                 style={{
-                  minWidth: 90,
-                  fontSize: 11,
+                  width: 68,
+                  minWidth: 68,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   textAlign: 'center',
                   whiteSpace: 'nowrap',
                 }}
@@ -547,12 +559,13 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
               {/* 11. Status */}
               <Table.Th
                 style={{
-                  minWidth: 105,
-                  fontSize: 11,
+                  width: 80,
+                  minWidth: 80,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   textAlign: 'center',
                   whiteSpace: 'nowrap',
                 }}
@@ -560,16 +573,16 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
                 Status
               </Table.Th>
 
-
-              {/* 13. Actions */}
+              {/* 12. Actions */}
               <Table.Th
                 style={{
-                  width: 90,
-                  fontSize: 11,
+                  width: 60,
+                  minWidth: 60,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: isDark ? '#94A3B8' : '#64748B',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.04em',
                   textAlign: 'center',
                   whiteSpace: 'nowrap',
                 }}
@@ -597,25 +610,36 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
                   onClick={() => onView(project)}
                 >
                   {/* 1. Index */}
-                  <Table.Td style={{ textAlign: 'center' }}>
-                    <Text size="12px" fw={600} style={{ color: isDark ? '#64748B' : '#94A3B8' }}>
+                  <Table.Td
+                    style={{
+                      width: 30,
+                      minWidth: 30,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Text size="11.5px" fw={600} style={{ color: isDark ? '#64748B' : '#94A3B8' }}>
                       {rowNum}
                     </Text>
                   </Table.Td>
 
                   {/* 2. Project Code */}
-                  <Table.Td>
+                  <Table.Td
+                    style={{
+                      width: 76,
+                      minWidth: 76,
+                    }}
+                  >
                     <Box
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        padding: '3px 8px',
-                        borderRadius: 6,
+                        padding: '2px 5px',
+                        borderRadius: 5,
                         backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EFF6FF',
                         border: isDark ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid #DBEAFE',
                         color: isDark ? '#93C5FD' : '#2563EB',
                         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                        fontSize: '12px',
+                        fontSize: '11px',
                         fontWeight: 700,
                         letterSpacing: '0.02em',
                         whiteSpace: 'nowrap',
@@ -626,48 +650,40 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
                   </Table.Td>
 
                   {/* 3. Project Name */}
-                  <Table.Td>
+                  <Table.Td style={{ minWidth: 105 }}>
                     <Text
                       fw={600}
-                      size="13px"
+                      size="12px"
+                      truncate="end"
                       style={{
                         color: isDark ? '#F8FAFC' : '#0F172A',
-                        whiteSpace: 'nowrap',
+                        maxWidth: 140,
                       }}
                     >
                       {project.name}
                     </Text>
                     {project.category && (
-                      <Text size="11px" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
+                      <Text
+                        size="10.5px"
+                        c="dimmed"
+                        truncate="end"
+                        style={{ maxWidth: 140 }}
+                      >
                         {project.category}
                       </Text>
                     )}
                   </Table.Td>
 
                   {/* 4. Company */}
-                  <Table.Td>
-                    <Group gap={8} wrap="nowrap" align="center">
-                      <Box
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 6,
-                          backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: isDark ? '#94A3B8' : '#64748B',
-                          flexShrink: 0,
-                        }}
-                      >
-                        <IconBuildingSkyscraper size={14} stroke={1.6} />
-                      </Box>
+                  <Table.Td style={{ minWidth: 95 }}>
+                    <Group gap={4} wrap="nowrap" align="center" style={{ maxWidth: 120 }}>
+                      <IconBuildingSkyscraper size={12} style={{ color: isDark ? '#94A3B8' : '#64748B', flexShrink: 0 }} stroke={1.6} />
                       <Text
                         fw={600}
-                        size="13px"
+                        size="12px"
+                        truncate="end"
                         style={{
                           color: isDark ? '#F1F5F9' : '#1E293B',
-                          whiteSpace: 'nowrap',
                         }}
                       >
                         {company}
@@ -676,15 +692,15 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
                   </Table.Td>
 
                   {/* 5. Client Name */}
-                  <Table.Td>
-                    <Group gap={6} wrap="nowrap" align="center">
-                      <IconUser size={14} style={{ color: isDark ? '#64748B' : '#94A3B8', flexShrink: 0 }} stroke={1.6} />
+                  <Table.Td style={{ minWidth: 85 }}>
+                    <Group gap={4} wrap="nowrap" align="center" style={{ maxWidth: 105 }}>
+                      <IconUser size={12} style={{ color: isDark ? '#64748B' : '#94A3B8', flexShrink: 0 }} stroke={1.6} />
                       <Text
                         fw={500}
-                        size="13px"
+                        size="11.5px"
+                        truncate="end"
                         style={{
                           color: isDark ? '#CBD5E1' : '#475569',
-                          whiteSpace: 'nowrap',
                         }}
                       >
                         {clientPerson}
@@ -693,11 +709,13 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
                   </Table.Td>
 
                   {/* 6. Project TL */}
-                  <Table.Td>
+                  <Table.Td style={{ minWidth: 75 }}>
                     <Text
-                      size="13px"
+                      size="11.5px"
                       fw={500}
+                      truncate="end"
                       style={{
+                        maxWidth: 95,
                         color:
                           project.projectManagerName &&
                           project.projectManagerName.trim() &&
@@ -708,7 +726,6 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
                             : isDark
                             ? '#64748B'
                             : '#94A3B8',
-                        whiteSpace: 'nowrap',
                       }}
                     >
                       {project.projectManagerName &&
@@ -720,16 +737,16 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
                   </Table.Td>
 
                   {/* 7. Team Members */}
-                  <Table.Td>
+                  <Table.Td style={{ minWidth: 80 }}>
                     {renderTeamMembers(project.teamMembers)}
                   </Table.Td>
 
                   {/* 8. Start Date */}
-                  <Table.Td>
-                    <Group gap={6} wrap="nowrap" align="center">
-                      <IconCalendar size={14} style={{ color: isDark ? '#64748B' : '#94A3B8', flexShrink: 0 }} stroke={1.6} />
+                  <Table.Td style={{ width: 76, minWidth: 76 }}>
+                    <Group gap={4} wrap="nowrap" align="center">
+                      <IconCalendar size={12} style={{ color: isDark ? '#64748B' : '#94A3B8', flexShrink: 0 }} stroke={1.6} />
                       <Text
-                        size="12px"
+                        size="11px"
                         fw={500}
                         style={{ color: isDark ? '#CBD5E1' : '#475569', whiteSpace: 'nowrap' }}
                       >
@@ -739,10 +756,10 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
                   </Table.Td>
 
                   {/* 9. End Date */}
-                  <Table.Td>
-                    <Group gap={6} wrap="nowrap" align="center">
+                  <Table.Td style={{ width: 76, minWidth: 76 }}>
+                    <Group gap={4} wrap="nowrap" align="center">
                       <IconCalendar
-                        size={14}
+                        size={12}
                         style={{
                           color: project.isOverdue ? '#EF4444' : isDark ? '#64748B' : '#94A3B8',
                           flexShrink: 0,
@@ -750,7 +767,7 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
                         stroke={1.6}
                       />
                       <Text
-                        size="12px"
+                        size="11px"
                         fw={500}
                         style={{
                           color: project.isOverdue ? '#EF4444' : isDark ? '#CBD5E1' : '#475569',
@@ -763,44 +780,51 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
                   </Table.Td>
 
                   {/* 10. Priority */}
-                  <Table.Td style={{ textAlign: 'center' }}>
+                  <Table.Td style={{ width: 68, minWidth: 68, textAlign: 'center' }}>
                     {renderPriorityBadge(project.priority)}
                   </Table.Td>
 
                   {/* 11. Status */}
-                  <Table.Td style={{ textAlign: 'center' }}>
+                  <Table.Td style={{ width: 80, minWidth: 80, textAlign: 'center' }}>
                     {renderStatusBadge(project.status)}
                   </Table.Td>
 
-                  {/* 13. Actions */}
-                  <Table.Td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center' }}>
-                    <Group gap={4} justify="center" wrap="nowrap">
+                  {/* 12. Actions */}
+                  <Table.Td
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      width: 60,
+                      minWidth: 60,
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Group gap={2} justify="center" wrap="nowrap">
                       <Tooltip label="Edit Project" withArrow position="top" fz="xs">
                         <ActionIcon
-                          size="md"
+                          size="xs"
                           variant="subtle"
                           color="gray"
                           onClick={() => onEdit(project)}
                           style={{
-                            borderRadius: 8,
+                            borderRadius: 6,
                             transition: 'all 0.15s ease',
                           }}
                         >
-                          <IconEdit size={17} stroke={1.8} />
+                          <IconEdit size={15} stroke={1.8} />
                         </ActionIcon>
                       </Tooltip>
                       <Tooltip label="Delete Project" withArrow position="top" fz="xs">
                         <ActionIcon
-                          size="md"
+                          size="xs"
                           variant="subtle"
                           color="red"
                           onClick={() => onDelete(project)}
                           style={{
-                            borderRadius: 8,
+                            borderRadius: 6,
                             transition: 'all 0.15s ease',
                           }}
                         >
-                          <IconTrash size={17} stroke={1.8} />
+                          <IconTrash size={15} stroke={1.8} />
                         </ActionIcon>
                       </Tooltip>
                     </Group>

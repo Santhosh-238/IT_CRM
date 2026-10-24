@@ -10,16 +10,20 @@ import {
   Button,
   useComputedColorScheme,
 } from '@mantine/core';
-import { IconAlertCircle } from '@tabler/icons-react';
+import { useMediaQuery } from '@mantine/hooks';
+import { IconAlertCircle, IconUser, IconCalendar, IconFolders, IconBuildingSkyscraper } from '@tabler/icons-react';
 import { ProjectCatalogTab } from './components/ProjectCatalogTab';
 import { CompanyProfileTab } from './components/CompanyProfileTab';
+import { UserProfileTab } from './components/UserProfileTab';
 import { CalendarRemindersTab } from './components/CalendarRemindersTab';
 
-type SettingsTabKey = 'company' | 'calendar' | 'projects';
+type SettingsTabKey = 'profile' | 'company' | 'calendar' | 'projects';
 
 interface NavItem {
   key: SettingsTabKey;
   label: string;
+  shortLabel: string;
+  icon: React.ReactNode;
 }
 
 interface TabErrorBoundaryProps {
@@ -79,32 +83,35 @@ const getInitialSettingsTab = (): SettingsTabKey => {
     // 1. Check URL query param ?tab=
     const params = new URLSearchParams(window.location.search);
     const tabParam = params.get('tab') as SettingsTabKey | null;
-    if (tabParam && (tabParam === 'company' || tabParam === 'calendar' || tabParam === 'projects')) {
+    if (tabParam && (tabParam === 'profile' || tabParam === 'company' || tabParam === 'calendar' || tabParam === 'projects')) {
       return tabParam;
     }
-    // 2. Check URL hash #calendar
+    // 2. Check URL hash #company
     const hash = window.location.hash.replace(/^#/, '') as SettingsTabKey;
-    if (hash && (hash === 'company' || hash === 'calendar' || hash === 'projects')) {
+    if (hash && (hash === 'profile' || hash === 'company' || hash === 'calendar' || hash === 'projects')) {
       return hash;
     }
     // 3. Check localStorage
     const saved = localStorage.getItem('crm_settings_tab') as SettingsTabKey | null;
-    if (saved && (saved === 'company' || saved === 'calendar' || saved === 'projects')) {
+    if (saved && (saved === 'profile' || saved === 'company' || saved === 'calendar' || saved === 'projects')) {
       return saved;
     }
   }
-  return 'company';
+  return 'profile';
 };
 
 export const SettingsPage: React.FC = () => {
   const [activeTab, setActiveTabState] = useState<SettingsTabKey>(getInitialSettingsTab);
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isSmallMobile = useMediaQuery('(max-width: 520px)');
 
   const navItems: NavItem[] = [
-    { key: 'company', label: 'My Profile' },
-    { key: 'calendar', label: 'Calendar & Reminders' },
-    { key: 'projects', label: 'Project Catalog' },
+    { key: 'profile', label: 'My Profile', shortLabel: 'Profile', icon: <IconUser size={15} /> },
+    { key: 'company', label: 'Company Profile', shortLabel: 'Company', icon: <IconBuildingSkyscraper size={15} /> },
+    { key: 'calendar', label: 'Calendar & Reminders', shortLabel: 'Calendar', icon: <IconCalendar size={15} /> },
+    { key: 'projects', label: 'Project Catalog', shortLabel: 'Catalog', icon: <IconFolders size={15} /> },
   ];
 
   const handleTabChange = (key: SettingsTabKey) => {
@@ -112,7 +119,7 @@ export const SettingsPage: React.FC = () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('crm_settings_tab', key);
       const url = new URL(window.location.href);
-      if (key === 'company') {
+      if (key === 'profile') {
         url.searchParams.delete('tab');
       } else {
         url.searchParams.set('tab', key);
@@ -125,7 +132,7 @@ export const SettingsPage: React.FC = () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('crm_settings_tab', activeTab);
       const url = new URL(window.location.href);
-      if (activeTab !== 'company') {
+      if (activeTab !== 'profile') {
         if (url.searchParams.get('tab') !== activeTab) {
           url.searchParams.set('tab', activeTab);
           window.history.replaceState(null, '', url.pathname + url.search);
@@ -147,10 +154,10 @@ export const SettingsPage: React.FC = () => {
   return (
     <Box style={{ width: '100%', maxWidth: '100%' }}>
       {/* 1. Main Page Title */}
-      <Box mb="lg" pl={2}>
+      <Box mb="md" pl={2}>
         <Text
           fw={800}
-          size="24px"
+          size={isMobile ? '20px' : '22px'}
           style={{
             letterSpacing: '-0.02em',
             color: isDark ? '#F8FAFC' : '#0F172A',
@@ -160,25 +167,42 @@ export const SettingsPage: React.FC = () => {
         </Text>
       </Box>
 
-      {/* 2. Inner Split Layout (Sub-sidebar + Main Workspace) */}
+      {/* 2. Inner Split Layout (Sub-sidebar on Desktop, Modern Segmented Tabs Bar on Mobile) */}
       <Box
         style={{
           display: 'flex',
-          flexDirection: 'row',
-          gap: 32,
-          alignItems: 'flex-start',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 14 : 20,
+          alignItems: 'stretch',
         }}
       >
-        {/* Left Sub-Sidebar (Clean minimal pills matching reference design) */}
+        {/* Sub-nav: Segmented pill bar on mobile, Vertical clean sidebar on desktop */}
         <Box
           style={{
-            width: 220,
+            width: isMobile ? '100%' : 180,
+            maxWidth: '100%',
             flexShrink: 0,
-            position: 'sticky',
-            top: 80,
+            position: isMobile ? 'relative' : 'sticky',
+            top: isMobile ? 0 : 80,
+            overflowX: isMobile ? 'auto' : 'visible',
+            scrollbarWidth: 'none',
           }}
         >
-          <Stack gap={6}>
+          <Box
+            style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'row' : 'column',
+              gap: isMobile ? 4 : 4,
+              backgroundColor: isMobile
+                ? isDark
+                  ? 'rgba(255, 255, 255, 0.04)'
+                  : '#F1F5F9'
+                : 'transparent',
+              padding: isMobile ? 4 : 0,
+              borderRadius: isMobile ? 12 : 0,
+              width: '100%',
+            }}
+          >
             {navItems.map((item) => {
               const isActive = activeTab === item.key;
               return (
@@ -187,7 +211,11 @@ export const SettingsPage: React.FC = () => {
                   onClick={() => handleTabChange(item.key)}
                   style={{
                     backgroundColor: isActive
-                      ? isDark
+                      ? isMobile
+                        ? isDark
+                          ? '#1E293B'
+                          : '#FFFFFF'
+                        : isDark
                         ? 'rgba(37, 99, 235, 0.18)'
                         : '#EFF6FF'
                       : 'transparent',
@@ -198,17 +226,32 @@ export const SettingsPage: React.FC = () => {
                       : isDark
                       ? '#94A3B8'
                       : '#64748B',
-                    borderRadius: 100,
-                    padding: '8px 18px',
-                    fontWeight: isActive ? 600 : 500,
-                    fontSize: 14,
-                    width: 'fit-content',
+                    boxShadow: isMobile && isActive
+                      ? isDark
+                        ? '0 1px 3px rgba(0,0,0,0.3)'
+                        : '0 1px 3px rgba(16, 24, 40, 0.08)'
+                      : 'none',
+                    borderRadius: isMobile ? 8 : 10,
+                    padding: isMobile
+                      ? isSmallMobile
+                        ? '8px 8px'
+                        : '8px 12px'
+                      : '8px 14px',
+                    fontWeight: isActive ? 650 : 500,
+                    fontSize: isMobile ? (isSmallMobile ? 12 : 13) : 13.5,
+                    flex: isMobile ? 1 : undefined,
+                    width: isMobile ? 'auto' : '100%',
                     whiteSpace: 'nowrap',
-                    textAlign: 'left',
+                    textAlign: isMobile ? 'center' : 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: isMobile ? 'center' : 'flex-start',
+                    gap: 6,
                     transition: 'all 0.15s ease',
+                    cursor: 'pointer',
                   }}
                   onMouseEnter={(e) => {
-                    if (!isActive) {
+                    if (!isActive && !isMobile) {
                       e.currentTarget.style.color = isDark ? '#F8FAFC' : '#1E293B';
                       e.currentTarget.style.backgroundColor = isDark
                         ? 'rgba(255, 255, 255, 0.04)'
@@ -216,23 +259,40 @@ export const SettingsPage: React.FC = () => {
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (!isActive) {
+                    if (!isActive && !isMobile) {
                       e.currentTarget.style.color = isDark ? '#94A3B8' : '#64748B';
                       e.currentTarget.style.backgroundColor = 'transparent';
                     }
                   }}
                 >
-                  {item.label}
+                  {item.icon}
+                  <span>{isSmallMobile ? item.shortLabel : item.label}</span>
                 </UnstyledButton>
               );
             })}
-          </Stack>
+          </Box>
         </Box>
 
         {/* Right Active View Workspace */}
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          {activeTab === 'company' && (
+        <Box
+          style={{
+            flex: 1,
+            minWidth: 0,
+            width: '100%',
+            height: isMobile ? 'auto' : 'calc(100vh - 120px)',
+            maxHeight: isMobile ? 'none' : 'calc(100vh - 120px)',
+            overflowY: isMobile ? 'visible' : 'auto',
+            paddingRight: isMobile ? 0 : 12,
+            scrollbarWidth: 'thin',
+          }}
+        >
+          {activeTab === 'profile' && (
             <TabErrorBoundary tabName="My Profile">
+              <UserProfileTab />
+            </TabErrorBoundary>
+          )}
+          {activeTab === 'company' && (
+            <TabErrorBoundary tabName="Company Profile">
               <CompanyProfileTab />
             </TabErrorBoundary>
           )}

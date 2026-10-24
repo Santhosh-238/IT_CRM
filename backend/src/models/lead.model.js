@@ -70,14 +70,41 @@ export class LeadModel {
     ]);
 
     const fallbackSources = ['Website', 'Referral', 'Cold Call', 'LinkedIn', 'Social Media', 'Other'];
-    const fallbackStatuses = ['New', 'In Progress', 'Qualified', 'Proposal Sent', 'In Negotiation', 'Complete', 'Lost'];
-    const fallbackStages = ['Initialization', 'Qualification', 'Discovery', 'Requirement Analysis', 'Demo / Presentation', 'Proposal', 'Negotiation', 'Decision Making', 'Won', 'Lost'];
+    const fallbackStatuses = ['New', 'In Progress', 'Complete'];
+    const fallbackStages = [
+      'New Lead',
+      'Meetings',
+      'Proposals',
+      'Quotations',
+      'Negotiation',
+      'Contracts',
+      'Invoices',
+      'Payments',
+      'Progress',
+      'Completed'
+    ];
     const fallbackCategories = ['Product', 'Service'];
     const fallbackContactTypes = ['Individual', 'Company Representative'];
 
+    const normalizeStage = (stg) => {
+      if (!stg) return null;
+      const s = String(stg).trim().toLowerCase();
+      if (s === 'discovery' || s.includes('demo') || s === 'meeting' || s === 'meetings' || s.includes('requirement')) return 'Meetings';
+      if (s === 'proposal' || s === 'proposals') return 'Proposals';
+      if (s === 'quotation' || s === 'quotations') return 'Quotations';
+      if (s === 'negotiation' || s === 'negotiations' || s.includes('negotiat')) return 'Negotiation';
+      if (s === 'contract' || s === 'contracts' || s === 'decision making') return 'Contracts';
+      if (s === 'invoice' || s === 'invoices') return 'Invoices';
+      if (s === 'payment' || s === 'payments') return 'Payments';
+      if (s === 'progress') return 'Progress';
+      if (s === 'completed' || s === 'complete' || s === 'won' || s === 'closed won') return 'Completed';
+      if (s === 'initialization' || s === 'qualification' || s === 'new lead' || s === 'new') return 'New Lead';
+      return stg;
+    };
+
     const sources = Array.from(new Set([...dbSources.map(s => s.source).filter(Boolean), ...fallbackSources]));
-    const statuses = Array.from(new Set([...dbStatuses.map(s => s.status === 'Contacted' ? 'In Progress' : ((s.status === 'Won' || s.status === 'Completed') ? 'Complete' : s.status)).filter(Boolean), ...fallbackStatuses]));
-    const stages = Array.from(new Set([...dbStages.map(s => s.stage).filter(Boolean), ...fallbackStages]));
+    const statuses = Array.from(new Set([...dbStatuses.map(s => (s.status === 'Contacted' || s.status === 'Active') ? 'In Progress' : ((s.status === 'Won' || s.status === 'Completed') ? 'Complete' : s.status)).filter(Boolean), ...fallbackStatuses]));
+    const stages = Array.from(new Set([...fallbackStages, ...dbStages.map(s => normalizeStage(s.stage)).filter(Boolean)]));
     const categories = Array.from(new Set([...dbCategories.map(c => c.category).filter(Boolean), ...fallbackCategories]));
     const contactTypes = Array.from(new Set([...dbContactTypes.map(c => c.contactType).filter(Boolean), ...fallbackContactTypes]));
 

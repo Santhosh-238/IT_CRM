@@ -178,10 +178,41 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
   });
 
   const handleSelectTab = (tab: string) => {
-    setActiveTab(tab);
+    handleProceedToSection(tab);
+  };
+
+  // Navigate to target section and update lead stage accordingly
+  const handleProceedToSection = async (tab: string) => {
+    const normalized = tab === 'quotation' ? 'quotations' : tab;
+    setActiveTab(normalized);
     try {
-      sessionStorage.setItem('crm_lead_active_section', tab);
+      sessionStorage.setItem('crm_lead_active_section', normalized);
     } catch (_) {}
+
+    if (!activeLead) return;
+
+    const sectionStageMap: Record<string, { stage: string; status: string }> = {
+      meetings: { stage: 'Meetings', status: 'In Progress' },
+      proposals: { stage: 'Proposals', status: 'In Progress' },
+      quotations: { stage: 'Quotations', status: 'In Progress' },
+      negotiation: { stage: 'Negotiation', status: 'In Progress' },
+      contracts: { stage: 'Contracts', status: 'In Progress' },
+      invoices: { stage: 'Invoices', status: 'In Progress' },
+      payments: { stage: 'Payments', status: 'In Progress' },
+      progress: { stage: 'Progress', status: 'In Progress' },
+      completed: { stage: 'Completed', status: 'Complete' },
+    };
+
+    const target = sectionStageMap[normalized.toLowerCase()];
+    if (target) {
+      setActiveLead((prev) => (prev ? { ...prev, stage: target.stage, status: target.status } : prev));
+      try {
+        await updateLead(activeLead.id, {
+          stage: target.stage,
+          status: target.status,
+        });
+      } catch (_) {}
+    }
   };
 
   // Activity Timeline Category Filter ('all' | 'meetings' | 'calls' | 'proposals')
@@ -208,53 +239,112 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     }
   }, [activeLead]);
 
-  const handleUpdateProposals = (newProposals: any) => {
+  const handleUpdateProposals = async (newProposals: any) => {
     if (!dealData || !activeLead) return;
     const updated = { ...dealData, proposals: newProposals };
     setDealData(updated);
     saveLeadDealData(activeLead.id, updated);
+    setActiveLead((prev) => (prev ? { ...prev, stage: 'Proposals', status: 'In Progress' } : prev));
+    try {
+      await updateLead(activeLead.id, {
+        stage: 'Proposals',
+        status: 'In Progress',
+      });
+    } catch (_) {}
   };
 
-  const handleUpdateQuotations = (newQuotations: any) => {
+  const handleUpdateQuotations = async (newQuotations: any) => {
     if (!dealData || !activeLead) return;
     const updated = { ...dealData, quotations: newQuotations };
     setDealData(updated);
     saveLeadDealData(activeLead.id, updated);
+    setActiveLead((prev) => (prev ? { ...prev, stage: 'Quotations', status: 'In Progress' } : prev));
+    try {
+      await updateLead(activeLead.id, {
+        stage: 'Quotations',
+        status: 'In Progress',
+      });
+    } catch (_) {}
   };
 
-  const handleUpdateNegotiation = (newNeg: any) => {
+  const handleUpdateNegotiation = async (newNeg: any) => {
     if (!dealData || !activeLead) return;
     const updated = { ...dealData, negotiation: newNeg };
     setDealData(updated);
     saveLeadDealData(activeLead.id, updated);
+    setActiveLead((prev) => (prev ? { ...prev, stage: 'Negotiation', status: 'In Progress' } : prev));
+    try {
+      await updateLead(activeLead.id, {
+        stage: 'Negotiation',
+        status: 'In Progress',
+      });
+    } catch (_) {}
   };
 
-  const handleUpdateContract = (newContract: any) => {
+  const handleUpdateContract = async (newContract: any) => {
     if (!dealData || !activeLead) return;
     const updated = { ...dealData, contract: newContract };
     setDealData(updated);
     saveLeadDealData(activeLead.id, updated);
+    setActiveLead((prev) => (prev ? { ...prev, stage: 'Contracts', status: 'In Progress' } : prev));
+    try {
+      await updateLead(activeLead.id, {
+        stage: 'Contracts',
+        status: 'In Progress',
+      });
+    } catch (_) {}
   };
 
-  const handleUpdateInvoices = (newInvoices: any) => {
+  const handleUpdateInvoices = async (newInvoices: any) => {
     if (!dealData || !activeLead) return;
     const updated = { ...dealData, invoices: newInvoices };
     setDealData(updated);
     saveLeadDealData(activeLead.id, updated);
+    setActiveLead((prev) => (prev ? { ...prev, stage: 'Invoices', status: 'In Progress' } : prev));
+    try {
+      await updateLead(activeLead.id, {
+        stage: 'Invoices',
+        status: 'In Progress',
+      });
+    } catch (_) {}
   };
 
-  const handleUpdatePayments = (newPayments: any) => {
+  const handleUpdatePayments = async (newPayments: any) => {
     if (!dealData || !activeLead) return;
     const updated = { ...dealData, payments: newPayments };
     setDealData(updated);
     saveLeadDealData(activeLead.id, updated);
+    setActiveLead((prev) => (prev ? { ...prev, stage: 'Payments', status: 'In Progress' } : prev));
+    try {
+      await updateLead(activeLead.id, {
+        stage: 'Payments',
+        status: 'In Progress',
+      });
+    } catch (_) {}
   };
 
-  const handleUpdateProgress = (newProgress: any) => {
+  const handleUpdateProgress = async (newProgress: any) => {
     if (!dealData || !activeLead) return;
     const updated = { ...dealData, progress: newProgress };
     setDealData(updated);
     saveLeadDealData(activeLead.id, updated);
+
+    const isCompleted =
+      newProgress?.overallPercentage === 100 ||
+      newProgress?.status === 'Completed' ||
+      (Array.isArray(newProgress?.milestones) &&
+        newProgress.milestones.length > 0 &&
+        newProgress.milestones.every((m: any) => m.status === 'Completed' || m.percentage === 100));
+
+    const finalStage = isCompleted ? 'Completed' : 'Progress';
+    const finalStatus = isCompleted ? 'Complete' : 'In Progress';
+    setActiveLead((prev) => (prev ? { ...prev, stage: finalStage, status: finalStatus } : prev));
+    try {
+      await updateLead(activeLead.id, {
+        stage: finalStage,
+        status: finalStatus,
+      });
+    } catch (_) {}
   };
 
   // Modals State
@@ -599,9 +689,18 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
       setScheduledMeetings(updatedList);
       localStorage.setItem(`crm_meetings_${targetLead.id}`, JSON.stringify(updatedList));
 
+      const resolvedStage =
+        stageAfterMeeting && stageAfterMeeting !== 'Discovery'
+          ? stageAfterMeeting
+          : 'Meetings';
+      setActiveLead((prev) =>
+        prev && prev.id === targetLead.id
+          ? { ...prev, stage: resolvedStage, status: 'In Progress' }
+          : prev
+      );
       await updateLead(targetLead.id, {
-        stage: stageAfterMeeting || 'Active',
-        status: 'Active',
+        stage: resolvedStage,
+        status: 'In Progress',
       });
 
       notifications.show({
@@ -748,6 +847,11 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
         try {
           localStorage.setItem(`crm_meetings_${activeLead.id}`, JSON.stringify(updated));
         } catch (_) {}
+        updateLead(activeLead.id, {
+          stage: 'Meetings',
+          status: 'In Progress',
+        }).catch(() => {});
+        setActiveLead((prev) => (prev ? { ...prev, stage: 'Meetings', status: 'In Progress' } : prev));
       }
       return updated;
     });
@@ -1055,31 +1159,54 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
   ];
 
   return (
-    <Box p={{ base: 'sm', sm: 'md', md: 'lg' }} style={{ maxWidth: 1600, margin: '0 auto' }}>
+    <Box style={{ width: '100%' }}>
       
       {/* ========================================================================= */}
       {/* 1. BREADCRUMBS                                                           */}
       {/* ========================================================================= */}
-      <Group gap={6} mb="md" align="center">
-        <Text
-          size="13px"
-          fw={500}
-          style={{
-            color: isDark ? '#94A3B8' : '#64748B',
-            cursor: 'pointer',
-          }}
-          onClick={onBack}
-        >
-          Leads
-        </Text>
-        <IconChevronRight size={13} color="#94A3B8" />
-        <Text
-          size="13px"
-          fw={700}
-          style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}
-        >
-          {leadName}
-        </Text>
+      <Group justify="space-between" align="center" mb="md" wrap="wrap" gap="sm">
+        <Group gap={6} align="center">
+          <Text
+            size="13px"
+            fw={500}
+            style={{
+              color: isDark ? '#94A3B8' : '#64748B',
+              cursor: 'pointer',
+            }}
+            onClick={onBack}
+          >
+            Leads
+          </Text>
+          <IconChevronRight size={13} color="#94A3B8" />
+          <Text
+            size="13px"
+            fw={700}
+            style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}
+          >
+            {leadName}
+          </Text>
+        </Group>
+
+        <Group gap="xs" align="center">
+          <Badge
+            size="sm"
+            variant="light"
+            color={activeLead?.status?.toLowerCase() === 'complete' ? 'teal' : 'blue'}
+            radius="xl"
+            style={{ textTransform: 'capitalize', fontWeight: 700 }}
+          >
+            {activeLead?.status === 'Contacted' ? 'In Progress' : (activeLead?.status || 'In Progress')}
+          </Badge>
+          <Badge
+            size="sm"
+            variant="outline"
+            color="indigo"
+            radius="xl"
+            style={{ fontWeight: 600 }}
+          >
+            Stage: {activeLead?.stage === 'Discovery' ? 'Meetings' : (activeLead?.stage || 'Meetings')}
+          </Badge>
+        </Group>
       </Group>
 
       {/* ========================================================================= */}
@@ -1171,7 +1298,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
                 variant="light"
                 color="blue"
                 rightSection={<IconArrowRight size={14} />}
-                onClick={() => handleSelectTab('proposals')}
+                onClick={() => handleProceedToSection('proposals')}
                 style={{ borderRadius: 10, fontWeight: 700 }}
               >
                 Proceed to Proposal
@@ -1212,7 +1339,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           isDark={isDark}
           proposals={dealData.proposals}
           onUpdateProposals={handleUpdateProposals}
-          onNavigateSection={handleSelectTab}
+          onNavigateSection={handleProceedToSection}
         />
       )}
 
@@ -1223,7 +1350,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           isDark={isDark}
           quotations={dealData.quotations || []}
           onUpdateQuotations={handleUpdateQuotations}
-          onNavigateSection={handleSelectTab}
+          onNavigateSection={handleProceedToSection}
         />
       )}
 
@@ -1234,7 +1361,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           isDark={isDark}
           negotiation={dealData.negotiation}
           onUpdateNegotiation={handleUpdateNegotiation}
-          onNavigateSection={handleSelectTab}
+          onNavigateSection={handleProceedToSection}
         />
       )}
 
@@ -1245,7 +1372,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           isDark={isDark}
           contract={dealData.contract}
           onUpdateContract={handleUpdateContract}
-          onNavigateSection={handleSelectTab}
+          onNavigateSection={handleProceedToSection}
         />
       )}
 
@@ -1256,7 +1383,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           isDark={isDark}
           invoices={dealData.invoices}
           onUpdateInvoices={handleUpdateInvoices}
-          onNavigateSection={handleSelectTab}
+          onNavigateSection={handleProceedToSection}
         />
       )}
 
@@ -1268,7 +1395,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           payments={dealData.payments}
           invoices={dealData.invoices}
           onUpdatePayments={handleUpdatePayments}
-          onNavigateSection={handleSelectTab}
+          onNavigateSection={handleProceedToSection}
         />
       )}
 
@@ -1279,7 +1406,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           isDark={isDark}
           progress={dealData.progress}
           onUpdateProgress={handleUpdateProgress}
-          onNavigateSection={handleSelectTab}
+          onNavigateSection={handleProceedToSection}
         />
       )}
       </Box>

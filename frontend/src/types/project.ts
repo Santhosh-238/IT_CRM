@@ -31,6 +31,7 @@ export interface ProjectModuleItem {
   deadline?: string;   // DD-MM-YYYY
   progress: number;    // 0 to 100
   status: 'Not Started' | 'In Progress' | 'In Review' | 'Completed';
+  price?: number | string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -130,6 +131,7 @@ export interface ProjectFilter {
   projectManagerId?: string;
   client?: string;
   manager?: string;
+  contactId?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   page?: number;

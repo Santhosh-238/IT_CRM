@@ -34,6 +34,8 @@ export interface Lead {
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  registeredState?: string | null;
+  state?: string | null;
   source?: string | null;
   customSource?: string | null;
 
@@ -57,6 +59,8 @@ export interface Lead {
   // Assignment & Additional Details
   assignedTo?: string | null;
   assignedToName?: string | null;
+  createdBy?: string | null;
+  createdByName?: string | null;
   notes?: string | null;
   agenda?: string | null;
 
@@ -81,6 +85,10 @@ export interface LeadFormData {
   serviceList?: string[];
   status?: LeadStatus | string;
   stage?: LeadStage | string;
+  assignedTo?: string | null;
+  assignedToName?: string | null;
+  createdBy?: string | null;
+  createdByName?: string | null;
 }
 
 export interface LeadFilter {
@@ -89,10 +97,14 @@ export interface LeadFilter {
   stage?: string;
   category?: string;
   source?: string;
-  contactType?: string;
   companyName?: string;
+  contactType?: string;
+  assignedTo?: string;
+  createdBy?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
 }
 
 export interface LeadPagination {
@@ -549,9 +561,9 @@ export interface LeadProgressData {
   projectName: string;
   projectCode: string;
   overallPercentage: number;
-  status: 'Planning' | 'In Development' | 'Testing & UAT' | 'Completed';
-  projectManager: string;
-  techLead: string;
+  status: 'Planning' | 'In Development' | 'Testing & UAT' | 'Completed' | string;
+  projectManager?: string;
+  techLead?: string;
   targetDeliveryDate: string;
   stagingUrl?: string;
   repoUrl?: string;

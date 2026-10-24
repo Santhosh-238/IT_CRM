@@ -84,22 +84,42 @@ export interface CompanyProfile {
   legalName?: string;
   tagline?: string;
   gstNumber?: string;
+  companyGst?: string;
   panNumber?: string;
+  companyPan?: string;
   cinNumber?: string;
   email: string;
+  companyEmail?: string;
   supportEmail?: string;
   phone: string;
+  companyPhone?: string;
   website?: string;
+  companyWebsite?: string;
   address: string;
+  companyAddress?: string;
   city: string;
   state: string;
   zip: string;
   country: string;
-  currency: string;
-  timezone: string;
-  fiscalYear: string;
-  dateFormat: string;
+  currency?: string;
+  timezone?: string;
+  fiscalYear?: string;
+  dateFormat?: string;
   logoUrl?: string;
+  companyLogoUrl?: string;
+  placeOfSupply?: string;
+  // Bank & Payment Details
+  bankName?: string;
+  accountNumber?: string;
+  accountHolderName?: string;
+  ifscCode?: string;
+  branchName?: string;
+  accountType?: string;
+  upiId?: string;
+  // Authorized Signatory Details
+  authorizedSignatory?: string;
+  signatoryDesignation?: string;
+  signatureUrl?: string;
 }
 
 export interface CrmPipelinePresets {

@@ -10,6 +10,9 @@ import {
   Paper,
   useComputedColorScheme,
   UnstyledButton,
+  Select,
+  Badge,
+  Tooltip,
 } from '@mantine/core';
 import {
   IconSearch,
@@ -17,9 +20,14 @@ import {
   IconAlertTriangle,
   IconChevronLeft,
   IconChevronRight,
+  IconUser,
+  IconPlus,
 } from '@tabler/icons-react';
 import { Lead } from '../../types/lead';
 import { useLead } from '../../context/LeadContext';
+import { useCRM } from '../../context/CRMContext';
+import { useEmployee } from '../../context/EmployeeContext';
+import { usePermissions } from '../../context/AccessControlContext';
 import { LeadTableView } from './components/LeadTableView';
 import { LeadModal } from './components/LeadModal';
 import {
@@ -34,6 +42,17 @@ type ActiveTabType = 'ALL' | 'NEW' | 'IN_PROGRESS' | 'COMPLETE';
 export const LeadsPage: React.FC = () => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
+
+  const { currentUser } = useCRM();
+  const { employees } = useEmployee();
+  const { isSuperAdmin } = usePermissions();
+
+  const canFilterAssignee = Boolean(
+    isSuperAdmin ||
+    currentUser?.role === 'SUPER_ADMIN' ||
+    currentUser?.role?.toUpperCase() === 'SUPER_ADMIN' ||
+    currentUser?.role?.toUpperCase() === 'SUPER ADMIN'
+  );
 
   const {
     leads,
@@ -161,61 +180,19 @@ export const LeadsPage: React.FC = () => {
 
   return (
     <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ width: '100%', maxWidth: '100%' }}>
-      {/* Top Controls Bar - Modern Toolbar Card matching Contacts Page */}
+      {/* Top Controls Bar - Modern Toolbar Card */}
       <Paper
         p="sm"
-        radius="lg"
         style={{
+          borderRadius: 12,
           backgroundColor: isDark ? '#111827' : '#FFFFFF',
           border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
+          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(0, 0, 0, 0.03)',
         }}
       >
-        <Group justify="space-between" wrap="wrap" gap="sm" align="center">
-          {/* Left: Search Bar */}
-          <form onSubmit={handleSearchSubmit} style={{ flex: '1 1 240px', maxWidth: 320, minWidth: 180 }}>
-            <TextInput
-              placeholder="Search leads..."
-              leftSection={<IconSearch size={15} color="#94A3B8" />}
-              rightSection={
-                searchInput ? (
-                  <ActionIcon
-                    size="xs"
-                    variant="subtle"
-                    onClick={() => {
-                      setSearchInput('');
-                      setFilters({ search: '' });
-                    }}
-                  >
-                    <IconX size={12} />
-                  </ActionIcon>
-                ) : null
-              }
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  setFilters({ search: searchInput });
-                }
-              }}
-              onBlur={() => setFilters({ search: searchInput })}
-              size="sm"
-              radius="md"
-              styles={{
-                input: {
-                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                  fontSize: 13,
-                  height: 36,
-                },
-              }}
-            />
-          </form>
-
-          {/* Right: Status Filter Tabs & Date Filter */}
-          <Group gap="sm" align="center" wrap="wrap">
-            <Box
+        <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+          {/* Left: Modern Segmented Tabs */}
+          <Box
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -223,6 +200,7 @@ export const LeadsPage: React.FC = () => {
               padding: 3,
               borderRadius: 10,
               border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #E2E8F0',
+              flexShrink: 0,
             }}
           >
             {/* 1. All */}
@@ -482,8 +460,112 @@ export const LeadsPage: React.FC = () => {
             </UnstyledButton>
           </Box>
 
+          {/* Right: Search, Filter Selects, Date & Add Button */}
+          <Group gap={8} align="center" wrap="wrap" style={{ flexShrink: 0 }}>
+            {/* Search leads... */}
+            <form onSubmit={handleSearchSubmit} style={{ width: 190 }}>
+              <TextInput
+                placeholder="Search leads..."
+                leftSection={<IconSearch size={14} color="#94A3B8" />}
+                rightSection={
+                  searchInput ? (
+                    <ActionIcon
+                      size="xs"
+                      variant="subtle"
+                      onClick={() => {
+                        setSearchInput('');
+                        setFilters({ search: '' });
+                      }}
+                    >
+                      <IconX size={12} />
+                    </ActionIcon>
+                  ) : null
+                }
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    setFilters({ search: searchInput });
+                  }
+                }}
+                onBlur={() => setFilters({ search: searchInput })}
+                size="sm"
+                radius="md"
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
+                    fontSize: 12.5,
+                    height: 36,
+                  },
+                }}
+              />
+            </form>
+
+            {/* Assignee Filter: Only for Super Admin */}
+            {canFilterAssignee && (
+              <Select
+                placeholder="All Assignees"
+                size="sm"
+                radius="md"
+                leftSection={<IconUser size={14} color="#6366F1" />}
+                value={filters.assignedTo || 'All'}
+                data={[
+                  { value: 'All', label: 'All Assignees' },
+                  { value: 'Unassigned', label: 'Unassigned Leads' },
+                  ...employees.map((emp) => ({
+                    value: emp.id,
+                    label: `Assigned: ${emp.name}`,
+                  })),
+                ]}
+                onChange={(val) => {
+                  setFilters({ assignedTo: val || 'All' });
+                }}
+                style={{ width: 155 }}
+                comboboxProps={{ width: 195, position: 'bottom-start', withinPortal: true, shadow: 'md' }}
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                    height: 36,
+                  },
+                  option: {
+                    fontSize: 12.5,
+                    padding: '7px 12px',
+                    whiteSpace: 'nowrap',
+                  },
+                }}
+              />
+            )}
+
             {/* Date Filter: Day-wise & Month-wise */}
-            <DateFilterControl value={dateFilter} onChange={setDateFilter} width={135} />
+            <DateFilterControl value={dateFilter} onChange={setDateFilter} width={125} />
+
+            {/* + Add Lead Button */}
+            <Button
+              size="sm"
+              radius="md"
+              leftSection={<IconPlus size={15} stroke={2.5} />}
+              onClick={handleOpenAddModal}
+              style={{
+                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                color: '#FFFFFF',
+                fontWeight: 600,
+                fontSize: 12.5,
+                height: 36,
+                padding: '0 14px',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)',
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              Add Lead
+            </Button>
           </Group>
         </Group>
       </Paper>
@@ -493,17 +575,19 @@ export const LeadsPage: React.FC = () => {
         leads={filteredLeads}
         onEdit={handleOpenEditModal}
         onDelete={(lead) => setDeleteTarget(lead)}
+        onAddNew={handleOpenAddModal}
         loading={loading}
       />
 
       {/* Pagination Footer matching Contacts page */}
       <Paper
-        mt="md"
+        mt={12}
         p="sm"
-        radius="lg"
         style={{
+          borderRadius: 12,
           backgroundColor: isDark ? '#111827' : '#FFFFFF',
           border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(0, 0, 0, 0.03)',
         }}
       >
         <Group justify="space-between" align="center" wrap="wrap">

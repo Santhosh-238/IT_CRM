@@ -330,6 +330,7 @@ export const BillingPage: React.FC = () => {
       />
 
       <InvoiceModal
+        key={invoiceModalOpened ? (invoiceTargetMilestone ? `milestone-${invoiceTargetMilestone.id}` : 'fresh-invoice') : 'closed'}
         opened={invoiceModalOpened}
         onClose={() => {
           setInvoiceModalOpened(false);

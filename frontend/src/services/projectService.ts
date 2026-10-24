@@ -44,6 +44,7 @@ export const projectService = {
     if (params.projectType && params.projectType !== 'All') query.append('projectType', params.projectType);
     if (params.category && params.category !== 'All') query.append('category', params.category);
     if (params.projectManagerId && params.projectManagerId !== 'All') query.append('projectManagerId', params.projectManagerId);
+    if (params.contactId) query.append('contactId', params.contactId);
     if (params.sortBy) query.append('sortBy', params.sortBy);
     if (params.sortOrder) query.append('sortOrder', params.sortOrder);
     if (params.page) query.append('page', params.page.toString());

@@ -13,6 +13,7 @@ import {
   Tooltip,
   useComputedColorScheme,
   ActionIcon,
+  UnstyledButton,
 } from '@mantine/core';
 import {
   IconSearch,
@@ -25,18 +26,11 @@ import {
   IconFlag,
   IconBuilding,
   IconRefresh,
-  IconLayoutList,
-  IconLayoutKanban,
-  IconTable,
-  IconGitPullRequest,
 } from '@tabler/icons-react';
 import { useProject } from '../../context/ProjectContext';
 import { useCRM } from '../../context/CRMContext';
 import { Project } from '../../types/project';
 import { ProjectTableView } from './components/ProjectTableView';
-import { ProjectTasksListView } from './components/ProjectTasksListView';
-import { ProjectTasksKanban } from './components/ProjectTasksKanban';
-import { ProjectPipelineView } from './components/ProjectPipelineView';
 import {
   DateFilterControl,
   DateFilterValue,
@@ -57,6 +51,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
   const { setActiveNav } = useCRM();
   const {
     projects,
+    stats,
     metadata,
     loading,
     filters,
@@ -72,31 +67,20 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
-  // Active View State: Table, List (Tasks), Board (Kanban), Pipeline
-  const [currentView, setCurrentViewState] = useState<'table' | 'list' | 'board' | 'pipeline'>(() => {
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      const v = searchParams.get('view');
-      if (v === 'table' || v === 'list' || v === 'board' || v === 'pipeline') return v as any;
-      const saved = localStorage.getItem('crm_projects_view');
-      if (saved === 'table' || saved === 'list' || saved === 'board' || saved === 'pipeline') return saved as any;
-    }
-    return initialSubNav === 'tasks' ? 'list' : 'table';
-  });
-
-  const setCurrentView = (v: 'table' | 'list' | 'board' | 'pipeline') => {
-    setCurrentViewState(v);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('crm_projects_view', v);
-      const url = new URL(window.location.href);
-      if (v === 'table') {
-        url.searchParams.delete('view');
-      } else {
-        url.searchParams.set('view', v);
-      }
-      window.history.replaceState(null, '', url.pathname + url.search);
-    }
-  };
+  // Status Counts for Segmented Tabs
+  const totalCount = stats?.total ?? pagination.total ?? projects.length;
+  const inProgressCount =
+    stats?.inProgress ??
+    projects.filter((p) => (p.status || '').toLowerCase().includes('progress')).length;
+  const planningCount =
+    stats?.planning ??
+    projects.filter((p) => (p.status || '').toLowerCase().includes('planning')).length;
+  const onHoldCount =
+    stats?.onHold ??
+    projects.filter((p) => (p.status || '').toLowerCase().includes('hold')).length;
+  const completedCount =
+    stats?.completed ??
+    projects.filter((p) => (p.status || '').toLowerCase().includes('completed')).length;
 
   // Local filter states
   const [searchInput, setSearchInput] = useState<string>(filters.search || '');
@@ -179,14 +163,22 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
     { value: 'Low', label: 'Low' },
   ];
 
-  // Dynamic Client Options from Metadata
-  const clientOptions = [
-    { value: 'All', label: 'All Clients' },
-    ...(metadata?.contacts || []).map((c: any) => ({
-      value: c.companyName || c.name,
-      label: c.companyName ? `${c.companyName} (${c.name})` : c.name,
-    })),
-  ];
+  // Dynamic Client Options from Metadata (deduplicated by value to prevent Mantine runtime error)
+  const clientOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: { value: string; label: string }[] = [{ value: 'All', label: 'All Clients' }];
+    (metadata?.contacts || []).forEach((c: any) => {
+      const val = (c.companyName || c.name || '').trim();
+      if (val && !seen.has(val.toLowerCase())) {
+        seen.add(val.toLowerCase());
+        options.push({
+          value: val,
+          label: c.companyName ? `${c.companyName} (${c.name})` : c.name,
+        });
+      }
+    });
+    return options;
+  }, [metadata?.contacts]);
 
   // Action handlers
   const handleOpenAddModal = () => {
@@ -233,13 +225,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
               </Text>
               <IconChevronRight size={13} color="#94A3B8" />
               <Text size="12px" fw={700} style={{ color: isDark ? '#93C5FD' : '#2563EB' }}>
-                {currentView === 'list'
-                  ? 'List (Tasks)'
-                  : currentView === 'board'
-                  ? 'Board (Kanban)'
-                  : currentView === 'pipeline'
-                  ? 'Pipeline View'
-                  : 'Projects Directory'}
+                Projects Directory
               </Text>
             </Group>
             <Group gap="sm" align="center">
@@ -249,16 +235,10 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
                 style={{
                   color: isDark ? '#F8FAFC' : '#0F172A',
                   letterSpacing: '-0.02em',
-                  fontSize: '21px',
+                  fontSize: '22px',
                 }}
               >
-                {currentView === 'list'
-                  ? 'Tasks & Milestones'
-                  : currentView === 'board'
-                  ? 'Kanban Task Board'
-                  : currentView === 'pipeline'
-                  ? 'Project Delivery Pipeline'
-                  : 'Projects Directory'}
+                Projects Directory
               </Title>
               <Badge
                 size="md"
@@ -275,257 +255,253 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
             </Group>
           </Box>
 
-          {/* View Switcher: Table | List (Tasks) | Board | Pipeline */}
-          <Group
-            gap={4}
-            p={3}
+          {/* Primary Action Button in Header */}
+          <Button
+            size="sm"
+            radius="md"
+            leftSection={<IconPlus size={16} stroke={2.5} />}
+            onClick={handleOpenAddModal}
             style={{
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9',
-              borderRadius: 8,
-              border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
+              background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: 13,
+              height: 38,
+              padding: '0 18px',
+              border: 'none',
+              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
+              transition: 'all 0.15s ease',
             }}
           >
-            <Button
-              size="compact-xs"
-              variant={currentView === 'table' ? 'filled' : 'subtle'}
-              color="indigo"
-              leftSection={<IconTable size={13} />}
-              onClick={() => setCurrentView('table')}
-              style={{
-                fontSize: 12,
-                fontWeight: currentView === 'table' ? 700 : 500,
-                backgroundColor: currentView === 'table' ? '#4F46E5' : 'transparent',
-                color: currentView === 'table' ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
-              }}
-            >
-              Table
-            </Button>
-            <Button
-              size="compact-xs"
-              variant={currentView === 'list' ? 'filled' : 'subtle'}
-              color="indigo"
-              leftSection={<IconLayoutList size={13} />}
-              onClick={() => setCurrentView('list')}
-              style={{
-                fontSize: 12,
-                fontWeight: currentView === 'list' ? 700 : 500,
-                backgroundColor: currentView === 'list' ? '#4F46E5' : 'transparent',
-                color: currentView === 'list' ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
-              }}
-            >
-              List (Tasks)
-            </Button>
-            <Button
-              size="compact-xs"
-              variant={currentView === 'board' ? 'filled' : 'subtle'}
-              color="indigo"
-              leftSection={<IconLayoutKanban size={13} />}
-              onClick={() => setCurrentView('board')}
-              style={{
-                fontSize: 12,
-                fontWeight: currentView === 'board' ? 700 : 500,
-                backgroundColor: currentView === 'board' ? '#4F46E5' : 'transparent',
-                color: currentView === 'board' ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
-              }}
-            >
-              Board
-            </Button>
-            <Button
-              size="compact-xs"
-              variant={currentView === 'pipeline' ? 'filled' : 'subtle'}
-              color="indigo"
-              leftSection={<IconGitPullRequest size={13} />}
-              onClick={() => setCurrentView('pipeline')}
-              style={{
-                fontSize: 12,
-                fontWeight: currentView === 'pipeline' ? 700 : 500,
-                backgroundColor: currentView === 'pipeline' ? '#4F46E5' : 'transparent',
-                color: currentView === 'pipeline' ? '#FFFFFF' : isDark ? '#94A3B8' : '#64748B',
-              }}
-            >
-              Pipeline
-            </Button>
-          </Group>
+            Create Project
+          </Button>
         </Group>
       </Box>
 
-      {/* 2. DYNAMIC VIEWS */}
-      {currentView === 'list' && (
-        <ProjectTasksListView
-          projects={projects}
-          activeView="list"
-          onViewChange={(v) => setCurrentView(v as any)}
-        />
-      )}
-
-      {currentView === 'board' && (
-        <ProjectTasksKanban
-          projects={projects}
-          activeView="board"
-          onViewChange={(v) => setCurrentView(v as any)}
-        />
-      )}
-
-      {currentView === 'pipeline' && (
-        <ProjectPipelineView
-          projects={filteredProjects}
-          onView={handleOpenView}
-          onEdit={handleOpenEditModal}
-          onDelete={(proj: Project) => setDeleteTarget(proj)}
-        />
-      )}
-
-      {currentView === 'table' && (
-        <>
-          {/* Unified Filter Toolbar */}
-          <Paper
-            p="sm"
-            radius="md"
-            mb="md"
+      {/* 2. Unified Filter Toolbar (Card 1) */}
+      <Paper
+        p="sm"
+        radius="lg"
+        mb="md"
+        style={{
+          backgroundColor: isDark ? '#111827' : '#FFFFFF',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(0, 0, 0, 0.03)',
+        }}
+      >
+        <Group justify="space-between" align="center" wrap="wrap" gap="sm">
+          {/* Left: Modern Segmented Status Tabs */}
+          <Box
             style={{
-              backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-              border: isDark ? '1px solid #1E293B' : '1px solid #E2E8F0',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+              padding: 3,
+              borderRadius: 10,
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid #E2E8F0',
+              flexShrink: 0,
             }}
           >
-            <Group justify="space-between" wrap="wrap" gap="sm" align="center">
-              {/* Left: Search & Filter Inputs */}
-              <Group gap="xs" wrap="wrap" style={{ flex: 1, minWidth: 260 }} align="center">
-                {/* Search Bar */}
-                <TextInput
-                  placeholder="Search projects..."
-                  size="sm"
-                  radius="md"
-                  value={searchInput}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  leftSection={<IconSearch size={15} color={isDark ? '#60A5FA' : '#2563EB'} />}
-                  rightSection={
-                    searchInput ? (
-                      <ActionIcon size="xs" variant="subtle" color="gray" onClick={() => handleSearchChange('')}>
-                        <IconX size={12} />
-                      </ActionIcon>
-                    ) : null
-                  }
-                  styles={{
-                    input: {
-                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
-                      fontSize: 13,
-                      height: 36,
-                    },
-                  }}
-                  style={{ flex: '1 1 200px', minWidth: 160 }}
-                />
-
-                {/* Status Filter Dropdown */}
-                <Select
-                  size="sm"
-                  radius="md"
-                  data={statusOptions}
-                  value={statusFilter}
-                  onChange={handleStatusChange}
-                  leftSection={<IconActivity size={14} color="#6366F1" />}
-                  styles={{
-                    input: {
-                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
-                      fontSize: 13,
-                      height: 36,
-                    },
-                  }}
-                  style={{ flex: '1 1 130px', minWidth: 120 }}
-                />
-
-                {/* Priority Filter Dropdown */}
-                <Select
-                  size="sm"
-                  radius="md"
-                  data={priorityOptions}
-                  value={priorityFilter}
-                  onChange={handlePriorityChange}
-                  leftSection={<IconFlag size={14} color="#F59E0B" />}
-                  styles={{
-                    input: {
-                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
-                      fontSize: 13,
-                      height: 36,
-                    },
-                  }}
-                  style={{ flex: '1 1 130px', minWidth: 120 }}
-                />
-
-                {/* Client Filter Dropdown */}
-                <Select
-                  size="sm"
-                  radius="md"
-                  data={clientOptions}
-                  value={clientFilter}
-                  onChange={handleClientChange}
-                  leftSection={<IconBuilding size={14} color="#06B6D4" />}
-                  styles={{
-                    input: {
-                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
-                      fontSize: 13,
-                      height: 36,
-                    },
-                  }}
-                  style={{ flex: '1 1 150px', minWidth: 130 }}
-                  searchable
-                />
-
-                {/* Date Filter Dropdown: Day-wise & Monthly-wise */}
-                <DateFilterControl
-                  value={dateFilter}
-                  onChange={setDateFilter}
-                  width={135}
-                />
-
-                {/* Clear Filters Button (Visible only when filters active) */}
-                {isFiltered && (
-                  <Tooltip label="Reset all filters" withArrow position="top">
-                    <Button
-                      size="sm"
-                      variant="subtle"
-                      color="gray"
-                      radius="md"
-                      onClick={handleResetFilters}
-                      leftSection={<IconRefresh size={14} />}
-                      style={{
-                        height: 36,
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  </Tooltip>
-                )}
-              </Group>
-
-              {/* Right Action: Create Project Button */}
-              <Group gap="xs">
-                <Button
-                  size="sm"
-                  radius="md"
-                  leftSection={<IconPlus size={16} stroke={2.5} />}
-                  onClick={handleOpenAddModal}
+            {[
+              {
+                key: 'All',
+                label: 'All',
+                count: totalCount,
+                activeColor: '#4F46E5',
+                activeColorDark: '#818CF8',
+              },
+              {
+                key: 'In Progress',
+                label: 'In Progress',
+                count: inProgressCount,
+                activeColor: '#2563EB',
+                activeColorDark: '#60A5FA',
+              },
+              {
+                key: 'Planning',
+                label: 'Planning',
+                count: planningCount,
+                activeColor: '#0EA5E9',
+                activeColorDark: '#38BDF8',
+              },
+              {
+                key: 'Completed',
+                label: 'Completed',
+                count: completedCount,
+                activeColor: '#059669',
+                activeColorDark: '#34D399',
+              },
+            ].map((tab) => {
+              const isActive = statusFilter === tab.key;
+              return (
+                <UnstyledButton
+                  key={tab.key}
+                  onClick={() => handleStatusChange(tab.key)}
                   style={{
-                    backgroundColor: '#2563EB',
-                    fontWeight: 600,
-                    fontSize: 13,
-                    padding: '0 16px',
-                    height: 36,
-                    boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '5px 11px',
+                    borderRadius: 7,
+                    backgroundColor: isActive
+                      ? isDark
+                        ? '#0F172A'
+                        : '#FFFFFF'
+                      : 'transparent',
+                    boxShadow: isActive
+                      ? isDark
+                        ? '0 1px 3px rgba(0, 0, 0, 0.4)'
+                        : '0 1px 3px rgba(0, 0, 0, 0.08)'
+                      : 'none',
+                    color: isActive
+                      ? isDark
+                        ? tab.activeColorDark
+                        : tab.activeColor
+                      : isDark
+                      ? '#94A3B8'
+                      : '#64748B',
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: 12,
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  Create Project
+                  <span>{tab.label}</span>
+                  <Box
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: 18,
+                      height: 18,
+                      padding: '0 5px',
+                      borderRadius: 9,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      backgroundColor: isActive
+                        ? isDark
+                          ? tab.activeColorDark
+                          : tab.activeColor
+                        : isDark
+                        ? 'rgba(255, 255, 255, 0.08)'
+                        : '#E2E8F0',
+                      color: isActive
+                        ? isDark
+                          ? '#0F172A'
+                          : '#FFFFFF'
+                        : isDark
+                        ? '#CBD5E1'
+                        : '#64748B',
+                    }}
+                  >
+                    {tab.count}
+                  </Box>
+                </UnstyledButton>
+              );
+            })}
+          </Box>
+
+          {/* Right: Search, Priority, Client, Date & Clear Filters */}
+          <Group gap={6} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
+            {/* Search Bar */}
+            <TextInput
+              placeholder="Search projects..."
+              size="xs"
+              radius="md"
+              value={searchInput}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              leftSection={<IconSearch size={13} color={isDark ? '#60A5FA' : '#2563EB'} />}
+              rightSection={
+                searchInput ? (
+                  <ActionIcon
+                    size="xs"
+                    variant="subtle"
+                    color="gray"
+                    onClick={() => handleSearchChange('')}
+                  >
+                    <IconX size={11} />
+                  </ActionIcon>
+                ) : null
+              }
+              styles={{
+                input: {
+                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
+                  fontSize: 12,
+                  height: 34,
+                },
+              }}
+              style={{ width: 175 }}
+            />
+
+            {/* Priority Filter Dropdown */}
+            <Select
+              size="xs"
+              radius="md"
+              data={priorityOptions}
+              value={priorityFilter}
+              onChange={handlePriorityChange}
+              leftSection={<IconFlag size={13} color="#F59E0B" />}
+              styles={{
+                input: {
+                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
+                  fontSize: 12,
+                  height: 34,
+                },
+              }}
+              style={{ width: 115 }}
+            />
+
+            {/* Client Filter Dropdown */}
+            <Select
+              size="xs"
+              radius="md"
+              data={clientOptions}
+              value={clientFilter}
+              onChange={handleClientChange}
+              leftSection={<IconBuilding size={13} color="#06B6D4" />}
+              styles={{
+                input: {
+                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#E2E8F0',
+                  fontSize: 12,
+                  height: 34,
+                },
+              }}
+              style={{ width: 130 }}
+              searchable
+            />
+
+            {/* Date Filter Dropdown */}
+            <DateFilterControl
+              value={dateFilter}
+              onChange={setDateFilter}
+              width={110}
+            />
+
+            {/* Clear Filters Button */}
+            {isFiltered && (
+              <Tooltip label="Reset all filters" withArrow position="top">
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="red"
+                  radius="md"
+                  onClick={handleResetFilters}
+                  leftSection={<IconRefresh size={13} />}
+                  style={{
+                    height: 34,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                  }}
+                >
+                  Clear
                 </Button>
-              </Group>
-            </Group>
-          </Paper>
+              </Tooltip>
+            )}
+          </Group>
+        </Group>
+      </Paper>
 
           {/* 3. Main Projects Table */}
           <ProjectTableView
@@ -550,8 +526,6 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
               setSort(field, newOrder);
             }}
           />
-        </>
-      )}
 
       {/* 4. Delete Confirmation Dialog */}
       <Modal

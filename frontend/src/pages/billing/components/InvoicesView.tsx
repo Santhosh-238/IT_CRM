@@ -13,23 +13,31 @@ import {
   LoadingOverlay,
   Box,
   Center,
+  Badge,
+  Divider,
+  Modal,
   useComputedColorScheme,
 } from '@mantine/core';
 import {
   IconPlus,
   IconSearch,
   IconPrinter,
+  IconDownload,
   IconEdit,
   IconCash,
   IconX,
   IconRefresh,
   IconFileInvoice,
+  IconEye,
+  IconArrowLeft,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { Invoice } from '../../../types/billing';
+import { Invoice, BillingSettings } from '../../../types/billing';
 import { billingService } from '../../../services/billingService';
+import { useInvoicePdfDownload } from '../../../hooks/useInvoicePdfDownload';
 import { InvoiceModal } from './InvoiceModal';
 import { InvoicePrintModal } from './InvoicePrintModal';
+import { InvoiceDocument } from './InvoiceDocument';
 import { CancelInvoiceModal } from './CancelInvoiceModal';
 
 interface InvoicesViewProps {
@@ -54,8 +62,18 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
   // Modals State
   const [createModalOpened, setCreateModalOpened] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [modalKey, setModalKey] = useState(0);
   const [printingInvoice, setPrintingInvoice] = useState<Invoice | null>(null);
+  const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
+  const [settings, setSettings] = useState<BillingSettings | null>(null);
+  const [autoPrint, setAutoPrint] = useState(false);
   const [cancellingInvoice, setCancellingInvoice] = useState<Invoice | null>(null);
+
+  const { triggerDownload, HiddenInvoiceDownloadContainer } = useInvoicePdfDownload();
+
+  useEffect(() => {
+    billingService.getSettings().then(setSettings).catch(() => {});
+  }, []);
 
   const fetchInvoices = async () => {
     try {
@@ -65,7 +83,8 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
         status: statusFilter,
         salesOrderId: initialOrderId || undefined,
       });
-      setInvoices(data || []);
+      const invoiceList = Array.isArray(data) ? data : ((data as any)?.data || []);
+      setInvoices(invoiceList);
     } catch (err: any) {
       notifications.show({ color: 'red', message: err.message || 'Failed to load invoices' });
     } finally {
@@ -99,7 +118,7 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
             border: isDark ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid #FECACA',
             fontSize: 11,
             fontWeight: 700,
-            letterSpacing: '0.02em',
+            letterSpacing: '0.02em',  
             whiteSpace: 'nowrap',
           }}
         >
@@ -151,6 +170,12 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
         {status}
       </Box>
     );
+  };
+
+  const handleOpenCreate = () => {
+    setEditingInvoice(null);
+    setModalKey((k) => k + 1);
+    setCreateModalOpened(true);
   };
 
   return (
@@ -222,7 +247,7 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
             leftSection={<IconPlus size={16} stroke={2.5} />}
             radius="md"
             size="sm"
-            onClick={onAddNew || (() => setCreateModalOpened(true))}
+            onClick={onAddNew || handleOpenCreate}
             style={{
               background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
               color: '#FFFFFF',
@@ -279,13 +304,7 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
                 mt="xs"
                 radius="md"
                 leftSection={<IconFileInvoice size={16} />}
-                onClick={() => {
-                  if (onAddNew) onAddNew();
-                  else {
-                    setEditingInvoice(null);
-                    setCreateModalOpened(true);
-                  }
-                }}
+                onClick={onAddNew || handleOpenCreate}
                 style={{
                   background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
                   color: '#FFFFFF',
@@ -446,14 +465,44 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
 
                       {/* Actions */}
                       <Table.Td style={{ textAlign: 'right' }}>
-                        <Group gap={6} justify="flex-end">
-                          <Tooltip label="Print / View Tax Invoice">
+                        <Group gap={6} justify="flex-end" wrap="nowrap">
+                          <Tooltip label="View Invoice">
                             <ActionIcon
                               variant="subtle"
                               color="blue"
                               radius="md"
                               size="sm"
-                              onClick={() => setPrintingInvoice(inv)}
+                              onClick={() => setViewingInvoice(inv)}
+                              title="View Invoice"
+                            >
+                              <IconEye size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+
+                          <Tooltip label="Download PDF">
+                            <ActionIcon
+                              variant="subtle"
+                              color="indigo"
+                              radius="md"
+                              size="sm"
+                              onClick={() => triggerDownload(inv)}
+                              title="Download PDF"
+                            >
+                              <IconDownload size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+
+                          <Tooltip label="Print Tax Invoice">
+                            <ActionIcon
+                              variant="subtle"
+                              color="blue"
+                              radius="md"
+                              size="sm"
+                              onClick={() => {
+                                setAutoPrint(false);
+                                setPrintingInvoice(inv);
+                              }}
+                              title="Print Invoice"
                             >
                               <IconPrinter size={16} />
                             </ActionIcon>
@@ -496,6 +545,7 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
                                 size="sm"
                                 onClick={() => {
                                   setEditingInvoice(inv);
+                                  setModalKey((k) => k + 1);
                                   setCreateModalOpened(true);
                                 }}
                               >
@@ -516,6 +566,7 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
 
       {/* Modals */}
       <InvoiceModal
+        key={createModalOpened ? (editingInvoice ? `edit-${editingInvoice.id}-${modalKey}` : `fresh-${modalKey}`) : 'closed'}
         opened={createModalOpened}
         onClose={() => {
           setCreateModalOpened(false);
@@ -528,8 +579,12 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
 
       <InvoicePrintModal
         opened={Boolean(printingInvoice)}
-        onClose={() => setPrintingInvoice(null)}
+        onClose={() => {
+          setPrintingInvoice(null);
+          setAutoPrint(false);
+        }}
         invoice={printingInvoice}
+        autoPrint={autoPrint}
       />
 
       <CancelInvoiceModal
@@ -538,6 +593,131 @@ export const InvoicesView: React.FC<InvoicesViewProps> = ({
         invoice={cancellingInvoice}
         onSuccess={fetchInvoices}
       />
+
+      {/* Invoice View Popup Modal */}
+      <Modal
+        opened={Boolean(viewingInvoice)}
+        onClose={() => setViewingInvoice(null)}
+        size="960px"
+        radius="16px"
+        centered
+        withCloseButton={false}
+        padding={0}
+        overlayProps={{
+          backgroundOpacity: 0.6,
+          blur: 5,
+        }}
+        styles={{
+          content: {
+            overflow: 'hidden',
+            backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+            borderRadius: 16,
+            border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E2E8F0',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+          },
+          body: {
+            padding: 0,
+          },
+        }}
+      >
+        {viewingInvoice && (
+          <Box>
+            {/* Modal Top Header - Completely Flush */}
+            <Box
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '16px 24px',
+                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                borderBottom: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid #E2E8F0',
+              }}
+            >
+              <Group gap="sm" align="center" wrap="nowrap">
+                <Box
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF',
+                    border: isDark ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid #C7D2FE',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <img
+                    src="/oneassist-logo.png"
+                    alt="OneAssist"
+                    style={{ width: 18, height: 18, objectFit: 'contain' }}
+                  />
+                </Box>
+                <Text fw={800} size="md" c={isDark ? '#FFFFFF' : '#0F172A'} style={{ whiteSpace: 'nowrap' }}>
+                  Invoice #{viewingInvoice.invoiceNumber}
+                </Text>
+                {renderStatusBadge(viewingInvoice.status, viewingInvoice.dueDate, viewingInvoice.outstandingBalance)}
+              </Group>
+
+              <Group gap="xs" align="center" wrap="nowrap">
+                <Button
+                  size="xs"
+                  variant="filled"
+                  color="indigo"
+                  leftSection={<IconDownload size={14} />}
+                  onClick={() => triggerDownload(viewingInvoice)}
+                  style={{
+                    background: '#4F46E5',
+                    fontWeight: 600,
+                    borderRadius: 8,
+                    boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                  }}
+                >
+                  Download PDF
+                </Button>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  size="lg"
+                  radius="md"
+                  onClick={() => setViewingInvoice(null)}
+                >
+                  <IconX size={18} />
+                </ActionIcon>
+              </Group>
+            </Box>
+
+            {/* Modal Body with Scrollable Invoice Preview */}
+            <Box
+              style={{
+                maxHeight: 'calc(88vh - 75px)',
+                overflowY: 'auto',
+                padding: '24px 20px 40px 20px',
+                display: 'flex',
+                justifyContent: 'center',
+                backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+              }}
+            >
+              <Box
+                style={{
+                  width: '100%',
+                  maxWidth: 880,
+                  boxShadow: isDark
+                    ? '0 8px 30px rgba(0,0,0,0.35)'
+                    : '0 8px 30px rgba(15,23,42,0.06)',
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                }}
+              >
+                <InvoiceDocument invoice={viewingInvoice} settings={settings} />
+              </Box>
+            </Box>
+          </Box>
+        )}
+      </Modal>
+
+      {/* Hidden PDF Generation Container */}
+      {HiddenInvoiceDownloadContainer}
     </Stack>
   );
 };

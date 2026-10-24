@@ -17,6 +17,8 @@ import { CustomersPage, CustomerDetailsPage } from '../../pages/customers';
 import { SettingsPage } from '../../pages/settings';
 import { BillingPage } from '../../pages/billing';
 import { LeadNegotiationSection } from '../../pages/leads/components/LeadDealSections';
+import { InvoicesPage, CreateInvoicePage, InvoiceDetailsPage } from '../../pages/invoices';
+import { Invoice } from '../../types/billing';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
 import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
@@ -60,6 +62,8 @@ export const AppLayout: React.FC = () => {
   const { selectedLead } = useLead();
   const { selectedProject, setSelectedProject, deleteProject: deleteProj, projects } = useProject();
   const { selectedCustomer, setSelectedCustomer, customers, deleteCustomer: deleteCust } = useCustomer();
+  const [selectedInvoice, setSelectedInvoice] = React.useState<Invoice | null>(null);
+  const [editingInvoice, setEditingInvoice] = React.useState<Invoice | null>(null);
 
   if (activeNav === 'signup') {
     return (
@@ -93,6 +97,7 @@ export const AppLayout: React.FC = () => {
       { nav: 'customers', id: 'customers' },
       { nav: 'projects', id: 'projects' },
       { nav: 'negotiations', id: 'negotiations' },
+      { nav: 'invoices', id: 'invoices' },
       { nav: 'employees', id: 'employee_management' },
       { nav: 'access-control', id: 'access_control' },
       { nav: 'settings', id: 'settings' },
@@ -421,7 +426,7 @@ export const AppLayout: React.FC = () => {
         if (!can('access_control', 'view')) {
           return (
             <AccessRestrictedView
-              moduleName="Access Control & RBAC"
+              moduleName="Access Control"
               onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
             />
           );
@@ -434,7 +439,7 @@ export const AppLayout: React.FC = () => {
         if (!can('settings', 'view') && !isSuperAdmin) {
           return (
             <AccessRestrictedView
-              moduleName="Settings & Master Catalog"
+              moduleName="Settings"
               onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
             />
           );
@@ -532,9 +537,122 @@ export const AppLayout: React.FC = () => {
         }
         return <CustomersPage />;
       }
+      case 'invoices':
+      case 'invoice':
+      case 'invoices-all':
+        if (!can('invoices', 'view') && !can('billing', 'view') && !isSuperAdmin) {
+          return (
+            <AccessRestrictedView
+              moduleName="Invoices"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
+        return (
+          <InvoicesPage
+            onCreateNew={() => {
+              setEditingInvoice(null);
+              if (typeof window !== 'undefined') sessionStorage.removeItem('crm_editing_invoice');
+              setActiveNav('create-invoice');
+            }}
+            onViewInvoice={(inv) => {
+              setSelectedInvoice(inv);
+              if (typeof window !== 'undefined') sessionStorage.setItem('crm_selected_invoice', JSON.stringify(inv));
+              setActiveNav('invoice-details');
+            }}
+            onEditInvoice={(inv) => {
+              setEditingInvoice(inv);
+              if (typeof window !== 'undefined') sessionStorage.setItem('crm_editing_invoice', JSON.stringify(inv));
+              setActiveNav('edit-invoice');
+            }}
+          />
+        );
+
+      case 'create-invoice':
+      case 'invoices/create':
+      case 'invoices/add':
+      case 'add-invoice':
+        return (
+          <CreateInvoicePage
+            onBack={() => setActiveNav('invoices')}
+            onSuccess={(inv) => {
+              setSelectedInvoice(inv);
+              if (typeof window !== 'undefined') sessionStorage.setItem('crm_selected_invoice', JSON.stringify(inv));
+              setActiveNav('invoice-details');
+            }}
+          />
+        );
+
+      case 'edit-invoice':
+      case 'invoices/edit': {
+        let editInv = editingInvoice;
+        if (!editInv && typeof window !== 'undefined') {
+          try {
+            const saved = sessionStorage.getItem('crm_editing_invoice');
+            if (saved) editInv = JSON.parse(saved);
+          } catch (e) {}
+        }
+        return (
+          <CreateInvoicePage
+            initialInvoice={editInv}
+            onBack={() => setActiveNav('invoices')}
+            onSuccess={(inv) => {
+              setSelectedInvoice(inv);
+              if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('crm_editing_invoice');
+                sessionStorage.setItem('crm_selected_invoice', JSON.stringify(inv));
+              }
+              setActiveNav('invoice-details');
+            }}
+          />
+        );
+      }
+
+      case 'invoice-details':
+      case 'invoices/details': {
+        let viewInv = selectedInvoice;
+        if (!viewInv && typeof window !== 'undefined') {
+          try {
+            const saved = sessionStorage.getItem('crm_selected_invoice');
+            if (saved) viewInv = JSON.parse(saved);
+          } catch (e) {}
+        }
+        if (viewInv) {
+          return (
+            <InvoiceDetailsPage
+              invoice={viewInv}
+              onBack={() => {
+                setSelectedInvoice(null);
+                if (typeof window !== 'undefined') sessionStorage.removeItem('crm_selected_invoice');
+                setActiveNav('invoices');
+              }}
+              onEdit={(inv) => {
+                setEditingInvoice(inv);
+                if (typeof window !== 'undefined') sessionStorage.setItem('crm_editing_invoice', JSON.stringify(inv));
+                setActiveNav('edit-invoice');
+              }}
+            />
+          );
+        }
+        return (
+          <InvoicesPage
+            onCreateNew={() => setActiveNav('create-invoice')}
+            onViewInvoice={(inv) => {
+              setSelectedInvoice(inv);
+              if (typeof window !== 'undefined') sessionStorage.setItem('crm_selected_invoice', JSON.stringify(inv));
+              setActiveNav('invoice-details');
+            }}
+            onEditInvoice={(inv) => {
+              setEditingInvoice(inv);
+              if (typeof window !== 'undefined') sessionStorage.setItem('crm_editing_invoice', JSON.stringify(inv));
+              setActiveNav('edit-invoice');
+            }}
+          />
+        );
+      }
+
       case 'billing':
       case 'billing-invoicing':
-      case 'invoices':
       case 'quotations':
         if (!can('billing', 'view') && !isSuperAdmin) {
           return (
@@ -551,9 +669,30 @@ export const AppLayout: React.FC = () => {
   };
 
   return (
-    <Box style={{ display: 'flex', minHeight: '100vh', width: '100%', background: 'transparent' }}>
-      {/* 1. Desktop Left Fixed Sidebar (Hidden on Mobile) */}
-      <Box visibleFrom="md" style={{ flexShrink: 0 }}>
+    <Box
+      style={{
+        display: 'flex',
+        height: '100vh',
+        maxHeight: '100vh',
+        width: '100vw',
+        maxWidth: '100vw',
+        overflow: 'hidden',
+        background: 'transparent',
+      }}
+    >
+      {/* 1. Desktop Left Fixed Sidebar (Fixed 260px, Hidden on Mobile) */}
+      <Box
+        visibleFrom="md"
+        style={{
+          width: 260,
+          minWidth: 260,
+          maxWidth: 260,
+          height: '100vh',
+          flexShrink: 0,
+          zIndex: 110,
+          overflow: 'hidden',
+        }}
+      >
         <Sidebar onSelectNav={(nav) => setActiveNav(nav)} />
       </Box>
 
@@ -572,14 +711,61 @@ export const AppLayout: React.FC = () => {
         <Sidebar onSelectNav={(nav) => setActiveNav(nav)} isMobile />
       </Drawer>
 
-      {/* 2. Right Main Area */}
-      <Box style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-        {/* Top Header Bar (64px) */}
-        <Header />
+      {/* 2. Right Area: Top Header is Fixed, Center Workspace Scrolls */}
+      <Box
+        style={{
+          flex: 1,
+          minWidth: 0,
+          height: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+      >
+        {/* Top Header Bar (64px Fixed, never scrolls) */}
+        <Box
+          style={{
+            height: 64,
+            minHeight: 64,
+            maxHeight: 64,
+            flexShrink: 0,
+            zIndex: 100,
+            width: '100%',
+          }}
+        >
+          <Header />
+        </Box>
 
-        {/* Main Content Workspace */}
-        <Box style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%', minWidth: 0, paddingBottom: 32 }}>
-          <Container fluid px={{ base: 'xs', sm: 'md', md: 'lg', xl: 'xl' }} py="md" style={{ width: '100%', maxWidth: '100%', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Main Content Workspace (Center ONLY is scrollable!) */}
+        <Box
+          id="crm-main-scroll-container"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            height: 'calc(100vh - 64px)',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            display: 'flex',
+            flexDirection: 'column',
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          <Container
+            fluid
+            px={{ base: 'xs', sm: 'md', md: 'lg', xl: 'xl' }}
+            py="md"
+            style={{
+              width: '100%',
+              maxWidth: '100%',
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              paddingBottom: 48,
+            }}
+          >
             {renderActiveScreen()}
           </Container>
         </Box>
