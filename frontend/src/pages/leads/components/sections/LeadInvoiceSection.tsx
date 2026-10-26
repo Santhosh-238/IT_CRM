@@ -15,6 +15,7 @@ import {
   Center,
   Loader,
   Divider,
+  Menu,
 } from '@mantine/core';
 import {
   IconReceipt,
@@ -30,6 +31,7 @@ import {
   IconFileInvoice,
   IconArrowLeft,
   IconX,
+  IconCash,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { Lead, LeadInvoiceItem } from '../../../../types/lead';
@@ -39,6 +41,7 @@ import { useInvoicePdfDownload } from '../../../../hooks/useInvoicePdfDownload';
 import { InvoiceModal } from '../../../billing/components/InvoiceModal';
 import { InvoicePrintModal } from '../../../billing/components/InvoicePrintModal';
 import { InvoiceDocument } from '../../../billing/components/InvoiceDocument';
+import { RecordPaymentModal } from '../../../invoices/components/RecordPaymentModal';
 import dayjs from 'dayjs';
 
 export interface LeadInvoiceSectionProps {
@@ -68,6 +71,8 @@ export const LeadInvoiceSection: React.FC<LeadInvoiceSectionProps> = ({
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [settings, setSettings] = useState<BillingSettings | null>(null);
   const [autoPrint, setAutoPrint] = useState<boolean>(false);
+  const [payingInvoice, setPayingInvoice] = useState<Invoice | null>(null);
+  const [recordPaymentOpened, setRecordPaymentOpened] = useState<boolean>(false);
 
   const { triggerDownload, HiddenInvoiceDownloadContainer } = useInvoicePdfDownload();
 
@@ -148,7 +153,9 @@ export const LeadInvoiceSection: React.FC<LeadInvoiceSectionProps> = ({
             ? 'Paid'
             : inv.status === 'Partially Paid'
             ? 'Partially Paid'
-            : 'Unpaid') as 'Paid' | 'Unpaid',
+            : inv.status === 'Overdue'
+            ? 'Overdue'
+            : 'Unpaid') as any,
           type: 'Tax Invoice' as const,
           description: inv.notes || '',
           rawInvoice: inv,
@@ -238,6 +245,70 @@ export const LeadInvoiceSection: React.FC<LeadInvoiceSectionProps> = ({
     });
     if (onUpdateInvoices) {
       onUpdateInvoices(backendInvoices as any);
+    }
+  };
+
+  const handleOpenRecordPayment = (inv: any) => {
+    setPayingInvoice(resolveInvoiceObject(inv));
+    setRecordPaymentOpened(true);
+  };
+
+  const handleQuickMarkPaid = async (inv: any) => {
+    try {
+      setLoading(true);
+      const invoiceObj = resolveInvoiceObject(inv);
+      await billingService.updateInvoice(invoiceObj.id, {
+        status: 'Paid',
+      });
+
+      notifications.show({
+        title: 'Invoice Paid & Live Synced',
+        message: `${invoiceObj.invoiceNumber} marked as Paid. Transaction automatically logged in Payments tab.`,
+        color: 'teal',
+        icon: <IconCheck size={16} />,
+      });
+
+      await fetchInvoices();
+      if (onUpdateInvoices) {
+        onUpdateInvoices(backendInvoices as any);
+      }
+    } catch (err: any) {
+      notifications.show({
+        title: 'Update Failed',
+        message: err.message || 'Could not mark invoice as Paid.',
+        color: 'red',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkUnpaid = async (inv: any) => {
+    try {
+      setLoading(true);
+      const invoiceObj = resolveInvoiceObject(inv);
+      await billingService.updateInvoice(invoiceObj.id, {
+        status: 'Issued',
+        amountPaid: 0,
+      });
+      notifications.show({
+        title: 'Invoice Status Updated',
+        message: `${invoiceObj.invoiceNumber} marked as Unpaid / Issued.`,
+        color: 'blue',
+        icon: <IconClock size={16} />,
+      });
+      await fetchInvoices();
+      if (onUpdateInvoices) {
+        onUpdateInvoices(backendInvoices as any);
+      }
+    } catch (err: any) {
+      notifications.show({
+        title: 'Update Failed',
+        message: err.message || 'Could not update status.',
+        color: 'red',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -495,12 +566,76 @@ export const LeadInvoiceSection: React.FC<LeadInvoiceSectionProps> = ({
                       </Text>
                     </Table.Td>
 
-                    <Table.Td>
-                      {renderStatusBadge(inv.status)}
+                    <Table.Td onClick={(e) => e.stopPropagation()}>
+                      <Menu shadow="md" width={220} position="bottom-start" withinPortal radius="md">
+                        <Menu.Target>
+                          <Tooltip label="Click to change payment status" withArrow>
+                            <Box style={{ display: 'inline-block', cursor: 'pointer' }}>
+                              {renderStatusBadge(inv.status)}
+                            </Box>
+                          </Tooltip>
+                        </Menu.Target>
+                        <Menu.Dropdown p="xs">
+                          <Menu.Label>Change Payment Status</Menu.Label>
+                          {inv.status !== 'Paid' && (
+                            <Menu.Item
+                              leftSection={<IconCheck size={14} color="#10B981" />}
+                              onClick={() => handleQuickMarkPaid(inv)}
+                            >
+                              <Text size="13px" fw={600} c="teal">
+                                Mark as Paid (Quick Settle)
+                              </Text>
+                            </Menu.Item>
+                          )}
+                          {inv.status !== 'Partially Paid' && (
+                            <Menu.Item
+                              leftSection={<IconCash size={14} color="#F59E0B" />}
+                              onClick={() => handleOpenRecordPayment(inv)}
+                            >
+                              <Text size="13px" fw={500} style={{ color: '#D97706' }}>
+                                Record Partial Payment...
+                              </Text>
+                            </Menu.Item>
+                          )}
+                          {inv.status !== 'Unpaid' && (
+                            <Menu.Item
+                              leftSection={<IconClock size={14} color="#EA580C" />}
+                              onClick={() => handleMarkUnpaid(inv)}
+                            >
+                              <Text size="13px" fw={500} c="orange">
+                                Mark as Unpaid / Issued
+                              </Text>
+                            </Menu.Item>
+                          )}
+                          <Divider my={4} />
+                          <Menu.Item
+                            leftSection={<IconCreditCard size={14} color="#2563EB" />}
+                            onClick={() => handleOpenRecordPayment(inv)}
+                          >
+                            <Text size="13px" fw={500}>
+                              Record Custom Payment...
+                            </Text>
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
                     </Table.Td>
 
                     <Table.Td style={{ textAlign: 'right' }}>
                       <Group gap={6} justify="flex-end" wrap="nowrap">
+                        {inv.status !== 'Paid' && (
+                          <Tooltip label="Record Payment" withArrow>
+                            <ActionIcon
+                              variant="light"
+                              color="teal"
+                              size="sm"
+                              radius="md"
+                              onClick={() => handleOpenRecordPayment(inv)}
+                            >
+                              <IconCash size={15} />
+                            </ActionIcon>
+                          </Tooltip>
+                        )}
+
                         <Tooltip label="View Invoice" withArrow>
                           <ActionIcon
                             variant="subtle"
@@ -701,6 +836,35 @@ export const LeadInvoiceSection: React.FC<LeadInvoiceSectionProps> = ({
           </Box>
         )}
       </Modal>
+
+      {/* Create / Edit Invoice Modal */}
+      {createModalOpened && (
+        <InvoiceModal
+          key={modalKey}
+          opened={createModalOpened}
+          onClose={() => {
+            setCreateModalOpened(false);
+            setEditingInvoice(null);
+          }}
+          onSuccess={handleInvoiceSuccess}
+          invoice={editingInvoice}
+          initialLead={lead}
+        />
+      )}
+
+      {/* Record Payment Modal */}
+      <RecordPaymentModal
+        opened={recordPaymentOpened}
+        onClose={() => setRecordPaymentOpened(false)}
+        invoice={payingInvoice}
+        onSuccess={async () => {
+          await fetchInvoices();
+          setRecordPaymentOpened(false);
+          if (onUpdateInvoices) {
+            onUpdateInvoices(backendInvoices as any);
+          }
+        }}
+      />
 
       {/* Hidden PDF Generation Container */}
       {HiddenInvoiceDownloadContainer}

@@ -60,6 +60,7 @@ export const ContactsPage: React.FC = () => {
     setPage,
     deleteContact,
     fetchContacts,
+    fetchStats,
     setSelectedContact,
   } = useContact();
 
@@ -145,16 +146,23 @@ export const ContactsPage: React.FC = () => {
     }
   }, [activeTab, isAdmin, currentUser?.name]);
 
+  // Fresh load on mount to immediately view contacts without page refresh
+  useEffect(() => {
+    fetchContacts();
+    fetchStats();
+  }, [fetchContacts, fetchStats]);
+
   // Listen to contacts update event across CRM components
   useEffect(() => {
     const handleUpdated = () => {
       fetchContacts();
+      fetchStats();
     };
     window.addEventListener('crm_contacts_updated', handleUpdated);
     return () => {
       window.removeEventListener('crm_contacts_updated', handleUpdated);
     };
-  }, [fetchContacts]);
+  }, [fetchContacts, fetchStats]);
 
   // Real-time debounced search so typing immediately filters contacts
   useEffect(() => {
@@ -713,6 +721,7 @@ export const ContactsPage: React.FC = () => {
         }}
         contact={modalContact}
         onSuccess={() => {
+          handleTabChange('NEW');
           fetchContacts();
         }}
       />

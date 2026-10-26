@@ -1,8 +1,9 @@
 import { execSync } from 'child_process';
+import { ensureSystemRolesService } from '../services/accessControl.service.js';
 
 /**
  * Automatically creates and syncs PostgreSQL Database SQL tables from Prisma Schema
- * Pure table creation only - no dummy/seed data created.
+ * and ensures system roles (Super Admin, Admin, Project Manager, Sales Executive) exist.
  */
 export async function autoSyncDatabase() {
   try {
@@ -12,6 +13,8 @@ export async function autoSyncDatabase() {
       timeout: 30000,
     });
     console.log('✅ [Auto-Sync] All PostgreSQL SQL tables verified and synced!');
+    await ensureSystemRolesService();
+    console.log('🛡️ [Auto-Sync] Default system roles verified and active!');
   } catch (error) {
     console.warn('⚠️ [Auto-Sync Notice]:', error.message || error);
   }

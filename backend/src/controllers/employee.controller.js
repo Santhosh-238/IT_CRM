@@ -145,12 +145,12 @@ export async function createEmployee(req, res) {
           dob: dob || null,
           gender: gender || null,
           address: address || null,
-          department: department || 'Engineering',
-          designation: designation || 'Employee',
-          role: role || 'Developer',
-          employmentType: employmentType || 'Full Time',
+          department: department ? String(department).trim() : '',
+          designation: designation ? String(designation).trim() : '',
+          role: role ? String(role).trim() : '',
+          employmentType: employmentType ? String(employmentType).trim() : '',
           status: status || 'Active',
-          workLocation: workLocation || 'Chennai HQ',
+          workLocation: workLocation ? String(workLocation).trim() : '',
           joiningDate: joiningDate || '',
           reportingManager: reportingManager || null,
         },
@@ -168,12 +168,12 @@ export async function createEmployee(req, res) {
             dob: dob || null,
             gender: gender || null,
             address: address || null,
-            department: department || 'Engineering',
-            designation: designation || 'Employee',
-            role: role || 'Developer',
-            employmentType: employmentType || 'Full Time',
+            department: department ? String(department).trim() : '',
+            designation: designation ? String(designation).trim() : '',
+            role: role ? String(role).trim() : '',
+            employmentType: employmentType ? String(employmentType).trim() : '',
             status: status || 'Active',
-            workLocation: workLocation || 'Chennai HQ',
+            workLocation: workLocation ? String(workLocation).trim() : '',
             joiningDate: joiningDate || '',
             reportingManager: reportingManager || null,
           },
@@ -279,12 +279,26 @@ export async function updateEmployee(req, res) {
       password,
     } = req.body;
 
-    const existing = await prisma.employee.findUnique({
+    let existing = await prisma.employee.findUnique({
       where: { id },
     });
 
     if (!existing) {
-      return res.status(404).json({ success: false, message: 'Employee not found.' });
+      if (empCode || email) {
+        existing = await prisma.employee.findFirst({
+          where: {
+            OR: [
+              ...(empCode ? [{ empCode }] : []),
+              ...(email ? [{ email: email.toLowerCase().trim() }] : []),
+            ],
+          },
+        });
+      }
+    }
+
+    // Gracefully create if not found in database (e.g. after database cleanup or stale edit ID)
+    if (!existing) {
+      return await createEmployee(req, res);
     }
 
     if (email) {
@@ -292,7 +306,7 @@ export async function updateEmployee(req, res) {
       const duplicateEmail = await prisma.employee.findFirst({
         where: {
           email: cleanEmail,
-          id: { not: id },
+          id: { not: existing.id },
         },
       });
       if (duplicateEmail) {
@@ -304,7 +318,7 @@ export async function updateEmployee(req, res) {
     }
 
     const updated = await prisma.employee.update({
-      where: { id },
+      where: { id: existing.id },
       data: {
         ...(name && { name: String(name).trim() }),
         ...(email && { email: String(email).toLowerCase().trim() }),

@@ -227,7 +227,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
         disqualificationReason: currentStatus === 'Unqualified' ? unqualifiedReason?.trim() || '' : '',
       };
 
-      const res = await updateContact(activeContact.id, payload);
+      const res = await updateContact(activeContact.id, payload, { silent: true });
 
       if (res?.success) {
         const savedData = res.data || { ...activeContact, ...payload };
@@ -296,6 +296,9 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
         // Notify notification bell and other components across the CRM
         window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
+        if (currentStatus === 'Qualified') {
+          window.dispatchEvent(new CustomEvent('crm_leads_updated'));
+        }
 
         if (onSuccess) {
           onSuccess(currentStatus);
@@ -345,63 +348,54 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
     ? [{ value: currentUser.name, label: `${currentUser.name} (Current User)` }]
     : employeeOptions.slice(0, 1);
 
-  const budgetOptions = [
-    { value: '< ₹50,000', label: '< ₹50,000' },
-    { value: '₹50,000 - ₹1,00,000', label: '₹50,000 - ₹1,00,000' },
-    { value: '₹1,00,000 - ₹3,00,000', label: '₹1,00,000 - ₹3,00,000' },
-    { value: '₹3,00,000 - ₹5,00,000', label: '₹3,00,000 - ₹5,00,000' },
-    { value: '₹5,00,000 - ₹10,00,000', label: '₹5,00,000 - ₹10,00,000' },
-    { value: '₹10,00,000 - ₹25,00,000', label: '₹10,00,000 - ₹25,00,000' },
-    { value: '₹25,00,000+', label: '₹25,00,000+' },
-    { value: 'Flexible / Undisclosed', label: 'Flexible / Undisclosed' },
-  ];
-
-  const productOptions = [
-    { value: 'OneAssist CRM Platform', label: 'OneAssist CRM Platform' },
-    { value: 'Enterprise HRMS Software', label: 'Enterprise HRMS Software' },
-    { value: 'Cloud ERP Software Suite', label: 'Cloud ERP Software Suite' },
-    { value: 'Billing & POS Software', label: 'Billing & POS Software' },
-    { value: 'Inventory Management System', label: 'Inventory Management System' },
-    { value: 'Mobile Application Product', label: 'Mobile Application Product' },
-    { value: 'Custom Software Product', label: 'Custom Enterprise Product' },
-    { value: 'Other Product', label: 'Other Product' },
-  ];
-
-  const serviceOptions = [
-    { value: 'Web Application Development', label: 'Web Application Development' },
-    { value: 'Mobile App (iOS / Android)', label: 'Mobile App (iOS / Android)' },
-    { value: 'Cloud ERP Implementation', label: 'Cloud ERP Implementation' },
-    { value: 'Enterprise CRM Setup', label: 'Enterprise CRM Setup' },
-    { value: 'Custom Enterprise Software', label: 'Custom Enterprise Software' },
-    { value: 'Cloud Migration & DevOps', label: 'Cloud Migration & DevOps' },
-    { value: 'AI / Machine Learning Solutions', label: 'AI / Machine Learning Solutions' },
-    { value: 'UI/UX Design & Consulting', label: 'UI/UX Design & Consulting' },
-    { value: 'IT Staff Augmentation', label: 'IT Staff Augmentation' },
-    { value: 'Other Service', label: 'Other Service' },
-  ];
 
   const availableOptions = React.useMemo(() => {
-    const baseOptions =
-      category === 'Product'
-        ? productOptions
-        : category === 'Service'
-        ? serviceOptions
-        : [...productOptions, ...serviceOptions];
-    if (
-      interestedService &&
-      !baseOptions.some((o) => o.value.toLowerCase() === interestedService.trim().toLowerCase())
-    ) {
-      return [{ value: interestedService, label: `${interestedService} (Custom)` }, ...baseOptions];
+    const list = new Set<string>();
+    if (category === 'Product') {
+      if (metadata?.productOptions && Array.isArray(metadata.productOptions)) {
+        metadata.productOptions.forEach((p) => p && list.add(p.trim()));
+      }
+      if (contacts && Array.isArray(contacts)) {
+        contacts.forEach((c) => {
+          if (Array.isArray(c.productList)) c.productList.forEach((p) => p && list.add(p.trim()));
+          if (c.category === 'Product' && c.interestedService) list.add(c.interestedService.trim());
+          if (c.customProduct) list.add(c.customProduct.trim());
+        });
+      }
+    } else if (category === 'Service') {
+      if (metadata?.serviceOptions && Array.isArray(metadata.serviceOptions)) {
+        metadata.serviceOptions.forEach((s) => s && list.add(s.trim()));
+      }
+      if (contacts && Array.isArray(contacts)) {
+        contacts.forEach((c) => {
+          if (Array.isArray(c.serviceList)) c.serviceList.forEach((s) => s && list.add(s.trim()));
+          if (c.category === 'Service' && c.interestedService) list.add(c.interestedService.trim());
+        });
+      }
+    } else {
+      if (metadata?.productOptions && Array.isArray(metadata.productOptions)) {
+        metadata.productOptions.forEach((p) => p && list.add(p.trim()));
+      }
+      if (metadata?.serviceOptions && Array.isArray(metadata.serviceOptions)) {
+        metadata.serviceOptions.forEach((s) => s && list.add(s.trim()));
+      }
+      if (contacts && Array.isArray(contacts)) {
+        contacts.forEach((c) => {
+          if (c.interestedService) list.add(c.interestedService.trim());
+          if (Array.isArray(c.serviceList)) c.serviceList.forEach((s) => s && list.add(s.trim()));
+          if (Array.isArray(c.productList)) c.productList.forEach((p) => p && list.add(p.trim()));
+          if (c.customProduct) list.add(c.customProduct.trim());
+        });
+      }
     }
-    return baseOptions;
-  }, [category, interestedService]);
+    return Array.from(list)
+      .filter(Boolean)
+      .map((val) => ({ value: val, label: val }));
+  }, [category, metadata, contacts]);
 
   const handleAutocompleteFilter = ({ options, search }: { options: any[]; search: string }) => {
     const q = (search || '').trim().toLowerCase();
-    const currentVal = (interestedService || '').trim().toLowerCase();
-    if (!q || q === currentVal) {
-      return options;
-    }
+    if (!q) return options;
     return options.filter((item: any) =>
       (item.label || item.value || '').toLowerCase().includes(q)
     );
@@ -917,8 +911,8 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
             {/* FORM FIELDS */}
             <Stack gap="md" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-              {/* Row 1: Always Visible Status, Category (Product/Service), & Evaluated/Qualified By */}
-              <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
+              {/* Row 1: Always Visible Status & Category (Product/Service) */}
+              <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                 <Select
                   label="Qualification Status"
                   placeholder="Select status..."
@@ -962,25 +956,6 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                   styles={inputStyles}
                   clearable
                 />
-
-                <Select
-                  label={
-                    currentStatus === 'Qualified'
-                      ? 'Qualified By'
-                      : currentStatus === 'Follow-up Required'
-                      ? 'Follow-up Assigned To'
-                      : currentStatus === 'Unqualified'
-                      ? 'Disqualified By'
-                      : 'Assigned Reviewer'
-                  }
-                  placeholder="Select employee..."
-                  leftSection={<IconUserCheck size={16} color="#059669" stroke={1.8} />}
-                  data={currentStatus === 'Follow-up Required' ? employeeOptions : currentUserOnlyOptions}
-                  value={qualifiedBy || null}
-                  onChange={(val) => setQualifiedBy(val || '')}
-                  styles={inputStyles}
-                  clearable
-                />
               </SimpleGrid>
 
               {/* STATUS 1: QUALIFIED */}
@@ -1020,15 +995,13 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                       clearable
                     />
 
-                    <Select
+                    <TextInput
                       label="Budget Range"
-                      placeholder="Select budget..."
+                      placeholder="Enter budget (e.g. ₹50,000 or ₹1,00,000)"
                       leftSection={<IconCoin size={16} color="#2563EB" stroke={1.8} />}
-                      data={budgetOptions}
-                      value={budgetRange || null}
-                      onChange={(val) => setBudgetRange(val || '')}
+                      value={budgetRange}
+                      onChange={(e) => setBudgetRange(e.target.value)}
                       styles={inputStyles}
-                      clearable
                     />
 
                     {/* Row 3: Employee Count & Qualification Date */}
@@ -1207,15 +1180,13 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                   </SimpleGrid>
 
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-                    <Select
+                    <TextInput
                       label="Budget Range"
-                      placeholder="Select budget..."
+                      placeholder="Enter budget (e.g. ₹50,000 or ₹1,00,000)"
                       leftSection={<IconCoin size={16} color="#2563EB" stroke={1.8} />}
-                      data={budgetOptions}
-                      value={budgetRange || null}
-                      onChange={(val) => setBudgetRange(val || '')}
+                      value={budgetRange}
+                      onChange={(e) => setBudgetRange(e.target.value)}
                       styles={inputStyles}
-                      clearable
                     />
 
                     <TextInput

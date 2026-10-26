@@ -123,7 +123,7 @@ export const LeadProposalSection: React.FC<LeadProposalSectionProps> = ({
         .then((dbProposals) => {
           if (dbProposals && dbProposals.length > 0) {
             const existingIds = new Set(dbProposals.map((p) => p.id));
-            const merged = [...dbProposals, ...proposals.filter((p) => !existingIds.has(p.id))];
+            const merged = [...dbProposals, ...proposals.filter((p) => !p.id?.startsWith('prop-') && !existingIds.has(p.id))];
             onUpdateProposals(merged);
           }
         })
@@ -170,7 +170,9 @@ export const LeadProposalSection: React.FC<LeadProposalSectionProps> = ({
     if (selectedProposal && selectedProposal.id === propId) {
       setSelectedProposal({ ...selectedProposal, status });
     }
-    leadService.updateProposal(propId, { status }).catch(() => {});
+    if (!propId.startsWith('prop-')) {
+      leadService.updateProposal(propId, { status }).catch(() => {});
+    }
     notifications.show({
       title: 'Proposal Status Updated',
       message: `Proposal marked as ${status}.`,
@@ -184,7 +186,9 @@ export const LeadProposalSection: React.FC<LeadProposalSectionProps> = ({
     if (selectedProposal && selectedProposal.id === propId) {
       setSelectedProposal(null);
     }
-    leadService.deleteProposal(propId).catch(() => {});
+    if (!propId.startsWith('prop-')) {
+      leadService.deleteProposal(propId).catch(() => {});
+    }
     notifications.show({
       title: 'Proposal Deleted',
       message: 'Proposal was removed.',
@@ -693,7 +697,7 @@ export const LeadProposalSection: React.FC<LeadProposalSectionProps> = ({
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
               <TextInput
                 label="Proposed Value / Budget"
-                value={`₹ ${selectedProposal.totalAmount.toLocaleString('en-IN')}`}
+                value={`₹ ${(Number(selectedProposal.totalAmount) || 0).toLocaleString('en-IN')}`}
                 readOnly
                 radius="md"
                 leftSection={<IconCurrencyRupee size={16} />}
@@ -890,16 +894,16 @@ export const LeadProposalSection: React.FC<LeadProposalSectionProps> = ({
                       Subtotal
                     </Text>
                     <Text size="sm" fw={600} style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
-                      ₹{selectedProposal.subtotal.toLocaleString('en-IN')}
+                      ₹{(Number(selectedProposal.subtotal) || 0).toLocaleString('en-IN')}
                     </Text>
                   </div>
-                  {selectedProposal.discountPercent > 0 && (
+                  {Number(selectedProposal.discountPercent) > 0 && (
                     <div>
                       <Text size="11px" c="dimmed">
                         Discount ({selectedProposal.discountPercent}%)
                       </Text>
                       <Text size="sm" fw={600} c="green">
-                        -₹{Math.round((selectedProposal.subtotal * selectedProposal.discountPercent) / 100).toLocaleString('en-IN')}
+                        -₹{Math.round(((Number(selectedProposal.subtotal) || 0) * (Number(selectedProposal.discountPercent) || 0)) / 100).toLocaleString('en-IN')}
                       </Text>
                     </div>
                   )}
@@ -908,7 +912,7 @@ export const LeadProposalSection: React.FC<LeadProposalSectionProps> = ({
                       GST / Taxes ({selectedProposal.taxPercent}%)
                     </Text>
                     <Text size="sm" fw={600} style={{ color: isDark ? '#F1F5F9' : '#1E293B' }}>
-                      +₹{Math.round(((selectedProposal.subtotal * (100 - selectedProposal.discountPercent)) / 100) * (selectedProposal.taxPercent / 100)).toLocaleString('en-IN')}
+                      +₹{Math.round((((Number(selectedProposal.subtotal) || 0) * (100 - (Number(selectedProposal.discountPercent) || 0))) / 100) * ((Number(selectedProposal.taxPercent) || 0) / 100)).toLocaleString('en-IN')}
                     </Text>
                   </div>
                   <Box
@@ -923,7 +927,7 @@ export const LeadProposalSection: React.FC<LeadProposalSectionProps> = ({
                       GRAND TOTAL
                     </Text>
                     <Text size="18px" fw={900} style={{ color: isDark ? '#6EE7B7' : '#059669' }}>
-                      ₹{selectedProposal.totalAmount.toLocaleString('en-IN')}
+                      ₹{(Number(selectedProposal.totalAmount) || 0).toLocaleString('en-IN')}
                     </Text>
                   </Box>
                 </Group>

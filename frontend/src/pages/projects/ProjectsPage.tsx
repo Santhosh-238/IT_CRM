@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -61,7 +61,27 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
     setSort,
     deleteProject,
     setSelectedProject,
+    fetchProjects,
+    fetchStats,
   } = useProject();
+
+  // Fresh load on mount so newly added/saved projects are viewed immediately
+  useEffect(() => {
+    fetchProjects();
+    fetchStats();
+  }, [fetchProjects, fetchStats]);
+
+  // Live update listener
+  useEffect(() => {
+    const handleUpdated = () => {
+      fetchProjects();
+      fetchStats();
+    };
+    window.addEventListener('crm_projects_updated', handleUpdated);
+    return () => {
+      window.removeEventListener('crm_projects_updated', handleUpdated);
+    };
+  }, [fetchProjects, fetchStats]);
 
   // Delete State
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
@@ -98,10 +118,25 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
     });
   }, [projects, dateFilter]);
 
-  // Handle Search Debounce / Direct
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle Search Debounce (300ms)
   const handleSearchChange = (val: string) => {
     setSearchInput(val);
-    setFilters({ search: val, page: 1 });
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setFilters({ search: val, page: 1 });
+    }, 300);
+  };
+
+  const handleClearSearch = () => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    setSearchInput('');
+    setFilters({ search: '', page: 1 });
   };
 
   // Handle Dropdown Filters
@@ -124,6 +159,9 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
   };
 
   const handleResetFilters = () => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
     setSearchInput('');
     setStatusFilter('All');
     setPriorityFilter('All');
@@ -416,7 +454,7 @@ export const ProjectsPage: React.FC<ProjectsPageProps> = ({ initialSubNav = 'all
                     size="xs"
                     variant="subtle"
                     color="gray"
-                    onClick={() => handleSearchChange('')}
+                    onClick={handleClearSearch}
                   >
                     <IconX size={11} />
                   </ActionIcon>

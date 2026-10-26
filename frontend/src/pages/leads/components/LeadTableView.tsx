@@ -335,7 +335,7 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
 
   const handleUpdateStatus = async (lead: Lead, newStatus: string) => {
     try {
-      const res = await updateLead(lead.id, { status: newStatus });
+      const res = await updateLead(lead.id, { status: newStatus }, { silent: true });
       if (res.success) {
         notifications.show({
           title: 'Status Updated',
@@ -362,7 +362,7 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
           : newStage === 'New Lead'
           ? 'New'
           : 'In Progress';
-      const res = await updateLead(lead.id, { stage: newStage, status: newStatus });
+      const res = await updateLead(lead.id, { stage: newStage, status: newStatus }, { silent: true });
       if (res.success) {
         notifications.show({
           title: 'Sub-Module Stage Updated',
@@ -384,10 +384,14 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
   const handleAssignLead = async (lead: Lead, emp: { id: string; name: string }) => {
     try {
       setAssigningId(lead.id);
-      const res = await updateLead(lead.id, {
-        assignedTo: emp.id,
-        assignedToName: emp.name,
-      });
+      const res = await updateLead(
+        lead.id,
+        {
+          assignedTo: emp.id,
+          assignedToName: emp.name,
+        },
+        { silent: true }
+      );
       if (res.success) {
         notifications.show({
           title: 'Lead Assigned',
@@ -411,10 +415,14 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
   const handleUnassignLead = async (lead: Lead) => {
     try {
       setAssigningId(lead.id);
-      const res = await updateLead(lead.id, {
-        assignedTo: null,
-        assignedToName: null,
-      });
+      const res = await updateLead(
+        lead.id,
+        {
+          assignedTo: null,
+          assignedToName: null,
+        },
+        { silent: true }
+      );
       if (res.success) {
         notifications.show({
           title: 'Assignment Removed',
@@ -460,42 +468,60 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
     setActiveNav('lead-schedule');
   };
 
-  // Sleek Sub-Module Stage Badge directly displaying the pipeline headings with icons
-  const renderStatusBadge = (stageOrHeading?: string | null, optionalStatus?: string | null, isInteractive = false) => {
-    let raw = (stageOrHeading || optionalStatus || 'Meetings').trim();
-    if (raw.toLowerCase() === 'in progress' || raw.toLowerCase() === 'active' || raw.toLowerCase() === 'contacted') {
-      raw = (optionalStatus && optionalStatus.toLowerCase() !== 'in progress') ? optionalStatus : 'Meetings';
+  // Sleek Modern STATUS Badge matching Contacts design
+  const renderStatusBadge = (statusVal?: string | null, stageVal?: string | null) => {
+    let raw = (statusVal || stageVal || 'New').trim();
+    if (raw.toLowerCase() === 'contacted') {
+      raw = 'In Progress';
+    } else if (raw.toLowerCase() === 'won' || raw.toLowerCase() === 'closed won' || raw.toLowerCase() === 'completed') {
+      raw = 'Complete';
     }
+    const st = raw;
+    const sLow = st.toLowerCase();
+    let bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
+    let color = isDark ? '#93C5FD' : '#1D4ED8';
+    let border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
 
-    const cfg = getSubmoduleConfig(raw);
-    const StageIcon = cfg.icon;
-    const bg = isDark ? cfg.darkBg : cfg.lightBg;
-    const color = isDark ? cfg.darkColor : cfg.color;
-    const border = isDark ? cfg.darkBorder : cfg.lightBorder;
+    if (sLow.includes('unqual') || sLow.includes('disqual') || sLow.includes('lost') || sLow.includes('cancel')) {
+      bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
+      color = isDark ? '#FCA5A5' : '#DC2626';
+      border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
+    } else if (sLow.includes('qualif') || sLow.includes('won') || sLow.includes('complete')) {
+      bg = isDark ? 'rgba(16, 185, 129, 0.16)' : '#ECFDF5';
+      color = isDark ? '#6EE7B7' : '#047857';
+      border = isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0';
+    } else if (sLow.includes('progress') || sLow.includes('contact')) {
+      bg = isDark ? 'rgba(14, 165, 233, 0.16)' : '#F0F9FF';
+      color = isDark ? '#7DD3FC' : '#0284C7';
+      border = isDark ? 'rgba(14, 165, 233, 0.35)' : '#BAE6FD';
+    } else if (sLow.includes('proposal') || sLow.includes('negotiat')) {
+      bg = isDark ? 'rgba(147, 51, 234, 0.14)' : '#FAF5FF';
+      color = isDark ? '#D8B4FE' : '#7E22CE';
+      border = isDark ? 'rgba(147, 51, 234, 0.25)' : '#E9D5FF';
+    } else if (sLow.includes('new') || sLow.includes('init')) {
+      bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
+      color = isDark ? '#93C5FD' : '#1D4ED8';
+      border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
+    }
 
     return (
       <Box
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: 6,
+          justifyContent: 'center',
           padding: '4px 12px',
           borderRadius: 100,
           backgroundColor: bg,
           color: color,
           border: `1px solid ${border}`,
-          fontSize: 11.5,
+          fontSize: 11,
           fontWeight: 700,
-          letterSpacing: '0.015em',
+          letterSpacing: '0.02em',
           whiteSpace: 'nowrap',
-          cursor: isInteractive ? 'pointer' : 'default',
-          transition: 'all 0.15s ease',
-          userSelect: 'none',
-          boxShadow: isDark ? '0 1px 2px rgba(0,0,0,0.25)' : '0 1px 2px rgba(0,0,0,0.03)',
         }}
       >
-        <StageIcon size={13} stroke={2.2} style={{ flexShrink: 0 }} />
-        <span>{cfg.stage}</span>
+        {st}
       </Box>
     );
   };
@@ -930,50 +956,51 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                     )}
                   </Table.Td>
 
-                  {/* 5. Status & Stage (Submodule Heading Badge) */}
+                  {/* 5. Status */}
                   <Table.Td onClick={(e) => e.stopPropagation()}>
-                    {(() => {
-                      const { status: effStatus, stage: effStage } = resolveLeadSubmoduleStage(lead);
-                      return (
-                        <Menu shadow="md" width={230} position="bottom-start" withinPortal radius="md">
-                          <Menu.Target>
-                            <Tooltip label="Click to change pipeline stage" withArrow>
-                              <Box style={{ display: 'inline-block' }}>
-                                {renderStatusBadge(effStage, effStatus, true)}
-                              </Box>
-                            </Tooltip>
-                          </Menu.Target>
-                          <Menu.Dropdown p="xs" style={{ maxHeight: 380, overflowY: 'auto' }}>
-                            <Menu.Label>Pipeline Stage</Menu.Label>
-                            {SUBMODULE_STAGES.map((sub) => {
-                              const SubIcon = sub.icon;
-                              const isCurrentStage = effStage.toLowerCase() === sub.stage.toLowerCase();
-                              return (
-                                <Menu.Item
-                                  key={sub.stage}
-                                  leftSection={
-                                    <SubIcon size={15} color={isCurrentStage ? sub.color : (isDark ? '#94A3B8' : '#64748B')} />
-                                  }
-                                  rightSection={
-                                    isCurrentStage ? <IconCheck size={14} color={sub.color} stroke={2.5} /> : undefined
-                                  }
-                                  onClick={() => handleUpdateStage(lead, sub.stage)}
+                    <Menu shadow="md" width={170} position="bottom-start" withinPortal radius="md">
+                      <Menu.Target>
+                        <Tooltip label="Click to change status" withArrow>
+                          <Box style={{ display: 'inline-block', cursor: 'pointer' }}>
+                            <Stack gap={4} align="flex-start">
+                              {renderStatusBadge(lead.status, lead.stage)}
+                              {lead.stage && (
+                                <Text size="11px" c="dimmed" style={{ paddingLeft: 4 }}>
+                                  {lead.stage}
+                                </Text>
+                              )}
+                            </Stack>
+                          </Box>
+                        </Tooltip>
+                      </Menu.Target>
+                      <Menu.Dropdown p="xs">
+                        <Menu.Label>Change Status</Menu.Label>
+                        {STATUS_OPTIONS.map((statusOpt) => {
+                          const isCurrent = (lead.status || 'New').toLowerCase() === statusOpt.toLowerCase();
+                          return (
+                            <Menu.Item
+                              key={statusOpt}
+                              leftSection={
+                                <Box
                                   style={{
-                                    backgroundColor: isCurrentStage ? (isDark ? sub.darkBg : sub.lightBg) : undefined,
-                                    borderRadius: 6,
-                                    margin: '2px 0',
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: '50%',
+                                    backgroundColor: getStatusDotColor(statusOpt),
                                   }}
-                                >
-                                  <Text size="12.5px" fw={isCurrentStage ? 700 : 500} c={isCurrentStage ? sub.color : undefined}>
-                                    {sub.stage}
-                                  </Text>
-                                </Menu.Item>
-                              );
-                            })}
-                          </Menu.Dropdown>
-                        </Menu>
-                      );
-                    })()}
+                                />
+                              }
+                              rightSection={isCurrent ? <IconCheck size={14} color="#10B981" /> : undefined}
+                              onClick={() => handleUpdateStatus(lead, statusOpt)}
+                            >
+                              <Text size="13px" fw={isCurrent ? 700 : 500}>
+                                {statusOpt}
+                              </Text>
+                            </Menu.Item>
+                          );
+                        })}
+                      </Menu.Dropdown>
+                    </Menu>
                   </Table.Td>
 
                   {/* 5. Actions */}
@@ -1068,41 +1095,40 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
               </Group>
 
               <Box onClick={(e) => e.stopPropagation()}>
-                {(() => {
-                  const { status: effStatus, stage: effStage } = resolveLeadSubmoduleStage(lead);
-                  return (
-                    <Menu shadow="md" width={220} position="bottom-end" withinPortal radius="md">
-                      <Menu.Target>
-                        <Box style={{ display: 'inline-block' }}>
-                          {renderStatusBadge(effStage, effStatus, true)}
-                        </Box>
-                      </Menu.Target>
-                      <Menu.Dropdown p="xs" style={{ maxHeight: 320, overflowY: 'auto' }}>
-                        <Menu.Label>Pipeline Stage</Menu.Label>
-                        {SUBMODULE_STAGES.map((sub) => {
-                          const SubIcon = sub.icon;
-                          const isCurrentStage = effStage.toLowerCase() === sub.stage.toLowerCase();
-                          return (
-                            <Menu.Item
-                              key={sub.stage}
-                              leftSection={
-                                <SubIcon size={14} color={isCurrentStage ? sub.color : (isDark ? '#94A3B8' : '#64748B')} />
-                              }
-                              rightSection={
-                                isCurrentStage ? <IconCheck size={14} color={sub.color} stroke={2.5} /> : undefined
-                              }
-                              onClick={() => handleUpdateStage(lead, sub.stage)}
-                            >
-                              <Text size="12px" fw={isCurrentStage ? 700 : 400} c={isCurrentStage ? sub.color : undefined}>
-                                {sub.stage}
-                              </Text>
-                            </Menu.Item>
-                          );
-                        })}
-                      </Menu.Dropdown>
-                    </Menu>
-                  );
-                })()}
+                <Menu shadow="md" width={170} position="bottom-end" withinPortal radius="md">
+                  <Menu.Target>
+                    <Box style={{ display: 'inline-block', cursor: 'pointer' }}>
+                      {renderStatusBadge(lead.status, lead.stage)}
+                    </Box>
+                  </Menu.Target>
+                  <Menu.Dropdown p="xs">
+                    <Menu.Label>Change Status</Menu.Label>
+                    {STATUS_OPTIONS.map((statusOpt) => {
+                      const isCurrent = (lead.status || 'New').toLowerCase() === statusOpt.toLowerCase();
+                      return (
+                        <Menu.Item
+                          key={statusOpt}
+                          leftSection={
+                            <Box
+                              style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                backgroundColor: getStatusDotColor(statusOpt),
+                              }}
+                            />
+                          }
+                          rightSection={isCurrent ? <IconCheck size={14} color="#10B981" /> : undefined}
+                          onClick={() => handleUpdateStatus(lead, statusOpt)}
+                        >
+                          <Text size="13px" fw={isCurrent ? 700 : 500}>
+                            {statusOpt}
+                          </Text>
+                        </Menu.Item>
+                      );
+                    })}
+                  </Menu.Dropdown>
+                </Menu>
               </Box>
             </Group>
 

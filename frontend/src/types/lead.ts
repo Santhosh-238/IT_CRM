@@ -654,7 +654,7 @@ export interface LeadInvoiceItem {
   amount: number;
   taxAmount: number;
   totalAmount: number;
-  status: 'Draft' | 'Unpaid' | 'Paid' | 'Overdue';
+  status: 'Draft' | 'Unpaid' | 'Partially Paid' | 'Paid' | 'Overdue';
   type: 'Advance (40%)' | 'Milestone 1 (30%)' | 'Final Handover (30%)' | 'Custom';
   description?: string;
 }

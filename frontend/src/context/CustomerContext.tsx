@@ -83,13 +83,21 @@ export const CustomerProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const res = await crmApi.createCustomer(data);
       if (res.success) {
+        if (res.data) {
+          setCustomers((prev) => [
+            res.data,
+            ...prev.filter((c) => c.id !== res.data.id && c.customerId !== res.data.customerId),
+          ]);
+        }
         notifications.show({
           title: 'Customer Created',
-          message: `${res.data?.companyName} added successfully.`,
+          message: `${res.data?.companyName || 'Customer'} added successfully.`,
           color: 'teal',
         });
-        await fetchCustomers();
-        await fetchStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_customers_updated'));
+        }
+        await Promise.all([fetchCustomers(), fetchStats()]);
         return { success: true, data: res.data };
       }
       return { success: false, message: res.message };
@@ -107,13 +115,23 @@ export const CustomerProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const res = await crmApi.updateCustomer(id, data);
       if (res.success) {
+        if (res.data) {
+          setCustomers((prev) =>
+            prev.map((c) => (c.id === id || c.customerId === id ? { ...c, ...res.data } : c))
+          );
+          if (selectedCustomer && (selectedCustomer.id === id || selectedCustomer.customerId === id)) {
+            setSelectedCustomer(res.data);
+          }
+        }
         notifications.show({
           title: 'Customer Updated',
-          message: `${res.data?.companyName} updated successfully.`,
+          message: `${res.data?.companyName || 'Customer'} updated successfully.`,
           color: 'teal',
         });
-        await fetchCustomers();
-        await fetchStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_customers_updated'));
+        }
+        await Promise.all([fetchCustomers(), fetchStats()]);
         return { success: true, data: res.data };
       }
       return { success: false, message: res.message };
@@ -131,13 +149,19 @@ export const CustomerProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const res = await crmApi.deleteCustomer(id);
       if (res.success) {
+        setCustomers((prev) => prev.filter((c) => c.id !== id && c.customerId !== id));
+        if (selectedCustomer && (selectedCustomer.id === id || selectedCustomer.customerId === id)) {
+          setSelectedCustomer(null);
+        }
         notifications.show({
           title: 'Customer Deleted',
           message: res.message || 'Customer deleted successfully.',
           color: 'teal',
         });
-        await fetchCustomers();
-        await fetchStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_customers_updated'));
+        }
+        await Promise.all([fetchCustomers(), fetchStats()]);
         return { success: true };
       }
       return { success: false, message: res.message };

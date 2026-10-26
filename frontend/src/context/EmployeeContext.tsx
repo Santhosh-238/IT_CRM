@@ -72,14 +72,20 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const result = await createEmployeeApi(empData);
       if (result.success && result.data) {
-        setEmployees((prev) => [result.data!, ...prev]);
+        setEmployees((prev) => [
+          result.data!,
+          ...prev.filter((e) => e.id !== result.data!.id && e.empCode !== result.data!.empCode),
+        ]);
         notifications.show({
           title: 'Employee Added',
           message: `${result.data.name} (${result.data.empCode}) has been successfully added.`,
           color: 'teal',
           icon: <IconUserCheck size={18} />,
         });
-        fetchEmployeeStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_employees_updated'));
+        }
+        await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
         return true;
       } else {
         notifications.show({
@@ -106,19 +112,32 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const result = await updateEmployeeApi(id, empData);
       if (result.success && result.data) {
-        setEmployees((prev) => prev.map((e) => (e.id === id ? result.data! : e)));
+        setEmployees((prev) => {
+          const exists = prev.some((e) => e.id === result.data!.id);
+          if (exists) {
+            return prev.map((e) => (e.id === result.data!.id ? result.data! : e));
+          }
+          return [result.data!, ...prev];
+        });
         if (selectedEmployee?.id === id) {
           setSelectedEmployee(result.data);
         }
         notifications.show({
           title: 'Profile Updated',
-          message: `${result.data.name}'s details updated successfully.`,
+          message: `${result.data.name}'s details saved successfully.`,
           color: 'teal',
           icon: <IconCheck size={18} />,
         });
-        fetchEmployeeStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_employees_updated'));
+        }
+        await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
         return true;
       } else {
+        if (result.message?.toLowerCase().includes('not found')) {
+          if (typeof window !== 'undefined') sessionStorage.removeItem('crm_editing_employee');
+          return await addEmployee(empData);
+        }
         notifications.show({
           title: 'Update Failed',
           message: result.message || 'Could not update employee details.',
@@ -128,6 +147,10 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         return false;
       }
     } catch (err: any) {
+      if (err.message?.toLowerCase().includes('not found') || err.response?.status === 404) {
+        if (typeof window !== 'undefined') sessionStorage.removeItem('crm_editing_employee');
+        return await addEmployee(empData);
+      }
       notifications.show({
         title: 'Error',
         message: err.message || 'An error occurred during update.',
@@ -155,7 +178,10 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           color: isInactive ? 'orange' : 'teal',
           icon: isInactive ? <IconUserX size={18} /> : <IconUserCheck size={18} />,
         });
-        fetchEmployeeStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_employees_updated'));
+        }
+        await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
         return true;
       }
       return false;
@@ -179,7 +205,10 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           color: 'red',
           icon: <IconTrash size={18} />,
         });
-        fetchEmployeeStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_employees_updated'));
+        }
+        await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
         return true;
       } else {
         notifications.show({

@@ -106,9 +106,73 @@ export async function createModuleService(data, currentUser = null, ipAddress = 
 }
 
 /**
+ * 2c. Ensure default system role (Super Admin) exists in DB
+ */
+export async function ensureSystemRolesService() {
+  let superAdminRole = await prisma.role.findFirst({
+    where: {
+      OR: [{ slug: 'super_admin' }, { name: { equals: 'Super Admin', mode: 'insensitive' } }],
+    },
+  });
+
+  if (!superAdminRole) {
+    superAdminRole = await prisma.role.create({
+      data: {
+        name: 'Super Admin',
+        slug: 'super_admin',
+        description: 'Complete root access to all system modules, configurations, and organizational controls.',
+        isSystem: true,
+        appType: 'admin',
+        parentRoleId: null,
+      },
+    });
+
+    const superAdminPerms = SYSTEM_MODULES.map((mod) => ({
+      roleId: superAdminRole.id,
+      moduleId: mod.id,
+      moduleName: mod.name,
+      category: mod.category,
+      canView: true,
+      canCreate: true,
+      canEdit: true,
+      canDelete: true,
+      canExport: true,
+      canApprove: true,
+    }));
+
+    await prisma.rolePermission.createMany({ data: superAdminPerms });
+  }
+
+  // Auto-link any existing SUPER_ADMIN user without a roleId
+  if (superAdminRole) {
+    await prisma.user.updateMany({
+      where: {
+        role: 'SUPER_ADMIN',
+        roleId: null,
+      },
+      data: {
+        roleId: superAdminRole.id,
+      },
+    });
+  }
+
+  return { superAdminRole };
+}
+
+/**
  * 3. Get all roles with permissions, user count, and systemModules catalog
  */
 export async function getRolesService() {
+  // Ensure system default roles always exist
+  const superAdminCount = await prisma.role.count({
+    where: {
+      OR: [{ slug: 'super_admin' }, { name: { equals: 'Super Admin', mode: 'insensitive' } }],
+    },
+  });
+  if (superAdminCount === 0) {
+    await ensureSystemRolesService();
+  }
+
   const roles = await prisma.role.findMany({
     include: {
       permissions: {

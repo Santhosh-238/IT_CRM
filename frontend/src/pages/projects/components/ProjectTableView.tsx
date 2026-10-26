@@ -12,6 +12,8 @@ import {
   Loader,
   Button,
   Pagination,
+  Skeleton,
+  Stack,
   useComputedColorScheme,
 } from '@mantine/core';
 import {
@@ -270,23 +272,45 @@ export const ProjectTableView: React.FC<ProjectTableViewProps> = ({
   if (loading && projects.length === 0) {
     return (
       <Paper
-        p="xl"
+        p="md"
         radius="lg"
         mt="md"
         style={{
-          backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-          border: isDark ? '1px solid #1E293B' : '1px solid #E2E8F0',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          backgroundColor: isDark ? '#111827' : '#FFFFFF',
+          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
         }}
       >
-        <Center py={60}>
-          <Group gap="md">
-            <Loader size="sm" color="blue" />
-            <Text size="sm" c="dimmed">
-              Loading projects...
-            </Text>
-          </Group>
-        </Center>
+        <Group justify="space-between" mb="sm" px="xs">
+          <Skeleton height={14} width={140} radius="sm" />
+          <Skeleton height={14} width={80} radius="sm" />
+        </Group>
+        <Stack gap="xs">
+          {[1, 2, 3, 4, 5].map((idx) => (
+            <Group
+              key={idx}
+              justify="space-between"
+              py="xs"
+              px="xs"
+              style={{
+                borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
+              }}
+            >
+              <Group gap="sm">
+                <Skeleton height={12} width={20} radius="sm" />
+                <Skeleton height={20} width={75} radius="sm" />
+                <Skeleton height={14} width={160} radius="sm" />
+                <Skeleton height={14} width={120} radius="sm" />
+              </Group>
+              <Group gap="md">
+                <Skeleton height={10} width={90} radius="xl" />
+                <Skeleton height={20} width={80} radius="xl" />
+                <Skeleton height={20} width={65} radius="xl" />
+                <Skeleton height={24} width={70} radius="sm" />
+              </Group>
+            </Group>
+          ))}
+        </Stack>
       </Paper>
     );
   }

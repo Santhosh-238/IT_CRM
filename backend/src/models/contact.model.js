@@ -75,6 +75,8 @@ export class ContactModel {
       dbContactTypes,
       dbPriorities,
       dbQualificationStatuses,
+      dbContacts,
+      dbLeads,
     ] = await Promise.all([
       prisma.contact.findMany({ select: { source: true }, distinct: ['source'] }),
       prisma.contact.findMany({ select: { status: true }, distinct: ['status'] }),
@@ -83,7 +85,31 @@ export class ContactModel {
       prisma.contact.findMany({ select: { contactType: true }, distinct: ['contactType'] }),
       prisma.contact.findMany({ select: { priority: true }, distinct: ['priority'] }),
       prisma.contact.findMany({ select: { qualificationStatus: true }, distinct: ['qualificationStatus'] }),
+      prisma.contact.findMany({
+        select: { productList: true, serviceList: true, interestedService: true, customProduct: true, category: true },
+      }),
+      prisma.lead.findMany({
+        select: { productList: true, serviceList: true, category: true },
+      }),
     ]);
+
+    const dynamicProducts = new Set();
+    const dynamicServices = new Set();
+
+    dbContacts.forEach((c) => {
+      if (Array.isArray(c.productList)) c.productList.forEach((p) => p && dynamicProducts.add(p.trim()));
+      if (Array.isArray(c.serviceList)) c.serviceList.forEach((s) => s && dynamicServices.add(s.trim()));
+      if (c.interestedService) {
+        if (c.category === 'Product') dynamicProducts.add(c.interestedService.trim());
+        else dynamicServices.add(c.interestedService.trim());
+      }
+      if (c.customProduct) dynamicProducts.add(c.customProduct.trim());
+    });
+
+    dbLeads.forEach((l) => {
+      if (Array.isArray(l.productList)) l.productList.forEach((p) => p && dynamicProducts.add(p.trim()));
+      if (Array.isArray(l.serviceList)) l.serviceList.forEach((s) => s && dynamicServices.add(s.trim()));
+    });
 
     const fallbackSources = ['Website', 'Referral', 'Cold Call', 'LinkedIn', 'Social Media', 'Other'];
     const fallbackStatuses = ['New', 'Active', 'Qualified', 'In Progress', 'On Hold', 'Pending', 'Follow-up Required', 'Completed', 'Won', 'Lost', 'Cancelled'];
@@ -109,23 +135,8 @@ export class ContactModel {
       contactTypes,
       priorities,
       qualificationStatuses,
-      productOptions: [
-        'HRMS',
-        'IT CRM',
-        'Fintech CRM',
-        'Cloud ERP',
-        'Custom Enterprise Software',
-        'AI & ML Assistant',
-        'Mobile Apps',
-      ],
-      serviceOptions: [
-        'Cloud Migration & DevOps',
-        'Cybersecurity & Compliance',
-        'Custom API & Backend Integration',
-        'Full-Stack Web Development',
-        'Staff Augmentation',
-        'UI/UX Design',
-      ],
+      productOptions: Array.from(dynamicProducts).filter(Boolean),
+      serviceOptions: Array.from(dynamicServices).filter(Boolean),
       // Verified Odoo Dropdown Options
       titles: ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.'],
       odooTags: ['VIP', 'Prospect', 'Customer', 'Enterprise', 'SME', 'Vendor', 'Consulting', 'Technology', 'Partner'],

@@ -121,6 +121,16 @@ export const CallLogsPage: React.FC = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const handleUpdated = () => {
+      loadData();
+    };
+    window.addEventListener('crm_call_logs_updated', handleUpdated);
+    return () => {
+      window.removeEventListener('crm_call_logs_updated', handleUpdated);
+    };
+  }, []);
+
   // Filtered Calls list based on tab, search, and status dropdown
   const filteredCalls = useMemo(() => {
     return calls.filter((call) => {
@@ -197,14 +207,20 @@ export const CallLogsPage: React.FC = () => {
     setSubmitting(true);
     try {
       if (editingCall) {
-        await updateCallLogApi(editingCall.id, payload);
+        const updated = await updateCallLogApi(editingCall.id, payload);
+        if (updated) {
+          setCalls((prev) => prev.map((c) => (c.id === editingCall.id ? { ...c, ...updated } : c)));
+        }
         notifications.show({
           title: 'Call Record Updated',
           message: 'Call log details have been updated successfully.',
           color: 'blue',
         });
       } else {
-        await createCallLogApi(payload);
+        const created = await createCallLogApi(payload);
+        if (created) {
+          setCalls((prev) => [created, ...prev.filter((c) => c.id !== created.id)]);
+        }
         notifications.show({
           title: 'Call Logged Successfully',
           message: 'New call record has been saved to the database.',
@@ -214,6 +230,9 @@ export const CallLogsPage: React.FC = () => {
 
       setModalOpen(false);
       setEditingCall(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crm_call_logs_updated'));
+      }
       await loadData();
     } catch (err: any) {
       notifications.show({
@@ -231,12 +250,16 @@ export const CallLogsPage: React.FC = () => {
     setDeleteLoading(true);
     try {
       await deleteCallLogApi(deleteTarget.id);
+      setCalls((prev) => prev.filter((c) => c.id !== deleteTarget.id));
       notifications.show({
         title: 'Call Record Deleted',
         message: 'Call log has been removed from database.',
         color: 'blue',
       });
       setDeleteTarget(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crm_call_logs_updated'));
+      }
       await loadData();
     } catch (err: any) {
       notifications.show({

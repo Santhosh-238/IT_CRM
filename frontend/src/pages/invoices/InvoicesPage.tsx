@@ -142,6 +142,17 @@ export const InvoicesPage: React.FC<InvoicesPageProps> = ({
     fetchInvoices();
   }, [statusFilter, paymentStatusFilter, invoiceDateFilter, dueDateFilter, page, pageSize]);
 
+  // Live update listener
+  useEffect(() => {
+    const handleUpdated = () => {
+      fetchInvoices();
+    };
+    window.addEventListener('crm_invoices_updated', handleUpdated);
+    return () => {
+      window.removeEventListener('crm_invoices_updated', handleUpdated);
+    };
+  }, []);
+
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       setPage(1);

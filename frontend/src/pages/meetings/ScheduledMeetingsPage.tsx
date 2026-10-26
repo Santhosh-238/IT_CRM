@@ -201,6 +201,16 @@ const inferDuration = (start?: string, end?: string): string => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const handleUpdated = () => {
+      loadData();
+    };
+    window.addEventListener('crm_meetings_updated', handleUpdated);
+    return () => {
+      window.removeEventListener('crm_meetings_updated', handleUpdated);
+    };
+  }, []);
+
   // Auto-open meeting details if navigated via "View Outcome" from Activity Pipeline
   useEffect(() => {
     if (activeNav !== 'scheduled-meetings' && activeNav !== 'meetings') return;
@@ -535,14 +545,20 @@ const inferDuration = (start?: string, end?: string): string => {
       };
 
       if (editingMeeting) {
-        await updateMeetingApi(editingMeeting.id, payload);
+        const updated = await updateMeetingApi(editingMeeting.id, payload);
+        if (updated) {
+          setMeetings((prev) => prev.map((m) => (m.id === editingMeeting.id ? { ...m, ...updated } : m)));
+        }
         notifications.show({
           title: 'Meeting Updated',
           message: 'Scheduled meeting updated successfully.',
           color: 'teal',
         });
       } else {
-        await createMeetingApi(payload);
+        const created = await createMeetingApi(payload);
+        if (created) {
+          setMeetings((prev) => [created, ...prev.filter((m) => m.id !== created.id)]);
+        }
         notifications.show({
           title: 'Meeting Scheduled',
           message: 'New meeting scheduled successfully.',
@@ -551,6 +567,9 @@ const inferDuration = (start?: string, end?: string): string => {
       }
 
       setModalOpen(false);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crm_meetings_updated'));
+      }
       await loadData();
     } catch (err: any) {
       notifications.show({
@@ -568,12 +587,16 @@ const inferDuration = (start?: string, end?: string): string => {
     setDeleteLoading(true);
     try {
       await deleteMeetingApi(deleteTarget.id);
+      setMeetings((prev) => prev.filter((m) => m.id !== deleteTarget.id));
       notifications.show({
         title: 'Meeting Deleted',
         message: 'Scheduled meeting removed successfully from database.',
         color: 'blue',
       });
       setDeleteTarget(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crm_meetings_updated'));
+      }
       await loadData();
     } catch (err: any) {
       notifications.show({ title: 'Delete Failed', message: err.message, color: 'red' });

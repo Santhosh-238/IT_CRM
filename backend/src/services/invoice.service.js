@@ -79,6 +79,33 @@ export async function updateBillingSettingsService(data, user) {
   return updated;
 }
 
+export async function generateUniquePaymentNumber(settings) {
+  let nextNum = settings.paymentNextNumber || 1001;
+  const prefix = settings.paymentPrefix || 'PAY-2026-';
+
+  while (true) {
+    const candidatePadded = `${prefix}${String(nextNum).padStart(6, '0')}`;
+    const candidateRaw = `${prefix}${nextNum}`;
+    const existing = await prisma.payment.findFirst({
+      where: {
+        OR: [
+          { paymentNumber: candidatePadded },
+          { paymentNumber: candidateRaw },
+        ],
+      },
+    });
+
+    if (!existing) {
+      await prisma.billingSettings.update({
+        where: { id: settings.id },
+        data: { paymentNextNumber: nextNum + 1 },
+      });
+      return candidatePadded;
+    }
+    nextNum += 1;
+  }
+}
+
 /**
  * -----------------------------------------------------------------------------
  * 2. PRODUCTS & SERVICES CATALOGUE
@@ -362,12 +389,22 @@ export async function createQuotationService(data, user) {
 }
 
 export async function updateQuotationService(id, data, user) {
-  const existing = await prisma.quotation.findFirst({
+  let existing = await prisma.quotation.findFirst({
     where: { OR: [{ id }, { quotationNumber: id }] },
     include: { items: true },
   });
 
   if (!existing) {
+    // If not found in DB but lead/contact context is provided, auto-create it gracefully
+    if (data.leadId || data.contactId || data.companyName || data.contactName) {
+      return createQuotationService(
+        {
+          ...data,
+          quotationNumber: id && !id.startsWith('quo-') ? id : undefined,
+        },
+        user
+      );
+    }
     const err = new Error('Quotation not found.');
     err.status = 404;
     throw err;
@@ -1025,9 +1062,9 @@ export async function getInvoicesService(query = {}) {
 
     if (effectiveStatus === 'Cancelled') {
       computedPaymentStatus = 'Cancelled';
-    } else if (inv.outstandingBalance === 0 && inv.grandTotal > 0) {
+    } else if (effectiveStatus === 'Paid' || inv.outstandingBalance <= 0.05) {
       computedPaymentStatus = 'Paid';
-      if (effectiveStatus !== 'Paid') effectiveStatus = 'Paid';
+      effectiveStatus = 'Paid';
     } else if (inv.dueDate < today && inv.outstandingBalance > 0) {
       computedPaymentStatus = 'Overdue';
       if (effectiveStatus === 'Issued' || effectiveStatus === 'Draft') {
@@ -1035,7 +1072,7 @@ export async function getInvoicesService(query = {}) {
       }
     } else if (inv.amountPaid > 0 && inv.outstandingBalance > 0) {
       computedPaymentStatus = 'Partially Paid';
-      if (effectiveStatus !== 'Partially Paid') effectiveStatus = 'Partially Paid';
+      effectiveStatus = 'Partially Paid';
     } else {
       computedPaymentStatus = 'Unpaid';
     }
@@ -1045,7 +1082,7 @@ export async function getInvoicesService(query = {}) {
     return {
       ...inv,
       status: effectiveStatus,
-      paymentStatus: meta.paymentStatus || computedPaymentStatus,
+      paymentStatus: effectiveStatus === 'Paid' ? 'Paid' : computedPaymentStatus,
       invoiceType: meta.invoiceType || 'One-Time',
       currency: meta.currency || 'INR',
       taxType: meta.taxType || (inv.clientGst?.startsWith('33') ? 'INTRA_STATE' : 'INTER_STATE'),
@@ -1113,7 +1150,7 @@ export async function getInvoiceByIdService(id) {
 
   if (effectiveStatus === 'Cancelled') {
     computedPaymentStatus = 'Cancelled';
-  } else if (invoice.outstandingBalance === 0 && invoice.grandTotal > 0) {
+  } else if (effectiveStatus === 'Paid' || invoice.outstandingBalance <= 0.05) {
     computedPaymentStatus = 'Paid';
     effectiveStatus = 'Paid';
   } else if (invoice.dueDate < today && invoice.outstandingBalance > 0) {
@@ -1144,7 +1181,7 @@ export async function getInvoiceByIdService(id) {
   return {
     ...invoice,
     status: effectiveStatus,
-    paymentStatus: meta.paymentStatus || computedPaymentStatus,
+    paymentStatus: effectiveStatus === 'Paid' ? 'Paid' : computedPaymentStatus,
     invoiceType: meta.invoiceType || 'One-Time',
     currency: meta.currency || 'INR',
     taxType: meta.taxType || (invoice.clientGst?.startsWith('33') ? 'INTRA_STATE' : 'INTER_STATE'),
@@ -1328,12 +1365,7 @@ export async function createInvoiceService(data, user) {
 
   // If initial advance/payment was recorded, create payment entity & allocation
   if (initialPaymentAmount > 0) {
-    const nextPayNum = settings.paymentNextNumber || 1001;
-    const payNum = `${settings.paymentPrefix || 'PAY-2026-'}${String(nextPayNum).padStart(6, '0')}`;
-    await prisma.billingSettings.update({
-      where: { id: settings.id },
-      data: { paymentNextNumber: nextPayNum + 1 },
-    });
+    const payNum = await generateUniquePaymentNumber(settings);
 
     await prisma.payment.create({
       data: {
@@ -1460,16 +1492,26 @@ export async function updateInvoiceService(id, data, user) {
     const additionalCharges = Number(data.additionalCharges || meta.additionalCharges || 0);
     const grandTotal = Math.max(0, taxableAmount + totalTax + additionalCharges);
 
-    const initialPaymentAmount = data.amountPaid !== undefined || data.advanceAmount !== undefined
+    let initialPaymentAmount = data.amountPaid !== undefined || data.advanceAmount !== undefined
       ? Math.max(0, Math.min(grandTotal, Number(data.amountPaid ?? data.advanceAmount ?? 0)))
       : existing.amountPaid;
-    const outstandingBalance = Math.max(0, Number((grandTotal - initialPaymentAmount).toFixed(2)));
+    let outstandingBalance = Math.max(0, Number((grandTotal - initialPaymentAmount).toFixed(2)));
 
     let status = data.status || existing.status;
-    if (data.status) {
+    if (data.status === 'Paid' || status === 'Paid') {
+      status = 'Paid';
+      initialPaymentAmount = grandTotal;
+      outstandingBalance = 0;
+    } else if (data.status === 'Issued' || data.status === 'Unpaid') {
+      status = 'Issued';
+      initialPaymentAmount = 0;
+      outstandingBalance = grandTotal;
+    } else if (data.status) {
       status = data.status;
     } else if (initialPaymentAmount >= grandTotal && grandTotal > 0) {
       status = 'Paid';
+      initialPaymentAmount = grandTotal;
+      outstandingBalance = 0;
     } else if (initialPaymentAmount > 0) {
       status = 'Partially Paid';
     }
@@ -1515,6 +1557,47 @@ export async function updateInvoiceService(id, data, user) {
       include: { items: true },
     });
 
+    if (status === 'Paid') {
+      const existingAllocs = await prisma.paymentAllocation.findMany({
+        where: { invoiceId: updated.id },
+      });
+      const alreadyAllocated = existingAllocs.reduce((sum, a) => sum + (Number(a.amountAllocated) || 0), 0);
+      const remainingToPay = Math.max(0, Number((updated.grandTotal - alreadyAllocated).toFixed(2)));
+
+      if (remainingToPay > 0) {
+        const settings = await getBillingSettingsService();
+        const payNum = await generateUniquePaymentNumber(settings);
+
+        await prisma.payment.create({
+          data: {
+            paymentNumber: payNum,
+            contactId: updated.contactId,
+            clientName: updated.companyName || updated.contactName || 'Client',
+            paymentDate: new Date().toISOString().split('T')[0],
+            amountReceived: remainingToPay,
+            paymentMethod: data.paymentMethod || 'Bank Transfer',
+            transactionReference: data.transactionReference ? data.transactionReference.trim() : `SETTLE-${updated.invoiceNumber}`,
+            bankName: data.bankName || 'HDFC Bank',
+            notes: data.paymentNotes || `Auto-recorded payment for invoice ${updated.invoiceNumber}`,
+            recordedBy: user?.name || user?.email || 'Admin',
+            status: 'Completed',
+            allocations: {
+              create: [
+                {
+                  invoiceId: updated.id,
+                  amountAllocated: remainingToPay,
+                },
+              ],
+            },
+          },
+        });
+      }
+    } else if (status === 'Issued' || status === 'Unpaid') {
+      await prisma.paymentAllocation.deleteMany({
+        where: { invoiceId: updated.id },
+      });
+    }
+
     await logBillingAudit('Invoice', updated.id, updated.invoiceNumber, 'UPDATED', user?.name || user?.email || 'User', 'Updated Draft invoice items, calculations & terms');
     return updated;
   }
@@ -1522,17 +1605,43 @@ export async function updateInvoiceService(id, data, user) {
   // Non-draft or header-only update
   let headerAmountPaid = existing.amountPaid;
   let headerOutstanding = existing.outstandingBalance;
-  if (data.amountPaid !== undefined || data.advanceAmount !== undefined) {
+  let newStatus = data.status || existing.status;
+
+  if (data.status === 'Paid') {
+    headerAmountPaid = existing.grandTotal;
+    headerOutstanding = 0;
+    newStatus = 'Paid';
+  } else if (data.status === 'Unpaid' || data.status === 'Issued') {
+    headerAmountPaid = 0;
+    headerOutstanding = existing.grandTotal;
+    newStatus = 'Issued';
+    // Clear previous allocations so invoice cleanly resets to unpaid
+    await prisma.paymentAllocation.deleteMany({
+      where: { invoiceId: existing.id },
+    });
+  } else if (data.status === 'Partially Paid') {
+    newStatus = 'Partially Paid';
+    if (headerAmountPaid <= 0 || headerAmountPaid >= existing.grandTotal) {
+      headerAmountPaid = Number((existing.grandTotal / 2).toFixed(2));
+      headerOutstanding = Number((existing.grandTotal - headerAmountPaid).toFixed(2));
+    }
+  } else if (data.amountPaid !== undefined || data.advanceAmount !== undefined) {
     headerAmountPaid = Math.max(0, Math.min(existing.grandTotal, Number(data.amountPaid ?? data.advanceAmount ?? 0)));
     headerOutstanding = Math.max(0, Number((existing.grandTotal - headerAmountPaid).toFixed(2)));
+    if (headerAmountPaid >= existing.grandTotal && existing.grandTotal > 0) {
+      newStatus = 'Paid';
+    } else if (headerAmountPaid > 0) {
+      newStatus = 'Partially Paid';
+    }
   }
 
   const updated = await prisma.invoice.update({
     where: { id: existing.id },
     data: {
-      status: data.status || existing.status,
+      status: newStatus,
       amountPaid: headerAmountPaid,
       outstandingBalance: headerOutstanding,
+      paidAt: newStatus === 'Paid' ? (existing.paidAt || new Date()) : null,
       notes: data.notes !== undefined ? data.notes : existing.notes,
       termsConditions: data.termsConditions !== undefined ? data.termsConditions : existing.termsConditions,
       dueDate: data.dueDate || existing.dueDate,
@@ -1542,7 +1651,54 @@ export async function updateInvoiceService(id, data, user) {
     include: { items: true },
   });
 
-  await logBillingAudit('Invoice', updated.id, updated.invoiceNumber, 'UPDATED', user?.name || user?.email || 'User', 'Updated invoice terms & notes');
+  // Automatically record payment if invoice is marked Paid
+  if (newStatus === 'Paid') {
+    const existingAllocs = await prisma.paymentAllocation.findMany({
+      where: { invoiceId: updated.id },
+    });
+    const alreadyAllocated = existingAllocs.reduce((sum, a) => sum + (Number(a.amountAllocated) || 0), 0);
+    const remainingToPay = Math.max(0, Number((updated.grandTotal - alreadyAllocated).toFixed(2)));
+
+    if (remainingToPay > 0) {
+      const settings = await getBillingSettingsService();
+      const payNum = await generateUniquePaymentNumber(settings);
+
+      await prisma.payment.create({
+        data: {
+          paymentNumber: payNum,
+          contactId: updated.contactId,
+          clientName: updated.companyName || updated.contactName || 'Client',
+          paymentDate: new Date().toISOString().split('T')[0],
+          amountReceived: remainingToPay,
+          paymentMethod: data.paymentMethod || 'Bank Transfer',
+          transactionReference: data.transactionReference ? data.transactionReference.trim() : `SETTLE-${updated.invoiceNumber}`,
+          bankName: data.bankName || 'HDFC Bank',
+          notes: data.paymentNotes || `Auto-recorded payment for invoice ${updated.invoiceNumber}`,
+          recordedBy: user?.name || user?.email || 'Admin',
+          status: 'Completed',
+          allocations: {
+            create: [
+              {
+                invoiceId: updated.id,
+                amountAllocated: remainingToPay,
+              },
+            ],
+          },
+        },
+      });
+
+      await logBillingAudit(
+        'Payment',
+        updated.id,
+        payNum,
+        'PAYMENT_RECORDED',
+        user?.name || 'Admin',
+        `Payment of ₹${updated.grandTotal} auto-recorded for paid invoice ${updated.invoiceNumber}`
+      );
+    }
+  }
+
+  await logBillingAudit('Invoice', updated.id, updated.invoiceNumber, 'UPDATED', user?.name || user?.email || 'User', `Updated invoice status to ${newStatus}`);
   return updated;
 }
 
@@ -1717,13 +1873,7 @@ export async function recordPaymentService(data, user) {
 
   // Sequence Generation
   const settings = await getBillingSettingsService();
-  const nextNum = settings.paymentNextNumber || 1001;
-  const paymentNumber = `${settings.paymentPrefix || 'PAY-2026-'}${nextNum}`;
-
-  await prisma.billingSettings.update({
-    where: { id: settings.id },
-    data: { paymentNextNumber: nextNum + 1 },
-  });
+  const paymentNumber = await generateUniquePaymentNumber(settings);
 
   // Verify allocations against active invoices
   const rawAllocations = Array.isArray(data.allocations) ? data.allocations : [];

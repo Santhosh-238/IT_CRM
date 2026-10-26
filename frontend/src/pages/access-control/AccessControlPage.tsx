@@ -17,6 +17,7 @@ import {
   UnstyledButton,
   ScrollArea,
   ActionIcon,
+  Tooltip,
   useComputedColorScheme,
 } from '@mantine/core';
 import {
@@ -318,6 +319,12 @@ export const AccessControlPage: React.FC = () => {
       window.history.replaceState(null, '', url.pathname + url.search);
     }
   };
+
+  // Fresh load on mount to immediately view roles and users without page refresh
+  useEffect(() => {
+    fetchRoles();
+    fetchUsers();
+  }, [fetchRoles, fetchUsers]);
 
   // Search in Perms Sidebar
   const [roleSearch, setRoleSearch] = useState('');
@@ -621,16 +628,16 @@ export const AccessControlPage: React.FC = () => {
 
   // Create new role submit (Simple: Role Name & Reporting Manager)
   const handleCreateRoleSubmit = async () => {
-    if (!newRoleName.trim()) return;
-
-    const parentRole = roles.find((r) => r.id === newRoleParentId);
+    const defaultSuperAdminId = roles.find((r) => r.slug === 'super_admin')?.id || null;
+    const chosenParentId = newRoleParentId === 'ROOT' ? null : (newRoleParentId || defaultSuperAdminId);
+    const parentRole = roles.find((r) => r.id === chosenParentId);
     const parentName = parentRole ? parentRole.name : 'Direct to Board';
 
     const res = await createRole({
       name: newRoleName.trim(),
       description: `Reports to ${parentName}`,
       appType: 'manager',
-      parentRoleId: newRoleParentId || null,
+      parentRoleId: chosenParentId,
     });
 
     if (res.success) {
@@ -643,10 +650,28 @@ export const AccessControlPage: React.FC = () => {
   };
 
   // Delete custom role handler
-  const handleDeleteRole = async (roleId: string, roleName: string) => {
+  const handleDeleteRole = async (roleId: string, roleName: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    const role = roles.find((r) => r.id === roleId);
+    if (role?.slug === 'super_admin' || role?.isSystem) {
+      notifications.show({
+        title: 'Cannot Delete System Role',
+        message: 'Super Admin is the core system role and cannot be deleted.',
+        color: 'red',
+      });
+      return;
+    }
+
     if (!window.confirm(`Are you sure you want to delete role "${roleName}"?`)) return;
+
     const res = await deleteRole(roleId);
     if (res.success) {
+      notifications.show({
+        title: 'Role Deleted',
+        message: `Role "${roleName}" has been successfully deleted.`,
+        color: 'teal',
+      });
       const remaining = roles.filter((r) => r.id !== roleId);
       if (remaining.length > 0) {
         setSelectedRole(remaining[0]);
@@ -654,7 +679,11 @@ export const AccessControlPage: React.FC = () => {
         setSelectedRole(null);
       }
     } else {
-      alert(res.message || 'Failed to delete role');
+      notifications.show({
+        title: 'Failed to delete role',
+        message: res.message || 'Error deleting role',
+        color: 'red',
+      });
     }
   };
 
@@ -1154,17 +1183,48 @@ export const AccessControlPage: React.FC = () => {
                           </Box>
                         </Group>
 
-                        {isSelected && (
-                          <Badge
-                            size="xs"
-                            variant="filled"
-                            color="blue"
-                            radius="100px"
-                            style={{ flexShrink: 0, textTransform: 'none', fontWeight: 600, fontSize: '10px' }}
+                        <Group gap={6} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
+                          {isSelected && (
+                            <Badge
+                              size="xs"
+                              variant="filled"
+                              color="blue"
+                              radius="100px"
+                              style={{ flexShrink: 0, textTransform: 'none', fontWeight: 600, fontSize: '10px' }}
+                            >
+                              Active
+                            </Badge>
+                          )}
+
+                          <Tooltip
+                            label={
+                              role.slug === 'super_admin' || role.isSystem
+                                ? 'Super Admin is a permanent system role and cannot be deleted'
+                                : `Delete ${role.name}`
+                            }
+                            withArrow
+                            position="top"
                           >
-                            Active
-                          </Badge>
-                        )}
+                            <ActionIcon
+                              variant="subtle"
+                              color={role.slug === 'super_admin' || role.isSystem ? 'gray' : 'red'}
+                              size="sm"
+                              radius="md"
+                              disabled={role.slug === 'super_admin' || role.isSystem}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteRole(role.id, role.name, e);
+                              }}
+                              style={{
+                                opacity: role.slug === 'super_admin' || role.isSystem ? 0.35 : 0.85,
+                                cursor: role.slug === 'super_admin' || role.isSystem ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              <IconTrash size={15} />
+                            </ActionIcon>
+                          </Tooltip>
+                        </Group>
                       </Group>
 
                       {/* Expandable Member Details Accordion */}
@@ -1927,11 +1987,14 @@ export const AccessControlPage: React.FC = () => {
             label="Reporting Manager"
             placeholder="Select Reporting Manager..."
             data={[
-              { value: '', label: 'Root Level (Direct to Board)' },
-              ...roles.map((r) => ({ value: r.id, label: r.name })),
+              ...roles.map((r) => ({
+                value: r.id,
+                label: r.slug === 'super_admin' ? `${r.name} (Super Admin / Board)` : r.name,
+              })),
+              { value: 'ROOT', label: 'Root Level (Direct to Board)' },
             ]}
-            value={newRoleParentId}
-            onChange={(val) => setNewRoleParentId(val || '')}
+            value={newRoleParentId || (roles.find((r) => r.slug === 'super_admin')?.id || 'ROOT')}
+            onChange={(val) => setNewRoleParentId(val || 'ROOT')}
             radius="md"
           />
 

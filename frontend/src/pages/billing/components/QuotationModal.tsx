@@ -617,7 +617,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
       };
 
       let savedQuote: Quotation | undefined;
-      if (quotation?.id) {
+      if (quotation?.id && !quotation.id.startsWith('quo-')) {
         savedQuote = await billingService.updateQuotation(quotation.id, payload);
         notifications.show({
           color: 'green',

@@ -88,19 +88,6 @@ export const LeadPaymentSection: React.FC<LeadPaymentSectionProps> = ({
       const leadNameLower = (lead.name || '').trim().toLowerCase();
       const leadCompanyLower = (lead.companyName || '').trim().toLowerCase();
 
-      // Filter payments belonging to this lead
-      const matchingPayments = (paymentsRes || []).filter((p) => {
-        if (p.contactId && (p.contactId === lead.id || p.contactId === lead.leadId)) {
-          return true;
-        }
-        if (p.clientName) {
-          const c = p.clientName.toLowerCase();
-          if (leadNameLower && c.includes(leadNameLower)) return true;
-          if (leadCompanyLower && c.includes(leadCompanyLower)) return true;
-        }
-        return false;
-      });
-
       const invoiceList: Invoice[] = Array.isArray(invoicesRes)
         ? invoicesRes
         : Array.isArray((invoicesRes as any)?.data)
@@ -123,6 +110,33 @@ export const LeadPaymentSection: React.FC<LeadPaymentSectionProps> = ({
         return false;
       });
 
+      const matchingInvoiceIds = new Set(matchingInvoices.map((inv) => inv.id));
+      const matchingInvoiceNums = new Set(matchingInvoices.map((inv) => (inv.invoiceNumber || '').toLowerCase()));
+
+      // Filter payments belonging to this lead or allocated to its invoices
+      const matchingPayments = (paymentsRes || []).filter((p) => {
+        if (p.contactId && (p.contactId === lead.id || p.contactId === lead.leadId)) {
+          return true;
+        }
+        if (p.clientName) {
+          const c = p.clientName.toLowerCase();
+          if (leadNameLower && c.includes(leadNameLower)) return true;
+          if (leadCompanyLower && c.includes(leadCompanyLower)) return true;
+        }
+        if (
+          Array.isArray(p.allocations) &&
+          p.allocations.some(
+            (a: any) =>
+              (a.invoiceId && matchingInvoiceIds.has(a.invoiceId)) ||
+              (a.invoice?.id && matchingInvoiceIds.has(a.invoice.id)) ||
+              (a.invoice?.invoiceNumber && matchingInvoiceNums.has(a.invoice.invoiceNumber.toLowerCase()))
+          )
+        ) {
+          return true;
+        }
+        return false;
+      });
+
       setBackendPayments(matchingPayments);
       setBackendInvoices(matchingInvoices);
     } catch (err: any) {
@@ -139,7 +153,7 @@ export const LeadPaymentSection: React.FC<LeadPaymentSectionProps> = ({
 
   // Unified list of payment items for display
   const unifiedPayments = useMemo(() => {
-    // Convert backend payments to unified model
+    // 1. Direct Backend payments
     const fromBackend = backendPayments.map((p) => ({
       id: p.id,
       receiptNumber: p.paymentNumber || p.transactionReference || `PAY-${p.id.slice(0, 6)}`,
@@ -156,8 +170,49 @@ export const LeadPaymentSection: React.FC<LeadPaymentSectionProps> = ({
       notes: p.notes || '',
     }));
 
-    if (fromBackend.length > 0) {
-      return fromBackend;
+    // Find invoice IDs/numbers that already have an explicit backend payment
+    const recordedInvoiceIds = new Set<string>();
+    const recordedInvoiceNumbers = new Set<string>();
+    backendPayments.forEach((p) => {
+      (p.allocations || []).forEach((a: any) => {
+        if (a.invoiceId) recordedInvoiceIds.add(a.invoiceId);
+        if (a.invoice?.id) recordedInvoiceIds.add(a.invoice.id);
+        if (a.invoice?.invoiceNumber) recordedInvoiceNumbers.add(String(a.invoice.invoiceNumber).toLowerCase());
+      });
+      if (p.transactionReference) {
+        recordedInvoiceNumbers.add(String(p.transactionReference).toLowerCase());
+      }
+    });
+
+    // 2. Auto-fetch payments from any invoices marked as 'Paid' or with amountPaid > 0
+    const autoPaidFromInvoices = backendInvoices
+      .filter(
+        (inv) =>
+          (inv.status === 'Paid' || (inv.amountPaid && inv.amountPaid > 0)) &&
+          !recordedInvoiceIds.has(inv.id) &&
+          !recordedInvoiceNumbers.has((inv.invoiceNumber || '').toLowerCase())
+      )
+      .map((inv) => ({
+        id: `auto-pay-${inv.id}`,
+        receiptNumber: `REC-${inv.invoiceNumber}`,
+        date: inv.paidAt
+          ? dayjs(inv.paidAt).format('YYYY-MM-DD')
+          : inv.invoiceDate
+          ? dayjs(inv.invoiceDate).format('YYYY-MM-DD')
+          : dayjs().format('YYYY-MM-DD'),
+        amount: inv.amountPaid || inv.grandTotal,
+        method: inv.bankDetails?.paymentMethod || 'Bank Transfer',
+        referenceId: `SETTLE-${inv.invoiceNumber}`,
+        bankName: inv.bankDetails?.bankName || 'HDFC Bank',
+        invoiceNumber: inv.invoiceNumber,
+        status: 'Confirmed',
+        notes: `Settled payment for invoice ${inv.invoiceNumber}`,
+      }));
+
+    const combined = [...fromBackend, ...autoPaidFromInvoices];
+
+    if (combined.length > 0) {
+      return combined;
     }
 
     // Filter out dummy 'TXN-882910' mock records so clean leads start with 0 records
@@ -177,26 +232,33 @@ export const LeadPaymentSection: React.FC<LeadPaymentSectionProps> = ({
       status: p.status || 'Confirmed',
       notes: p.notes || '',
     }));
-  }, [backendPayments, initialPayments]);
+  }, [backendPayments, backendInvoices, initialPayments]);
 
   // Available invoices for dropdown
   const availableInvoices = useMemo(() => {
     if (backendInvoices.length > 0) {
-      return backendInvoices.map((inv) => ({
-        id: inv.id,
-        invoiceNumber: inv.invoiceNumber,
-        label: `${inv.invoiceNumber} — Balance: ₹${(inv.outstandingBalance || 0).toLocaleString('en-IN')} (Total: ₹${inv.grandTotal.toLocaleString('en-IN')})`,
-        outstanding: inv.outstandingBalance || 0,
-      }));
+      return backendInvoices.map((inv) => {
+        const bal = Number(inv.outstandingBalance ?? inv.grandTotal ?? 0);
+        const total = Number(inv.grandTotal ?? 0);
+        return {
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber || 'INV',
+          label: `${inv.invoiceNumber || 'INV'} — Balance: ₹${bal.toLocaleString('en-IN')} (Total: ₹${total.toLocaleString('en-IN')})`,
+          outstanding: bal,
+        };
+      });
     }
 
     // Fallback to dealData invoices (filtering dummy placeholder if appropriate)
-    return (initialInvoices || []).map((inv) => ({
-      id: inv.id,
-      invoiceNumber: inv.invoiceNumber,
-      label: `${inv.invoiceNumber} — ${inv.title} (₹${inv.totalAmount.toLocaleString('en-IN')})`,
-      outstanding: inv.status === 'Paid' ? 0 : inv.totalAmount,
-    }));
+    return (initialInvoices || []).map((inv) => {
+      const tot = Number(inv.totalAmount ?? 0);
+      return {
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber || 'INV',
+        label: `${inv.invoiceNumber || 'INV'} — ${inv.title || 'Invoice'} (₹${tot.toLocaleString('en-IN')})`,
+        outstanding: inv.status === 'Paid' ? 0 : tot,
+      };
+    });
   }, [backendInvoices, initialInvoices]);
 
   // Balance calculation for pre-filling payment record
@@ -493,7 +555,7 @@ export const LeadPaymentSection: React.FC<LeadPaymentSectionProps> = ({
 
                     <Table.Td>
                       <Text fw={800} size="13px" style={{ color: '#10B981' }}>
-                        ₹{Number(p.amount).toLocaleString('en-IN')}
+                        ₹{(Number(p.amount) || 0).toLocaleString('en-IN')}
                       </Text>
                     </Table.Td>
 
@@ -732,7 +794,7 @@ export const LeadPaymentSection: React.FC<LeadPaymentSectionProps> = ({
                   AMOUNT RECEIVED
                 </Text>
                 <Text size="18px" fw={900} style={{ color: '#10B981' }}>
-                  ₹{Number(selectedReceipt.amount).toLocaleString('en-IN')}
+                  ₹{(Number(selectedReceipt?.amount) || 0).toLocaleString('en-IN')}
                 </Text>
               </Group>
 

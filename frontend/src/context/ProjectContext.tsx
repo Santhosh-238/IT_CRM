@@ -66,24 +66,69 @@ const defaultFilters: ProjectFilter = {
   limit: 10,
 };
 
+const getCachedProjects = (): Project[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const s = sessionStorage.getItem('crm_cache_projects');
+    return s ? JSON.parse(s) : [];
+  } catch {
+    return [];
+  }
+};
+
+const getCachedStats = (): ProjectStats | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const s = sessionStorage.getItem('crm_cache_project_stats');
+    return s ? JSON.parse(s) : null;
+  } catch {
+    return null;
+  }
+};
+
+const getCachedMetadata = (): ProjectMetadata | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const s = sessionStorage.getItem('crm_cache_project_metadata');
+    return s ? JSON.parse(s) : null;
+  } catch {
+    return null;
+  }
+};
+
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [stats, setStats] = useState<ProjectStats | null>(null);
-  const [metadata, setMetadata] = useState<ProjectMetadata | null>(null);
+  const [projects, setProjects] = useState<Project[]>(() => getCachedProjects());
+  const [stats, setStats] = useState<ProjectStats | null>(() => getCachedStats());
+  const [metadata, setMetadata] = useState<ProjectMetadata | null>(() => getCachedMetadata());
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(() => getCachedProjects().length === 0);
   const [filters, setFiltersState] = useState<ProjectFilter>(defaultFilters);
-  const [pagination, setPagination] = useState<ProjectPagination>(defaultPagination);
+  const [pagination, setPagination] = useState<ProjectPagination>(() => {
+    const cached = getCachedProjects();
+    return {
+      ...defaultPagination,
+      total: cached.length,
+      totalPages: Math.max(1, Math.ceil(cached.length / 10)),
+    };
+  });
 
   // 1. Fetch Projects List
   const fetchProjects = useCallback(async () => {
-    setLoading(true);
+    // Only show full loader if there are no projects in cache/view
+    if (projects.length === 0) {
+      setLoading(true);
+    }
     try {
       const res = await projectService.getProjects(filters);
       if (res.success) {
         setProjects(res.data);
+        if (typeof window !== 'undefined' && filters.status === 'All' && !filters.search) {
+          try {
+            sessionStorage.setItem('crm_cache_projects', JSON.stringify(res.data));
+          } catch (_) {}
+        }
         setPagination({
           total: res.pagination.total,
           page: res.pagination.page,
@@ -104,7 +149,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, projects.length]);
 
   // 2. Fetch KPI Stats
   const fetchStats = useCallback(async () => {
@@ -112,6 +157,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       const res = await projectService.getProjectStats();
       if (res.success) {
         setStats(res.stats);
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('crm_cache_project_stats', JSON.stringify(res.stats));
+          } catch (_) {}
+        }
       }
     } catch (err) {
       console.error('[fetchStats Error]:', err);
@@ -124,6 +174,11 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       const res = await projectService.getProjectMetadata();
       if (res.success) {
         setMetadata(res.data);
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('crm_cache_project_metadata', JSON.stringify(res.data));
+          } catch (_) {}
+        }
       }
     } catch (err) {
       console.error('[fetchMetadata Error]:', err);
@@ -170,11 +225,20 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const res = await projectService.createProject(data);
       if (res.success) {
+        if (res.data) {
+          setProjects((prev) => [
+            res.data!,
+            ...prev.filter((p) => p.id !== res.data!.id && p.projectId !== res.data!.projectId),
+          ]);
+        }
         notifications.show({
           title: 'Project Created',
           message: res.message || 'New project created successfully!',
           color: 'green',
         });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_projects_updated'));
+        }
         await Promise.all([fetchProjects(), fetchStats()]);
         return { success: true, data: res.data };
       }
@@ -194,11 +258,22 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const res = await projectService.updateProject(id, data);
       if (res.success) {
+        if (res.data) {
+          setProjects((prev) =>
+            prev.map((p) => (p.id === id || p.projectId === id ? { ...p, ...res.data! } : p))
+          );
+          if (selectedProject && (selectedProject.id === id || selectedProject.projectId === id)) {
+            setSelectedProject(res.data);
+          }
+        }
         notifications.show({
           title: 'Project Updated',
           message: res.message || 'Project updated successfully!',
           color: 'blue',
         });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_projects_updated'));
+        }
         await Promise.all([fetchProjects(), fetchStats()]);
         return { success: true, data: res.data };
       }
@@ -218,11 +293,18 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       const res = await projectService.deleteProject(id);
       if (res.success) {
+        setProjects((prev) => prev.filter((p) => p.id !== id && p.projectId !== id));
+        if (selectedProject && (selectedProject.id === id || selectedProject.projectId === id)) {
+          setSelectedProject(null);
+        }
         notifications.show({
           title: 'Project Deleted',
           message: res.message || 'Project deleted successfully.',
           color: 'teal',
         });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_projects_updated'));
+        }
         await Promise.all([fetchProjects(), fetchStats()]);
         return { success: true };
       }

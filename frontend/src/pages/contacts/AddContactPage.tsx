@@ -148,6 +148,9 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
       }
 
       if (res?.success) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('crm_contacts_tab', 'NEW');
+        }
         if (onBack) onBack();
         else setActiveNav('contacts');
       }
