@@ -25,7 +25,7 @@ export const App: React.FC = () => {
 
   return (
     <MantineProvider theme={theme} defaultColorScheme="light">
-      <Notifications position="top-right" zIndex={2000} />
+      <Notifications position="top-right" zIndex={2000} containerWidth={380} autoClose={3500} limit={1} />
       <ModalsProvider>
         <CRMProvider>
           <AccessControlProvider>

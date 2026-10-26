@@ -1,11 +1,11 @@
 import { prisma } from '../config/prisma.js';
-import { delCache } from '../config/redis.js';
+import { getCache, setCache, delCache } from '../config/redis.js';
 import { io } from '../utils/socket.js';
 import { PROJECT_MODULE } from '../models/project.model.js';
 import { generateProjectId, buildProjectFilterQuery, formatProjectResponse } from '../utils/project.util.js';
 
 /**
- * 1. List Projects with pagination, search, sorting and filters
+ * 1. List Projects with pagination, search, sorting, filters, and Redis caching
  */
 export async function getProjectsService(queryParams = {}) {
   const {
@@ -18,6 +18,15 @@ export async function getProjectsService(queryParams = {}) {
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
   const skip = (pageNum - 1) * limitNum;
+
+  // Cache key based on query params
+  const cacheKey = `crm:projects:list:${JSON.stringify(queryParams)}`;
+  try {
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  } catch (_) {}
 
   const where = buildProjectFilterQuery(queryParams);
 
@@ -35,24 +44,13 @@ export async function getProjectsService(queryParams = {}) {
     }),
   ]);
 
-  let modulesMap = {};
-  if (projects.length > 0) {
-    try {
-      const projectIds = projects.map((p) => p.id);
-      const raw = await prisma.$queryRawUnsafe(
-        `SELECT "id", "modules" FROM "Project" WHERE "id" = ANY($1::text[])`,
-        projectIds
-      );
-      if (Array.isArray(raw)) {
-        raw.forEach((r) => {
-          modulesMap[r.id] = Array.isArray(r.modules) ? r.modules : [];
-        });
-      }
-    } catch (e) {}
-  }
-
-  return {
-    data: projects.map((p) => formatProjectResponse({ ...p, modules: modulesMap[p.id] || [] })),
+  const result = {
+    data: projects.map((p) =>
+      formatProjectResponse({
+        ...p,
+        modules: Array.isArray(p.modules) ? p.modules : [],
+      })
+    ),
     pagination: {
       total,
       page: pageNum,
@@ -60,6 +58,12 @@ export async function getProjectsService(queryParams = {}) {
       totalPages: Math.ceil(total / limitNum),
     },
   };
+
+  try {
+    await setCache(cacheKey, result, 60);
+  } catch (_) {}
+
+  return result;
 }
 
 /**
@@ -186,27 +190,55 @@ export async function getProjectByIdService(id) {
 }
 
 /**
- * 3. Get Project KPI Stats
+ * 3. Get Project KPI Stats with Redis Caching and single groupBy aggregation
  */
 export async function getProjectStatsService() {
-  const [total, inProgress, planning, inReview, completed, onHold] = await Promise.all([
-    prisma.project.count(),
-    prisma.project.count({ where: { status: 'In Progress' } }),
-    prisma.project.count({ where: { status: 'Planning' } }),
-    prisma.project.count({ where: { status: 'In Review' } }),
-    prisma.project.count({ where: { status: 'Completed' } }),
-    prisma.project.count({ where: { status: 'On Hold' } }),
+  const cacheKey = 'crm:projects:stats';
+  try {
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  } catch (_) {}
+
+  const [statusGroups, budgetAggregate] = await Promise.all([
+    prisma.project.groupBy({
+      by: ['status'],
+      _count: { _all: true },
+    }),
+    prisma.project.aggregate({
+      _sum: {
+        estimatedBudget: true,
+        actualCost: true,
+      },
+    }),
   ]);
 
-  // Aggregate total budget
-  const budgetAggregate = await prisma.project.aggregate({
-    _sum: {
-      estimatedBudget: true,
-      actualCost: true,
-    },
+  const statusCounts = {
+    'In Progress': 0,
+    'Planning': 0,
+    'In Review': 0,
+    'Completed': 0,
+    'On Hold': 0,
+  };
+
+  let total = 0;
+  statusGroups.forEach((g) => {
+    const s = g.status || 'Planning';
+    const c = g._count?._all || 0;
+    total += c;
+    if (statusCounts[s] !== undefined) {
+      statusCounts[s] += c;
+    }
   });
 
-  return {
+  const inProgress = statusCounts['In Progress'];
+  const planning = statusCounts['Planning'];
+  const inReview = statusCounts['In Review'];
+  const completed = statusCounts['Completed'];
+  const onHold = statusCounts['On Hold'];
+
+  const result = {
     stats: {
       total,
       inProgress,
@@ -219,12 +251,26 @@ export async function getProjectStatsService() {
       totalCost: budgetAggregate._sum.actualCost || 0,
     },
   };
+
+  try {
+    await setCache(cacheKey, result, 60);
+  } catch (_) {}
+
+  return result;
 }
 
 /**
- * 4. Get Project Dropdown Metadata (Employees, Contacts, Options)
+ * 4. Get Project Dropdown Metadata (Employees, Contacts, Options) with Redis Caching
  */
 export async function getProjectMetadataService() {
+  const cacheKey = 'crm:projects:metadata';
+  try {
+    const cached = await getCache(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  } catch (_) {}
+
   const [employees, contacts] = await Promise.all([
     prisma.employee.findMany({
       select: { id: true, name: true, empCode: true, department: true, designation: true },
@@ -234,7 +280,7 @@ export async function getProjectMetadataService() {
     }),
   ]);
 
-  return {
+  const result = {
     data: {
       employees,
       contacts,
@@ -244,6 +290,12 @@ export async function getProjectMetadataService() {
       categories: PROJECT_MODULE.categories,
     },
   };
+
+  try {
+    await setCache(cacheKey, result, 300);
+  } catch (_) {}
+
+  return result;
 }
 
 /**

@@ -30,7 +30,11 @@ interface LeadContextType {
   setSort: (sortBy: string, sortOrder: 'asc' | 'desc') => void;
 
   createLead: (data: LeadFormData) => Promise<{ success: boolean; data?: Lead; message?: string }>;
-  updateLead: (id: string, data: Partial<LeadFormData>) => Promise<{ success: boolean; data?: Lead; message?: string }>;
+  updateLead: (
+    id: string,
+    data: Partial<LeadFormData>,
+    options?: { silent?: boolean }
+  ) => Promise<{ success: boolean; data?: Lead; message?: string }>;
   deleteLead: (id: string) => Promise<{ success: boolean; message?: string }>;
 }
 
@@ -70,23 +74,8 @@ const defaultMetadata: LeadMetadata = {
   ],
   categories: ['Product', 'Service'],
   contactTypes: ['Individual', 'Company Representative'],
-  productOptions: [
-    'HRMS',
-    'IT CRM',
-    'Fintech CRM',
-    'Cloud ERP',
-    'Custom Enterprise Software',
-    'AI & ML Assistant',
-    'Mobile Apps',
-  ],
-  serviceOptions: [
-    'Cloud Migration & DevOps',
-    'Cybersecurity & Compliance',
-    'Custom API & Backend Integration',
-    'Full-Stack Web Development',
-    'Staff Augmentation',
-    'UI/UX Design',
-  ],
+  productOptions: [],
+  serviceOptions: [],
 };
 
 const LeadContext = createContext<LeadContextType | undefined>(undefined);
@@ -191,11 +180,20 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setLoading(true);
       const res = await leadService.createLead(data);
       if (res.success) {
+        if (res.data) {
+          setLeads((prev) => [
+            res.data!,
+            ...prev.filter((l) => l.id !== res.data!.id && l.leadId !== res.data!.leadId),
+          ]);
+        }
         notifications.show({
           title: 'Lead Created Successfully',
           message: `${res.data.name} (${res.data.leadId}) has been added to leads.`,
           color: 'teal',
         });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_leads_updated'));
+        }
         await Promise.all([fetchLeads(), fetchStats()]);
         return { success: true, data: res.data };
       }
@@ -212,42 +210,72 @@ export const LeadProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [fetchLeads, fetchStats]);
 
-  const updateLead = useCallback(async (id: string, data: Partial<LeadFormData>) => {
-    try {
-      setLoading(true);
-      const res = await leadService.updateLead(id, data);
-      if (res.success) {
-        notifications.show({
-          title: 'Lead Updated Successfully',
-          message: `${res.data.name} (${res.data.leadId}) details have been updated.`,
-          color: 'teal',
-        });
-        await Promise.all([fetchLeads(), fetchStats()]);
-        return { success: true, data: res.data };
+  const updateLead = useCallback(
+    async (
+      id: string,
+      data: Partial<LeadFormData>,
+      options?: { silent?: boolean }
+    ) => {
+      const isSilent = options?.silent ?? false;
+      try {
+        setLoading(true);
+        const res = await leadService.updateLead(id, data);
+        if (res.success) {
+          if (res.data) {
+            setLeads((prev) =>
+              prev.map((l) => (l.id === id || l.leadId === id ? { ...l, ...res.data! } : l))
+            );
+            if (selectedLead && (selectedLead.id === id || selectedLead.leadId === id)) {
+              setSelectedLead(res.data);
+            }
+          }
+          if (!isSilent) {
+            notifications.show({
+              title: 'Lead Updated Successfully',
+              message: `${res.data?.name || 'Lead'} (${res.data?.leadId || id}) details have been updated.`,
+              color: 'teal',
+            });
+          }
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('crm_leads_updated'));
+          }
+          await Promise.all([fetchLeads(), fetchStats()]);
+          return { success: true, data: res.data };
+        }
+        return { success: false, message: res.message || 'Update failed.' };
+      } catch (err: any) {
+        if (!isSilent) {
+          notifications.show({
+            title: 'Update Failed',
+            message: err.message || 'Could not update lead.',
+            color: 'red',
+          });
+        }
+        return { success: false, message: err.message };
+      } finally {
+        setLoading(false);
       }
-      return { success: false, message: res.message || 'Update failed.' };
-    } catch (err: any) {
-      notifications.show({
-        title: 'Update Failed',
-        message: err.message || 'Could not update lead.',
-        color: 'red',
-      });
-      return { success: false, message: err.message };
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchLeads, fetchStats]);
+    },
+    [fetchLeads, fetchStats, selectedLead]
+  );
 
   const deleteLead = useCallback(async (id: string) => {
     try {
       setLoading(true);
       const res = await leadService.deleteLead(id);
       if (res.success) {
+        setLeads((prev) => prev.filter((l) => l.id !== id && l.leadId !== id));
+        if (selectedLead && (selectedLead.id === id || selectedLead.leadId === id)) {
+          setSelectedLead(null);
+        }
         notifications.show({
           title: 'Lead Removed',
           message: 'Lead record has been removed from the pipeline.',
           color: 'gray',
         });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_leads_updated'));
+        }
         await Promise.all([fetchLeads(), fetchStats()]);
         return { success: true };
       }

@@ -97,6 +97,18 @@ export const LeadsPage: React.FC = () => {
     fetchStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Live update listener so saved/qualified leads appear immediately without page refresh
+  React.useEffect(() => {
+    const handleUpdated = () => {
+      fetchLeads();
+      fetchStats();
+    };
+    window.addEventListener('crm_leads_updated', handleUpdated);
+    return () => {
+      window.removeEventListener('crm_leads_updated', handleUpdated);
+    };
+  }, [fetchLeads, fetchStats]);
   const [modalOpened, setModalOpened] = useState<boolean>(false);
   const [selectedLeadForEdit, setSelectedLeadForEdit] = useState<Lead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);

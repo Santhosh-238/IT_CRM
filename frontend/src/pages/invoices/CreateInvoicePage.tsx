@@ -42,12 +42,15 @@ import {
   IconSparkles,
   IconPencil,
   IconCalendar,
+  IconFolders,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { Invoice, InvoiceItem, InvoiceType, TaxType } from '../../types/billing';
 import { billingService } from '../../services/billingService';
 import { projectService } from '../../services/projectService';
+import { settingsService } from '../../services/settingsService';
 import { Project, ProjectModuleItem } from '../../types/project';
+import { MasterProject } from '../../types/settings';
 import { useCustomer } from '../../context/CustomerContext';
 import { useCRM } from '../../context/CRMContext';
 import { crmApi } from '../../services/api';
@@ -107,8 +110,9 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({
   const [paymentTerms, setPaymentTerms] = useState(initialInvoice?.paymentTerms || 'Net 30');
   const [status, setStatus] = useState(initialInvoice?.status || 'Draft');
 
-  // Project Management Integration
+  // Project Management & Master Project Catalog Integration
   const [projects, setProjects] = useState<Project[]>([]);
+  const [catalogProjects, setCatalogProjects] = useState<MasterProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialInvoice?.projectId || null);
   const [projectName, setProjectName] = useState(initialInvoice?.projectName || initialInvoice?.projectTitle || '');
   const [isManualProject, setIsManualProject] = useState<boolean>(false);
@@ -119,14 +123,40 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({
         setProjects(res.data);
       }
     }).catch(() => {});
+
+    settingsService.getMasterProjects().then((res) => {
+      if (res?.data && Array.isArray(res.data)) {
+        setCatalogProjects(res.data);
+      }
+    }).catch(() => {});
   }, []);
 
   const selectedProject = useMemo(() => {
-    if (selectedProjectId) {
-      return projects.find((p) => p.id === selectedProjectId) || null;
+    if (!selectedProjectId) return null;
+    const foundProject = projects.find((p) => p.id === selectedProjectId);
+    if (foundProject) return foundProject;
+
+    const cleanId = selectedProjectId.startsWith('cat:') ? selectedProjectId.replace('cat:', '') : selectedProjectId;
+    const catFound = catalogProjects.find((c) => c.id === cleanId || c.projectCode === cleanId);
+    if (catFound) {
+      return {
+        id: catFound.id,
+        name: catFound.name,
+        projectId: catFound.projectCode || 'CATALOG',
+        clientName: '',
+        clientEmail: '',
+        clientPhone: '',
+        estimatedBudget: catFound.basePrice || 0,
+        modules: Array.isArray(catFound.modules) ? catFound.modules.map((m) => ({
+          id: m.id,
+          name: m.name,
+          description: m.description || `Module deliverables & development for ${m.name} (${catFound.name})`,
+          price: m.price,
+        })) : [],
+      } as unknown as Project;
     }
     return null;
-  }, [selectedProjectId, projects]);
+  }, [selectedProjectId, projects, catalogProjects]);
 
   const handleSelectProject = (projId: string | null) => {
     setSelectedProjectId(projId);
@@ -134,6 +164,18 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({
       setProjectName('');
       return;
     }
+    const cleanId = projId.startsWith('cat:') ? projId.replace('cat:', '') : projId;
+    const catFound = catalogProjects.find((c) => c.id === cleanId || c.projectCode === cleanId);
+    if (catFound) {
+      setProjectName(catFound.name);
+      notifications.show({
+        color: 'indigo',
+        title: `Project Catalog: ${catFound.name}`,
+        message: `${catFound.modules?.length || 0} module(s) available in Line Items.`,
+      });
+      return;
+    }
+
     const found = projects.find((p) => p.id === projId);
     if (found) {
       setProjectName(found.name);
@@ -154,18 +196,18 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({
     }
   };
 
-  const handleAddAllProjectModules = (proj: Project) => {
+  const handleAddAllProjectModules = (proj: any) => {
     if (!proj.modules || proj.modules.length === 0) {
-      notifications.show({ color: 'yellow', message: 'No modules found in Project Management for this project' });
+      notifications.show({ color: 'yellow', message: 'No modules found for this project' });
       return;
     }
-    const unitRate =
+    const defaultUnitRate =
       proj.estimatedBudget && proj.estimatedBudget > 0
         ? Math.round(proj.estimatedBudget / proj.modules.length)
         : 35000;
-    const newItems: LineItemFormState[] = proj.modules.map((m) => {
+    const newItems: LineItemFormState[] = proj.modules.map((m: any) => {
       const qty = 1;
-      const price = unitRate;
+      const price = Number(m.price) || defaultUnitRate;
       const disc = 0;
       const taxRate = 18;
       const taxable = qty * price;
@@ -190,7 +232,7 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({
     }
     notifications.show({
       color: 'teal',
-      message: `Loaded all ${newItems.length} modules from project "${proj.name}"`,
+      message: `Loaded all ${newItems.length} modules from "${proj.name}"`,
     });
   };
 
@@ -573,6 +615,10 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({
         });
       }
 
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crm_invoices_updated'));
+      }
+
       onSuccess(resultInvoice);
     } catch (err: any) {
       notifications.show({
@@ -767,7 +813,7 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({
                         style={{ cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                         onClick={() => setIsManualProject(false)}
                       >
-                        <IconBriefcase size={12} /> Select from Project Management
+                        <IconBriefcase size={12} /> Select from Project Catalog / Management
                       </Text>
                     </Group>
                   }
@@ -781,7 +827,7 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({
                   label={
                     <Group justify="space-between" align="center" style={{ width: '100%' }}>
                       <Text size="xs" fw={500}>
-                        Project (Project Management)
+                        Project (Project Catalog & Management)
                       </Text>
                       <Text
                         size="xs"
@@ -793,17 +839,29 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({
                       </Text>
                     </Group>
                   }
-                  placeholder="Select project from Project Management..."
-                  data={projects.map((p) => ({
-                    value: p.id,
-                    label: p.name,
-                  }))}
+                  placeholder="Select project from Project Catalog (e.g. Venus) or Project Management..."
+                  data={[
+                    ...(catalogProjects.length > 0 ? [{
+                      group: '📁 Project Catalog (Templates & Products)',
+                      items: catalogProjects.map((c) => ({
+                        value: `cat:${c.id}`,
+                        label: `📁 ${c.name} ${c.projectCode ? `(${c.projectCode})` : ''} • ${c.modules?.length || 0} modules ${c.basePrice ? `• ₹${Number(c.basePrice).toLocaleString('en-IN')}` : ''}`,
+                      })),
+                    }] : []),
+                    ...(projects.length > 0 ? [{
+                      group: '🏢 Active Client Projects',
+                      items: projects.map((p) => ({
+                        value: p.id,
+                        label: `🏢 ${p.name} ${p.clientName ? `• ${p.clientName}` : ''}`,
+                      })),
+                    }] : []),
+                  ]}
                   value={selectedProjectId || null}
                   onChange={handleSelectProject}
                   searchable
                   clearable
-                  description="Select an existing Project to automatically pull modules and client information"
-                  nothingFoundMessage="No projects found in Project Management"
+                  description="Select a project template from Project Catalog (e.g. Venus) or active client projects to automatically load modules and rates"
+                  nothingFoundMessage="No projects found in Project Catalog or Management"
                 />
               )}
             </Grid.Col>
@@ -1025,27 +1083,81 @@ export const CreateInvoicePage: React.FC<CreateInvoicePageProps> = ({
                             onChange={(e) => updateLineItem(idx, 'itemName', e.currentTarget.value)}
                           />
                           <Select
-                            placeholder="Preset / Modules"
-                            style={{ width: 160 }}
+                            placeholder="Preset / Catalog"
+                            style={{ width: 170 }}
                             data={[
-                              ...(selectedProject?.modules?.map((m) => ({
-                                value: `__PROJ__:${m.name}`,
-                                label: `🎯 ${m.name}`,
-                              })) || []),
-                              ...COMMON_IT_CATALOG.map((c) => ({ value: c.name, label: c.name })),
+                              ...(selectedProject?.modules && selectedProject.modules.length > 0 ? [{
+                                group: `🎯 Selected: ${selectedProject.name}`,
+                                items: selectedProject.modules.map((m: any) => ({
+                                  value: `__PROJ__:${m.name}`,
+                                  label: `🎯 ${m.name} ${m.price ? `(₹${Number(m.price).toLocaleString('en-IN')})` : ''}`,
+                                })),
+                              }] : []),
+                              ...(catalogProjects.length > 0 ? [{
+                                group: '📁 Project Catalog (Templates)',
+                                items: catalogProjects.flatMap((cp) => [
+                                  {
+                                    value: `__CAT_PROJ__:${cp.id}`,
+                                    label: `📦 Full: ${cp.name} ${cp.basePrice ? `(₹${Number(cp.basePrice).toLocaleString('en-IN')})` : ''}`,
+                                  },
+                                  ...(cp.modules || []).map((cm) => ({
+                                    value: `__CAT_MOD__:${cp.id}:${cm.name}`,
+                                    label: `🧩 ${cm.name} (${cp.name}) ${cm.price ? `(₹${Number(cm.price).toLocaleString('en-IN')})` : ''}`,
+                                  })),
+                                ]),
+                              }] : []),
+                              {
+                                group: 'Common IT Services',
+                                items: COMMON_IT_CATALOG.map((c) => ({ value: c.name, label: `${c.name} (₹${c.price.toLocaleString('en-IN')})` })),
+                              },
                             ]}
                             onChange={(val) => {
                               if (!val) return;
                               if (val.startsWith('__PROJ__:')) {
                                 const modName = val.replace('__PROJ__:', '');
-                                const projMod = selectedProject?.modules?.find((m) => m.name === modName);
+                                const projMod = selectedProject?.modules?.find((m: any) => m.name === modName);
                                 if (projMod) {
                                   updateLineItem(idx, 'itemName', projMod.name);
+                                  if ((projMod as any).price) {
+                                    updateLineItem(idx, 'unitPrice', Number((projMod as any).price));
+                                  }
                                   updateLineItem(
                                     idx,
                                     'description',
                                     projMod.description || `Module deliverables & deployment for ${projMod.name}${selectedProject?.name ? ` (${selectedProject.name})` : ''}`
                                   );
+                                }
+                              } else if (val.startsWith('__CAT_PROJ__:')) {
+                                const catId = val.replace('__CAT_PROJ__:', '');
+                                const cp = catalogProjects.find((c) => c.id === catId);
+                                if (cp) {
+                                  updateLineItem(idx, 'itemName', `${cp.name} - Complete Project Package`);
+                                  updateLineItem(
+                                    idx,
+                                    'description',
+                                    cp.description || `Deliverables: ${cp.deliverables?.join(', ') || 'Architecture, Design, APIs, Database & Deployment'}`
+                                  );
+                                  if (cp.basePrice) {
+                                    updateLineItem(idx, 'unitPrice', Number(cp.basePrice));
+                                  }
+                                }
+                              } else if (val.startsWith('__CAT_MOD__:')) {
+                                const rest = val.replace('__CAT_MOD__:', '');
+                                const firstColon = rest.indexOf(':');
+                                const catId = rest.slice(0, firstColon);
+                                const modName = rest.slice(firstColon + 1);
+                                const cp = catalogProjects.find((c) => c.id === catId);
+                                const cm = cp?.modules?.find((m) => m.name === modName);
+                                if (cm) {
+                                  updateLineItem(idx, 'itemName', cm.name);
+                                  updateLineItem(
+                                    idx,
+                                    'description',
+                                    cm.description || `Module deliverables & development for ${cm.name} (${cp?.name || 'Project'})`
+                                  );
+                                  if (cm.price) {
+                                    updateLineItem(idx, 'unitPrice', Number(cm.price));
+                                  }
                                 }
                               } else {
                                 handleCatalogPick(idx, val);

@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma.js';
 import { delCache } from '../config/redis.js';
 import { io } from '../utils/socket.js';
 import { logAuditEvent } from './auditService.js';
-import { CONTACT_MODULE } from '../models/contact.model.js';
+import { ContactModel, CONTACT_MODULE } from '../models/contact.model.js';
 import { generateContactId, buildContactFilterQuery, formatContactResponse } from '../utils/contact.util.js';
 
 /**
@@ -228,17 +228,11 @@ export async function getContactMetadataService() {
     select: { id: true, name: true, empCode: true, department: true, designation: true },
   });
 
+  const dynamicMeta = await ContactModel.getDynamicMetadata();
+
   const metadata = {
     employees,
-    stages: CONTACT_MODULE.stages,
-    statuses: CONTACT_MODULE.statuses,
-    sources: CONTACT_MODULE.sources,
-    contactTypes: CONTACT_MODULE.contactTypes,
-    categories: CONTACT_MODULE.categories,
-    productOptions: CONTACT_MODULE.productOptions,
-    serviceOptions: CONTACT_MODULE.serviceOptions,
-    priorities: CONTACT_MODULE.priorities,
-    qualificationStatuses: CONTACT_MODULE.qualificationStatuses,
+    ...dynamicMeta,
   };
 
   return { data: metadata, metadata };
@@ -488,6 +482,10 @@ export async function syncContactToLead(contact) {
     const category = contact.category || 'Product';
     const productList = Array.isArray(contact.productList) ? contact.productList : [];
     const serviceList = Array.isArray(contact.serviceList) ? contact.serviceList : [];
+    const assignedTo = contact.assignedTo || user?.id || null;
+    const assignedToName = contact.assignedToName || user?.name || null;
+    const createdBy = contact.createdBy || user?.name || user?.email || null;
+    const createdByName = contact.createdBy || user?.name || null;
 
     if (existingLead) {
       const updatedLead = await prisma.lead.update({
@@ -508,6 +506,10 @@ export async function syncContactToLead(contact) {
           serviceList: serviceList.length > 0 ? serviceList : existingLead.serviceList,
           status: 'New',
           stage: 'Initialization',
+          assignedTo: contact.assignedTo || existingLead.assignedTo || assignedTo,
+          assignedToName: contact.assignedToName || existingLead.assignedToName || assignedToName,
+          createdBy: existingLead.createdBy || createdBy,
+          createdByName: existingLead.createdByName || createdByName,
           createdAt: new Date(),
         },
       });
@@ -537,6 +539,10 @@ export async function syncContactToLead(contact) {
           serviceList,
           status: 'New',
           stage: 'Initialization',
+          assignedTo,
+          assignedToName,
+          createdBy,
+          createdByName,
         },
       });
 
@@ -692,7 +698,7 @@ export async function updateContactService(id, body, user) {
   }
 
   // Automatically sync to Lead if contact is Qualified
-  await syncContactToLead(updated);
+  await syncContactToLead(updated, user);
 
   return {
     message: 'Contact updated successfully',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -33,9 +33,28 @@ export const EmployeesPage: React.FC = () => {
   const {
     employees,
     fetchEmployees,
+    fetchEmployeeStats,
     deleteEmployee,
     updateEmployeeStatus,
   } = useEmployee();
+
+  // Fresh load on mount to immediately view saved employees without page refresh
+  useEffect(() => {
+    fetchEmployees();
+    fetchEmployeeStats();
+  }, [fetchEmployees, fetchEmployeeStats]);
+
+  // Live update listener
+  useEffect(() => {
+    const handleUpdated = () => {
+      fetchEmployees();
+      fetchEmployeeStats();
+    };
+    window.addEventListener('crm_employees_updated', handleUpdated);
+    return () => {
+      window.removeEventListener('crm_employees_updated', handleUpdated);
+    };
+  }, [fetchEmployees, fetchEmployeeStats]);
 
   const [localSearch, setLocalSearch] = useState('');
   const [activeTab, setActiveTabState] = useState<StatusTab>(() => {

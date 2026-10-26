@@ -51,6 +51,26 @@ export async function getLeadsService(queryParams = {}, currentUser = null) {
     if (emp?.name) assignedMatch.push({ assignedToName: { equals: emp.name, mode: 'insensitive' } });
     if (currentUser?.id) assignedMatch.push({ assignedTo: currentUser.id });
     if (currentUser?.name) assignedMatch.push({ assignedToName: { equals: currentUser.name, mode: 'insensitive' } });
+    if (currentUser?.email) assignedMatch.push({ assignedTo: currentUser.email });
+
+    // Include leads created or qualified by this user/employee
+    if (currentUser?.name) {
+      assignedMatch.push({ createdBy: { equals: currentUser.name, mode: 'insensitive' } });
+      assignedMatch.push({ createdByName: { equals: currentUser.name, mode: 'insensitive' } });
+    }
+    if (currentUser?.email) {
+      assignedMatch.push({ createdBy: { equals: currentUser.email, mode: 'insensitive' } });
+    }
+    if (currentUser?.id) {
+      assignedMatch.push({ createdBy: currentUser.id });
+    }
+    if (emp?.id) {
+      assignedMatch.push({ createdBy: emp.id });
+    }
+    if (emp?.name) {
+      assignedMatch.push({ createdBy: { equals: emp.name, mode: 'insensitive' } });
+      assignedMatch.push({ createdByName: { equals: emp.name, mode: 'insensitive' } });
+    }
 
     if (assignedMatch.length > 0) {
       if (!where.AND) where.AND = [];
@@ -130,6 +150,26 @@ export async function getLeadStatsService(currentUser = null) {
     if (emp?.name) assignedMatch.push({ assignedToName: { equals: emp.name, mode: 'insensitive' } });
     if (currentUser?.id) assignedMatch.push({ assignedTo: currentUser.id });
     if (currentUser?.name) assignedMatch.push({ assignedToName: { equals: currentUser.name, mode: 'insensitive' } });
+    if (currentUser?.email) assignedMatch.push({ assignedTo: currentUser.email });
+
+    // Include leads created or qualified by this user/employee
+    if (currentUser?.name) {
+      assignedMatch.push({ createdBy: { equals: currentUser.name, mode: 'insensitive' } });
+      assignedMatch.push({ createdByName: { equals: currentUser.name, mode: 'insensitive' } });
+    }
+    if (currentUser?.email) {
+      assignedMatch.push({ createdBy: { equals: currentUser.email, mode: 'insensitive' } });
+    }
+    if (currentUser?.id) {
+      assignedMatch.push({ createdBy: currentUser.id });
+    }
+    if (emp?.id) {
+      assignedMatch.push({ createdBy: emp.id });
+    }
+    if (emp?.name) {
+      assignedMatch.push({ createdBy: { equals: emp.name, mode: 'insensitive' } });
+      assignedMatch.push({ createdByName: { equals: emp.name, mode: 'insensitive' } });
+    }
 
     if (assignedMatch.length > 0) {
       baseWhere = { OR: assignedMatch };
@@ -491,13 +531,23 @@ export const createProposalService = createLeadProposalService;
  * 11. UPDATE PROPOSAL
  */
 export async function updateLeadProposalService(id, data, user) {
-  const existing = await prisma.proposal.findFirst({
+  let existing = await prisma.proposal.findFirst({
     where: {
       OR: [{ id }, { proposalNumber: id }],
     },
   });
 
   if (!existing) {
+    // If not found in DB but lead context is provided, auto-create it gracefully
+    if (data.leadId || data.companyName || data.contactName) {
+      return createLeadProposalService(
+        {
+          ...data,
+          proposalNumber: id && !id.startsWith('prop-') ? id : undefined,
+        },
+        user
+      );
+    }
     const err = new Error('Proposal not found.');
     err.status = 404;
     throw err;

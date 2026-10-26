@@ -79,7 +79,7 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
       .then((dbQuotes) => {
         if (dbQuotes && dbQuotes.length > 0) {
           const existingIds = new Set(dbQuotes.map((q) => q.id));
-          const merged = [...dbQuotes, ...quotations.filter((q) => !existingIds.has(q.id))];
+          const merged = [...dbQuotes, ...quotations.filter((q) => !q.id?.startsWith('quo-') && !existingIds.has(q.id))];
           onUpdateQuotations(merged);
         }
       })
@@ -98,7 +98,9 @@ export const LeadQuotationSection: React.FC<LeadQuotationSectionProps> = ({
 
   const handleStatusChange = async (quoteId: string, status: string) => {
     try {
-      await billingService.updateQuotation(quoteId, { status: status as any });
+      if (!quoteId.startsWith('quo-')) {
+        await billingService.updateQuotation(quoteId, { status: status as any });
+      }
       const updated = quotations.map((q) => (q.id === quoteId ? { ...q, status: status as any } : q));
       onUpdateQuotations(updated);
       if (selectedQuotation?.id === quoteId) {

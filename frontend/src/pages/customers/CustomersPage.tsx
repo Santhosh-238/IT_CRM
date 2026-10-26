@@ -59,7 +59,27 @@ export const CustomersPage: React.FC = () => {
     updateCustomer,
     deleteCustomer,
     setSelectedCustomer: setGlobalSelectedCustomer,
+    fetchCustomers,
+    fetchStats,
   } = useCustomer();
+
+  // Fresh load on mount so customers are immediately viewed without page refresh
+  useEffect(() => {
+    fetchCustomers();
+    fetchStats();
+  }, [fetchCustomers, fetchStats]);
+
+  // Live update listener
+  useEffect(() => {
+    const handleUpdated = () => {
+      fetchCustomers();
+      fetchStats();
+    };
+    window.addEventListener('crm_customers_updated', handleUpdated);
+    return () => {
+      window.removeEventListener('crm_customers_updated', handleUpdated);
+    };
+  }, [fetchCustomers, fetchStats]);
 
   // Search state
   const [searchInput, setSearchInput] = useState<string>('');

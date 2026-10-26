@@ -30,7 +30,7 @@ interface ContactContextType {
   setSort: (sortBy: string, sortOrder: 'asc' | 'desc') => void;
 
   createContact: (data: ContactFormData) => Promise<{ success: boolean; data?: Contact; message?: string }>;
-  updateContact: (id: string, data: Partial<ContactFormData>) => Promise<{ success: boolean; data?: Contact; message?: string }>;
+  updateContact: (id: string, data: Partial<ContactFormData>, options?: { silent?: boolean }) => Promise<{ success: boolean; data?: Contact; message?: string }>;
   deleteContact: (id: string) => Promise<{ success: boolean; message?: string }>;
   assignContact: (id: string, employeeId: string | null) => Promise<{ success: boolean; data?: Contact; message?: string }>;
 }
@@ -158,11 +158,20 @@ export const ContactProvider: React.FC<{ children: ReactNode }> = ({ children })
       setLoading(true);
       const res = await contactService.createContact(data);
       if (res.success) {
+        if (res.data) {
+          setContacts((prev) => [
+            res.data!,
+            ...prev.filter((c) => c.id !== res.data!.id && c.contactId !== res.data!.contactId),
+          ]);
+        }
         notifications.show({
           title: 'Contact Created Successfully',
           message: res.message || `${res.data.name} (${res.data.contactId}) has been added to contacts.`,
           color: 'teal',
         });
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
+        }
         await Promise.all([fetchContacts(), fetchStats(), fetchMetadata()]);
         return { success: true, data: res.data };
       }
@@ -179,16 +188,23 @@ export const ContactProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   };
 
-  const updateContact = async (id: string, data: Partial<ContactFormData>) => {
+  const updateContact = async (
+    id: string,
+    data: Partial<ContactFormData>,
+    options?: { silent?: boolean }
+  ) => {
+    const isSilent = options?.silent ?? false;
     try {
       setLoading(true);
       const res = await contactService.updateContact(id, data);
       if (res.success) {
-        notifications.show({
-          title: 'Contact Updated',
-          message: res.message || `${res.data?.name || 'Contact'} updated successfully!`,
-          color: 'teal',
-        });
+        if (!isSilent) {
+          notifications.show({
+            title: 'Contact Updated',
+            message: res.message || `${res.data?.name || 'Contact'} updated successfully!`,
+            color: 'teal',
+          });
+        }
         if (res.data) {
           setContacts((prev) =>
             prev.map((c) => (c.id === id || c.contactId === id ? { ...c, ...res.data } : c))
@@ -197,6 +213,9 @@ export const ContactProvider: React.FC<{ children: ReactNode }> = ({ children })
           try {
             sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(res.data));
           } catch (e) {}
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
         }
         await Promise.all([fetchContacts(), fetchStats(), fetchMetadata()]);
         return { success: true, data: res.data };
@@ -228,6 +247,9 @@ export const ContactProvider: React.FC<{ children: ReactNode }> = ({ children })
           setSelectedContact(null);
         }
         setContacts((prev) => prev.filter((c) => c.id !== id && c.contactId !== id));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
+        }
         await Promise.all([fetchContacts(), fetchStats(), fetchMetadata()]);
         return { success: true };
       }
@@ -258,6 +280,9 @@ export const ContactProvider: React.FC<{ children: ReactNode }> = ({ children })
           setContacts((prev) =>
             prev.map((c) => (c.id === id || c.contactId === id ? { ...c, ...res.data } : c))
           );
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
         }
         await Promise.all([fetchContacts(), fetchStats(), fetchMetadata()]);
         return { success: true, data: res.data };

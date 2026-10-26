@@ -39767,11 +39767,25 @@ export namespace Prisma {
   }
 
   export type ContractAvgAggregateOutputType = {
+    licenseQuantity: number | null
     contractValue: number | null
+    discountAmount: number | null
+    taxAmount: number | null
+    taxRate: number | null
+    finalContractAmount: number | null
+    advancePaymentValue: number | null
+    advancePaymentAmount: number | null
   }
 
   export type ContractSumAggregateOutputType = {
+    licenseQuantity: number | null
     contractValue: number | null
+    discountAmount: number | null
+    taxAmount: number | null
+    taxRate: number | null
+    finalContractAmount: number | null
+    advancePaymentValue: number | null
+    advancePaymentAmount: number | null
   }
 
   export type ContractMinAggregateOutputType = {
@@ -39783,6 +39797,9 @@ export namespace Prisma {
     leadId: string | null
     leadName: string | null
     contactId: string | null
+    customerId: string | null
+    quotationId: string | null
+    quotationNumber: string | null
     proposalId: string | null
     proposalNumber: string | null
     negotiationId: string | null
@@ -39794,25 +39811,52 @@ export namespace Prisma {
     projectDescription: string | null
     scopeOfWork: string | null
     deliverables: string | null
+    acceptanceCriteria: string | null
     responsibilities: string | null
     startDate: string | null
     endDate: string | null
     specialConditions: string | null
-    contractValue: number | null
+    deliveryDetails: string | null
     warrantyTerms: string | null
+    supportPeriod: string | null
+    slaTerms: string | null
+    responseTime: string | null
+    licenseQuantity: number | null
+    subscriptionStartDate: string | null
+    subscriptionEndDate: string | null
+    renewalDetails: string | null
+    contractValue: number | null
+    currency: string | null
+    discountAmount: number | null
+    taxAmount: number | null
+    taxRate: number | null
+    taxIncluded: boolean | null
+    finalContractAmount: number | null
+    paymentMethod: string | null
+    paymentDueTerms: string | null
+    customPaymentDueTerms: string | null
+    advancePaymentType: string | null
+    advancePaymentValue: number | null
+    advancePaymentAmount: number | null
+    quotationValueMismatchConfirmed: boolean | null
     confidentialityClause: string | null
     terminationClause: string | null
     additionalTerms: string | null
     documentName: string | null
     documentUrl: string | null
     documentSize: string | null
+    documentVersion: string | null
     clientSignatoryName: string | null
+    clientSignatoryEmail: string | null
     companySignatoryName: string | null
+    companySignatoryEmail: string | null
     signatureStatus: string | null
     signedDate: string | null
     approvalStatus: string | null
     approvedBy: string | null
     approvalDate: string | null
+    rejectionReason: string | null
+    internalNotes: string | null
     status: string | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -39827,6 +39871,9 @@ export namespace Prisma {
     leadId: string | null
     leadName: string | null
     contactId: string | null
+    customerId: string | null
+    quotationId: string | null
+    quotationNumber: string | null
     proposalId: string | null
     proposalNumber: string | null
     negotiationId: string | null
@@ -39838,25 +39885,52 @@ export namespace Prisma {
     projectDescription: string | null
     scopeOfWork: string | null
     deliverables: string | null
+    acceptanceCriteria: string | null
     responsibilities: string | null
     startDate: string | null
     endDate: string | null
     specialConditions: string | null
-    contractValue: number | null
+    deliveryDetails: string | null
     warrantyTerms: string | null
+    supportPeriod: string | null
+    slaTerms: string | null
+    responseTime: string | null
+    licenseQuantity: number | null
+    subscriptionStartDate: string | null
+    subscriptionEndDate: string | null
+    renewalDetails: string | null
+    contractValue: number | null
+    currency: string | null
+    discountAmount: number | null
+    taxAmount: number | null
+    taxRate: number | null
+    taxIncluded: boolean | null
+    finalContractAmount: number | null
+    paymentMethod: string | null
+    paymentDueTerms: string | null
+    customPaymentDueTerms: string | null
+    advancePaymentType: string | null
+    advancePaymentValue: number | null
+    advancePaymentAmount: number | null
+    quotationValueMismatchConfirmed: boolean | null
     confidentialityClause: string | null
     terminationClause: string | null
     additionalTerms: string | null
     documentName: string | null
     documentUrl: string | null
     documentSize: string | null
+    documentVersion: string | null
     clientSignatoryName: string | null
+    clientSignatoryEmail: string | null
     companySignatoryName: string | null
+    companySignatoryEmail: string | null
     signatureStatus: string | null
     signedDate: string | null
     approvalStatus: string | null
     approvedBy: string | null
     approvalDate: string | null
+    rejectionReason: string | null
+    internalNotes: string | null
     status: string | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -39871,6 +39945,9 @@ export namespace Prisma {
     leadId: number
     leadName: number
     contactId: number
+    customerId: number
+    quotationId: number
+    quotationNumber: number
     proposalId: number
     proposalNumber: number
     negotiationId: number
@@ -39882,26 +39959,55 @@ export namespace Prisma {
     projectDescription: number
     scopeOfWork: number
     deliverables: number
+    acceptanceCriteria: number
     responsibilities: number
     startDate: number
     endDate: number
     specialConditions: number
-    contractValue: number
+    productDetails: number
+    deliveryDetails: number
     warrantyTerms: number
+    supportPeriod: number
+    slaTerms: number
+    responseTime: number
+    licenseQuantity: number
+    subscriptionStartDate: number
+    subscriptionEndDate: number
+    renewalDetails: number
+    contractValue: number
+    currency: number
+    discountAmount: number
+    taxAmount: number
+    taxRate: number
+    taxIncluded: number
+    finalContractAmount: number
+    paymentMethod: number
+    paymentDueTerms: number
+    customPaymentDueTerms: number
+    advancePaymentType: number
+    advancePaymentValue: number
+    advancePaymentAmount: number
+    quotationValueMismatchConfirmed: number
     confidentialityClause: number
     terminationClause: number
     additionalTerms: number
     documentName: number
     documentUrl: number
     documentSize: number
+    documentVersion: number
+    documentVersions: number
     attachments: number
     clientSignatoryName: number
+    clientSignatoryEmail: number
     companySignatoryName: number
+    companySignatoryEmail: number
     signatureStatus: number
     signedDate: number
     approvalStatus: number
     approvedBy: number
     approvalDate: number
+    rejectionReason: number
+    internalNotes: number
     status: number
     createdAt: number
     updatedAt: number
@@ -39910,11 +40016,25 @@ export namespace Prisma {
 
 
   export type ContractAvgAggregateInputType = {
+    licenseQuantity?: true
     contractValue?: true
+    discountAmount?: true
+    taxAmount?: true
+    taxRate?: true
+    finalContractAmount?: true
+    advancePaymentValue?: true
+    advancePaymentAmount?: true
   }
 
   export type ContractSumAggregateInputType = {
+    licenseQuantity?: true
     contractValue?: true
+    discountAmount?: true
+    taxAmount?: true
+    taxRate?: true
+    finalContractAmount?: true
+    advancePaymentValue?: true
+    advancePaymentAmount?: true
   }
 
   export type ContractMinAggregateInputType = {
@@ -39926,6 +40046,9 @@ export namespace Prisma {
     leadId?: true
     leadName?: true
     contactId?: true
+    customerId?: true
+    quotationId?: true
+    quotationNumber?: true
     proposalId?: true
     proposalNumber?: true
     negotiationId?: true
@@ -39937,25 +40060,52 @@ export namespace Prisma {
     projectDescription?: true
     scopeOfWork?: true
     deliverables?: true
+    acceptanceCriteria?: true
     responsibilities?: true
     startDate?: true
     endDate?: true
     specialConditions?: true
-    contractValue?: true
+    deliveryDetails?: true
     warrantyTerms?: true
+    supportPeriod?: true
+    slaTerms?: true
+    responseTime?: true
+    licenseQuantity?: true
+    subscriptionStartDate?: true
+    subscriptionEndDate?: true
+    renewalDetails?: true
+    contractValue?: true
+    currency?: true
+    discountAmount?: true
+    taxAmount?: true
+    taxRate?: true
+    taxIncluded?: true
+    finalContractAmount?: true
+    paymentMethod?: true
+    paymentDueTerms?: true
+    customPaymentDueTerms?: true
+    advancePaymentType?: true
+    advancePaymentValue?: true
+    advancePaymentAmount?: true
+    quotationValueMismatchConfirmed?: true
     confidentialityClause?: true
     terminationClause?: true
     additionalTerms?: true
     documentName?: true
     documentUrl?: true
     documentSize?: true
+    documentVersion?: true
     clientSignatoryName?: true
+    clientSignatoryEmail?: true
     companySignatoryName?: true
+    companySignatoryEmail?: true
     signatureStatus?: true
     signedDate?: true
     approvalStatus?: true
     approvedBy?: true
     approvalDate?: true
+    rejectionReason?: true
+    internalNotes?: true
     status?: true
     createdAt?: true
     updatedAt?: true
@@ -39970,6 +40120,9 @@ export namespace Prisma {
     leadId?: true
     leadName?: true
     contactId?: true
+    customerId?: true
+    quotationId?: true
+    quotationNumber?: true
     proposalId?: true
     proposalNumber?: true
     negotiationId?: true
@@ -39981,25 +40134,52 @@ export namespace Prisma {
     projectDescription?: true
     scopeOfWork?: true
     deliverables?: true
+    acceptanceCriteria?: true
     responsibilities?: true
     startDate?: true
     endDate?: true
     specialConditions?: true
-    contractValue?: true
+    deliveryDetails?: true
     warrantyTerms?: true
+    supportPeriod?: true
+    slaTerms?: true
+    responseTime?: true
+    licenseQuantity?: true
+    subscriptionStartDate?: true
+    subscriptionEndDate?: true
+    renewalDetails?: true
+    contractValue?: true
+    currency?: true
+    discountAmount?: true
+    taxAmount?: true
+    taxRate?: true
+    taxIncluded?: true
+    finalContractAmount?: true
+    paymentMethod?: true
+    paymentDueTerms?: true
+    customPaymentDueTerms?: true
+    advancePaymentType?: true
+    advancePaymentValue?: true
+    advancePaymentAmount?: true
+    quotationValueMismatchConfirmed?: true
     confidentialityClause?: true
     terminationClause?: true
     additionalTerms?: true
     documentName?: true
     documentUrl?: true
     documentSize?: true
+    documentVersion?: true
     clientSignatoryName?: true
+    clientSignatoryEmail?: true
     companySignatoryName?: true
+    companySignatoryEmail?: true
     signatureStatus?: true
     signedDate?: true
     approvalStatus?: true
     approvedBy?: true
     approvalDate?: true
+    rejectionReason?: true
+    internalNotes?: true
     status?: true
     createdAt?: true
     updatedAt?: true
@@ -40014,6 +40194,9 @@ export namespace Prisma {
     leadId?: true
     leadName?: true
     contactId?: true
+    customerId?: true
+    quotationId?: true
+    quotationNumber?: true
     proposalId?: true
     proposalNumber?: true
     negotiationId?: true
@@ -40025,26 +40208,55 @@ export namespace Prisma {
     projectDescription?: true
     scopeOfWork?: true
     deliverables?: true
+    acceptanceCriteria?: true
     responsibilities?: true
     startDate?: true
     endDate?: true
     specialConditions?: true
-    contractValue?: true
+    productDetails?: true
+    deliveryDetails?: true
     warrantyTerms?: true
+    supportPeriod?: true
+    slaTerms?: true
+    responseTime?: true
+    licenseQuantity?: true
+    subscriptionStartDate?: true
+    subscriptionEndDate?: true
+    renewalDetails?: true
+    contractValue?: true
+    currency?: true
+    discountAmount?: true
+    taxAmount?: true
+    taxRate?: true
+    taxIncluded?: true
+    finalContractAmount?: true
+    paymentMethod?: true
+    paymentDueTerms?: true
+    customPaymentDueTerms?: true
+    advancePaymentType?: true
+    advancePaymentValue?: true
+    advancePaymentAmount?: true
+    quotationValueMismatchConfirmed?: true
     confidentialityClause?: true
     terminationClause?: true
     additionalTerms?: true
     documentName?: true
     documentUrl?: true
     documentSize?: true
+    documentVersion?: true
+    documentVersions?: true
     attachments?: true
     clientSignatoryName?: true
+    clientSignatoryEmail?: true
     companySignatoryName?: true
+    companySignatoryEmail?: true
     signatureStatus?: true
     signedDate?: true
     approvalStatus?: true
     approvedBy?: true
     approvalDate?: true
+    rejectionReason?: true
+    internalNotes?: true
     status?: true
     createdAt?: true
     updatedAt?: true
@@ -40146,6 +40358,9 @@ export namespace Prisma {
     leadId: string | null
     leadName: string | null
     contactId: string | null
+    customerId: string | null
+    quotationId: string | null
+    quotationNumber: string | null
     proposalId: string | null
     proposalNumber: string | null
     negotiationId: string | null
@@ -40157,26 +40372,55 @@ export namespace Prisma {
     projectDescription: string | null
     scopeOfWork: string | null
     deliverables: string | null
+    acceptanceCriteria: string | null
     responsibilities: string | null
     startDate: string | null
     endDate: string | null
     specialConditions: string | null
-    contractValue: number
+    productDetails: JsonValue | null
+    deliveryDetails: string | null
     warrantyTerms: string | null
+    supportPeriod: string | null
+    slaTerms: string | null
+    responseTime: string | null
+    licenseQuantity: number | null
+    subscriptionStartDate: string | null
+    subscriptionEndDate: string | null
+    renewalDetails: string | null
+    contractValue: number
+    currency: string
+    discountAmount: number
+    taxAmount: number
+    taxRate: number
+    taxIncluded: boolean
+    finalContractAmount: number
+    paymentMethod: string
+    paymentDueTerms: string
+    customPaymentDueTerms: string | null
+    advancePaymentType: string | null
+    advancePaymentValue: number
+    advancePaymentAmount: number
+    quotationValueMismatchConfirmed: boolean
     confidentialityClause: string | null
     terminationClause: string | null
     additionalTerms: string | null
     documentName: string | null
     documentUrl: string | null
     documentSize: string | null
+    documentVersion: string
+    documentVersions: JsonValue | null
     attachments: JsonValue | null
     clientSignatoryName: string | null
+    clientSignatoryEmail: string | null
     companySignatoryName: string | null
+    companySignatoryEmail: string | null
     signatureStatus: string
     signedDate: string | null
     approvalStatus: string
     approvedBy: string | null
     approvalDate: string | null
+    rejectionReason: string | null
+    internalNotes: string | null
     status: string
     createdAt: Date
     updatedAt: Date
@@ -40210,6 +40454,9 @@ export namespace Prisma {
     leadId?: boolean
     leadName?: boolean
     contactId?: boolean
+    customerId?: boolean
+    quotationId?: boolean
+    quotationNumber?: boolean
     proposalId?: boolean
     proposalNumber?: boolean
     negotiationId?: boolean
@@ -40221,26 +40468,55 @@ export namespace Prisma {
     projectDescription?: boolean
     scopeOfWork?: boolean
     deliverables?: boolean
+    acceptanceCriteria?: boolean
     responsibilities?: boolean
     startDate?: boolean
     endDate?: boolean
     specialConditions?: boolean
-    contractValue?: boolean
+    productDetails?: boolean
+    deliveryDetails?: boolean
     warrantyTerms?: boolean
+    supportPeriod?: boolean
+    slaTerms?: boolean
+    responseTime?: boolean
+    licenseQuantity?: boolean
+    subscriptionStartDate?: boolean
+    subscriptionEndDate?: boolean
+    renewalDetails?: boolean
+    contractValue?: boolean
+    currency?: boolean
+    discountAmount?: boolean
+    taxAmount?: boolean
+    taxRate?: boolean
+    taxIncluded?: boolean
+    finalContractAmount?: boolean
+    paymentMethod?: boolean
+    paymentDueTerms?: boolean
+    customPaymentDueTerms?: boolean
+    advancePaymentType?: boolean
+    advancePaymentValue?: boolean
+    advancePaymentAmount?: boolean
+    quotationValueMismatchConfirmed?: boolean
     confidentialityClause?: boolean
     terminationClause?: boolean
     additionalTerms?: boolean
     documentName?: boolean
     documentUrl?: boolean
     documentSize?: boolean
+    documentVersion?: boolean
+    documentVersions?: boolean
     attachments?: boolean
     clientSignatoryName?: boolean
+    clientSignatoryEmail?: boolean
     companySignatoryName?: boolean
+    companySignatoryEmail?: boolean
     signatureStatus?: boolean
     signedDate?: boolean
     approvalStatus?: boolean
     approvedBy?: boolean
     approvalDate?: boolean
+    rejectionReason?: boolean
+    internalNotes?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -40255,6 +40531,9 @@ export namespace Prisma {
     leadId?: boolean
     leadName?: boolean
     contactId?: boolean
+    customerId?: boolean
+    quotationId?: boolean
+    quotationNumber?: boolean
     proposalId?: boolean
     proposalNumber?: boolean
     negotiationId?: boolean
@@ -40266,26 +40545,55 @@ export namespace Prisma {
     projectDescription?: boolean
     scopeOfWork?: boolean
     deliverables?: boolean
+    acceptanceCriteria?: boolean
     responsibilities?: boolean
     startDate?: boolean
     endDate?: boolean
     specialConditions?: boolean
-    contractValue?: boolean
+    productDetails?: boolean
+    deliveryDetails?: boolean
     warrantyTerms?: boolean
+    supportPeriod?: boolean
+    slaTerms?: boolean
+    responseTime?: boolean
+    licenseQuantity?: boolean
+    subscriptionStartDate?: boolean
+    subscriptionEndDate?: boolean
+    renewalDetails?: boolean
+    contractValue?: boolean
+    currency?: boolean
+    discountAmount?: boolean
+    taxAmount?: boolean
+    taxRate?: boolean
+    taxIncluded?: boolean
+    finalContractAmount?: boolean
+    paymentMethod?: boolean
+    paymentDueTerms?: boolean
+    customPaymentDueTerms?: boolean
+    advancePaymentType?: boolean
+    advancePaymentValue?: boolean
+    advancePaymentAmount?: boolean
+    quotationValueMismatchConfirmed?: boolean
     confidentialityClause?: boolean
     terminationClause?: boolean
     additionalTerms?: boolean
     documentName?: boolean
     documentUrl?: boolean
     documentSize?: boolean
+    documentVersion?: boolean
+    documentVersions?: boolean
     attachments?: boolean
     clientSignatoryName?: boolean
+    clientSignatoryEmail?: boolean
     companySignatoryName?: boolean
+    companySignatoryEmail?: boolean
     signatureStatus?: boolean
     signedDate?: boolean
     approvalStatus?: boolean
     approvedBy?: boolean
     approvalDate?: boolean
+    rejectionReason?: boolean
+    internalNotes?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -40300,6 +40608,9 @@ export namespace Prisma {
     leadId?: boolean
     leadName?: boolean
     contactId?: boolean
+    customerId?: boolean
+    quotationId?: boolean
+    quotationNumber?: boolean
     proposalId?: boolean
     proposalNumber?: boolean
     negotiationId?: boolean
@@ -40311,26 +40622,55 @@ export namespace Prisma {
     projectDescription?: boolean
     scopeOfWork?: boolean
     deliverables?: boolean
+    acceptanceCriteria?: boolean
     responsibilities?: boolean
     startDate?: boolean
     endDate?: boolean
     specialConditions?: boolean
-    contractValue?: boolean
+    productDetails?: boolean
+    deliveryDetails?: boolean
     warrantyTerms?: boolean
+    supportPeriod?: boolean
+    slaTerms?: boolean
+    responseTime?: boolean
+    licenseQuantity?: boolean
+    subscriptionStartDate?: boolean
+    subscriptionEndDate?: boolean
+    renewalDetails?: boolean
+    contractValue?: boolean
+    currency?: boolean
+    discountAmount?: boolean
+    taxAmount?: boolean
+    taxRate?: boolean
+    taxIncluded?: boolean
+    finalContractAmount?: boolean
+    paymentMethod?: boolean
+    paymentDueTerms?: boolean
+    customPaymentDueTerms?: boolean
+    advancePaymentType?: boolean
+    advancePaymentValue?: boolean
+    advancePaymentAmount?: boolean
+    quotationValueMismatchConfirmed?: boolean
     confidentialityClause?: boolean
     terminationClause?: boolean
     additionalTerms?: boolean
     documentName?: boolean
     documentUrl?: boolean
     documentSize?: boolean
+    documentVersion?: boolean
+    documentVersions?: boolean
     attachments?: boolean
     clientSignatoryName?: boolean
+    clientSignatoryEmail?: boolean
     companySignatoryName?: boolean
+    companySignatoryEmail?: boolean
     signatureStatus?: boolean
     signedDate?: boolean
     approvalStatus?: boolean
     approvedBy?: boolean
     approvalDate?: boolean
+    rejectionReason?: boolean
+    internalNotes?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -40345,6 +40685,9 @@ export namespace Prisma {
     leadId?: boolean
     leadName?: boolean
     contactId?: boolean
+    customerId?: boolean
+    quotationId?: boolean
+    quotationNumber?: boolean
     proposalId?: boolean
     proposalNumber?: boolean
     negotiationId?: boolean
@@ -40356,32 +40699,61 @@ export namespace Prisma {
     projectDescription?: boolean
     scopeOfWork?: boolean
     deliverables?: boolean
+    acceptanceCriteria?: boolean
     responsibilities?: boolean
     startDate?: boolean
     endDate?: boolean
     specialConditions?: boolean
-    contractValue?: boolean
+    productDetails?: boolean
+    deliveryDetails?: boolean
     warrantyTerms?: boolean
+    supportPeriod?: boolean
+    slaTerms?: boolean
+    responseTime?: boolean
+    licenseQuantity?: boolean
+    subscriptionStartDate?: boolean
+    subscriptionEndDate?: boolean
+    renewalDetails?: boolean
+    contractValue?: boolean
+    currency?: boolean
+    discountAmount?: boolean
+    taxAmount?: boolean
+    taxRate?: boolean
+    taxIncluded?: boolean
+    finalContractAmount?: boolean
+    paymentMethod?: boolean
+    paymentDueTerms?: boolean
+    customPaymentDueTerms?: boolean
+    advancePaymentType?: boolean
+    advancePaymentValue?: boolean
+    advancePaymentAmount?: boolean
+    quotationValueMismatchConfirmed?: boolean
     confidentialityClause?: boolean
     terminationClause?: boolean
     additionalTerms?: boolean
     documentName?: boolean
     documentUrl?: boolean
     documentSize?: boolean
+    documentVersion?: boolean
+    documentVersions?: boolean
     attachments?: boolean
     clientSignatoryName?: boolean
+    clientSignatoryEmail?: boolean
     companySignatoryName?: boolean
+    companySignatoryEmail?: boolean
     signatureStatus?: boolean
     signedDate?: boolean
     approvalStatus?: boolean
     approvedBy?: boolean
     approvalDate?: boolean
+    rejectionReason?: boolean
+    internalNotes?: boolean
     status?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type ContractOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "contractId" | "title" | "contractType" | "clientName" | "leadId" | "leadName" | "contactId" | "proposalId" | "proposalNumber" | "negotiationId" | "negotiationNumber" | "assignedTo" | "assignedToName" | "contractDate" | "projectName" | "projectDescription" | "scopeOfWork" | "deliverables" | "responsibilities" | "startDate" | "endDate" | "specialConditions" | "contractValue" | "warrantyTerms" | "confidentialityClause" | "terminationClause" | "additionalTerms" | "documentName" | "documentUrl" | "documentSize" | "attachments" | "clientSignatoryName" | "companySignatoryName" | "signatureStatus" | "signedDate" | "approvalStatus" | "approvedBy" | "approvalDate" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["contract"]>
+  export type ContractOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "contractId" | "title" | "contractType" | "clientName" | "leadId" | "leadName" | "contactId" | "customerId" | "quotationId" | "quotationNumber" | "proposalId" | "proposalNumber" | "negotiationId" | "negotiationNumber" | "assignedTo" | "assignedToName" | "contractDate" | "projectName" | "projectDescription" | "scopeOfWork" | "deliverables" | "acceptanceCriteria" | "responsibilities" | "startDate" | "endDate" | "specialConditions" | "productDetails" | "deliveryDetails" | "warrantyTerms" | "supportPeriod" | "slaTerms" | "responseTime" | "licenseQuantity" | "subscriptionStartDate" | "subscriptionEndDate" | "renewalDetails" | "contractValue" | "currency" | "discountAmount" | "taxAmount" | "taxRate" | "taxIncluded" | "finalContractAmount" | "paymentMethod" | "paymentDueTerms" | "customPaymentDueTerms" | "advancePaymentType" | "advancePaymentValue" | "advancePaymentAmount" | "quotationValueMismatchConfirmed" | "confidentialityClause" | "terminationClause" | "additionalTerms" | "documentName" | "documentUrl" | "documentSize" | "documentVersion" | "documentVersions" | "attachments" | "clientSignatoryName" | "clientSignatoryEmail" | "companySignatoryName" | "companySignatoryEmail" | "signatureStatus" | "signedDate" | "approvalStatus" | "approvedBy" | "approvalDate" | "rejectionReason" | "internalNotes" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["contract"]>
 
   export type $ContractPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Contract"
@@ -40395,6 +40767,9 @@ export namespace Prisma {
       leadId: string | null
       leadName: string | null
       contactId: string | null
+      customerId: string | null
+      quotationId: string | null
+      quotationNumber: string | null
       proposalId: string | null
       proposalNumber: string | null
       negotiationId: string | null
@@ -40406,26 +40781,55 @@ export namespace Prisma {
       projectDescription: string | null
       scopeOfWork: string | null
       deliverables: string | null
+      acceptanceCriteria: string | null
       responsibilities: string | null
       startDate: string | null
       endDate: string | null
       specialConditions: string | null
-      contractValue: number
+      productDetails: Prisma.JsonValue | null
+      deliveryDetails: string | null
       warrantyTerms: string | null
+      supportPeriod: string | null
+      slaTerms: string | null
+      responseTime: string | null
+      licenseQuantity: number | null
+      subscriptionStartDate: string | null
+      subscriptionEndDate: string | null
+      renewalDetails: string | null
+      contractValue: number
+      currency: string
+      discountAmount: number
+      taxAmount: number
+      taxRate: number
+      taxIncluded: boolean
+      finalContractAmount: number
+      paymentMethod: string
+      paymentDueTerms: string
+      customPaymentDueTerms: string | null
+      advancePaymentType: string | null
+      advancePaymentValue: number
+      advancePaymentAmount: number
+      quotationValueMismatchConfirmed: boolean
       confidentialityClause: string | null
       terminationClause: string | null
       additionalTerms: string | null
       documentName: string | null
       documentUrl: string | null
       documentSize: string | null
+      documentVersion: string
+      documentVersions: Prisma.JsonValue | null
       attachments: Prisma.JsonValue | null
       clientSignatoryName: string | null
+      clientSignatoryEmail: string | null
       companySignatoryName: string | null
+      companySignatoryEmail: string | null
       signatureStatus: string
       signedDate: string | null
       approvalStatus: string
       approvedBy: string | null
       approvalDate: string | null
+      rejectionReason: string | null
+      internalNotes: string | null
       status: string
       createdAt: Date
       updatedAt: Date
@@ -40860,6 +41264,9 @@ export namespace Prisma {
     readonly leadId: FieldRef<"Contract", 'String'>
     readonly leadName: FieldRef<"Contract", 'String'>
     readonly contactId: FieldRef<"Contract", 'String'>
+    readonly customerId: FieldRef<"Contract", 'String'>
+    readonly quotationId: FieldRef<"Contract", 'String'>
+    readonly quotationNumber: FieldRef<"Contract", 'String'>
     readonly proposalId: FieldRef<"Contract", 'String'>
     readonly proposalNumber: FieldRef<"Contract", 'String'>
     readonly negotiationId: FieldRef<"Contract", 'String'>
@@ -40871,26 +41278,55 @@ export namespace Prisma {
     readonly projectDescription: FieldRef<"Contract", 'String'>
     readonly scopeOfWork: FieldRef<"Contract", 'String'>
     readonly deliverables: FieldRef<"Contract", 'String'>
+    readonly acceptanceCriteria: FieldRef<"Contract", 'String'>
     readonly responsibilities: FieldRef<"Contract", 'String'>
     readonly startDate: FieldRef<"Contract", 'String'>
     readonly endDate: FieldRef<"Contract", 'String'>
     readonly specialConditions: FieldRef<"Contract", 'String'>
-    readonly contractValue: FieldRef<"Contract", 'Float'>
+    readonly productDetails: FieldRef<"Contract", 'Json'>
+    readonly deliveryDetails: FieldRef<"Contract", 'String'>
     readonly warrantyTerms: FieldRef<"Contract", 'String'>
+    readonly supportPeriod: FieldRef<"Contract", 'String'>
+    readonly slaTerms: FieldRef<"Contract", 'String'>
+    readonly responseTime: FieldRef<"Contract", 'String'>
+    readonly licenseQuantity: FieldRef<"Contract", 'Int'>
+    readonly subscriptionStartDate: FieldRef<"Contract", 'String'>
+    readonly subscriptionEndDate: FieldRef<"Contract", 'String'>
+    readonly renewalDetails: FieldRef<"Contract", 'String'>
+    readonly contractValue: FieldRef<"Contract", 'Float'>
+    readonly currency: FieldRef<"Contract", 'String'>
+    readonly discountAmount: FieldRef<"Contract", 'Float'>
+    readonly taxAmount: FieldRef<"Contract", 'Float'>
+    readonly taxRate: FieldRef<"Contract", 'Float'>
+    readonly taxIncluded: FieldRef<"Contract", 'Boolean'>
+    readonly finalContractAmount: FieldRef<"Contract", 'Float'>
+    readonly paymentMethod: FieldRef<"Contract", 'String'>
+    readonly paymentDueTerms: FieldRef<"Contract", 'String'>
+    readonly customPaymentDueTerms: FieldRef<"Contract", 'String'>
+    readonly advancePaymentType: FieldRef<"Contract", 'String'>
+    readonly advancePaymentValue: FieldRef<"Contract", 'Float'>
+    readonly advancePaymentAmount: FieldRef<"Contract", 'Float'>
+    readonly quotationValueMismatchConfirmed: FieldRef<"Contract", 'Boolean'>
     readonly confidentialityClause: FieldRef<"Contract", 'String'>
     readonly terminationClause: FieldRef<"Contract", 'String'>
     readonly additionalTerms: FieldRef<"Contract", 'String'>
     readonly documentName: FieldRef<"Contract", 'String'>
     readonly documentUrl: FieldRef<"Contract", 'String'>
     readonly documentSize: FieldRef<"Contract", 'String'>
+    readonly documentVersion: FieldRef<"Contract", 'String'>
+    readonly documentVersions: FieldRef<"Contract", 'Json'>
     readonly attachments: FieldRef<"Contract", 'Json'>
     readonly clientSignatoryName: FieldRef<"Contract", 'String'>
+    readonly clientSignatoryEmail: FieldRef<"Contract", 'String'>
     readonly companySignatoryName: FieldRef<"Contract", 'String'>
+    readonly companySignatoryEmail: FieldRef<"Contract", 'String'>
     readonly signatureStatus: FieldRef<"Contract", 'String'>
     readonly signedDate: FieldRef<"Contract", 'String'>
     readonly approvalStatus: FieldRef<"Contract", 'String'>
     readonly approvedBy: FieldRef<"Contract", 'String'>
     readonly approvalDate: FieldRef<"Contract", 'String'>
+    readonly rejectionReason: FieldRef<"Contract", 'String'>
+    readonly internalNotes: FieldRef<"Contract", 'String'>
     readonly status: FieldRef<"Contract", 'String'>
     readonly createdAt: FieldRef<"Contract", 'DateTime'>
     readonly updatedAt: FieldRef<"Contract", 'DateTime'>
@@ -42007,6 +42443,9 @@ export namespace Prisma {
     leadId: 'leadId',
     leadName: 'leadName',
     contactId: 'contactId',
+    customerId: 'customerId',
+    quotationId: 'quotationId',
+    quotationNumber: 'quotationNumber',
     proposalId: 'proposalId',
     proposalNumber: 'proposalNumber',
     negotiationId: 'negotiationId',
@@ -42018,26 +42457,55 @@ export namespace Prisma {
     projectDescription: 'projectDescription',
     scopeOfWork: 'scopeOfWork',
     deliverables: 'deliverables',
+    acceptanceCriteria: 'acceptanceCriteria',
     responsibilities: 'responsibilities',
     startDate: 'startDate',
     endDate: 'endDate',
     specialConditions: 'specialConditions',
-    contractValue: 'contractValue',
+    productDetails: 'productDetails',
+    deliveryDetails: 'deliveryDetails',
     warrantyTerms: 'warrantyTerms',
+    supportPeriod: 'supportPeriod',
+    slaTerms: 'slaTerms',
+    responseTime: 'responseTime',
+    licenseQuantity: 'licenseQuantity',
+    subscriptionStartDate: 'subscriptionStartDate',
+    subscriptionEndDate: 'subscriptionEndDate',
+    renewalDetails: 'renewalDetails',
+    contractValue: 'contractValue',
+    currency: 'currency',
+    discountAmount: 'discountAmount',
+    taxAmount: 'taxAmount',
+    taxRate: 'taxRate',
+    taxIncluded: 'taxIncluded',
+    finalContractAmount: 'finalContractAmount',
+    paymentMethod: 'paymentMethod',
+    paymentDueTerms: 'paymentDueTerms',
+    customPaymentDueTerms: 'customPaymentDueTerms',
+    advancePaymentType: 'advancePaymentType',
+    advancePaymentValue: 'advancePaymentValue',
+    advancePaymentAmount: 'advancePaymentAmount',
+    quotationValueMismatchConfirmed: 'quotationValueMismatchConfirmed',
     confidentialityClause: 'confidentialityClause',
     terminationClause: 'terminationClause',
     additionalTerms: 'additionalTerms',
     documentName: 'documentName',
     documentUrl: 'documentUrl',
     documentSize: 'documentSize',
+    documentVersion: 'documentVersion',
+    documentVersions: 'documentVersions',
     attachments: 'attachments',
     clientSignatoryName: 'clientSignatoryName',
+    clientSignatoryEmail: 'clientSignatoryEmail',
     companySignatoryName: 'companySignatoryName',
+    companySignatoryEmail: 'companySignatoryEmail',
     signatureStatus: 'signatureStatus',
     signedDate: 'signedDate',
     approvalStatus: 'approvalStatus',
     approvedBy: 'approvedBy',
     approvalDate: 'approvalDate',
+    rejectionReason: 'rejectionReason',
+    internalNotes: 'internalNotes',
     status: 'status',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
@@ -45825,6 +46293,9 @@ export namespace Prisma {
     leadId?: StringNullableFilter<"Contract"> | string | null
     leadName?: StringNullableFilter<"Contract"> | string | null
     contactId?: StringNullableFilter<"Contract"> | string | null
+    customerId?: StringNullableFilter<"Contract"> | string | null
+    quotationId?: StringNullableFilter<"Contract"> | string | null
+    quotationNumber?: StringNullableFilter<"Contract"> | string | null
     proposalId?: StringNullableFilter<"Contract"> | string | null
     proposalNumber?: StringNullableFilter<"Contract"> | string | null
     negotiationId?: StringNullableFilter<"Contract"> | string | null
@@ -45836,26 +46307,55 @@ export namespace Prisma {
     projectDescription?: StringNullableFilter<"Contract"> | string | null
     scopeOfWork?: StringNullableFilter<"Contract"> | string | null
     deliverables?: StringNullableFilter<"Contract"> | string | null
+    acceptanceCriteria?: StringNullableFilter<"Contract"> | string | null
     responsibilities?: StringNullableFilter<"Contract"> | string | null
     startDate?: StringNullableFilter<"Contract"> | string | null
     endDate?: StringNullableFilter<"Contract"> | string | null
     specialConditions?: StringNullableFilter<"Contract"> | string | null
-    contractValue?: FloatFilter<"Contract"> | number
+    productDetails?: JsonNullableFilter<"Contract">
+    deliveryDetails?: StringNullableFilter<"Contract"> | string | null
     warrantyTerms?: StringNullableFilter<"Contract"> | string | null
+    supportPeriod?: StringNullableFilter<"Contract"> | string | null
+    slaTerms?: StringNullableFilter<"Contract"> | string | null
+    responseTime?: StringNullableFilter<"Contract"> | string | null
+    licenseQuantity?: IntNullableFilter<"Contract"> | number | null
+    subscriptionStartDate?: StringNullableFilter<"Contract"> | string | null
+    subscriptionEndDate?: StringNullableFilter<"Contract"> | string | null
+    renewalDetails?: StringNullableFilter<"Contract"> | string | null
+    contractValue?: FloatFilter<"Contract"> | number
+    currency?: StringFilter<"Contract"> | string
+    discountAmount?: FloatFilter<"Contract"> | number
+    taxAmount?: FloatFilter<"Contract"> | number
+    taxRate?: FloatFilter<"Contract"> | number
+    taxIncluded?: BoolFilter<"Contract"> | boolean
+    finalContractAmount?: FloatFilter<"Contract"> | number
+    paymentMethod?: StringFilter<"Contract"> | string
+    paymentDueTerms?: StringFilter<"Contract"> | string
+    customPaymentDueTerms?: StringNullableFilter<"Contract"> | string | null
+    advancePaymentType?: StringNullableFilter<"Contract"> | string | null
+    advancePaymentValue?: FloatFilter<"Contract"> | number
+    advancePaymentAmount?: FloatFilter<"Contract"> | number
+    quotationValueMismatchConfirmed?: BoolFilter<"Contract"> | boolean
     confidentialityClause?: StringNullableFilter<"Contract"> | string | null
     terminationClause?: StringNullableFilter<"Contract"> | string | null
     additionalTerms?: StringNullableFilter<"Contract"> | string | null
     documentName?: StringNullableFilter<"Contract"> | string | null
     documentUrl?: StringNullableFilter<"Contract"> | string | null
     documentSize?: StringNullableFilter<"Contract"> | string | null
+    documentVersion?: StringFilter<"Contract"> | string
+    documentVersions?: JsonNullableFilter<"Contract">
     attachments?: JsonNullableFilter<"Contract">
     clientSignatoryName?: StringNullableFilter<"Contract"> | string | null
+    clientSignatoryEmail?: StringNullableFilter<"Contract"> | string | null
     companySignatoryName?: StringNullableFilter<"Contract"> | string | null
+    companySignatoryEmail?: StringNullableFilter<"Contract"> | string | null
     signatureStatus?: StringFilter<"Contract"> | string
     signedDate?: StringNullableFilter<"Contract"> | string | null
     approvalStatus?: StringFilter<"Contract"> | string
     approvedBy?: StringNullableFilter<"Contract"> | string | null
     approvalDate?: StringNullableFilter<"Contract"> | string | null
+    rejectionReason?: StringNullableFilter<"Contract"> | string | null
+    internalNotes?: StringNullableFilter<"Contract"> | string | null
     status?: StringFilter<"Contract"> | string
     createdAt?: DateTimeFilter<"Contract"> | Date | string
     updatedAt?: DateTimeFilter<"Contract"> | Date | string
@@ -45870,6 +46370,9 @@ export namespace Prisma {
     leadId?: SortOrderInput | SortOrder
     leadName?: SortOrderInput | SortOrder
     contactId?: SortOrderInput | SortOrder
+    customerId?: SortOrderInput | SortOrder
+    quotationId?: SortOrderInput | SortOrder
+    quotationNumber?: SortOrderInput | SortOrder
     proposalId?: SortOrderInput | SortOrder
     proposalNumber?: SortOrderInput | SortOrder
     negotiationId?: SortOrderInput | SortOrder
@@ -45881,26 +46384,55 @@ export namespace Prisma {
     projectDescription?: SortOrderInput | SortOrder
     scopeOfWork?: SortOrderInput | SortOrder
     deliverables?: SortOrderInput | SortOrder
+    acceptanceCriteria?: SortOrderInput | SortOrder
     responsibilities?: SortOrderInput | SortOrder
     startDate?: SortOrderInput | SortOrder
     endDate?: SortOrderInput | SortOrder
     specialConditions?: SortOrderInput | SortOrder
-    contractValue?: SortOrder
+    productDetails?: SortOrderInput | SortOrder
+    deliveryDetails?: SortOrderInput | SortOrder
     warrantyTerms?: SortOrderInput | SortOrder
+    supportPeriod?: SortOrderInput | SortOrder
+    slaTerms?: SortOrderInput | SortOrder
+    responseTime?: SortOrderInput | SortOrder
+    licenseQuantity?: SortOrderInput | SortOrder
+    subscriptionStartDate?: SortOrderInput | SortOrder
+    subscriptionEndDate?: SortOrderInput | SortOrder
+    renewalDetails?: SortOrderInput | SortOrder
+    contractValue?: SortOrder
+    currency?: SortOrder
+    discountAmount?: SortOrder
+    taxAmount?: SortOrder
+    taxRate?: SortOrder
+    taxIncluded?: SortOrder
+    finalContractAmount?: SortOrder
+    paymentMethod?: SortOrder
+    paymentDueTerms?: SortOrder
+    customPaymentDueTerms?: SortOrderInput | SortOrder
+    advancePaymentType?: SortOrderInput | SortOrder
+    advancePaymentValue?: SortOrder
+    advancePaymentAmount?: SortOrder
+    quotationValueMismatchConfirmed?: SortOrder
     confidentialityClause?: SortOrderInput | SortOrder
     terminationClause?: SortOrderInput | SortOrder
     additionalTerms?: SortOrderInput | SortOrder
     documentName?: SortOrderInput | SortOrder
     documentUrl?: SortOrderInput | SortOrder
     documentSize?: SortOrderInput | SortOrder
+    documentVersion?: SortOrder
+    documentVersions?: SortOrderInput | SortOrder
     attachments?: SortOrderInput | SortOrder
     clientSignatoryName?: SortOrderInput | SortOrder
+    clientSignatoryEmail?: SortOrderInput | SortOrder
     companySignatoryName?: SortOrderInput | SortOrder
+    companySignatoryEmail?: SortOrderInput | SortOrder
     signatureStatus?: SortOrder
     signedDate?: SortOrderInput | SortOrder
     approvalStatus?: SortOrder
     approvedBy?: SortOrderInput | SortOrder
     approvalDate?: SortOrderInput | SortOrder
+    rejectionReason?: SortOrderInput | SortOrder
+    internalNotes?: SortOrderInput | SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -45918,6 +46450,9 @@ export namespace Prisma {
     leadId?: StringNullableFilter<"Contract"> | string | null
     leadName?: StringNullableFilter<"Contract"> | string | null
     contactId?: StringNullableFilter<"Contract"> | string | null
+    customerId?: StringNullableFilter<"Contract"> | string | null
+    quotationId?: StringNullableFilter<"Contract"> | string | null
+    quotationNumber?: StringNullableFilter<"Contract"> | string | null
     proposalId?: StringNullableFilter<"Contract"> | string | null
     proposalNumber?: StringNullableFilter<"Contract"> | string | null
     negotiationId?: StringNullableFilter<"Contract"> | string | null
@@ -45929,26 +46464,55 @@ export namespace Prisma {
     projectDescription?: StringNullableFilter<"Contract"> | string | null
     scopeOfWork?: StringNullableFilter<"Contract"> | string | null
     deliverables?: StringNullableFilter<"Contract"> | string | null
+    acceptanceCriteria?: StringNullableFilter<"Contract"> | string | null
     responsibilities?: StringNullableFilter<"Contract"> | string | null
     startDate?: StringNullableFilter<"Contract"> | string | null
     endDate?: StringNullableFilter<"Contract"> | string | null
     specialConditions?: StringNullableFilter<"Contract"> | string | null
-    contractValue?: FloatFilter<"Contract"> | number
+    productDetails?: JsonNullableFilter<"Contract">
+    deliveryDetails?: StringNullableFilter<"Contract"> | string | null
     warrantyTerms?: StringNullableFilter<"Contract"> | string | null
+    supportPeriod?: StringNullableFilter<"Contract"> | string | null
+    slaTerms?: StringNullableFilter<"Contract"> | string | null
+    responseTime?: StringNullableFilter<"Contract"> | string | null
+    licenseQuantity?: IntNullableFilter<"Contract"> | number | null
+    subscriptionStartDate?: StringNullableFilter<"Contract"> | string | null
+    subscriptionEndDate?: StringNullableFilter<"Contract"> | string | null
+    renewalDetails?: StringNullableFilter<"Contract"> | string | null
+    contractValue?: FloatFilter<"Contract"> | number
+    currency?: StringFilter<"Contract"> | string
+    discountAmount?: FloatFilter<"Contract"> | number
+    taxAmount?: FloatFilter<"Contract"> | number
+    taxRate?: FloatFilter<"Contract"> | number
+    taxIncluded?: BoolFilter<"Contract"> | boolean
+    finalContractAmount?: FloatFilter<"Contract"> | number
+    paymentMethod?: StringFilter<"Contract"> | string
+    paymentDueTerms?: StringFilter<"Contract"> | string
+    customPaymentDueTerms?: StringNullableFilter<"Contract"> | string | null
+    advancePaymentType?: StringNullableFilter<"Contract"> | string | null
+    advancePaymentValue?: FloatFilter<"Contract"> | number
+    advancePaymentAmount?: FloatFilter<"Contract"> | number
+    quotationValueMismatchConfirmed?: BoolFilter<"Contract"> | boolean
     confidentialityClause?: StringNullableFilter<"Contract"> | string | null
     terminationClause?: StringNullableFilter<"Contract"> | string | null
     additionalTerms?: StringNullableFilter<"Contract"> | string | null
     documentName?: StringNullableFilter<"Contract"> | string | null
     documentUrl?: StringNullableFilter<"Contract"> | string | null
     documentSize?: StringNullableFilter<"Contract"> | string | null
+    documentVersion?: StringFilter<"Contract"> | string
+    documentVersions?: JsonNullableFilter<"Contract">
     attachments?: JsonNullableFilter<"Contract">
     clientSignatoryName?: StringNullableFilter<"Contract"> | string | null
+    clientSignatoryEmail?: StringNullableFilter<"Contract"> | string | null
     companySignatoryName?: StringNullableFilter<"Contract"> | string | null
+    companySignatoryEmail?: StringNullableFilter<"Contract"> | string | null
     signatureStatus?: StringFilter<"Contract"> | string
     signedDate?: StringNullableFilter<"Contract"> | string | null
     approvalStatus?: StringFilter<"Contract"> | string
     approvedBy?: StringNullableFilter<"Contract"> | string | null
     approvalDate?: StringNullableFilter<"Contract"> | string | null
+    rejectionReason?: StringNullableFilter<"Contract"> | string | null
+    internalNotes?: StringNullableFilter<"Contract"> | string | null
     status?: StringFilter<"Contract"> | string
     createdAt?: DateTimeFilter<"Contract"> | Date | string
     updatedAt?: DateTimeFilter<"Contract"> | Date | string
@@ -45963,6 +46527,9 @@ export namespace Prisma {
     leadId?: SortOrderInput | SortOrder
     leadName?: SortOrderInput | SortOrder
     contactId?: SortOrderInput | SortOrder
+    customerId?: SortOrderInput | SortOrder
+    quotationId?: SortOrderInput | SortOrder
+    quotationNumber?: SortOrderInput | SortOrder
     proposalId?: SortOrderInput | SortOrder
     proposalNumber?: SortOrderInput | SortOrder
     negotiationId?: SortOrderInput | SortOrder
@@ -45974,26 +46541,55 @@ export namespace Prisma {
     projectDescription?: SortOrderInput | SortOrder
     scopeOfWork?: SortOrderInput | SortOrder
     deliverables?: SortOrderInput | SortOrder
+    acceptanceCriteria?: SortOrderInput | SortOrder
     responsibilities?: SortOrderInput | SortOrder
     startDate?: SortOrderInput | SortOrder
     endDate?: SortOrderInput | SortOrder
     specialConditions?: SortOrderInput | SortOrder
-    contractValue?: SortOrder
+    productDetails?: SortOrderInput | SortOrder
+    deliveryDetails?: SortOrderInput | SortOrder
     warrantyTerms?: SortOrderInput | SortOrder
+    supportPeriod?: SortOrderInput | SortOrder
+    slaTerms?: SortOrderInput | SortOrder
+    responseTime?: SortOrderInput | SortOrder
+    licenseQuantity?: SortOrderInput | SortOrder
+    subscriptionStartDate?: SortOrderInput | SortOrder
+    subscriptionEndDate?: SortOrderInput | SortOrder
+    renewalDetails?: SortOrderInput | SortOrder
+    contractValue?: SortOrder
+    currency?: SortOrder
+    discountAmount?: SortOrder
+    taxAmount?: SortOrder
+    taxRate?: SortOrder
+    taxIncluded?: SortOrder
+    finalContractAmount?: SortOrder
+    paymentMethod?: SortOrder
+    paymentDueTerms?: SortOrder
+    customPaymentDueTerms?: SortOrderInput | SortOrder
+    advancePaymentType?: SortOrderInput | SortOrder
+    advancePaymentValue?: SortOrder
+    advancePaymentAmount?: SortOrder
+    quotationValueMismatchConfirmed?: SortOrder
     confidentialityClause?: SortOrderInput | SortOrder
     terminationClause?: SortOrderInput | SortOrder
     additionalTerms?: SortOrderInput | SortOrder
     documentName?: SortOrderInput | SortOrder
     documentUrl?: SortOrderInput | SortOrder
     documentSize?: SortOrderInput | SortOrder
+    documentVersion?: SortOrder
+    documentVersions?: SortOrderInput | SortOrder
     attachments?: SortOrderInput | SortOrder
     clientSignatoryName?: SortOrderInput | SortOrder
+    clientSignatoryEmail?: SortOrderInput | SortOrder
     companySignatoryName?: SortOrderInput | SortOrder
+    companySignatoryEmail?: SortOrderInput | SortOrder
     signatureStatus?: SortOrder
     signedDate?: SortOrderInput | SortOrder
     approvalStatus?: SortOrder
     approvedBy?: SortOrderInput | SortOrder
     approvalDate?: SortOrderInput | SortOrder
+    rejectionReason?: SortOrderInput | SortOrder
+    internalNotes?: SortOrderInput | SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -46016,6 +46612,9 @@ export namespace Prisma {
     leadId?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     leadName?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     contactId?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    customerId?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    quotationId?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    quotationNumber?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     proposalId?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     proposalNumber?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     negotiationId?: StringNullableWithAggregatesFilter<"Contract"> | string | null
@@ -46027,26 +46626,55 @@ export namespace Prisma {
     projectDescription?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     scopeOfWork?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     deliverables?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    acceptanceCriteria?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     responsibilities?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     startDate?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     endDate?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     specialConditions?: StringNullableWithAggregatesFilter<"Contract"> | string | null
-    contractValue?: FloatWithAggregatesFilter<"Contract"> | number
+    productDetails?: JsonNullableWithAggregatesFilter<"Contract">
+    deliveryDetails?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     warrantyTerms?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    supportPeriod?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    slaTerms?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    responseTime?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    licenseQuantity?: IntNullableWithAggregatesFilter<"Contract"> | number | null
+    subscriptionStartDate?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    subscriptionEndDate?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    renewalDetails?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    contractValue?: FloatWithAggregatesFilter<"Contract"> | number
+    currency?: StringWithAggregatesFilter<"Contract"> | string
+    discountAmount?: FloatWithAggregatesFilter<"Contract"> | number
+    taxAmount?: FloatWithAggregatesFilter<"Contract"> | number
+    taxRate?: FloatWithAggregatesFilter<"Contract"> | number
+    taxIncluded?: BoolWithAggregatesFilter<"Contract"> | boolean
+    finalContractAmount?: FloatWithAggregatesFilter<"Contract"> | number
+    paymentMethod?: StringWithAggregatesFilter<"Contract"> | string
+    paymentDueTerms?: StringWithAggregatesFilter<"Contract"> | string
+    customPaymentDueTerms?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    advancePaymentType?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    advancePaymentValue?: FloatWithAggregatesFilter<"Contract"> | number
+    advancePaymentAmount?: FloatWithAggregatesFilter<"Contract"> | number
+    quotationValueMismatchConfirmed?: BoolWithAggregatesFilter<"Contract"> | boolean
     confidentialityClause?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     terminationClause?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     additionalTerms?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     documentName?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     documentUrl?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     documentSize?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    documentVersion?: StringWithAggregatesFilter<"Contract"> | string
+    documentVersions?: JsonNullableWithAggregatesFilter<"Contract">
     attachments?: JsonNullableWithAggregatesFilter<"Contract">
     clientSignatoryName?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    clientSignatoryEmail?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     companySignatoryName?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    companySignatoryEmail?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     signatureStatus?: StringWithAggregatesFilter<"Contract"> | string
     signedDate?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     approvalStatus?: StringWithAggregatesFilter<"Contract"> | string
     approvedBy?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     approvalDate?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    rejectionReason?: StringNullableWithAggregatesFilter<"Contract"> | string | null
+    internalNotes?: StringNullableWithAggregatesFilter<"Contract"> | string | null
     status?: StringWithAggregatesFilter<"Contract"> | string
     createdAt?: DateTimeWithAggregatesFilter<"Contract"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Contract"> | Date | string
@@ -50553,6 +51181,9 @@ export namespace Prisma {
     leadId?: string | null
     leadName?: string | null
     contactId?: string | null
+    customerId?: string | null
+    quotationId?: string | null
+    quotationNumber?: string | null
     proposalId?: string | null
     proposalNumber?: string | null
     negotiationId?: string | null
@@ -50564,26 +51195,55 @@ export namespace Prisma {
     projectDescription?: string | null
     scopeOfWork?: string | null
     deliverables?: string | null
+    acceptanceCriteria?: string | null
     responsibilities?: string | null
     startDate?: string | null
     endDate?: string | null
     specialConditions?: string | null
-    contractValue?: number
+    productDetails?: NullableJsonNullValueInput | InputJsonValue
+    deliveryDetails?: string | null
     warrantyTerms?: string | null
+    supportPeriod?: string | null
+    slaTerms?: string | null
+    responseTime?: string | null
+    licenseQuantity?: number | null
+    subscriptionStartDate?: string | null
+    subscriptionEndDate?: string | null
+    renewalDetails?: string | null
+    contractValue?: number
+    currency?: string
+    discountAmount?: number
+    taxAmount?: number
+    taxRate?: number
+    taxIncluded?: boolean
+    finalContractAmount?: number
+    paymentMethod?: string
+    paymentDueTerms?: string
+    customPaymentDueTerms?: string | null
+    advancePaymentType?: string | null
+    advancePaymentValue?: number
+    advancePaymentAmount?: number
+    quotationValueMismatchConfirmed?: boolean
     confidentialityClause?: string | null
     terminationClause?: string | null
     additionalTerms?: string | null
     documentName?: string | null
     documentUrl?: string | null
     documentSize?: string | null
+    documentVersion?: string
+    documentVersions?: NullableJsonNullValueInput | InputJsonValue
     attachments?: NullableJsonNullValueInput | InputJsonValue
     clientSignatoryName?: string | null
+    clientSignatoryEmail?: string | null
     companySignatoryName?: string | null
+    companySignatoryEmail?: string | null
     signatureStatus?: string
     signedDate?: string | null
     approvalStatus?: string
     approvedBy?: string | null
     approvalDate?: string | null
+    rejectionReason?: string | null
+    internalNotes?: string | null
     status?: string
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -50598,6 +51258,9 @@ export namespace Prisma {
     leadId?: string | null
     leadName?: string | null
     contactId?: string | null
+    customerId?: string | null
+    quotationId?: string | null
+    quotationNumber?: string | null
     proposalId?: string | null
     proposalNumber?: string | null
     negotiationId?: string | null
@@ -50609,26 +51272,55 @@ export namespace Prisma {
     projectDescription?: string | null
     scopeOfWork?: string | null
     deliverables?: string | null
+    acceptanceCriteria?: string | null
     responsibilities?: string | null
     startDate?: string | null
     endDate?: string | null
     specialConditions?: string | null
-    contractValue?: number
+    productDetails?: NullableJsonNullValueInput | InputJsonValue
+    deliveryDetails?: string | null
     warrantyTerms?: string | null
+    supportPeriod?: string | null
+    slaTerms?: string | null
+    responseTime?: string | null
+    licenseQuantity?: number | null
+    subscriptionStartDate?: string | null
+    subscriptionEndDate?: string | null
+    renewalDetails?: string | null
+    contractValue?: number
+    currency?: string
+    discountAmount?: number
+    taxAmount?: number
+    taxRate?: number
+    taxIncluded?: boolean
+    finalContractAmount?: number
+    paymentMethod?: string
+    paymentDueTerms?: string
+    customPaymentDueTerms?: string | null
+    advancePaymentType?: string | null
+    advancePaymentValue?: number
+    advancePaymentAmount?: number
+    quotationValueMismatchConfirmed?: boolean
     confidentialityClause?: string | null
     terminationClause?: string | null
     additionalTerms?: string | null
     documentName?: string | null
     documentUrl?: string | null
     documentSize?: string | null
+    documentVersion?: string
+    documentVersions?: NullableJsonNullValueInput | InputJsonValue
     attachments?: NullableJsonNullValueInput | InputJsonValue
     clientSignatoryName?: string | null
+    clientSignatoryEmail?: string | null
     companySignatoryName?: string | null
+    companySignatoryEmail?: string | null
     signatureStatus?: string
     signedDate?: string | null
     approvalStatus?: string
     approvedBy?: string | null
     approvalDate?: string | null
+    rejectionReason?: string | null
+    internalNotes?: string | null
     status?: string
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -50643,6 +51335,9 @@ export namespace Prisma {
     leadId?: NullableStringFieldUpdateOperationsInput | string | null
     leadName?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    customerId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
     proposalId?: NullableStringFieldUpdateOperationsInput | string | null
     proposalNumber?: NullableStringFieldUpdateOperationsInput | string | null
     negotiationId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -50654,26 +51349,55 @@ export namespace Prisma {
     projectDescription?: NullableStringFieldUpdateOperationsInput | string | null
     scopeOfWork?: NullableStringFieldUpdateOperationsInput | string | null
     deliverables?: NullableStringFieldUpdateOperationsInput | string | null
+    acceptanceCriteria?: NullableStringFieldUpdateOperationsInput | string | null
     responsibilities?: NullableStringFieldUpdateOperationsInput | string | null
     startDate?: NullableStringFieldUpdateOperationsInput | string | null
     endDate?: NullableStringFieldUpdateOperationsInput | string | null
     specialConditions?: NullableStringFieldUpdateOperationsInput | string | null
-    contractValue?: FloatFieldUpdateOperationsInput | number
+    productDetails?: NullableJsonNullValueInput | InputJsonValue
+    deliveryDetails?: NullableStringFieldUpdateOperationsInput | string | null
     warrantyTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    supportPeriod?: NullableStringFieldUpdateOperationsInput | string | null
+    slaTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    responseTime?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseQuantity?: NullableIntFieldUpdateOperationsInput | number | null
+    subscriptionStartDate?: NullableStringFieldUpdateOperationsInput | string | null
+    subscriptionEndDate?: NullableStringFieldUpdateOperationsInput | string | null
+    renewalDetails?: NullableStringFieldUpdateOperationsInput | string | null
+    contractValue?: FloatFieldUpdateOperationsInput | number
+    currency?: StringFieldUpdateOperationsInput | string
+    discountAmount?: FloatFieldUpdateOperationsInput | number
+    taxAmount?: FloatFieldUpdateOperationsInput | number
+    taxRate?: FloatFieldUpdateOperationsInput | number
+    taxIncluded?: BoolFieldUpdateOperationsInput | boolean
+    finalContractAmount?: FloatFieldUpdateOperationsInput | number
+    paymentMethod?: StringFieldUpdateOperationsInput | string
+    paymentDueTerms?: StringFieldUpdateOperationsInput | string
+    customPaymentDueTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    advancePaymentType?: NullableStringFieldUpdateOperationsInput | string | null
+    advancePaymentValue?: FloatFieldUpdateOperationsInput | number
+    advancePaymentAmount?: FloatFieldUpdateOperationsInput | number
+    quotationValueMismatchConfirmed?: BoolFieldUpdateOperationsInput | boolean
     confidentialityClause?: NullableStringFieldUpdateOperationsInput | string | null
     terminationClause?: NullableStringFieldUpdateOperationsInput | string | null
     additionalTerms?: NullableStringFieldUpdateOperationsInput | string | null
     documentName?: NullableStringFieldUpdateOperationsInput | string | null
     documentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     documentSize?: NullableStringFieldUpdateOperationsInput | string | null
+    documentVersion?: StringFieldUpdateOperationsInput | string
+    documentVersions?: NullableJsonNullValueInput | InputJsonValue
     attachments?: NullableJsonNullValueInput | InputJsonValue
     clientSignatoryName?: NullableStringFieldUpdateOperationsInput | string | null
+    clientSignatoryEmail?: NullableStringFieldUpdateOperationsInput | string | null
     companySignatoryName?: NullableStringFieldUpdateOperationsInput | string | null
+    companySignatoryEmail?: NullableStringFieldUpdateOperationsInput | string | null
     signatureStatus?: StringFieldUpdateOperationsInput | string
     signedDate?: NullableStringFieldUpdateOperationsInput | string | null
     approvalStatus?: StringFieldUpdateOperationsInput | string
     approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
     approvalDate?: NullableStringFieldUpdateOperationsInput | string | null
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    internalNotes?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -50688,6 +51412,9 @@ export namespace Prisma {
     leadId?: NullableStringFieldUpdateOperationsInput | string | null
     leadName?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    customerId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
     proposalId?: NullableStringFieldUpdateOperationsInput | string | null
     proposalNumber?: NullableStringFieldUpdateOperationsInput | string | null
     negotiationId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -50699,26 +51426,55 @@ export namespace Prisma {
     projectDescription?: NullableStringFieldUpdateOperationsInput | string | null
     scopeOfWork?: NullableStringFieldUpdateOperationsInput | string | null
     deliverables?: NullableStringFieldUpdateOperationsInput | string | null
+    acceptanceCriteria?: NullableStringFieldUpdateOperationsInput | string | null
     responsibilities?: NullableStringFieldUpdateOperationsInput | string | null
     startDate?: NullableStringFieldUpdateOperationsInput | string | null
     endDate?: NullableStringFieldUpdateOperationsInput | string | null
     specialConditions?: NullableStringFieldUpdateOperationsInput | string | null
-    contractValue?: FloatFieldUpdateOperationsInput | number
+    productDetails?: NullableJsonNullValueInput | InputJsonValue
+    deliveryDetails?: NullableStringFieldUpdateOperationsInput | string | null
     warrantyTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    supportPeriod?: NullableStringFieldUpdateOperationsInput | string | null
+    slaTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    responseTime?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseQuantity?: NullableIntFieldUpdateOperationsInput | number | null
+    subscriptionStartDate?: NullableStringFieldUpdateOperationsInput | string | null
+    subscriptionEndDate?: NullableStringFieldUpdateOperationsInput | string | null
+    renewalDetails?: NullableStringFieldUpdateOperationsInput | string | null
+    contractValue?: FloatFieldUpdateOperationsInput | number
+    currency?: StringFieldUpdateOperationsInput | string
+    discountAmount?: FloatFieldUpdateOperationsInput | number
+    taxAmount?: FloatFieldUpdateOperationsInput | number
+    taxRate?: FloatFieldUpdateOperationsInput | number
+    taxIncluded?: BoolFieldUpdateOperationsInput | boolean
+    finalContractAmount?: FloatFieldUpdateOperationsInput | number
+    paymentMethod?: StringFieldUpdateOperationsInput | string
+    paymentDueTerms?: StringFieldUpdateOperationsInput | string
+    customPaymentDueTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    advancePaymentType?: NullableStringFieldUpdateOperationsInput | string | null
+    advancePaymentValue?: FloatFieldUpdateOperationsInput | number
+    advancePaymentAmount?: FloatFieldUpdateOperationsInput | number
+    quotationValueMismatchConfirmed?: BoolFieldUpdateOperationsInput | boolean
     confidentialityClause?: NullableStringFieldUpdateOperationsInput | string | null
     terminationClause?: NullableStringFieldUpdateOperationsInput | string | null
     additionalTerms?: NullableStringFieldUpdateOperationsInput | string | null
     documentName?: NullableStringFieldUpdateOperationsInput | string | null
     documentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     documentSize?: NullableStringFieldUpdateOperationsInput | string | null
+    documentVersion?: StringFieldUpdateOperationsInput | string
+    documentVersions?: NullableJsonNullValueInput | InputJsonValue
     attachments?: NullableJsonNullValueInput | InputJsonValue
     clientSignatoryName?: NullableStringFieldUpdateOperationsInput | string | null
+    clientSignatoryEmail?: NullableStringFieldUpdateOperationsInput | string | null
     companySignatoryName?: NullableStringFieldUpdateOperationsInput | string | null
+    companySignatoryEmail?: NullableStringFieldUpdateOperationsInput | string | null
     signatureStatus?: StringFieldUpdateOperationsInput | string
     signedDate?: NullableStringFieldUpdateOperationsInput | string | null
     approvalStatus?: StringFieldUpdateOperationsInput | string
     approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
     approvalDate?: NullableStringFieldUpdateOperationsInput | string | null
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    internalNotes?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -50733,6 +51489,9 @@ export namespace Prisma {
     leadId?: string | null
     leadName?: string | null
     contactId?: string | null
+    customerId?: string | null
+    quotationId?: string | null
+    quotationNumber?: string | null
     proposalId?: string | null
     proposalNumber?: string | null
     negotiationId?: string | null
@@ -50744,26 +51503,55 @@ export namespace Prisma {
     projectDescription?: string | null
     scopeOfWork?: string | null
     deliverables?: string | null
+    acceptanceCriteria?: string | null
     responsibilities?: string | null
     startDate?: string | null
     endDate?: string | null
     specialConditions?: string | null
-    contractValue?: number
+    productDetails?: NullableJsonNullValueInput | InputJsonValue
+    deliveryDetails?: string | null
     warrantyTerms?: string | null
+    supportPeriod?: string | null
+    slaTerms?: string | null
+    responseTime?: string | null
+    licenseQuantity?: number | null
+    subscriptionStartDate?: string | null
+    subscriptionEndDate?: string | null
+    renewalDetails?: string | null
+    contractValue?: number
+    currency?: string
+    discountAmount?: number
+    taxAmount?: number
+    taxRate?: number
+    taxIncluded?: boolean
+    finalContractAmount?: number
+    paymentMethod?: string
+    paymentDueTerms?: string
+    customPaymentDueTerms?: string | null
+    advancePaymentType?: string | null
+    advancePaymentValue?: number
+    advancePaymentAmount?: number
+    quotationValueMismatchConfirmed?: boolean
     confidentialityClause?: string | null
     terminationClause?: string | null
     additionalTerms?: string | null
     documentName?: string | null
     documentUrl?: string | null
     documentSize?: string | null
+    documentVersion?: string
+    documentVersions?: NullableJsonNullValueInput | InputJsonValue
     attachments?: NullableJsonNullValueInput | InputJsonValue
     clientSignatoryName?: string | null
+    clientSignatoryEmail?: string | null
     companySignatoryName?: string | null
+    companySignatoryEmail?: string | null
     signatureStatus?: string
     signedDate?: string | null
     approvalStatus?: string
     approvedBy?: string | null
     approvalDate?: string | null
+    rejectionReason?: string | null
+    internalNotes?: string | null
     status?: string
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -50778,6 +51566,9 @@ export namespace Prisma {
     leadId?: NullableStringFieldUpdateOperationsInput | string | null
     leadName?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    customerId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
     proposalId?: NullableStringFieldUpdateOperationsInput | string | null
     proposalNumber?: NullableStringFieldUpdateOperationsInput | string | null
     negotiationId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -50789,26 +51580,55 @@ export namespace Prisma {
     projectDescription?: NullableStringFieldUpdateOperationsInput | string | null
     scopeOfWork?: NullableStringFieldUpdateOperationsInput | string | null
     deliverables?: NullableStringFieldUpdateOperationsInput | string | null
+    acceptanceCriteria?: NullableStringFieldUpdateOperationsInput | string | null
     responsibilities?: NullableStringFieldUpdateOperationsInput | string | null
     startDate?: NullableStringFieldUpdateOperationsInput | string | null
     endDate?: NullableStringFieldUpdateOperationsInput | string | null
     specialConditions?: NullableStringFieldUpdateOperationsInput | string | null
-    contractValue?: FloatFieldUpdateOperationsInput | number
+    productDetails?: NullableJsonNullValueInput | InputJsonValue
+    deliveryDetails?: NullableStringFieldUpdateOperationsInput | string | null
     warrantyTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    supportPeriod?: NullableStringFieldUpdateOperationsInput | string | null
+    slaTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    responseTime?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseQuantity?: NullableIntFieldUpdateOperationsInput | number | null
+    subscriptionStartDate?: NullableStringFieldUpdateOperationsInput | string | null
+    subscriptionEndDate?: NullableStringFieldUpdateOperationsInput | string | null
+    renewalDetails?: NullableStringFieldUpdateOperationsInput | string | null
+    contractValue?: FloatFieldUpdateOperationsInput | number
+    currency?: StringFieldUpdateOperationsInput | string
+    discountAmount?: FloatFieldUpdateOperationsInput | number
+    taxAmount?: FloatFieldUpdateOperationsInput | number
+    taxRate?: FloatFieldUpdateOperationsInput | number
+    taxIncluded?: BoolFieldUpdateOperationsInput | boolean
+    finalContractAmount?: FloatFieldUpdateOperationsInput | number
+    paymentMethod?: StringFieldUpdateOperationsInput | string
+    paymentDueTerms?: StringFieldUpdateOperationsInput | string
+    customPaymentDueTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    advancePaymentType?: NullableStringFieldUpdateOperationsInput | string | null
+    advancePaymentValue?: FloatFieldUpdateOperationsInput | number
+    advancePaymentAmount?: FloatFieldUpdateOperationsInput | number
+    quotationValueMismatchConfirmed?: BoolFieldUpdateOperationsInput | boolean
     confidentialityClause?: NullableStringFieldUpdateOperationsInput | string | null
     terminationClause?: NullableStringFieldUpdateOperationsInput | string | null
     additionalTerms?: NullableStringFieldUpdateOperationsInput | string | null
     documentName?: NullableStringFieldUpdateOperationsInput | string | null
     documentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     documentSize?: NullableStringFieldUpdateOperationsInput | string | null
+    documentVersion?: StringFieldUpdateOperationsInput | string
+    documentVersions?: NullableJsonNullValueInput | InputJsonValue
     attachments?: NullableJsonNullValueInput | InputJsonValue
     clientSignatoryName?: NullableStringFieldUpdateOperationsInput | string | null
+    clientSignatoryEmail?: NullableStringFieldUpdateOperationsInput | string | null
     companySignatoryName?: NullableStringFieldUpdateOperationsInput | string | null
+    companySignatoryEmail?: NullableStringFieldUpdateOperationsInput | string | null
     signatureStatus?: StringFieldUpdateOperationsInput | string
     signedDate?: NullableStringFieldUpdateOperationsInput | string | null
     approvalStatus?: StringFieldUpdateOperationsInput | string
     approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
     approvalDate?: NullableStringFieldUpdateOperationsInput | string | null
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    internalNotes?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -50823,6 +51643,9 @@ export namespace Prisma {
     leadId?: NullableStringFieldUpdateOperationsInput | string | null
     leadName?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    customerId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
     proposalId?: NullableStringFieldUpdateOperationsInput | string | null
     proposalNumber?: NullableStringFieldUpdateOperationsInput | string | null
     negotiationId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -50834,26 +51657,55 @@ export namespace Prisma {
     projectDescription?: NullableStringFieldUpdateOperationsInput | string | null
     scopeOfWork?: NullableStringFieldUpdateOperationsInput | string | null
     deliverables?: NullableStringFieldUpdateOperationsInput | string | null
+    acceptanceCriteria?: NullableStringFieldUpdateOperationsInput | string | null
     responsibilities?: NullableStringFieldUpdateOperationsInput | string | null
     startDate?: NullableStringFieldUpdateOperationsInput | string | null
     endDate?: NullableStringFieldUpdateOperationsInput | string | null
     specialConditions?: NullableStringFieldUpdateOperationsInput | string | null
-    contractValue?: FloatFieldUpdateOperationsInput | number
+    productDetails?: NullableJsonNullValueInput | InputJsonValue
+    deliveryDetails?: NullableStringFieldUpdateOperationsInput | string | null
     warrantyTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    supportPeriod?: NullableStringFieldUpdateOperationsInput | string | null
+    slaTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    responseTime?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseQuantity?: NullableIntFieldUpdateOperationsInput | number | null
+    subscriptionStartDate?: NullableStringFieldUpdateOperationsInput | string | null
+    subscriptionEndDate?: NullableStringFieldUpdateOperationsInput | string | null
+    renewalDetails?: NullableStringFieldUpdateOperationsInput | string | null
+    contractValue?: FloatFieldUpdateOperationsInput | number
+    currency?: StringFieldUpdateOperationsInput | string
+    discountAmount?: FloatFieldUpdateOperationsInput | number
+    taxAmount?: FloatFieldUpdateOperationsInput | number
+    taxRate?: FloatFieldUpdateOperationsInput | number
+    taxIncluded?: BoolFieldUpdateOperationsInput | boolean
+    finalContractAmount?: FloatFieldUpdateOperationsInput | number
+    paymentMethod?: StringFieldUpdateOperationsInput | string
+    paymentDueTerms?: StringFieldUpdateOperationsInput | string
+    customPaymentDueTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    advancePaymentType?: NullableStringFieldUpdateOperationsInput | string | null
+    advancePaymentValue?: FloatFieldUpdateOperationsInput | number
+    advancePaymentAmount?: FloatFieldUpdateOperationsInput | number
+    quotationValueMismatchConfirmed?: BoolFieldUpdateOperationsInput | boolean
     confidentialityClause?: NullableStringFieldUpdateOperationsInput | string | null
     terminationClause?: NullableStringFieldUpdateOperationsInput | string | null
     additionalTerms?: NullableStringFieldUpdateOperationsInput | string | null
     documentName?: NullableStringFieldUpdateOperationsInput | string | null
     documentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     documentSize?: NullableStringFieldUpdateOperationsInput | string | null
+    documentVersion?: StringFieldUpdateOperationsInput | string
+    documentVersions?: NullableJsonNullValueInput | InputJsonValue
     attachments?: NullableJsonNullValueInput | InputJsonValue
     clientSignatoryName?: NullableStringFieldUpdateOperationsInput | string | null
+    clientSignatoryEmail?: NullableStringFieldUpdateOperationsInput | string | null
     companySignatoryName?: NullableStringFieldUpdateOperationsInput | string | null
+    companySignatoryEmail?: NullableStringFieldUpdateOperationsInput | string | null
     signatureStatus?: StringFieldUpdateOperationsInput | string
     signedDate?: NullableStringFieldUpdateOperationsInput | string | null
     approvalStatus?: StringFieldUpdateOperationsInput | string
     approvedBy?: NullableStringFieldUpdateOperationsInput | string | null
     approvalDate?: NullableStringFieldUpdateOperationsInput | string | null
+    rejectionReason?: NullableStringFieldUpdateOperationsInput | string | null
+    internalNotes?: NullableStringFieldUpdateOperationsInput | string | null
     status?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -53428,6 +54280,17 @@ export namespace Prisma {
     discountAmount?: SortOrder
   }
 
+  export type IntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+  }
+
   export type ContractCountOrderByAggregateInput = {
     id?: SortOrder
     contractId?: SortOrder
@@ -53437,6 +54300,9 @@ export namespace Prisma {
     leadId?: SortOrder
     leadName?: SortOrder
     contactId?: SortOrder
+    customerId?: SortOrder
+    quotationId?: SortOrder
+    quotationNumber?: SortOrder
     proposalId?: SortOrder
     proposalNumber?: SortOrder
     negotiationId?: SortOrder
@@ -53448,33 +54314,69 @@ export namespace Prisma {
     projectDescription?: SortOrder
     scopeOfWork?: SortOrder
     deliverables?: SortOrder
+    acceptanceCriteria?: SortOrder
     responsibilities?: SortOrder
     startDate?: SortOrder
     endDate?: SortOrder
     specialConditions?: SortOrder
-    contractValue?: SortOrder
+    productDetails?: SortOrder
+    deliveryDetails?: SortOrder
     warrantyTerms?: SortOrder
+    supportPeriod?: SortOrder
+    slaTerms?: SortOrder
+    responseTime?: SortOrder
+    licenseQuantity?: SortOrder
+    subscriptionStartDate?: SortOrder
+    subscriptionEndDate?: SortOrder
+    renewalDetails?: SortOrder
+    contractValue?: SortOrder
+    currency?: SortOrder
+    discountAmount?: SortOrder
+    taxAmount?: SortOrder
+    taxRate?: SortOrder
+    taxIncluded?: SortOrder
+    finalContractAmount?: SortOrder
+    paymentMethod?: SortOrder
+    paymentDueTerms?: SortOrder
+    customPaymentDueTerms?: SortOrder
+    advancePaymentType?: SortOrder
+    advancePaymentValue?: SortOrder
+    advancePaymentAmount?: SortOrder
+    quotationValueMismatchConfirmed?: SortOrder
     confidentialityClause?: SortOrder
     terminationClause?: SortOrder
     additionalTerms?: SortOrder
     documentName?: SortOrder
     documentUrl?: SortOrder
     documentSize?: SortOrder
+    documentVersion?: SortOrder
+    documentVersions?: SortOrder
     attachments?: SortOrder
     clientSignatoryName?: SortOrder
+    clientSignatoryEmail?: SortOrder
     companySignatoryName?: SortOrder
+    companySignatoryEmail?: SortOrder
     signatureStatus?: SortOrder
     signedDate?: SortOrder
     approvalStatus?: SortOrder
     approvedBy?: SortOrder
     approvalDate?: SortOrder
+    rejectionReason?: SortOrder
+    internalNotes?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
 
   export type ContractAvgOrderByAggregateInput = {
+    licenseQuantity?: SortOrder
     contractValue?: SortOrder
+    discountAmount?: SortOrder
+    taxAmount?: SortOrder
+    taxRate?: SortOrder
+    finalContractAmount?: SortOrder
+    advancePaymentValue?: SortOrder
+    advancePaymentAmount?: SortOrder
   }
 
   export type ContractMaxOrderByAggregateInput = {
@@ -53486,6 +54388,9 @@ export namespace Prisma {
     leadId?: SortOrder
     leadName?: SortOrder
     contactId?: SortOrder
+    customerId?: SortOrder
+    quotationId?: SortOrder
+    quotationNumber?: SortOrder
     proposalId?: SortOrder
     proposalNumber?: SortOrder
     negotiationId?: SortOrder
@@ -53497,25 +54402,52 @@ export namespace Prisma {
     projectDescription?: SortOrder
     scopeOfWork?: SortOrder
     deliverables?: SortOrder
+    acceptanceCriteria?: SortOrder
     responsibilities?: SortOrder
     startDate?: SortOrder
     endDate?: SortOrder
     specialConditions?: SortOrder
-    contractValue?: SortOrder
+    deliveryDetails?: SortOrder
     warrantyTerms?: SortOrder
+    supportPeriod?: SortOrder
+    slaTerms?: SortOrder
+    responseTime?: SortOrder
+    licenseQuantity?: SortOrder
+    subscriptionStartDate?: SortOrder
+    subscriptionEndDate?: SortOrder
+    renewalDetails?: SortOrder
+    contractValue?: SortOrder
+    currency?: SortOrder
+    discountAmount?: SortOrder
+    taxAmount?: SortOrder
+    taxRate?: SortOrder
+    taxIncluded?: SortOrder
+    finalContractAmount?: SortOrder
+    paymentMethod?: SortOrder
+    paymentDueTerms?: SortOrder
+    customPaymentDueTerms?: SortOrder
+    advancePaymentType?: SortOrder
+    advancePaymentValue?: SortOrder
+    advancePaymentAmount?: SortOrder
+    quotationValueMismatchConfirmed?: SortOrder
     confidentialityClause?: SortOrder
     terminationClause?: SortOrder
     additionalTerms?: SortOrder
     documentName?: SortOrder
     documentUrl?: SortOrder
     documentSize?: SortOrder
+    documentVersion?: SortOrder
     clientSignatoryName?: SortOrder
+    clientSignatoryEmail?: SortOrder
     companySignatoryName?: SortOrder
+    companySignatoryEmail?: SortOrder
     signatureStatus?: SortOrder
     signedDate?: SortOrder
     approvalStatus?: SortOrder
     approvedBy?: SortOrder
     approvalDate?: SortOrder
+    rejectionReason?: SortOrder
+    internalNotes?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -53530,6 +54462,9 @@ export namespace Prisma {
     leadId?: SortOrder
     leadName?: SortOrder
     contactId?: SortOrder
+    customerId?: SortOrder
+    quotationId?: SortOrder
+    quotationNumber?: SortOrder
     proposalId?: SortOrder
     proposalNumber?: SortOrder
     negotiationId?: SortOrder
@@ -53541,32 +54476,82 @@ export namespace Prisma {
     projectDescription?: SortOrder
     scopeOfWork?: SortOrder
     deliverables?: SortOrder
+    acceptanceCriteria?: SortOrder
     responsibilities?: SortOrder
     startDate?: SortOrder
     endDate?: SortOrder
     specialConditions?: SortOrder
-    contractValue?: SortOrder
+    deliveryDetails?: SortOrder
     warrantyTerms?: SortOrder
+    supportPeriod?: SortOrder
+    slaTerms?: SortOrder
+    responseTime?: SortOrder
+    licenseQuantity?: SortOrder
+    subscriptionStartDate?: SortOrder
+    subscriptionEndDate?: SortOrder
+    renewalDetails?: SortOrder
+    contractValue?: SortOrder
+    currency?: SortOrder
+    discountAmount?: SortOrder
+    taxAmount?: SortOrder
+    taxRate?: SortOrder
+    taxIncluded?: SortOrder
+    finalContractAmount?: SortOrder
+    paymentMethod?: SortOrder
+    paymentDueTerms?: SortOrder
+    customPaymentDueTerms?: SortOrder
+    advancePaymentType?: SortOrder
+    advancePaymentValue?: SortOrder
+    advancePaymentAmount?: SortOrder
+    quotationValueMismatchConfirmed?: SortOrder
     confidentialityClause?: SortOrder
     terminationClause?: SortOrder
     additionalTerms?: SortOrder
     documentName?: SortOrder
     documentUrl?: SortOrder
     documentSize?: SortOrder
+    documentVersion?: SortOrder
     clientSignatoryName?: SortOrder
+    clientSignatoryEmail?: SortOrder
     companySignatoryName?: SortOrder
+    companySignatoryEmail?: SortOrder
     signatureStatus?: SortOrder
     signedDate?: SortOrder
     approvalStatus?: SortOrder
     approvedBy?: SortOrder
     approvalDate?: SortOrder
+    rejectionReason?: SortOrder
+    internalNotes?: SortOrder
     status?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
 
   export type ContractSumOrderByAggregateInput = {
+    licenseQuantity?: SortOrder
     contractValue?: SortOrder
+    discountAmount?: SortOrder
+    taxAmount?: SortOrder
+    taxRate?: SortOrder
+    finalContractAmount?: SortOrder
+    advancePaymentValue?: SortOrder
+    advancePaymentAmount?: SortOrder
+  }
+
+  export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
   export type RoleCreateNestedOneWithoutUsersInput = {
@@ -54309,6 +55294,14 @@ export namespace Prisma {
     update?: XOR<XOR<InvoiceUpdateToOneWithWhereWithoutAllocationsInput, InvoiceUpdateWithoutAllocationsInput>, InvoiceUncheckedUpdateWithoutAllocationsInput>
   }
 
+  export type NullableIntFieldUpdateOperationsInput = {
+    set?: number | null
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -54570,6 +55563,22 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
   export type RoleCreateWithoutUsersInput = {

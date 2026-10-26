@@ -89,7 +89,7 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
           ? contact.serviceList[0].trim()
           : (contact.productList && contact.productList.length > 0 && contact.productList[0]?.trim() !== '')
           ? contact.productList[0].trim()
-          : contact.customProduct || 'Web Application Development'
+          : contact.customProduct || ''
       );
       setPriority((contact.priority as ContactPriority) || 'Medium');
 
@@ -143,7 +143,7 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
             : 'In Progress',
       };
 
-      const res = await updateContact(contact.id, payload);
+      const res = await updateContact(contact.id, payload, { silent: true });
 
       if (res?.success) {
         if (qualificationStatus === 'Qualified') {
@@ -356,20 +356,10 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
                 <Text size="11px" c="dimmed" mb={4}>
                   Customer budget evvalavu?
                 </Text>
-                <Select
-                  placeholder="Select budget"
-                  data={[
-                    'Under ₹1,00,000',
-                    '₹1,00,000 - ₹3,00,000',
-                    '₹3,00,000 - ₹5,00,000',
-                    '₹5,00,000 - ₹10,00,000',
-                    '₹10,00,000 - ₹25,00,000',
-                    'Above ₹25,00,000',
-                  ]}
+                <TextInput
+                  placeholder="Enter budget (e.g. ₹50,000 or ₹1,00,000)"
                   value={budgetRange}
-                  onChange={(val) => setBudgetRange(val || '')}
-                  searchable
-                  clearable
+                  onChange={(e) => setBudgetRange(e.currentTarget.value)}
                   radius="md"
                   styles={{
                     input: {
@@ -449,15 +439,7 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
                 </Text>
                 <Autocomplete
                   placeholder="Select or type custom service..."
-                  data={[
-                    'Web Application Development',
-                    'Mobile App (iOS & Android)',
-                    'Enterprise ERP Solution',
-                    'Custom CRM System',
-                    'Cloud Infrastructure & DevOps',
-                    'UI/UX Design & Branding',
-                    'Custom Software / Other',
-                  ]}
+                  data={[]}
                   value={interestedService}
                   onChange={(val) => setInterestedService(val)}
                   filter={({ options, search }) => {
@@ -545,34 +527,8 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
             </Box>
 
             {/* 8. Qualified By & 9. Qualification Date */}
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
-              {/* Qualified By */}
-              <Box>
-                <Text fw={600} size="13px" style={{ color: labelColor }}>
-                  Qualified By
-                </Text>
-                <Text size="11px" c="dimmed" mb={4}>
-                  Endha employee qualify pannanga?
-                </Text>
-                <Select
-                  placeholder="Select employee"
-                  data={uniqueEmployeeOptions}
-                  value={qualifiedBy}
-                  onChange={(val) => setQualifiedBy(val || '')}
-                  searchable
-                  radius="md"
-                  styles={{
-                    input: {
-                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#CBD5E1',
-                      fontSize: 13,
-                    },
-                  }}
-                />
-              </Box>
-
-              {/* Qualification Date */}
-              <Box>
+            {/* Qualification Date */}
+            <Box>
                 <Text fw={600} size="13px" style={{ color: labelColor }}>
                   Qualification Date
                 </Text>
@@ -593,7 +549,6 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
                   }}
                 />
               </Box>
-            </SimpleGrid>
 
             {/* 10. Unqualified Reason (Shows when Unqualified) */}
             {qualificationStatus === 'Unqualified' && (

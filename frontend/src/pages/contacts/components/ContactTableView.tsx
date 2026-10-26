@@ -89,10 +89,7 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
           (currentUser?.id && e.id === currentUser.id)
       );
       const targetEmpId = myEmp?.id || currentUser?.id || currentUser?.name || 'me';
-      const res = await assignContact(contact.id, targetEmpId);
-      if (res?.success && activeTab === 'NEW' && onTabChange) {
-        onTabChange('ASSIGNED');
-      }
+      await assignContact(contact.id, targetEmpId);
     } finally {
       setAssigningId(null);
     }
@@ -536,13 +533,7 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
               return (
                 <React.Fragment key={contact.id}>
                   <Table.Tr
-                    onClick={() => {
-                      if (isAssigned && onQualify) {
-                        onQualify(contact);
-                      }
-                    }}
                     style={{
-                      cursor: isAssigned ? 'pointer' : 'default',
                       transition: 'background 0.12s ease',
                       borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
                     }}
@@ -730,10 +721,7 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                                   onClick={async () => {
                                     try {
                                       setAssigningId(contact.id);
-                                      const res = await assignContact(contact.id, emp.id);
-                                      if (res?.success && activeTab === 'NEW' && onTabChange) {
-                                        onTabChange('ASSIGNED');
-                                      }
+                                      await assignContact(contact.id, emp.id);
                                     } finally {
                                       setAssigningId(null);
                                     }

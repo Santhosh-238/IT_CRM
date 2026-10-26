@@ -87,7 +87,11 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
 
   const { employees, fetchEmployees, addEmployee, updateEmployee } = useEmployee();
   const { roles, users, fetchRoles, fetchUsers } = useAccessControl();
-  const isEditing = Boolean(initialData && initialData.id);
+  const isEditing = Boolean(
+    initialData &&
+    initialData.id &&
+    (!employees.length || employees.some((e) => e.id === initialData.id))
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -95,6 +99,12 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     fetchUsers();
     fetchEmployees();
   }, [fetchRoles, fetchUsers, fetchEmployees]);
+
+  useEffect(() => {
+    if (initialData?.id && employees.length > 0 && !employees.some((e) => e.id === initialData.id)) {
+      if (typeof window !== 'undefined') sessionStorage.removeItem('crm_editing_employee');
+    }
+  }, [initialData, employees]);
 
   // Helper to load and save custom items from localStorage
   const loadCustomItems = (key: string): string[] => {
@@ -244,7 +254,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     designation: initialData?.designation || '',
     role: initialData?.role || '',
     reportingManager: initialData?.reportingManager || '',
-    joiningDate: initialData?.joiningDate || new Date().toISOString().split('T')[0],
+    joiningDate: initialData?.joiningDate || '',
     employmentType: initialData?.employmentType || '',
     workLocation: initialData?.workLocation || '',
     status: initialData?.status || 'Active',
@@ -282,6 +292,8 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
 
       if (!formData.empCode || employees.some((emp) => emp.empCode?.toUpperCase() === formData.empCode?.toUpperCase())) {
         setFormData((prev) => ({ ...prev, empCode: nextCode }));
+
+        
       }
     }
   }, [employees, isEditing, formData.empCode]);
@@ -800,7 +812,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                     {/* 6. Date of Birth */}
                     <TextInput
                       label="Date of Birth (Optional)"
-                      placeholder="YYYY-MM-DD"
+                      placeholder=""
                       type="date"
                       autoComplete="off"
                       leftSection={<IconCalendar size={16} color="#64748B" />}
@@ -827,14 +839,14 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                           size="compact-xs"
                           color="blue"
                           leftSection={<IconPlus size={12} />}
-                          onClick={() => handleOpenCustomModal('gender', 'Add Gender', 'Gender Option', 'e.g. Male, Female, Other')}
+                          onClick={() => handleOpenCustomModal('gender', 'Add Gender', 'Gender Option', '')}
                           style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
                         >
                           + Add Gender
                         </Button>
                       </Group>
                       <Select
-                        placeholder="Select gender"
+                        placeholder=""
                         data={dynamicGenders}
                         leftSection={<IconGenderBigender size={16} color="#64748B" />}
                         value={formData.gender || null}
@@ -914,14 +926,14 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                           size="compact-xs"
                           color="blue"
                           leftSection={<IconPlus size={12} />}
-                          onClick={() => handleOpenCustomModal('department', 'Add Department', 'Department Name', 'e.g. Engineering, Sales, HR')}
+                          onClick={() => handleOpenCustomModal('department', 'Add Department', 'Department Name', '')}
                           style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
                         >
                           + Add Department
                         </Button>
                       </Group>
                       <Select
-                        placeholder="Select department"
+                        placeholder=""
                         data={dynamicDepartments}
                         leftSection={<IconBuilding size={16} color="#64748B" />}
                         value={formData.department || null}
@@ -959,14 +971,14 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                           size="compact-xs"
                           color="blue"
                           leftSection={<IconPlus size={12} />}
-                          onClick={() => handleOpenCustomModal('designation', 'Add Designation', 'Designation Name', 'e.g. Sales Executive, Lead Architect')}
+                          onClick={() => handleOpenCustomModal('designation', 'Add Designation', 'Designation Name', '')}
                           style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
                         >
                           + Add Designation
                         </Button>
                       </Group>
                       <Select
-                        placeholder="Select designation"
+                        placeholder=""
                         data={dynamicDesignations}
                         leftSection={<IconBriefcase size={16} color="#64748B" />}
                         value={formData.designation || null}
@@ -1004,14 +1016,14 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                           size="compact-xs"
                           color="blue"
                           leftSection={<IconPlus size={12} />}
-                          onClick={() => handleOpenCustomModal('role', 'Add Role', 'Role Name', 'e.g. Sales Officer, Team Lead')}
+                          onClick={() => handleOpenCustomModal('role', 'Add Role', 'Role Name', '')}
                           style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
                         >
                           + Add Role
                         </Button>
                       </Group>
                       <Select
-                        placeholder="Select role"
+                        placeholder=""
                         data={dynamicRoles}
                         searchable
                         leftSection={<IconShield size={16} color="#64748B" />}
@@ -1036,7 +1048,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                     {/* 4. Reporting Manager */}
                     <Select
                       label="Reporting Manager (Optional)"
-                      placeholder={reportingManagerOptions.length > 0 ? 'Select reporting manager' : 'No managers registered'}
+                      placeholder=""
                       data={reportingManagerOptions}
                       searchable
                       leftSection={<IconUsers size={16} color="#64748B" />}
@@ -1060,7 +1072,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                     {/* 5. Date of Joining */}
                     <TextInput
                       label="Date of Joining"
-                      placeholder="YYYY-MM-DD"
+                      placeholder=""
                       type="date"
                       leftSection={<IconCalendar size={16} color="#64748B" />}
                       value={formData.joiningDate}
@@ -1086,14 +1098,14 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                           size="compact-xs"
                           color="blue"
                           leftSection={<IconPlus size={12} />}
-                          onClick={() => handleOpenCustomModal('employmentType', 'Add Employment Type', 'Employment Type', 'e.g. Full Time, Contract, Intern')}
+                          onClick={() => handleOpenCustomModal('employmentType', 'Add Employment Type', 'Employment Type', '')}
                           style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
                         >
                           + Add Employment Type
                         </Button>
                       </Group>
                       <Select
-                        placeholder="Select employment type"
+                        placeholder=""
                         data={dynamicEmploymentTypes}
                         leftSection={<IconClock size={16} color="#64748B" />}
                         value={formData.employmentType || null}
@@ -1131,14 +1143,14 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                           size="compact-xs"
                           color="blue"
                           leftSection={<IconPlus size={12} />}
-                          onClick={() => handleOpenCustomModal('branch', 'Add Branch', 'Branch Name', 'e.g. Coimbatore, Madurai')}
+                          onClick={() => handleOpenCustomModal('branch', 'Add Branch', 'Branch Name', '')}
                           style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
                         >
                           + Add Branch
                         </Button>
                       </Group>
                       <Select
-                        placeholder="Select branch"
+                        placeholder=""
                         data={branchOptions}
                         leftSection={<IconMapPin size={16} color="#64748B" />}
                         value={formData.workLocation || null}

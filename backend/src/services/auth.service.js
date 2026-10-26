@@ -41,6 +41,16 @@ export async function signupService(body, ip = '127.0.0.1', res = null) {
   const userDepartment = body.department || (userCount === 0 ? 'Executive Leadership' : 'General');
   const avatarUrl = body.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanEmail)}`;
 
+  let roleId = body.roleId || null;
+  if (!roleId && assignedRole === 'SUPER_ADMIN') {
+    const saRole = await prisma.role.findFirst({
+      where: { OR: [{ slug: 'super_admin' }, { name: { equals: 'Super Admin', mode: 'insensitive' } }] },
+    });
+    if (saRole) {
+      roleId = saRole.id;
+    }
+  }
+
   const newUser = await prisma.user.create({
     data: {
       name: name.trim(),
@@ -48,6 +58,7 @@ export async function signupService(body, ip = '127.0.0.1', res = null) {
       phone: phone ? String(phone).trim() : null,
       passwordHash,
       role: assignedRole,
+      roleId: roleId,
       department: userDepartment,
       avatar: avatarUrl,
     },

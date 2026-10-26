@@ -73,7 +73,7 @@ import { useLead } from '../../context/LeadContext';
 import { useCRM } from '../../context/CRMContext';
 import { useEmployee } from '../../context/EmployeeContext';
 import { useContact } from '../../context/ContactContext';
-import { createMeetingApi, fetchMeetingsApi } from '../../services/meetingService';
+import { createMeetingApi, fetchMeetingsApi, updateMeetingApi, deleteMeetingApi } from '../../services/meetingService';
 import { MeetingDatePicker } from '../meetings/components/MeetingDatePicker';
 import { MeetingTimePicker } from '../meetings/components/MeetingTimePicker';
 import { MeetingTableView } from '../meetings/components/MeetingTableView';
@@ -178,7 +178,11 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
   });
 
   const handleSelectTab = (tab: string) => {
-    handleProceedToSection(tab);
+    const normalized = tab === 'quotation' ? 'quotations' : tab;
+    setActiveTab(normalized);
+    try {
+      sessionStorage.setItem('crm_lead_active_section', normalized);
+    } catch (_) {}
   };
 
   // Navigate to target section and update lead stage accordingly
@@ -207,10 +211,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     if (target) {
       setActiveLead((prev) => (prev ? { ...prev, stage: target.stage, status: target.status } : prev));
       try {
-        await updateLead(activeLead.id, {
-          stage: target.stage,
-          status: target.status,
-        });
+        await updateLead(
+          activeLead.id,
+          {
+            stage: target.stage,
+            status: target.status,
+          },
+          { silent: true }
+        );
       } catch (_) {}
     }
   };
@@ -246,10 +254,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     saveLeadDealData(activeLead.id, updated);
     setActiveLead((prev) => (prev ? { ...prev, stage: 'Proposals', status: 'In Progress' } : prev));
     try {
-      await updateLead(activeLead.id, {
-        stage: 'Proposals',
-        status: 'In Progress',
-      });
+      await updateLead(
+        activeLead.id,
+        {
+          stage: 'Proposals',
+          status: 'In Progress',
+        },
+        { silent: true }
+      );
     } catch (_) {}
   };
 
@@ -260,10 +272,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     saveLeadDealData(activeLead.id, updated);
     setActiveLead((prev) => (prev ? { ...prev, stage: 'Quotations', status: 'In Progress' } : prev));
     try {
-      await updateLead(activeLead.id, {
-        stage: 'Quotations',
-        status: 'In Progress',
-      });
+      await updateLead(
+        activeLead.id,
+        {
+          stage: 'Quotations',
+          status: 'In Progress',
+        },
+        { silent: true }
+      );
     } catch (_) {}
   };
 
@@ -274,10 +290,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     saveLeadDealData(activeLead.id, updated);
     setActiveLead((prev) => (prev ? { ...prev, stage: 'Negotiation', status: 'In Progress' } : prev));
     try {
-      await updateLead(activeLead.id, {
-        stage: 'Negotiation',
-        status: 'In Progress',
-      });
+      await updateLead(
+        activeLead.id,
+        {
+          stage: 'Negotiation',
+          status: 'In Progress',
+        },
+        { silent: true }
+      );
     } catch (_) {}
   };
 
@@ -288,10 +308,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     saveLeadDealData(activeLead.id, updated);
     setActiveLead((prev) => (prev ? { ...prev, stage: 'Contracts', status: 'In Progress' } : prev));
     try {
-      await updateLead(activeLead.id, {
-        stage: 'Contracts',
-        status: 'In Progress',
-      });
+      await updateLead(
+        activeLead.id,
+        {
+          stage: 'Contracts',
+          status: 'In Progress',
+        },
+        { silent: true }
+      );
     } catch (_) {}
   };
 
@@ -302,10 +326,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     saveLeadDealData(activeLead.id, updated);
     setActiveLead((prev) => (prev ? { ...prev, stage: 'Invoices', status: 'In Progress' } : prev));
     try {
-      await updateLead(activeLead.id, {
-        stage: 'Invoices',
-        status: 'In Progress',
-      });
+      await updateLead(
+        activeLead.id,
+        {
+          stage: 'Invoices',
+          status: 'In Progress',
+        },
+        { silent: true }
+      );
     } catch (_) {}
   };
 
@@ -316,10 +344,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     saveLeadDealData(activeLead.id, updated);
     setActiveLead((prev) => (prev ? { ...prev, stage: 'Payments', status: 'In Progress' } : prev));
     try {
-      await updateLead(activeLead.id, {
-        stage: 'Payments',
-        status: 'In Progress',
-      });
+      await updateLead(
+        activeLead.id,
+        {
+          stage: 'Payments',
+          status: 'In Progress',
+        },
+        { silent: true }
+      );
     } catch (_) {}
   };
 
@@ -340,10 +372,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     const finalStatus = isCompleted ? 'Complete' : 'In Progress';
     setActiveLead((prev) => (prev ? { ...prev, stage: finalStage, status: finalStatus } : prev));
     try {
-      await updateLead(activeLead.id, {
-        stage: finalStage,
-        status: finalStatus,
-      });
+      await updateLead(
+        activeLead.id,
+        {
+          stage: finalStage,
+          status: finalStatus,
+        },
+        { silent: true }
+      );
     } catch (_) {}
   };
 
@@ -383,51 +419,58 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     }
   }, [activeLead, formLeadId]);
 
-  // Scheduled Meetings Store
+  // Scheduled Meetings Store (Dynamic from Backend / Clean LocalStorage)
   const [scheduledMeetings, setScheduledMeetings] = useState<ScheduledMeeting[]>(() => {
     if (!activeLead) return [];
     try {
       const saved = localStorage.getItem(`crm_meetings_${activeLead.id}`);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const realOnly = parsed.filter(
+            (p: any) =>
+              p.id &&
+              !p.id.startsWith(`meet-${activeLead.id}-`) &&
+              p.title !== 'demo meeting' &&
+              p.title !== 'requirerment meeting' &&
+              p.purpose !== 'demo meeting' &&
+              p.purpose !== 'requirerment meeting'
+          );
+          return realOnly;
+        }
       }
     } catch (e) {}
-    return [
-      {
-        id: `meet-${activeLead.id}-1`,
-        leadId: activeLead.id,
-        title: 'demo meeting',
-        purpose: 'demo meeting',
-        meetingType: 'Virtual',
-        date: '2026-10-13',
-        time: '01:00 AM',
-        duration: '30 Minutes',
-        hostName: 'Kavin',
-        meetingLink: 'coimbatore',
-        stageAfterMeeting: 'Discovery',
-        status: 'Scheduled',
-        requirements: 'Google Meet link and conference dial-in details shared.',
-        createdAt: '2026-10-13T01:00:00Z',
-      },
-      {
-        id: `meet-${activeLead.id}-2`,
-        leadId: activeLead.id,
-        title: 'requirerment meeting',
-        purpose: 'requirerment meeting',
-        meetingType: 'Virtual',
-        date: '2026-10-13',
-        time: '12:00 AM',
-        duration: '45 Minutes',
-        hostName: 'sandy',
-        meetingLink: 'https://meet.google.com/ifg-xzt-abc',
-        stageAfterMeeting: 'Discovery',
-        status: 'Completed',
-        requirements: 'Client requirement sign-off and proposal preparation.',
-        createdAt: '2026-10-13T00:00:00Z',
-      },
-    ];
+    return [];
   });
+
+  // Re-sync local storage cache when activeLead changes
+  useEffect(() => {
+    if (!activeLead?.id) {
+      setScheduledMeetings([]);
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(`crm_meetings_${activeLead.id}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const realOnly = parsed.filter(
+            (p: any) =>
+              p.id &&
+              !p.id.startsWith(`meet-${activeLead.id}-`) &&
+              p.title !== 'demo meeting' &&
+              p.title !== 'requirerment meeting' &&
+              p.purpose !== 'demo meeting' &&
+              p.purpose !== 'requirerment meeting'
+          );
+          setScheduledMeetings(realOnly);
+          localStorage.setItem(`crm_meetings_${activeLead.id}`, JSON.stringify(realOnly));
+          return;
+        }
+      }
+    } catch (_) {}
+    setScheduledMeetings([]);
+  }, [activeLead?.id]);
 
   // Custom Activities (Calls, Emails, Notes)
   const [customActivities, setCustomActivities] = useState<Array<{
@@ -455,7 +498,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     if (!activeLead) return;
     try {
       const res = await fetchMeetingsApi({ leadId: activeLead.id });
-      if (res.meetings && res.meetings.length > 0) {
+      if (res && Array.isArray(res.meetings)) {
         const mapped: ScheduledMeeting[] = res.meetings.map((m) => ({
           id: m.id,
           leadId: activeLead.id,
@@ -467,10 +510,10 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           time: m.startTime || m.meetingTime || m.time || '',
           startTime: m.startTime || m.meetingTime || m.time || '',
           duration: m.duration || '30 Minutes',
-          hostName: m.assignedTo || m.employeeName || 'Host',
-          employeeName: m.assignedTo || m.employeeName || 'Host',
+          hostName: m.assignedTo || m.employeeName || currentUser?.name || '',
+          employeeName: m.assignedTo || m.employeeName || currentUser?.name || '',
           meetingLink: m.meetingLink || m.meetingLocation || m.location || '',
-          stageAfterMeeting: m.stageAfterMeeting || activeLead.stage || '',
+          stageAfterMeeting: m.stageAfterMeeting || activeLead.stage || 'Discovery',
           status: (m.meetingStatus || (m.status as any)) || 'Scheduled',
           meetingStatus: (m.meetingStatus || (m.status as any)) || 'Scheduled',
           requirements: m.requirements || '',
@@ -482,24 +525,13 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           notes: m.notes,
           createdAt: m.createdAt || new Date().toISOString(),
         }));
-        setScheduledMeetings((prev) => {
-          const merged = mapped.map((bm) => {
-            const existing = prev.find((p) => p.id === bm.id);
-            return {
-              ...existing,
-              ...bm,
-              rescheduleReason: bm.rescheduleReason || existing?.rescheduleReason,
-              rescheduleHistory: bm.rescheduleHistory || existing?.rescheduleHistory,
-            };
-          });
-          try {
-            localStorage.setItem(`crm_meetings_${activeLead.id}`, JSON.stringify(merged));
-          } catch (_) {}
-          return merged;
-        });
+        setScheduledMeetings(mapped);
+        try {
+          localStorage.setItem(`crm_meetings_${activeLead.id}`, JSON.stringify(mapped));
+        } catch (_) {}
       }
     } catch (_) {}
-  }, [activeLead?.id, activeLead?.stage]);
+  }, [activeLead?.id, activeLead?.stage, currentUser?.name]);
 
   useEffect(() => {
     fetchLeadBackendMeetings();
@@ -698,16 +730,25 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           ? { ...prev, stage: resolvedStage, status: 'In Progress' }
           : prev
       );
-      await updateLead(targetLead.id, {
-        stage: resolvedStage,
-        status: 'In Progress',
-      });
+      await updateLead(
+        targetLead.id,
+        {
+          stage: resolvedStage,
+          status: 'In Progress',
+        },
+        { silent: true }
+      );
 
       notifications.show({
         title: 'Meeting Scheduled Successfully!',
         message: `Meeting with ${targetLead.name} on ${meetingDate} at ${finalTime} has been saved.`,
         color: 'teal',
       });
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crm_meetings_updated'));
+        window.dispatchEvent(new CustomEvent('crm_leads_updated'));
+      }
 
       setScheduleModalOpened(false);
     } catch (err: any) {
@@ -726,6 +767,9 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
         leadId: activeLead.id,
       });
       await fetchLeadBackendCalls();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crm_call_logs_updated'));
+      }
       setCallModalOpened(false);
       notifications.show({ title: 'Call Logged', message: 'Call record saved to activity timeline.', color: 'teal' });
     } catch (err: any) {
@@ -776,12 +820,18 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
   };
 
   // Delete Meeting
-  const handleDeleteMeeting = (meetingId: string) => {
+  const handleDeleteMeeting = async (meetingId: string) => {
     if (!activeLead) return;
+    try {
+      await deleteMeetingApi(meetingId);
+    } catch (_) {}
     const updated = scheduledMeetings.filter((m) => m.id !== meetingId);
     setScheduledMeetings(updated);
-    localStorage.setItem(`crm_meetings_${activeLead.id}`, JSON.stringify(updated));
-    notifications.show({ title: 'Meeting Cancelled', message: 'Meeting removed from timeline.', color: 'gray' });
+    try {
+      localStorage.setItem(`crm_meetings_${activeLead.id}`, JSON.stringify(updated));
+    } catch (_) {}
+    window.dispatchEvent(new CustomEvent('crm_meetings_updated'));
+    notifications.show({ title: 'Meeting Cancelled', message: 'Meeting removed.', color: 'gray' });
   };
 
   // Open Schedule Meeting Modal
@@ -847,10 +897,14 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
         try {
           localStorage.setItem(`crm_meetings_${activeLead.id}`, JSON.stringify(updated));
         } catch (_) {}
-        updateLead(activeLead.id, {
-          stage: 'Meetings',
-          status: 'In Progress',
-        }).catch(() => {});
+        updateLead(
+          activeLead.id,
+          {
+            stage: 'Meetings',
+            status: 'In Progress',
+          },
+          { silent: true }
+        ).catch(() => {});
         setActiveLead((prev) => (prev ? { ...prev, stage: 'Meetings', status: 'In Progress' } : prev));
       }
       return updated;
@@ -859,25 +913,24 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
 
   // Map scheduledMeetings to MeetingTypeScheduledMeeting for MeetingTableView
   const meetingTableData = useMemo<MeetingTypeScheduledMeeting[]>(() => {
-    const lName = activeLead?.name || 'athi';
-    const cName = activeLead?.companyName || activeLead?.profession || 'Athi tech';
-    return scheduledMeetings.map((m, idx) => {
-      const chosenDate = m.meetingDate || m.date || '2026-10-13';
-      const chosenTime = m.startTime || m.meetingTime || m.time || '01:00 AM';
+    const lName = activeLead?.name || '';
+    const cName = activeLead?.companyName || activeLead?.profession || '';
+    return scheduledMeetings.map((m) => {
+      const chosenDate = m.meetingDate || m.date || '';
+      const chosenTime = m.startTime || m.meetingTime || m.time || '';
       const calcEnd = calculateEndTime(chosenTime, m.duration || '30 Minutes');
       const isCompleted = m.status?.toLowerCase() === 'completed';
-      const mLink = m.meetingLink || (idx === 1 ? 'https://meet.google.com/ifg-xzt-abc' : 'coimbatore');
-      const isKavin = (m.hostName?.toLowerCase() === 'kavin' || (!m.hostName && !m.employeeName));
+      const mLink = m.meetingLink || (m as any).meetingLocation || (m as any).location || '';
       return {
         id: m.id,
         leadId: activeLead?.id,
         lead_id: activeLead?.id,
         leadName: lName,
         companyName: cName,
-        clientName: `${lName} (${cName})`,
-        title: m.title || m.purpose || 'demo meeting',
-        purpose: m.title || m.purpose || 'demo meeting',
-        meetingTitle: m.title || m.purpose || 'demo meeting',
+        clientName: lName && cName ? `${lName} (${cName})` : lName || cName || '',
+        title: m.title || m.purpose || 'Meeting',
+        purpose: m.purpose || m.title || 'Meeting',
+        meetingTitle: m.title || m.purpose || 'Meeting',
         meetingDate: chosenDate,
         date: chosenDate,
         startTime: chosenTime,
@@ -889,24 +942,24 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
         meetingLocation: mLink,
         location: mLink,
         meetingLink: mLink,
-        hostName: m.hostName || m.employeeName || 'Kavin',
-        employeeName: m.hostName || m.employeeName || 'Kavin',
-        employeeDesignation: isKavin ? 'Software developer' : undefined,
-        assignedTo: m.hostName || m.employeeName || 'Kavin',
-        stageAfterMeeting: m.stageAfterMeeting || 'Discovery',
+        hostName: m.hostName || m.employeeName || currentUser?.name || '',
+        employeeName: m.hostName || m.employeeName || currentUser?.name || '',
+        employeeDesignation: undefined,
+        assignedTo: m.hostName || m.employeeName || currentUser?.name || '',
+        stageAfterMeeting: m.stageAfterMeeting || activeLead?.stage || 'Discovery',
         status: m.status || (isCompleted ? 'Completed' : 'Scheduled'),
         meetingStatus: m.status || (isCompleted ? 'Completed' : 'Scheduled'),
         rescheduleReason: m.rescheduleReason,
         rescheduleHistory: m.rescheduleHistory,
         requirements: m.requirements || '',
-        requirementFileUrl: (idx === 1 || isCompleted || (m.requirements && m.requirements.length > 0)) ? 'https://example.com/requirements.pdf' : undefined,
-        requirementFileName: 'requirements.pdf',
-        createdAt: m.createdAt || '2026-10-13T01:00:00Z',
+        requirementFileUrl: m.requirementFileUrl,
+        requirementFileName: m.requirementFileName,
+        createdAt: m.createdAt || new Date().toISOString(),
       };
     });
-  }, [scheduledMeetings, activeLead]);
+  }, [scheduledMeetings, activeLead, currentUser?.name]);
 
-  // Built Unified Timeline Activities matching Screenshot
+  // Built Unified Timeline Activities matching real meetings, calls, and proposals
   const unifiedTimelineItems = useMemo(() => {
     type TimelineItem = {
       id: string;
@@ -934,8 +987,8 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     const items: TimelineItem[] = [];
 
     // 1. Add Scheduled Meetings
-    scheduledMeetings.forEach((m, idx) => {
-      const isCompleted = m.status ? (m.status.toLowerCase() === 'completed') : idx > 0;
+    scheduledMeetings.forEach((m) => {
+      const isCompleted = m.status ? m.status.toLowerCase() === 'completed' : false;
       const isRescheduled = m.status?.toLowerCase() === 'rescheduled';
       const isCancelled = m.status?.toLowerCase() === 'cancelled';
       const statusLabel = m.status || (isCompleted ? 'Completed' : 'Scheduled');
@@ -943,97 +996,42 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
       items.push({
         id: `meet-${m.id}`,
         category: 'meeting',
-        date: m.date || 'Oct 14, 2026',
-        time: m.time || '12:15 PM',
+        date: m.meetingDate || m.date || 'Today',
+        time: m.startTime || m.time || '12:00 PM',
         title: `Meeting with ${leadName}`,
         status: statusLabel,
         statusColor: statusColor,
         iconType: 'meeting',
         badges: [
-          { label: m.title || 'Demo call', icon: 'pin' },
+          { label: m.title || 'Meeting', icon: 'pin' },
           { label: m.duration || '30 Minutes', icon: 'clock' },
           { label: m.meetingType?.includes('In-Person') ? 'In-Person' : 'Virtual', icon: 'mode' },
-          { label: `Status: ${m.status || 'Scheduled'}` },
-          { label: `Host: ${m.hostName || 'Kavin'}` },
+          { label: `Status: ${statusLabel}` },
+          { label: `Host: ${m.hostName || currentUser?.name || ''}` },
         ],
         venue: {
           type: m.meetingType?.includes('In-Person') ? 'IN-PERSON VENUE' : 'VIRTUAL VENUE',
-          address: m.meetingLink || 'coimbatore',
+          address: m.meetingLink || '',
           note: m.meetingType?.includes('In-Person')
-            ? 'In-person meeting venue address for client and team.'
-            : 'Google Meet link and conference dial-in details shared.',
+            ? 'In-person meeting venue address.'
+            : 'Virtual meeting link and dial-in details shared.',
         },
         agenda: {
           leadInterest: offerings,
           organization: `${companyName} (${contactType})`,
-          representative: m.hostName || 'Kavin',
+          representative: m.hostName || currentUser?.name || '',
         },
       });
     });
 
-    // 2. Add Historical Fallback items if meetings list is empty, matching screenshot exactly
-    if (items.length === 0) {
-      items.push({
-        id: 'hist-1',
-        category: 'meeting',
-        date: 'Oct 14, 2026',
-        time: '12:15 PM',
-        title: `Meeting with ${leadName}`,
-        status: 'Completed',
-        statusColor: 'green',
-        iconType: 'meeting',
-        badges: [
-          { label: 'Demo call', icon: 'pin' },
-          { label: '30 Minutes', icon: 'clock' },
-          { label: 'Virtual', icon: 'mode' },
-          { label: 'Status: Scheduled' },
-          { label: 'Host: Kavin' },
-        ],
-        venue: {
-          type: 'IN-PERSON VENUE',
-          address: 'coimbatore',
-          note: 'In-person meeting venue address for client and team.',
-        },
-        agenda: {
-          leadInterest: offerings,
-          organization: `${companyName} (${contactType})`,
-          representative: 'Kavin',
-        },
-      });
-    }
-
-    // Historical secondary meeting
-    items.push({
-      id: 'hist-2',
-      category: 'meeting',
-      date: 'Oct 13, 2026',
-      time: '10:00 AM',
-      title: `Meeting with ${leadName}`,
-      status: 'Completed',
-      statusColor: 'green',
-      iconType: 'call',
-      badges: [
-        { label: 'Office Visit', icon: 'pin' },
-        { label: '45 Minutes', icon: 'clock' },
-        { label: 'In-Person', icon: 'mode' },
-        { label: 'Status: Completed' },
-        { label: 'Host: Kavin' },
-      ],
-      venue: {
-        type: 'IN-PERSON VENUE',
-        address: 'Coimbatore Branch Office, Crosscut Road',
-        note: 'Executive presentation and requirement sign-off.',
-      },
-    });
-
-    // Calls from custom activities or historical fallback
+    // Calls from custom activities
     customActivities
       .filter((a) => a.type === 'call')
       .forEach((c) => {
         items.push({
           id: `call-${c.id}`,
           category: 'call',
-          date: c.date || 'Oct 10, 2026',
+          date: c.date || 'Today',
           time: c.timeAgo || '04:20 PM',
           title: `Call with ${leadName}`,
           status: c.status || 'Completed',
@@ -1044,56 +1042,11 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
             { label: c.duration || '15 Minutes', icon: 'clock' },
             { label: 'Call Type: Follow-up' },
             { label: `Status: ${c.status || 'Completed'}` },
-            { label: `Host: ${c.author || 'Kavin'}` },
+            { label: `Host: ${c.author || currentUser?.name || ''}` },
           ],
           notesText: c.text,
         });
       });
-
-    if (!items.some((i) => i.id.startsWith('call-'))) {
-      items.push({
-        id: 'hist-3',
-        category: 'call',
-        date: 'Oct 10, 2026',
-        time: '04:20 PM',
-        title: `Call with ${leadName}`,
-        status: 'Completed',
-        statusColor: 'green',
-        iconType: 'meeting',
-        badges: [
-          { label: 'Outgoing Call', icon: 'phone' },
-          { label: '15 Minutes', icon: 'clock' },
-          { label: 'Call Type: Follow-up' },
-          { label: 'Status: Completed' },
-          { label: 'Host: Kavin' },
-        ],
-        notesText: 'Follow-up discussion on custom CRM workflow and pricing options.',
-      });
-    }
-
-    // Earlier scheduled meeting
-    items.push({
-      id: 'hist-4',
-      category: 'meeting',
-      date: 'Oct 08, 2026',
-      time: '11:00 AM',
-      title: `Meeting with ${leadName}`,
-      status: 'Scheduled',
-      statusColor: 'orange',
-      iconType: 'meeting',
-      badges: [
-        { label: 'Online Meeting', icon: 'pin' },
-        { label: '60 Minutes', icon: 'clock' },
-        { label: 'Virtual', icon: 'mode' },
-        { label: 'Status: Scheduled' },
-        { label: 'Host: Kavin' },
-      ],
-      venue: {
-        type: 'VIRTUAL VENUE',
-        address: 'https://meet.google.com/xyz-demo-crm',
-        note: 'Google Meet virtual room for software presentation.',
-      },
-    });
 
     // Proposals
     if (dealData?.proposals && dealData.proposals.length > 0) {
@@ -1101,36 +1054,19 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
         items.push({
           id: `prop-${p.id}`,
           category: 'proposal',
-          date: p.issueDate || 'Oct 05, 2026',
+          date: p.issueDate || 'Today',
           time: '03:30 PM',
           title: 'Proposal Sent',
           status: p.status || 'Sent',
           statusColor: p.status === 'Accepted' ? 'green' : 'blue',
           iconType: 'meeting',
           badges: [
-            { label: p.title || 'IT CRM Solution Proposal' },
-            { label: `Valid Till: ${p.validUntil}` },
-            { label: `Prepared by: ${currentUser?.name || 'Kavin'}` },
+            { label: p.title || 'Solution Proposal' },
+            { label: `Valid Till: ${p.validUntil || 'N/A'}` },
+            { label: `Prepared by: ${currentUser?.name || 'Staff'}` },
           ],
-          notesText: `Proposed Value: ₹${p.totalAmount.toLocaleString('en-IN')}. ${p.notes || ''}`,
+          notesText: `Proposed Value: ₹${(Number(p.totalAmount) || 0).toLocaleString('en-IN')}. ${p.notes || ''}`,
         });
-      });
-    } else {
-      items.push({
-        id: 'hist-5',
-        category: 'proposal',
-        date: 'Oct 05, 2026',
-        time: '03:30 PM',
-        title: 'Proposal Sent',
-        status: 'Sent',
-        statusColor: 'blue',
-        iconType: 'meeting',
-        badges: [
-          { label: 'IT CRM Solution Proposal' },
-          { label: 'Valid Till: Oct 20, 2026' },
-          { label: 'Prepared by: Kavin' },
-        ],
-        notesText: 'Initial commercial proposal sent to client CEO for evaluation.',
       });
     }
 

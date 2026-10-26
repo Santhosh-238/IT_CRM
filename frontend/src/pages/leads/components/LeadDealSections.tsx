@@ -386,17 +386,18 @@ export const loadLeadDealData = (lead: Lead): LeadDealData => {
     const saved = localStorage.getItem(`crm_lead_deal_${lead.id}`);
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Clean up legacy mock invoices and payments
+      // Clean up legacy mock invoices, payments, proposals, and quotations
       if (Array.isArray(parsed.invoices)) {
         parsed.invoices = parsed.invoices.filter((inv: any) => !inv.id?.startsWith('inv-'));
       }
       if (Array.isArray(parsed.payments)) {
         parsed.payments = parsed.payments.filter((pay: any) => !pay.id?.startsWith('pay-'));
       }
-      if (!parsed.quotations || !Array.isArray(parsed.quotations) || parsed.quotations.length === 0) {
-        const defaultData = getInitialLeadDealData(lead);
-        parsed.quotations = defaultData.quotations;
-        saveLeadDealData(lead.id, parsed);
+      if (Array.isArray(parsed.proposals)) {
+        parsed.proposals = parsed.proposals.filter((p: any) => !p.id?.startsWith('prop-'));
+      }
+      if (Array.isArray(parsed.quotations)) {
+        parsed.quotations = parsed.quotations.filter((q: any) => !q.id?.startsWith('quo-'));
       }
       // Clean up legacy mockup demo items from previous prototypes
       if (parsed.proposals && parsed.proposals.some((p: any) => p.id === `prop-${lead.id}-1`)) {

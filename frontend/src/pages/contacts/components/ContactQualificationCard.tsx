@@ -68,12 +68,13 @@ export const ContactQualificationCard: React.FC<ContactQualificationCardProps> =
     ? `Result: Unqualified → ${contact.unqualifiedReason || contact.disqualificationReason || 'Budget issue / Not immediate need'}`
     : 'Result: Pending → Needs Assessment / Follow-up Required';
 
-  const companyTitle = contact.companyName || contact.name || 'ABC Technologies';
-  const serviceSubtitle = `Lead: ${contact.interestedService || contact.customProduct || (contact.productList && contact.productList[0]) || 'Website Development'}`;
-  const businessNeed = contact.businessNeed || contact.description || contact.notes || 'Company website';
-  const budget = contact.budgetRange || (contact.estimatedValue ? `₹ ${contact.estimatedValue}` : '₹2–5 Lakhs');
-  const decisionMaker = contact.decisionMaker || (contact.contactPerson ? `${contact.contactPerson} (Director)` : 'Company Director');
-  const timeline = contact.purchaseTimeline || (contact.nextFollowDate ? `Within 2 months (${contact.nextFollowDate})` : 'Within 2 months');
+  const companyTitle = contact.companyName || contact.name || '—';
+  const serviceVal = contact.interestedService || contact.customProduct || (contact.productList && contact.productList[0]) || (contact.serviceList && contact.serviceList[0]) || '';
+  const serviceSubtitle = serviceVal ? `Lead: ${serviceVal}` : 'Lead: General Inquiry';
+  const businessNeed = contact.businessNeed || contact.description || contact.notes || '—';
+  const budget = contact.budgetRange || (contact.estimatedValue ? `₹ ${contact.estimatedValue}` : '—');
+  const decisionMaker = contact.decisionMaker || (contact.contactPerson ? `${contact.contactPerson}` : (contact.name || '—'));
+  const timeline = contact.purchaseTimeline || (contact.nextFollowDate ? `Follow-up: ${contact.nextFollowDate}` : '—');
 
   return (
     <Box
