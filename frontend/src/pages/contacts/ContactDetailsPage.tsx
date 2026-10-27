@@ -643,6 +643,39 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
                     {contact.qualificationDate || '—'}
                   </Text>
                 </div>
+
+                {contact.address && (
+                  <div>
+                    <Text size="12px" fw={600} style={{ color: labelColor }}>
+                      9. Address
+                    </Text>
+                    <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                      {contact.address}
+                    </Text>
+                  </div>
+                )}
+
+                {contact.gstNumber && (
+                  <div>
+                    <Text size="12px" fw={600} style={{ color: labelColor }}>
+                      10. GST Number
+                    </Text>
+                    <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                      {contact.gstNumber}
+                    </Text>
+                  </div>
+                )}
+
+                {contact.companyPan && (
+                  <div>
+                    <Text size="12px" fw={600} style={{ color: labelColor }}>
+                      11. PAN Number
+                    </Text>
+                    <Text size="sm" fw={600} style={{ color: valueColor }} mt={3}>
+                      {contact.companyPan}
+                    </Text>
+                  </div>
+                )}
               </SimpleGrid>
 
               {contact.unqualifiedReason && (

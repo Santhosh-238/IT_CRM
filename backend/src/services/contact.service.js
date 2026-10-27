@@ -5,6 +5,7 @@ import { io } from '../utils/socket.js';
 import { logAuditEvent } from './auditService.js';
 import { ContactModel, CONTACT_MODULE } from '../models/contact.model.js';
 import { generateContactId, buildContactFilterQuery, formatContactResponse } from '../utils/contact.util.js';
+import { recordActivity } from './activity.service.js';
 
 /**
  * Helper: check if a user has full enterprise admin privileges or is an employee
@@ -518,6 +519,27 @@ export async function syncContactToLead(contact) {
       if (io) {
         io.emit('lead_updated', updatedLead);
       }
+
+      // Record qualification activity for timeline
+      recordActivity({
+        type: 'qualification',
+        title: 'Lead Qualified from Contact',
+        description: `Contact #${contact.contactId || contact.id} (${contact.name}) was successfully qualified and converted to Lead pipeline. Deal pipeline initialized.`,
+        leadId: updatedLead.id,
+        leadCode: updatedLead.leadId,
+        leadName: updatedLead.name,
+        customerName: updatedLead.companyName || updatedLead.name,
+        contactId: contact.contactId || contact.id,
+        contactName: contact.name,
+        entityId: updatedLead.id,
+        entityType: 'LeadQualification',
+        entityNumber: updatedLead.leadId,
+        status: 'Qualified',
+        performedBy: contact.qualifiedBy || 'System',
+        activityDate: contact.qualificationDate || new Date().toISOString().slice(0, 10),
+        activityTime: '09:00 AM',
+      }).catch(() => {});
+
       return updatedLead;
     } else {
       const leadId = await getNextLeadId();
@@ -550,6 +572,27 @@ export async function syncContactToLead(contact) {
       if (io) {
         io.emit('lead_created', newLead);
       }
+
+      // Record qualification activity for timeline
+      recordActivity({
+        type: 'qualification',
+        title: 'Lead Qualified from Contact',
+        description: `Contact #${contact.contactId || contact.id} (${contact.name}) was successfully qualified and converted to Lead pipeline. Deal pipeline initialized.`,
+        leadId: newLead.id,
+        leadCode: newLead.leadId,
+        leadName: newLead.name,
+        customerName: newLead.companyName || newLead.name,
+        contactId: contact.contactId || contact.id,
+        contactName: contact.name,
+        entityId: newLead.id,
+        entityType: 'LeadQualification',
+        entityNumber: newLead.leadId,
+        status: 'Qualified',
+        performedBy: contact.qualifiedBy || 'System',
+        activityDate: contact.qualificationDate || new Date().toISOString().slice(0, 10),
+        activityTime: '09:00 AM',
+      }).catch(() => {});
+
       return newLead;
     }
   } catch (err) {
@@ -598,6 +641,7 @@ export async function updateContactService(id, body, user) {
       ...(body.gstNumber !== undefined && { gstNumber: body.gstNumber ? body.gstNumber.trim().toUpperCase() : null }),
       ...(body.employeeCount !== undefined && { employeeCount: body.employeeCount }),
       ...(body.companyPan !== undefined && { companyPan: body.companyPan ? body.companyPan.trim().toUpperCase() : null }),
+      ...(body.panNumber !== undefined && { companyPan: body.panNumber ? body.panNumber.trim().toUpperCase() : null }),
       ...(body.cinNumber !== undefined && { cinNumber: body.cinNumber ? body.cinNumber.trim().toUpperCase() : null }),
       ...(body.companyWebsite !== undefined && { companyWebsite: body.companyWebsite ? body.companyWebsite.trim() : null }),
       ...(body.linkedinUrl !== undefined && { linkedinUrl: body.linkedinUrl ? body.linkedinUrl.trim() : null }),

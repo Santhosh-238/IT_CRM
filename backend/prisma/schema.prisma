@@ -822,3 +822,40 @@ model Contract {
   @@map("contracts")
 }
 
+// =============================================================================
+// ACTIVITY TIMELINE ENTITY
+// =============================================================================
+
+model Activity {
+  id             String   @id @default(uuid())
+  activityNumber String?  @unique // e.g. "ACT-2026-1001"
+  type           String   // "meeting" | "proposal" | "quotation" | "contract" | "invoice" | "payment" | "progress" | "closure" | "negotiation"
+  title          String   // e.g. "Meeting Scheduled", "Quotation Sent", "Contract Signed"
+  description    String?  // Summary details of activity
+  leadId         String?  // Linked Lead ID
+  leadName       String?  // Linked Lead Name
+  leadCode       String?  // Linked Lead Code e.g. "LDN-2026-041"
+  customerId     String?  // Linked Customer ID
+  customerName   String?  // Linked Customer or Client Company Name
+  contactId      String?  // Linked Contact ID
+  contactName    String?  // Linked Contact Name
+  entityId       String?  // Source entity ID (meetingId, quotationId, etc.)
+  entityType     String?  // "Meeting" | "Quotation" | "Proposal" | "Contract" | "Invoice" | "Payment" | "Project" | "Lead" | "Negotiation"
+  entityNumber   String?  // Reference code e.g. "QTN-2026-015", "CNT-2026-008"
+  status         String?  // Status e.g. "Scheduled", "Sent", "Signed", "Created", "Received", "Handover", "Won", "Lost"
+  amount         Float?   @default(0)
+  performedBy    String?  // Performed by employee name e.g. "Priya M"
+  performedById  String?  // Performed by employee/user ID
+  activityDate   String   // YYYY-MM-DD
+  activityTime   String?  // e.g. "10:30 AM"
+  metadata       Json?    @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([type])
+  @@index([leadId])
+  @@index([customerId])
+  @@index([activityDate])
+  @@map("activities")
+}
+

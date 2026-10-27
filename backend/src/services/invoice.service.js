@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { io } from '../utils/socket.js';
+import { recordActivity } from './activity.service.js';
 
 /**
  * -----------------------------------------------------------------------------
@@ -384,6 +385,25 @@ export async function createQuotationService(data, user) {
   });
 
   await logBillingAudit('Quotation', quote.id, quote.quotationNumber, 'CREATED', user?.name || user?.email || 'User', `Created quote for ₹${quote.grandTotal}`);
+
+  // Automatically record activity in timeline
+  try {
+    const amountStr = quote.grandTotal ? ` · ₹ ${Math.round(quote.grandTotal).toLocaleString('en-IN')}` : '';
+    await recordActivity({
+      type: 'proposal',
+      title: quote.status === 'Accepted' ? 'Quotation Accepted' : 'Quotation Sent',
+      description: `Quotation #${quote.quotationNumber}${amountStr} · ${quote.status || 'Awaiting Client'}`,
+      leadId: quote.leadId,
+      customerName: quote.companyName || quote.contactName,
+      entityId: quote.id,
+      entityType: 'Quotation',
+      entityNumber: quote.quotationNumber,
+      amount: quote.grandTotal || 0,
+      status: quote.status || 'Sent',
+      performedBy: user?.name || quote.salesOwnerName || 'Staff',
+      activityDate: quote.quotationDate,
+    });
+  } catch (_) {}
 
   return quote;
 }
@@ -1410,6 +1430,25 @@ export async function createInvoiceService(data, user) {
     `Created ${status} invoice for ${invoice.companyName || invoice.contactName} - Grand Total: ₹${invoice.grandTotal}`
   );
 
+  // Automatically record activity in timeline
+  try {
+    const amountStr = invoice.grandTotal ? ` · ₹ ${Math.round(invoice.grandTotal).toLocaleString('en-IN')}` : '';
+    await recordActivity({
+      type: 'invoice',
+      title: invoice.status === 'Paid' ? 'Invoice Paid' : 'Invoice Created',
+      description: `Invoice #${invoice.invoiceNumber}${amountStr} · ${invoice.status || 'Issued'}`,
+      leadId: invoice.leadId,
+      customerName: invoice.companyName || invoice.contactName,
+      entityId: invoice.id,
+      entityType: 'Invoice',
+      entityNumber: invoice.invoiceNumber,
+      amount: invoice.grandTotal || 0,
+      status: invoice.status || 'Created',
+      performedBy: user?.name || invoice.createdBy || 'Staff',
+      activityDate: invoice.invoiceDate,
+    });
+  } catch (_) {}
+
   return invoice;
 }
 
@@ -1945,6 +1984,24 @@ export async function recordPaymentService(data, user) {
   }
 
   await logBillingAudit('Payment', payment.id, payment.paymentNumber, 'PAYMENT_RECORDED', user?.name || user?.email || 'User', `Recorded payment ₹${payment.amountReceived} via ${payment.paymentMethod}`);
+
+  // Automatically record activity in timeline
+  try {
+    const amountStr = payment.amountReceived ? ` · ₹ ${Math.round(payment.amountReceived).toLocaleString('en-IN')}` : '';
+    await recordActivity({
+      type: 'payment',
+      title: 'Payment Received',
+      description: `Payment #${payment.paymentNumber}${amountStr} · ${payment.paymentMethod || 'UPI'}`,
+      customerName: payment.clientName,
+      entityId: payment.id,
+      entityType: 'Payment',
+      entityNumber: payment.paymentNumber,
+      amount: payment.amountReceived || 0,
+      status: payment.status || 'Completed',
+      performedBy: user?.name || payment.recordedBy || 'Staff',
+      activityDate: payment.paymentDate,
+    });
+  } catch (_) {}
 
   return payment;
 }

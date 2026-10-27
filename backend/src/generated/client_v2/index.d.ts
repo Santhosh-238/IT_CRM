@@ -163,6 +163,11 @@ export type Negotiation = $Result.DefaultSelection<Prisma.$NegotiationPayload>
  * 
  */
 export type Contract = $Result.DefaultSelection<Prisma.$ContractPayload>
+/**
+ * Model Activity
+ * 
+ */
+export type Activity = $Result.DefaultSelection<Prisma.$ActivityPayload>
 
 /**
  * ##  Prisma Client ʲˢ
@@ -581,6 +586,16 @@ export class PrismaClient<
     * ```
     */
   get contract(): Prisma.ContractDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.activity`: Exposes CRUD operations for the **Activity** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Activities
+    * const activities = await prisma.activity.findMany()
+    * ```
+    */
+  get activity(): Prisma.ActivityDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -1051,7 +1066,8 @@ export namespace Prisma {
     BillingAuditLog: 'BillingAuditLog',
     BillingSettings: 'BillingSettings',
     Negotiation: 'Negotiation',
-    Contract: 'Contract'
+    Contract: 'Contract',
+    Activity: 'Activity'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1070,7 +1086,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "role" | "rolePermission" | "accessAuditLog" | "employee" | "contact" | "company" | "lead" | "scheduledMeeting" | "project" | "callLog" | "customer" | "masterProject" | "systemSetting" | "billingProduct" | "quotation" | "quotationItem" | "proposal" | "proposalItem" | "salesOrder" | "salesOrderItem" | "billingMilestone" | "invoice" | "invoiceItem" | "payment" | "paymentAllocation" | "billingAuditLog" | "billingSettings" | "negotiation" | "contract"
+      modelProps: "user" | "role" | "rolePermission" | "accessAuditLog" | "employee" | "contact" | "company" | "lead" | "scheduledMeeting" | "project" | "callLog" | "customer" | "masterProject" | "systemSetting" | "billingProduct" | "quotation" | "quotationItem" | "proposal" | "proposalItem" | "salesOrder" | "salesOrderItem" | "billingMilestone" | "invoice" | "invoiceItem" | "payment" | "paymentAllocation" | "billingAuditLog" | "billingSettings" | "negotiation" | "contract" | "activity"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -3294,6 +3310,80 @@ export namespace Prisma {
           }
         }
       }
+      Activity: {
+        payload: Prisma.$ActivityPayload<ExtArgs>
+        fields: Prisma.ActivityFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.ActivityFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.ActivityFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload>
+          }
+          findFirst: {
+            args: Prisma.ActivityFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.ActivityFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload>
+          }
+          findMany: {
+            args: Prisma.ActivityFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload>[]
+          }
+          create: {
+            args: Prisma.ActivityCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload>
+          }
+          createMany: {
+            args: Prisma.ActivityCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.ActivityCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload>[]
+          }
+          delete: {
+            args: Prisma.ActivityDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload>
+          }
+          update: {
+            args: Prisma.ActivityUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload>
+          }
+          deleteMany: {
+            args: Prisma.ActivityDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.ActivityUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.ActivityUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload>[]
+          }
+          upsert: {
+            args: Prisma.ActivityUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$ActivityPayload>
+          }
+          aggregate: {
+            args: Prisma.ActivityAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateActivity>
+          }
+          groupBy: {
+            args: Prisma.ActivityGroupByArgs<ExtArgs>
+            result: $Utils.Optional<ActivityGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.ActivityCountArgs<ExtArgs>
+            result: $Utils.Optional<ActivityCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -3420,6 +3510,7 @@ export namespace Prisma {
     billingSettings?: BillingSettingsOmit
     negotiation?: NegotiationOmit
     contract?: ContractOmit
+    activity?: ActivityOmit
   }
 
   /* Types for Logging */
@@ -41697,6 +41788,1278 @@ export namespace Prisma {
 
 
   /**
+   * Model Activity
+   */
+
+  export type AggregateActivity = {
+    _count: ActivityCountAggregateOutputType | null
+    _avg: ActivityAvgAggregateOutputType | null
+    _sum: ActivitySumAggregateOutputType | null
+    _min: ActivityMinAggregateOutputType | null
+    _max: ActivityMaxAggregateOutputType | null
+  }
+
+  export type ActivityAvgAggregateOutputType = {
+    amount: number | null
+  }
+
+  export type ActivitySumAggregateOutputType = {
+    amount: number | null
+  }
+
+  export type ActivityMinAggregateOutputType = {
+    id: string | null
+    activityNumber: string | null
+    type: string | null
+    title: string | null
+    description: string | null
+    leadId: string | null
+    leadName: string | null
+    leadCode: string | null
+    customerId: string | null
+    customerName: string | null
+    contactId: string | null
+    contactName: string | null
+    entityId: string | null
+    entityType: string | null
+    entityNumber: string | null
+    status: string | null
+    amount: number | null
+    performedBy: string | null
+    performedById: string | null
+    activityDate: string | null
+    activityTime: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ActivityMaxAggregateOutputType = {
+    id: string | null
+    activityNumber: string | null
+    type: string | null
+    title: string | null
+    description: string | null
+    leadId: string | null
+    leadName: string | null
+    leadCode: string | null
+    customerId: string | null
+    customerName: string | null
+    contactId: string | null
+    contactName: string | null
+    entityId: string | null
+    entityType: string | null
+    entityNumber: string | null
+    status: string | null
+    amount: number | null
+    performedBy: string | null
+    performedById: string | null
+    activityDate: string | null
+    activityTime: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type ActivityCountAggregateOutputType = {
+    id: number
+    activityNumber: number
+    type: number
+    title: number
+    description: number
+    leadId: number
+    leadName: number
+    leadCode: number
+    customerId: number
+    customerName: number
+    contactId: number
+    contactName: number
+    entityId: number
+    entityType: number
+    entityNumber: number
+    status: number
+    amount: number
+    performedBy: number
+    performedById: number
+    activityDate: number
+    activityTime: number
+    metadata: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type ActivityAvgAggregateInputType = {
+    amount?: true
+  }
+
+  export type ActivitySumAggregateInputType = {
+    amount?: true
+  }
+
+  export type ActivityMinAggregateInputType = {
+    id?: true
+    activityNumber?: true
+    type?: true
+    title?: true
+    description?: true
+    leadId?: true
+    leadName?: true
+    leadCode?: true
+    customerId?: true
+    customerName?: true
+    contactId?: true
+    contactName?: true
+    entityId?: true
+    entityType?: true
+    entityNumber?: true
+    status?: true
+    amount?: true
+    performedBy?: true
+    performedById?: true
+    activityDate?: true
+    activityTime?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ActivityMaxAggregateInputType = {
+    id?: true
+    activityNumber?: true
+    type?: true
+    title?: true
+    description?: true
+    leadId?: true
+    leadName?: true
+    leadCode?: true
+    customerId?: true
+    customerName?: true
+    contactId?: true
+    contactName?: true
+    entityId?: true
+    entityType?: true
+    entityNumber?: true
+    status?: true
+    amount?: true
+    performedBy?: true
+    performedById?: true
+    activityDate?: true
+    activityTime?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type ActivityCountAggregateInputType = {
+    id?: true
+    activityNumber?: true
+    type?: true
+    title?: true
+    description?: true
+    leadId?: true
+    leadName?: true
+    leadCode?: true
+    customerId?: true
+    customerName?: true
+    contactId?: true
+    contactName?: true
+    entityId?: true
+    entityType?: true
+    entityNumber?: true
+    status?: true
+    amount?: true
+    performedBy?: true
+    performedById?: true
+    activityDate?: true
+    activityTime?: true
+    metadata?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type ActivityAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Activity to aggregate.
+     */
+    where?: ActivityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Activities to fetch.
+     */
+    orderBy?: ActivityOrderByWithRelationInput | ActivityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: ActivityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Activities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Activities.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Activities
+    **/
+    _count?: true | ActivityCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: ActivityAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: ActivitySumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: ActivityMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: ActivityMaxAggregateInputType
+  }
+
+  export type GetActivityAggregateType<T extends ActivityAggregateArgs> = {
+        [P in keyof T & keyof AggregateActivity]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateActivity[P]>
+      : GetScalarType<T[P], AggregateActivity[P]>
+  }
+
+
+
+
+  export type ActivityGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: ActivityWhereInput
+    orderBy?: ActivityOrderByWithAggregationInput | ActivityOrderByWithAggregationInput[]
+    by: ActivityScalarFieldEnum[] | ActivityScalarFieldEnum
+    having?: ActivityScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: ActivityCountAggregateInputType | true
+    _avg?: ActivityAvgAggregateInputType
+    _sum?: ActivitySumAggregateInputType
+    _min?: ActivityMinAggregateInputType
+    _max?: ActivityMaxAggregateInputType
+  }
+
+  export type ActivityGroupByOutputType = {
+    id: string
+    activityNumber: string | null
+    type: string
+    title: string
+    description: string | null
+    leadId: string | null
+    leadName: string | null
+    leadCode: string | null
+    customerId: string | null
+    customerName: string | null
+    contactId: string | null
+    contactName: string | null
+    entityId: string | null
+    entityType: string | null
+    entityNumber: string | null
+    status: string | null
+    amount: number | null
+    performedBy: string | null
+    performedById: string | null
+    activityDate: string
+    activityTime: string | null
+    metadata: JsonValue | null
+    createdAt: Date
+    updatedAt: Date
+    _count: ActivityCountAggregateOutputType | null
+    _avg: ActivityAvgAggregateOutputType | null
+    _sum: ActivitySumAggregateOutputType | null
+    _min: ActivityMinAggregateOutputType | null
+    _max: ActivityMaxAggregateOutputType | null
+  }
+
+  type GetActivityGroupByPayload<T extends ActivityGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<ActivityGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof ActivityGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], ActivityGroupByOutputType[P]>
+            : GetScalarType<T[P], ActivityGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type ActivitySelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    activityNumber?: boolean
+    type?: boolean
+    title?: boolean
+    description?: boolean
+    leadId?: boolean
+    leadName?: boolean
+    leadCode?: boolean
+    customerId?: boolean
+    customerName?: boolean
+    contactId?: boolean
+    contactName?: boolean
+    entityId?: boolean
+    entityType?: boolean
+    entityNumber?: boolean
+    status?: boolean
+    amount?: boolean
+    performedBy?: boolean
+    performedById?: boolean
+    activityDate?: boolean
+    activityTime?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["activity"]>
+
+  export type ActivitySelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    activityNumber?: boolean
+    type?: boolean
+    title?: boolean
+    description?: boolean
+    leadId?: boolean
+    leadName?: boolean
+    leadCode?: boolean
+    customerId?: boolean
+    customerName?: boolean
+    contactId?: boolean
+    contactName?: boolean
+    entityId?: boolean
+    entityType?: boolean
+    entityNumber?: boolean
+    status?: boolean
+    amount?: boolean
+    performedBy?: boolean
+    performedById?: boolean
+    activityDate?: boolean
+    activityTime?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["activity"]>
+
+  export type ActivitySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    activityNumber?: boolean
+    type?: boolean
+    title?: boolean
+    description?: boolean
+    leadId?: boolean
+    leadName?: boolean
+    leadCode?: boolean
+    customerId?: boolean
+    customerName?: boolean
+    contactId?: boolean
+    contactName?: boolean
+    entityId?: boolean
+    entityType?: boolean
+    entityNumber?: boolean
+    status?: boolean
+    amount?: boolean
+    performedBy?: boolean
+    performedById?: boolean
+    activityDate?: boolean
+    activityTime?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["activity"]>
+
+  export type ActivitySelectScalar = {
+    id?: boolean
+    activityNumber?: boolean
+    type?: boolean
+    title?: boolean
+    description?: boolean
+    leadId?: boolean
+    leadName?: boolean
+    leadCode?: boolean
+    customerId?: boolean
+    customerName?: boolean
+    contactId?: boolean
+    contactName?: boolean
+    entityId?: boolean
+    entityType?: boolean
+    entityNumber?: boolean
+    status?: boolean
+    amount?: boolean
+    performedBy?: boolean
+    performedById?: boolean
+    activityDate?: boolean
+    activityTime?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type ActivityOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "activityNumber" | "type" | "title" | "description" | "leadId" | "leadName" | "leadCode" | "customerId" | "customerName" | "contactId" | "contactName" | "entityId" | "entityType" | "entityNumber" | "status" | "amount" | "performedBy" | "performedById" | "activityDate" | "activityTime" | "metadata" | "createdAt" | "updatedAt", ExtArgs["result"]["activity"]>
+
+  export type $ActivityPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Activity"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      activityNumber: string | null
+      type: string
+      title: string
+      description: string | null
+      leadId: string | null
+      leadName: string | null
+      leadCode: string | null
+      customerId: string | null
+      customerName: string | null
+      contactId: string | null
+      contactName: string | null
+      entityId: string | null
+      entityType: string | null
+      entityNumber: string | null
+      status: string | null
+      amount: number | null
+      performedBy: string | null
+      performedById: string | null
+      activityDate: string
+      activityTime: string | null
+      metadata: Prisma.JsonValue | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["activity"]>
+    composites: {}
+  }
+
+  type ActivityGetPayload<S extends boolean | null | undefined | ActivityDefaultArgs> = $Result.GetResult<Prisma.$ActivityPayload, S>
+
+  type ActivityCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<ActivityFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: ActivityCountAggregateInputType | true
+    }
+
+  export interface ActivityDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Activity'], meta: { name: 'Activity' } }
+    /**
+     * Find zero or one Activity that matches the filter.
+     * @param {ActivityFindUniqueArgs} args - Arguments to find a Activity
+     * @example
+     * // Get one Activity
+     * const activity = await prisma.activity.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends ActivityFindUniqueArgs>(args: SelectSubset<T, ActivityFindUniqueArgs<ExtArgs>>): Prisma__ActivityClient<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Activity that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {ActivityFindUniqueOrThrowArgs} args - Arguments to find a Activity
+     * @example
+     * // Get one Activity
+     * const activity = await prisma.activity.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends ActivityFindUniqueOrThrowArgs>(args: SelectSubset<T, ActivityFindUniqueOrThrowArgs<ExtArgs>>): Prisma__ActivityClient<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Activity that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityFindFirstArgs} args - Arguments to find a Activity
+     * @example
+     * // Get one Activity
+     * const activity = await prisma.activity.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends ActivityFindFirstArgs>(args?: SelectSubset<T, ActivityFindFirstArgs<ExtArgs>>): Prisma__ActivityClient<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Activity that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityFindFirstOrThrowArgs} args - Arguments to find a Activity
+     * @example
+     * // Get one Activity
+     * const activity = await prisma.activity.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends ActivityFindFirstOrThrowArgs>(args?: SelectSubset<T, ActivityFindFirstOrThrowArgs<ExtArgs>>): Prisma__ActivityClient<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Activities that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Activities
+     * const activities = await prisma.activity.findMany()
+     * 
+     * // Get first 10 Activities
+     * const activities = await prisma.activity.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const activityWithIdOnly = await prisma.activity.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends ActivityFindManyArgs>(args?: SelectSubset<T, ActivityFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Activity.
+     * @param {ActivityCreateArgs} args - Arguments to create a Activity.
+     * @example
+     * // Create one Activity
+     * const Activity = await prisma.activity.create({
+     *   data: {
+     *     // ... data to create a Activity
+     *   }
+     * })
+     * 
+     */
+    create<T extends ActivityCreateArgs>(args: SelectSubset<T, ActivityCreateArgs<ExtArgs>>): Prisma__ActivityClient<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Activities.
+     * @param {ActivityCreateManyArgs} args - Arguments to create many Activities.
+     * @example
+     * // Create many Activities
+     * const activity = await prisma.activity.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends ActivityCreateManyArgs>(args?: SelectSubset<T, ActivityCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Activities and returns the data saved in the database.
+     * @param {ActivityCreateManyAndReturnArgs} args - Arguments to create many Activities.
+     * @example
+     * // Create many Activities
+     * const activity = await prisma.activity.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Activities and only return the `id`
+     * const activityWithIdOnly = await prisma.activity.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends ActivityCreateManyAndReturnArgs>(args?: SelectSubset<T, ActivityCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a Activity.
+     * @param {ActivityDeleteArgs} args - Arguments to delete one Activity.
+     * @example
+     * // Delete one Activity
+     * const Activity = await prisma.activity.delete({
+     *   where: {
+     *     // ... filter to delete one Activity
+     *   }
+     * })
+     * 
+     */
+    delete<T extends ActivityDeleteArgs>(args: SelectSubset<T, ActivityDeleteArgs<ExtArgs>>): Prisma__ActivityClient<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Activity.
+     * @param {ActivityUpdateArgs} args - Arguments to update one Activity.
+     * @example
+     * // Update one Activity
+     * const activity = await prisma.activity.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends ActivityUpdateArgs>(args: SelectSubset<T, ActivityUpdateArgs<ExtArgs>>): Prisma__ActivityClient<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Activities.
+     * @param {ActivityDeleteManyArgs} args - Arguments to filter Activities to delete.
+     * @example
+     * // Delete a few Activities
+     * const { count } = await prisma.activity.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends ActivityDeleteManyArgs>(args?: SelectSubset<T, ActivityDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Activities.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Activities
+     * const activity = await prisma.activity.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends ActivityUpdateManyArgs>(args: SelectSubset<T, ActivityUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Activities and returns the data updated in the database.
+     * @param {ActivityUpdateManyAndReturnArgs} args - Arguments to update many Activities.
+     * @example
+     * // Update many Activities
+     * const activity = await prisma.activity.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more Activities and only return the `id`
+     * const activityWithIdOnly = await prisma.activity.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends ActivityUpdateManyAndReturnArgs>(args: SelectSubset<T, ActivityUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one Activity.
+     * @param {ActivityUpsertArgs} args - Arguments to update or create a Activity.
+     * @example
+     * // Update or create a Activity
+     * const activity = await prisma.activity.upsert({
+     *   create: {
+     *     // ... data to create a Activity
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Activity we want to update
+     *   }
+     * })
+     */
+    upsert<T extends ActivityUpsertArgs>(args: SelectSubset<T, ActivityUpsertArgs<ExtArgs>>): Prisma__ActivityClient<$Result.GetResult<Prisma.$ActivityPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Activities.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityCountArgs} args - Arguments to filter Activities to count.
+     * @example
+     * // Count the number of Activities
+     * const count = await prisma.activity.count({
+     *   where: {
+     *     // ... the filter for the Activities we want to count
+     *   }
+     * })
+    **/
+    count<T extends ActivityCountArgs>(
+      args?: Subset<T, ActivityCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], ActivityCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Activity.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends ActivityAggregateArgs>(args: Subset<T, ActivityAggregateArgs>): Prisma.PrismaPromise<GetActivityAggregateType<T>>
+
+    /**
+     * Group by Activity.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {ActivityGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends ActivityGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: ActivityGroupByArgs['orderBy'] }
+        : { orderBy?: ActivityGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, ActivityGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetActivityGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Activity model
+   */
+  readonly fields: ActivityFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Activity.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__ActivityClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Activity model
+   */
+  interface ActivityFieldRefs {
+    readonly id: FieldRef<"Activity", 'String'>
+    readonly activityNumber: FieldRef<"Activity", 'String'>
+    readonly type: FieldRef<"Activity", 'String'>
+    readonly title: FieldRef<"Activity", 'String'>
+    readonly description: FieldRef<"Activity", 'String'>
+    readonly leadId: FieldRef<"Activity", 'String'>
+    readonly leadName: FieldRef<"Activity", 'String'>
+    readonly leadCode: FieldRef<"Activity", 'String'>
+    readonly customerId: FieldRef<"Activity", 'String'>
+    readonly customerName: FieldRef<"Activity", 'String'>
+    readonly contactId: FieldRef<"Activity", 'String'>
+    readonly contactName: FieldRef<"Activity", 'String'>
+    readonly entityId: FieldRef<"Activity", 'String'>
+    readonly entityType: FieldRef<"Activity", 'String'>
+    readonly entityNumber: FieldRef<"Activity", 'String'>
+    readonly status: FieldRef<"Activity", 'String'>
+    readonly amount: FieldRef<"Activity", 'Float'>
+    readonly performedBy: FieldRef<"Activity", 'String'>
+    readonly performedById: FieldRef<"Activity", 'String'>
+    readonly activityDate: FieldRef<"Activity", 'String'>
+    readonly activityTime: FieldRef<"Activity", 'String'>
+    readonly metadata: FieldRef<"Activity", 'Json'>
+    readonly createdAt: FieldRef<"Activity", 'DateTime'>
+    readonly updatedAt: FieldRef<"Activity", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Activity findUnique
+   */
+  export type ActivityFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * Filter, which Activity to fetch.
+     */
+    where: ActivityWhereUniqueInput
+  }
+
+  /**
+   * Activity findUniqueOrThrow
+   */
+  export type ActivityFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * Filter, which Activity to fetch.
+     */
+    where: ActivityWhereUniqueInput
+  }
+
+  /**
+   * Activity findFirst
+   */
+  export type ActivityFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * Filter, which Activity to fetch.
+     */
+    where?: ActivityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Activities to fetch.
+     */
+    orderBy?: ActivityOrderByWithRelationInput | ActivityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Activities.
+     */
+    cursor?: ActivityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Activities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Activities.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Activities.
+     */
+    distinct?: ActivityScalarFieldEnum | ActivityScalarFieldEnum[]
+  }
+
+  /**
+   * Activity findFirstOrThrow
+   */
+  export type ActivityFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * Filter, which Activity to fetch.
+     */
+    where?: ActivityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Activities to fetch.
+     */
+    orderBy?: ActivityOrderByWithRelationInput | ActivityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Activities.
+     */
+    cursor?: ActivityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Activities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Activities.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Activities.
+     */
+    distinct?: ActivityScalarFieldEnum | ActivityScalarFieldEnum[]
+  }
+
+  /**
+   * Activity findMany
+   */
+  export type ActivityFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * Filter, which Activities to fetch.
+     */
+    where?: ActivityWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Activities to fetch.
+     */
+    orderBy?: ActivityOrderByWithRelationInput | ActivityOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Activities.
+     */
+    cursor?: ActivityWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Activities from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Activities.
+     */
+    skip?: number
+    distinct?: ActivityScalarFieldEnum | ActivityScalarFieldEnum[]
+  }
+
+  /**
+   * Activity create
+   */
+  export type ActivityCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * The data needed to create a Activity.
+     */
+    data: XOR<ActivityCreateInput, ActivityUncheckedCreateInput>
+  }
+
+  /**
+   * Activity createMany
+   */
+  export type ActivityCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Activities.
+     */
+    data: ActivityCreateManyInput | ActivityCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Activity createManyAndReturn
+   */
+  export type ActivityCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * The data used to create many Activities.
+     */
+    data: ActivityCreateManyInput | ActivityCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Activity update
+   */
+  export type ActivityUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * The data needed to update a Activity.
+     */
+    data: XOR<ActivityUpdateInput, ActivityUncheckedUpdateInput>
+    /**
+     * Choose, which Activity to update.
+     */
+    where: ActivityWhereUniqueInput
+  }
+
+  /**
+   * Activity updateMany
+   */
+  export type ActivityUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Activities.
+     */
+    data: XOR<ActivityUpdateManyMutationInput, ActivityUncheckedUpdateManyInput>
+    /**
+     * Filter which Activities to update
+     */
+    where?: ActivityWhereInput
+    /**
+     * Limit how many Activities to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Activity updateManyAndReturn
+   */
+  export type ActivityUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * The data used to update Activities.
+     */
+    data: XOR<ActivityUpdateManyMutationInput, ActivityUncheckedUpdateManyInput>
+    /**
+     * Filter which Activities to update
+     */
+    where?: ActivityWhereInput
+    /**
+     * Limit how many Activities to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Activity upsert
+   */
+  export type ActivityUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * The filter to search for the Activity to update in case it exists.
+     */
+    where: ActivityWhereUniqueInput
+    /**
+     * In case the Activity found by the `where` argument doesn't exist, create a new Activity with this data.
+     */
+    create: XOR<ActivityCreateInput, ActivityUncheckedCreateInput>
+    /**
+     * In case the Activity was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<ActivityUpdateInput, ActivityUncheckedUpdateInput>
+  }
+
+  /**
+   * Activity delete
+   */
+  export type ActivityDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+    /**
+     * Filter which Activity to delete.
+     */
+    where: ActivityWhereUniqueInput
+  }
+
+  /**
+   * Activity deleteMany
+   */
+  export type ActivityDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Activities to delete
+     */
+    where?: ActivityWhereInput
+    /**
+     * Limit how many Activities to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * Activity without action
+   */
+  export type ActivityDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Activity
+     */
+    select?: ActivitySelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Activity
+     */
+    omit?: ActivityOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -42512,6 +43875,36 @@ export namespace Prisma {
   };
 
   export type ContractScalarFieldEnum = (typeof ContractScalarFieldEnum)[keyof typeof ContractScalarFieldEnum]
+
+
+  export const ActivityScalarFieldEnum: {
+    id: 'id',
+    activityNumber: 'activityNumber',
+    type: 'type',
+    title: 'title',
+    description: 'description',
+    leadId: 'leadId',
+    leadName: 'leadName',
+    leadCode: 'leadCode',
+    customerId: 'customerId',
+    customerName: 'customerName',
+    contactId: 'contactId',
+    contactName: 'contactName',
+    entityId: 'entityId',
+    entityType: 'entityType',
+    entityNumber: 'entityNumber',
+    status: 'status',
+    amount: 'amount',
+    performedBy: 'performedBy',
+    performedById: 'performedById',
+    activityDate: 'activityDate',
+    activityTime: 'activityTime',
+    metadata: 'metadata',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type ActivityScalarFieldEnum = (typeof ActivityScalarFieldEnum)[keyof typeof ActivityScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -46678,6 +48071,155 @@ export namespace Prisma {
     status?: StringWithAggregatesFilter<"Contract"> | string
     createdAt?: DateTimeWithAggregatesFilter<"Contract"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Contract"> | Date | string
+  }
+
+  export type ActivityWhereInput = {
+    AND?: ActivityWhereInput | ActivityWhereInput[]
+    OR?: ActivityWhereInput[]
+    NOT?: ActivityWhereInput | ActivityWhereInput[]
+    id?: StringFilter<"Activity"> | string
+    activityNumber?: StringNullableFilter<"Activity"> | string | null
+    type?: StringFilter<"Activity"> | string
+    title?: StringFilter<"Activity"> | string
+    description?: StringNullableFilter<"Activity"> | string | null
+    leadId?: StringNullableFilter<"Activity"> | string | null
+    leadName?: StringNullableFilter<"Activity"> | string | null
+    leadCode?: StringNullableFilter<"Activity"> | string | null
+    customerId?: StringNullableFilter<"Activity"> | string | null
+    customerName?: StringNullableFilter<"Activity"> | string | null
+    contactId?: StringNullableFilter<"Activity"> | string | null
+    contactName?: StringNullableFilter<"Activity"> | string | null
+    entityId?: StringNullableFilter<"Activity"> | string | null
+    entityType?: StringNullableFilter<"Activity"> | string | null
+    entityNumber?: StringNullableFilter<"Activity"> | string | null
+    status?: StringNullableFilter<"Activity"> | string | null
+    amount?: FloatNullableFilter<"Activity"> | number | null
+    performedBy?: StringNullableFilter<"Activity"> | string | null
+    performedById?: StringNullableFilter<"Activity"> | string | null
+    activityDate?: StringFilter<"Activity"> | string
+    activityTime?: StringNullableFilter<"Activity"> | string | null
+    metadata?: JsonNullableFilter<"Activity">
+    createdAt?: DateTimeFilter<"Activity"> | Date | string
+    updatedAt?: DateTimeFilter<"Activity"> | Date | string
+  }
+
+  export type ActivityOrderByWithRelationInput = {
+    id?: SortOrder
+    activityNumber?: SortOrderInput | SortOrder
+    type?: SortOrder
+    title?: SortOrder
+    description?: SortOrderInput | SortOrder
+    leadId?: SortOrderInput | SortOrder
+    leadName?: SortOrderInput | SortOrder
+    leadCode?: SortOrderInput | SortOrder
+    customerId?: SortOrderInput | SortOrder
+    customerName?: SortOrderInput | SortOrder
+    contactId?: SortOrderInput | SortOrder
+    contactName?: SortOrderInput | SortOrder
+    entityId?: SortOrderInput | SortOrder
+    entityType?: SortOrderInput | SortOrder
+    entityNumber?: SortOrderInput | SortOrder
+    status?: SortOrderInput | SortOrder
+    amount?: SortOrderInput | SortOrder
+    performedBy?: SortOrderInput | SortOrder
+    performedById?: SortOrderInput | SortOrder
+    activityDate?: SortOrder
+    activityTime?: SortOrderInput | SortOrder
+    metadata?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ActivityWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    activityNumber?: string
+    AND?: ActivityWhereInput | ActivityWhereInput[]
+    OR?: ActivityWhereInput[]
+    NOT?: ActivityWhereInput | ActivityWhereInput[]
+    type?: StringFilter<"Activity"> | string
+    title?: StringFilter<"Activity"> | string
+    description?: StringNullableFilter<"Activity"> | string | null
+    leadId?: StringNullableFilter<"Activity"> | string | null
+    leadName?: StringNullableFilter<"Activity"> | string | null
+    leadCode?: StringNullableFilter<"Activity"> | string | null
+    customerId?: StringNullableFilter<"Activity"> | string | null
+    customerName?: StringNullableFilter<"Activity"> | string | null
+    contactId?: StringNullableFilter<"Activity"> | string | null
+    contactName?: StringNullableFilter<"Activity"> | string | null
+    entityId?: StringNullableFilter<"Activity"> | string | null
+    entityType?: StringNullableFilter<"Activity"> | string | null
+    entityNumber?: StringNullableFilter<"Activity"> | string | null
+    status?: StringNullableFilter<"Activity"> | string | null
+    amount?: FloatNullableFilter<"Activity"> | number | null
+    performedBy?: StringNullableFilter<"Activity"> | string | null
+    performedById?: StringNullableFilter<"Activity"> | string | null
+    activityDate?: StringFilter<"Activity"> | string
+    activityTime?: StringNullableFilter<"Activity"> | string | null
+    metadata?: JsonNullableFilter<"Activity">
+    createdAt?: DateTimeFilter<"Activity"> | Date | string
+    updatedAt?: DateTimeFilter<"Activity"> | Date | string
+  }, "id" | "activityNumber">
+
+  export type ActivityOrderByWithAggregationInput = {
+    id?: SortOrder
+    activityNumber?: SortOrderInput | SortOrder
+    type?: SortOrder
+    title?: SortOrder
+    description?: SortOrderInput | SortOrder
+    leadId?: SortOrderInput | SortOrder
+    leadName?: SortOrderInput | SortOrder
+    leadCode?: SortOrderInput | SortOrder
+    customerId?: SortOrderInput | SortOrder
+    customerName?: SortOrderInput | SortOrder
+    contactId?: SortOrderInput | SortOrder
+    contactName?: SortOrderInput | SortOrder
+    entityId?: SortOrderInput | SortOrder
+    entityType?: SortOrderInput | SortOrder
+    entityNumber?: SortOrderInput | SortOrder
+    status?: SortOrderInput | SortOrder
+    amount?: SortOrderInput | SortOrder
+    performedBy?: SortOrderInput | SortOrder
+    performedById?: SortOrderInput | SortOrder
+    activityDate?: SortOrder
+    activityTime?: SortOrderInput | SortOrder
+    metadata?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: ActivityCountOrderByAggregateInput
+    _avg?: ActivityAvgOrderByAggregateInput
+    _max?: ActivityMaxOrderByAggregateInput
+    _min?: ActivityMinOrderByAggregateInput
+    _sum?: ActivitySumOrderByAggregateInput
+  }
+
+  export type ActivityScalarWhereWithAggregatesInput = {
+    AND?: ActivityScalarWhereWithAggregatesInput | ActivityScalarWhereWithAggregatesInput[]
+    OR?: ActivityScalarWhereWithAggregatesInput[]
+    NOT?: ActivityScalarWhereWithAggregatesInput | ActivityScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"Activity"> | string
+    activityNumber?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    type?: StringWithAggregatesFilter<"Activity"> | string
+    title?: StringWithAggregatesFilter<"Activity"> | string
+    description?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    leadId?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    leadName?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    leadCode?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    customerId?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    customerName?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    contactId?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    contactName?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    entityId?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    entityType?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    entityNumber?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    status?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    amount?: FloatNullableWithAggregatesFilter<"Activity"> | number | null
+    performedBy?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    performedById?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    activityDate?: StringWithAggregatesFilter<"Activity"> | string
+    activityTime?: StringNullableWithAggregatesFilter<"Activity"> | string | null
+    metadata?: JsonNullableWithAggregatesFilter<"Activity">
+    createdAt?: DateTimeWithAggregatesFilter<"Activity"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Activity"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -51711,6 +53253,195 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type ActivityCreateInput = {
+    id?: string
+    activityNumber?: string | null
+    type: string
+    title: string
+    description?: string | null
+    leadId?: string | null
+    leadName?: string | null
+    leadCode?: string | null
+    customerId?: string | null
+    customerName?: string | null
+    contactId?: string | null
+    contactName?: string | null
+    entityId?: string | null
+    entityType?: string | null
+    entityNumber?: string | null
+    status?: string | null
+    amount?: number | null
+    performedBy?: string | null
+    performedById?: string | null
+    activityDate: string
+    activityTime?: string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ActivityUncheckedCreateInput = {
+    id?: string
+    activityNumber?: string | null
+    type: string
+    title: string
+    description?: string | null
+    leadId?: string | null
+    leadName?: string | null
+    leadCode?: string | null
+    customerId?: string | null
+    customerName?: string | null
+    contactId?: string | null
+    contactName?: string | null
+    entityId?: string | null
+    entityType?: string | null
+    entityNumber?: string | null
+    status?: string | null
+    amount?: number | null
+    performedBy?: string | null
+    performedById?: string | null
+    activityDate: string
+    activityTime?: string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ActivityUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    activityNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    leadName?: NullableStringFieldUpdateOperationsInput | string | null
+    leadCode?: NullableStringFieldUpdateOperationsInput | string | null
+    customerId?: NullableStringFieldUpdateOperationsInput | string | null
+    customerName?: NullableStringFieldUpdateOperationsInput | string | null
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: NullableStringFieldUpdateOperationsInput | string | null
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityType?: NullableStringFieldUpdateOperationsInput | string | null
+    entityNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: NullableStringFieldUpdateOperationsInput | string | null
+    amount?: NullableFloatFieldUpdateOperationsInput | number | null
+    performedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    performedById?: NullableStringFieldUpdateOperationsInput | string | null
+    activityDate?: StringFieldUpdateOperationsInput | string
+    activityTime?: NullableStringFieldUpdateOperationsInput | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ActivityUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    activityNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    leadName?: NullableStringFieldUpdateOperationsInput | string | null
+    leadCode?: NullableStringFieldUpdateOperationsInput | string | null
+    customerId?: NullableStringFieldUpdateOperationsInput | string | null
+    customerName?: NullableStringFieldUpdateOperationsInput | string | null
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: NullableStringFieldUpdateOperationsInput | string | null
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityType?: NullableStringFieldUpdateOperationsInput | string | null
+    entityNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: NullableStringFieldUpdateOperationsInput | string | null
+    amount?: NullableFloatFieldUpdateOperationsInput | number | null
+    performedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    performedById?: NullableStringFieldUpdateOperationsInput | string | null
+    activityDate?: StringFieldUpdateOperationsInput | string
+    activityTime?: NullableStringFieldUpdateOperationsInput | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ActivityCreateManyInput = {
+    id?: string
+    activityNumber?: string | null
+    type: string
+    title: string
+    description?: string | null
+    leadId?: string | null
+    leadName?: string | null
+    leadCode?: string | null
+    customerId?: string | null
+    customerName?: string | null
+    contactId?: string | null
+    contactName?: string | null
+    entityId?: string | null
+    entityType?: string | null
+    entityNumber?: string | null
+    status?: string | null
+    amount?: number | null
+    performedBy?: string | null
+    performedById?: string | null
+    activityDate: string
+    activityTime?: string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type ActivityUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    activityNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    leadName?: NullableStringFieldUpdateOperationsInput | string | null
+    leadCode?: NullableStringFieldUpdateOperationsInput | string | null
+    customerId?: NullableStringFieldUpdateOperationsInput | string | null
+    customerName?: NullableStringFieldUpdateOperationsInput | string | null
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: NullableStringFieldUpdateOperationsInput | string | null
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityType?: NullableStringFieldUpdateOperationsInput | string | null
+    entityNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: NullableStringFieldUpdateOperationsInput | string | null
+    amount?: NullableFloatFieldUpdateOperationsInput | number | null
+    performedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    performedById?: NullableStringFieldUpdateOperationsInput | string | null
+    activityDate?: StringFieldUpdateOperationsInput | string
+    activityTime?: NullableStringFieldUpdateOperationsInput | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type ActivityUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    activityNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    title?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    leadName?: NullableStringFieldUpdateOperationsInput | string | null
+    leadCode?: NullableStringFieldUpdateOperationsInput | string | null
+    customerId?: NullableStringFieldUpdateOperationsInput | string | null
+    customerName?: NullableStringFieldUpdateOperationsInput | string | null
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: NullableStringFieldUpdateOperationsInput | string | null
+    entityId?: NullableStringFieldUpdateOperationsInput | string | null
+    entityType?: NullableStringFieldUpdateOperationsInput | string | null
+    entityNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: NullableStringFieldUpdateOperationsInput | string | null
+    amount?: NullableFloatFieldUpdateOperationsInput | number | null
+    performedBy?: NullableStringFieldUpdateOperationsInput | string | null
+    performedById?: NullableStringFieldUpdateOperationsInput | string | null
+    activityDate?: StringFieldUpdateOperationsInput | string
+    activityTime?: NullableStringFieldUpdateOperationsInput | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -54552,6 +56283,93 @@ export namespace Prisma {
     _sum?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedIntNullableFilter<$PrismaModel>
     _max?: NestedIntNullableFilter<$PrismaModel>
+  }
+
+  export type ActivityCountOrderByAggregateInput = {
+    id?: SortOrder
+    activityNumber?: SortOrder
+    type?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    leadId?: SortOrder
+    leadName?: SortOrder
+    leadCode?: SortOrder
+    customerId?: SortOrder
+    customerName?: SortOrder
+    contactId?: SortOrder
+    contactName?: SortOrder
+    entityId?: SortOrder
+    entityType?: SortOrder
+    entityNumber?: SortOrder
+    status?: SortOrder
+    amount?: SortOrder
+    performedBy?: SortOrder
+    performedById?: SortOrder
+    activityDate?: SortOrder
+    activityTime?: SortOrder
+    metadata?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ActivityAvgOrderByAggregateInput = {
+    amount?: SortOrder
+  }
+
+  export type ActivityMaxOrderByAggregateInput = {
+    id?: SortOrder
+    activityNumber?: SortOrder
+    type?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    leadId?: SortOrder
+    leadName?: SortOrder
+    leadCode?: SortOrder
+    customerId?: SortOrder
+    customerName?: SortOrder
+    contactId?: SortOrder
+    contactName?: SortOrder
+    entityId?: SortOrder
+    entityType?: SortOrder
+    entityNumber?: SortOrder
+    status?: SortOrder
+    amount?: SortOrder
+    performedBy?: SortOrder
+    performedById?: SortOrder
+    activityDate?: SortOrder
+    activityTime?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ActivityMinOrderByAggregateInput = {
+    id?: SortOrder
+    activityNumber?: SortOrder
+    type?: SortOrder
+    title?: SortOrder
+    description?: SortOrder
+    leadId?: SortOrder
+    leadName?: SortOrder
+    leadCode?: SortOrder
+    customerId?: SortOrder
+    customerName?: SortOrder
+    contactId?: SortOrder
+    contactName?: SortOrder
+    entityId?: SortOrder
+    entityType?: SortOrder
+    entityNumber?: SortOrder
+    status?: SortOrder
+    amount?: SortOrder
+    performedBy?: SortOrder
+    performedById?: SortOrder
+    activityDate?: SortOrder
+    activityTime?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type ActivitySumOrderByAggregateInput = {
+    amount?: SortOrder
   }
 
   export type RoleCreateNestedOneWithoutUsersInput = {
