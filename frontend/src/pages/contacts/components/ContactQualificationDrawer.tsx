@@ -623,13 +623,16 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
             loading={saving}
             onClick={handleSaveQualification}
             leftSection={<IconCheck size={16} />}
+            color="blue"
             style={{
               background:
-                qualificationStatus === 'Qualified'
-                  ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)'
-                  : 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                qualificationStatus === 'Unqualified'
+                  ? '#EF4444'
+                  : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
               border: 'none',
               fontWeight: 600,
+              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+              color: '#FFFFFF',
             }}
           >
             {qualificationStatus === 'Qualified' ? 'Qualify & Sync to Leads' : 'Save Qualification'}

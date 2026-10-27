@@ -694,6 +694,74 @@ export interface LeadProgressData {
   milestones: ProjectMilestoneItem[];
 }
 
+export interface LeadHandoverChecklistItem {
+  id: string;
+  label: string;
+  completed: boolean;
+  completedAt?: string;
+  notes?: string;
+}
+
+export interface HandoverAttachment {
+  id: string;
+  name: string;
+  url?: string;
+  fileType?: string;
+  fileSize?: string;
+  uploadedAt?: string;
+}
+
+export interface HandoverCommentItem {
+  id: string;
+  author: string;
+  text: string;
+  createdAt: string;
+  role?: string;
+}
+
+export interface LeadHandoverData {
+  // 14 Required Fields
+  handoverId: string;
+  handoverTitle: string;
+  handoverType:
+    | 'Project Delivery'
+    | 'Module Release'
+    | 'Client Handover'
+    | 'Internal Transition'
+    | 'Shift / Task Handover'
+    | 'Maintenance & Support'
+    | string;
+  projectModule: string;
+  fromEmployee: string;
+  toEmployee: string;
+  handoverDate: string;
+  completedWork: string;
+  pendingTasks: string;
+  documents: HandoverAttachment[];
+  priority: 'Low' | 'Medium' | 'High' | 'Critical' | string;
+  approvalStatus: 'Pending Approval' | 'Approved' | 'Rejected' | 'Revision Requested' | string;
+  handoverStatus: 'Draft' | 'In Progress' | 'Submitted' | 'Completed' | 'On Hold' | string;
+  comments: HandoverCommentItem[];
+
+  // Optional / compatibility properties
+  leadId?: string;
+  status?: string;
+  projectName?: string;
+  projectCode?: string;
+  clientRepresentative?: string;
+  handoverLead?: string;
+  checklist?: LeadHandoverChecklistItem[];
+  liveUrl?: string;
+  adminPortalUrl?: string;
+  repoUrl?: string;
+  figmaUrl?: string;
+  userManualUrl?: string;
+  warrantyPeriod?: string;
+  supportContact?: string;
+  amcStatus?: string;
+  handoverNotes?: string;
+}
+
 export interface LeadDealData {
   proposals: LeadProposal[];
   quotations?: Quotation[];
@@ -702,6 +770,7 @@ export interface LeadDealData {
   invoices: LeadInvoiceItem[];
   payments: LeadPaymentRecord[];
   progress: LeadProgressData;
+  handover?: LeadHandoverData;
 }
 
 

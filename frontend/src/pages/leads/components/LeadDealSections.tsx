@@ -75,6 +75,7 @@ import {
   IconFileDescription,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
+import { cleanWorkText, cleanComments } from './sections/LeadHandoverSection';
 import {
   Lead,
   LeadDealData,
@@ -378,6 +379,7 @@ export const getInitialLeadDealData = (lead: Lead): LeadDealData => {
       stagingUrl: '',
       milestones: [],
     },
+    handover: undefined,
   };
 };
 
@@ -418,6 +420,21 @@ export const loadLeadDealData = (lead: Lead): LeadDealData => {
       if (parsed.negotiation && parsed.negotiation.leadId === lead.id && parsed.negotiation.originalQuotedAmount === 150000) {
         parsed.negotiation = null;
       }
+      // Clean up legacy/boilerplate handover items
+      if (parsed.handover) {
+        parsed.handover.completedWork = cleanWorkText(parsed.handover.completedWork);
+        parsed.handover.pendingTasks = cleanWorkText(parsed.handover.pendingTasks);
+        parsed.handover.comments = cleanComments(parsed.handover.comments);
+        // If handover was prematurely set to Completed before user finished it, normalize to In Progress
+        if (lead.stage !== 'Completed' && lead.status !== 'Complete' && lead.status !== 'Won') {
+          if (parsed.handover.handoverStatus === 'Completed' || parsed.handover.status === 'Handover Completed') {
+            parsed.handover.handoverStatus = 'In Progress';
+            parsed.handover.approvalStatus = 'Pending Approval';
+            parsed.handover.status = 'In Progress';
+          }
+        }
+      }
+      saveLeadDealData(lead.id, parsed);
       return parsed;
     }
   } catch (e) {
@@ -2566,4 +2583,12 @@ export type { LeadPaymentSectionProps } from './sections/LeadPaymentSection';
 
 export { LeadProgressSection } from './sections/LeadProgressSection';
 export type { LeadProgressSectionProps } from './sections/LeadProgressSection';
+
+
+// =========================================================================
+// 7. LEAD HANDOVER SECTION (Delivery & Client Acceptance)
+// =========================================================================
+
+export { LeadHandoverSection, cleanWorkText, cleanComments } from './sections/LeadHandoverSection';
+export type { LeadHandoverSectionProps } from './sections/LeadHandoverSection';
 

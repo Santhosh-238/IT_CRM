@@ -907,10 +907,15 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
 
-[data-mantine-color-scheme="dark"] .mantine-TextInput-input[type="date"]::-webkit-calendar-picker-indicator,
-[data-mantine-color-scheme="dark"] input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
+.superadmin-kpi-card:hover,
+.employee-kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.07) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
 }
 
-
-
+[data-mantine-color-scheme="dark"] .superadmin-kpi-card:hover,
+[data-mantine-color-scheme="dark"] .employee-kpi-card:hover {
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+}

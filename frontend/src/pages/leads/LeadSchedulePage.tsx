@@ -66,6 +66,7 @@ import {
   IconChevronRight,
   IconCalendarEvent,
   IconX,
+  IconClipboardCheck,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { Lead, ScheduledMeeting } from '../../types/lead';
@@ -91,6 +92,7 @@ import {
   LeadInvoiceSection,
   LeadPaymentSection,
   LeadProgressSection,
+  LeadHandoverSection,
 } from './components/LeadDealSections';
 import { LeadProposalSection } from './components/LeadProposalSection';
 import { LeadQuotationSection } from './components/LeadQuotationSection';
@@ -169,7 +171,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
       const saved = sessionStorage.getItem('crm_lead_active_section');
       if (
         saved &&
-        ['meetings', 'proposals', 'quotation', 'quotations', 'negotiation', 'contracts', 'invoices', 'payments', 'progress'].includes(saved)
+        ['meetings', 'proposals', 'quotation', 'quotations', 'negotiation', 'contracts', 'invoices', 'payments', 'progress', 'handover'].includes(saved)
       ) {
         return saved;
       }
@@ -204,6 +206,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
       invoices: { stage: 'Invoices', status: 'In Progress' },
       payments: { stage: 'Payments', status: 'In Progress' },
       progress: { stage: 'Progress', status: 'In Progress' },
+      handover: { stage: 'Handover', status: 'In Progress' },
       completed: { stage: 'Completed', status: 'Complete' },
     };
 
@@ -368,8 +371,40 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
         newProgress.milestones.length > 0 &&
         newProgress.milestones.every((m: any) => m.status === 'Completed' || m.percentage === 100));
 
-    const finalStage = isCompleted ? 'Completed' : 'Progress';
-    const finalStatus = isCompleted ? 'Complete' : 'In Progress';
+    // Progress completion advances stage to 'Handover'
+    // Lead status remains 'In Progress' until Handover itself is completed!
+    const isHandoverDone =
+      dealData?.handover?.handoverStatus === 'Completed' ||
+      dealData?.handover?.status === 'Handover Completed';
+
+    const finalStage = isHandoverDone ? 'Completed' : isCompleted ? 'Handover' : 'Progress';
+    const finalStatus = isHandoverDone ? 'Complete' : 'In Progress';
+    setActiveLead((prev) => (prev ? { ...prev, stage: finalStage, status: finalStatus } : prev));
+    try {
+      await updateLead(
+        activeLead.id,
+        {
+          stage: finalStage,
+          status: finalStatus,
+        },
+        { silent: true }
+      );
+    } catch (_) {}
+  };
+
+  const handleUpdateHandover = async (newHandover: any) => {
+    if (!dealData || !activeLead) return;
+    const updated = { ...dealData, handover: newHandover };
+    setDealData(updated);
+    saveLeadDealData(activeLead.id, updated);
+
+    const isHandoverDone =
+      newHandover?.handoverStatus === 'Completed' ||
+      newHandover?.status === 'Handover Completed';
+
+    const finalStage = isHandoverDone ? 'Completed' : 'Handover';
+    const finalStatus = isHandoverDone ? 'Complete' : 'In Progress';
+
     setActiveLead((prev) => (prev ? { ...prev, stage: finalStage, status: finalStatus } : prev));
     try {
       await updateLead(
@@ -1092,6 +1127,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     { id: 'invoices', label: 'Invoices', icon: IconReceipt },
     { id: 'payments', label: 'Payments', icon: IconCreditCard },
     { id: 'progress', label: 'Progress', icon: IconRocket },
+    { id: 'handover', label: 'Handover', icon: IconClipboardCheck },
   ];
 
   return (
@@ -1342,6 +1378,18 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           isDark={isDark}
           progress={dealData.progress}
           onUpdateProgress={handleUpdateProgress}
+          onNavigateSection={handleProceedToSection}
+        />
+      )}
+
+      {/* TAB 10: HANDOVER */}
+      {activeTab === 'handover' && dealData && activeLead && (
+        <LeadHandoverSection
+          lead={activeLead}
+          isDark={isDark}
+          handover={dealData.handover}
+          progress={dealData.progress}
+          onUpdateHandover={handleUpdateHandover}
           onNavigateSection={handleProceedToSection}
         />
       )}

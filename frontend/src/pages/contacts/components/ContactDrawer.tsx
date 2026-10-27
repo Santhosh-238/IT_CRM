@@ -168,8 +168,13 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
           <Button
             radius="md"
             variant="filled"
-            color="teal"
+            color="blue"
             leftSection={<IconTargetArrow size={15} />}
+            style={{
+              background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+              fontWeight: 600,
+            }}
             onClick={() => {
               onClose();
               if (typeof window !== 'undefined') {

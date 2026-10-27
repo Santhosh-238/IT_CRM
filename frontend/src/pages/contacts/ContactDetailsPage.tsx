@@ -188,9 +188,14 @@ export const ContactDetailsPage: React.FC<ContactDetailsPageProps> = ({
           </Button>
           <Button
             variant="filled"
-            color="teal"
+            color="blue"
             radius="md"
             leftSection={<IconTargetArrow size={16} />}
+            style={{
+              background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+              fontWeight: 600,
+            }}
             onClick={() => {
               if (typeof window !== 'undefined') {
                 sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(contact));
