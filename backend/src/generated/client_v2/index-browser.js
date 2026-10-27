@@ -835,6 +835,33 @@ exports.Prisma.ContractScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.ActivityScalarFieldEnum = {
+  id: 'id',
+  activityNumber: 'activityNumber',
+  type: 'type',
+  title: 'title',
+  description: 'description',
+  leadId: 'leadId',
+  leadName: 'leadName',
+  leadCode: 'leadCode',
+  customerId: 'customerId',
+  customerName: 'customerName',
+  contactId: 'contactId',
+  contactName: 'contactName',
+  entityId: 'entityId',
+  entityType: 'entityType',
+  entityNumber: 'entityNumber',
+  status: 'status',
+  amount: 'amount',
+  performedBy: 'performedBy',
+  performedById: 'performedById',
+  activityDate: 'activityDate',
+  activityTime: 'activityTime',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -896,7 +923,8 @@ exports.Prisma.ModelName = {
   BillingAuditLog: 'BillingAuditLog',
   BillingSettings: 'BillingSettings',
   Negotiation: 'Negotiation',
-  Contract: 'Contract'
+  Contract: 'Contract',
+  Activity: 'Activity'
 };
 
 /**

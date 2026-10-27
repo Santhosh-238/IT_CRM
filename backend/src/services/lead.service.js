@@ -11,6 +11,7 @@ import {
   formatContractResponse,
   buildContractFilterQuery,
 } from '../utils/lead.util.js';
+import { recordActivity } from './activity.service.js';
 
 /**
  * 1. List leads with search, filters, pagination, and sorting
@@ -374,6 +375,29 @@ export async function updateLeadService(id, body, currentUser = null) {
     data: updateData,
   });
 
+  // If lead is closed or won, automatically record closure activity in timeline
+  try {
+    const sLow = (updated.status || '').toLowerCase();
+    const stgLow = (updated.stage || '').toLowerCase();
+    if (sLow.includes('won') || sLow.includes('closed') || sLow.includes('completed') || stgLow.includes('completed') || stgLow.includes('closure')) {
+      await recordActivity({
+        type: 'closure',
+        title: 'Lead Closed',
+        description: `Status: ${updated.status} · Reason: ${sLow.includes('won') ? 'Successful conversion' : 'Lead completed/closed'}`,
+        leadId: updated.id,
+        leadCode: updated.leadId,
+        leadName: updated.name,
+        customerName: updated.companyName || updated.name,
+        entityId: updated.id,
+        entityType: 'Lead',
+        entityNumber: updated.leadId,
+        status: updated.status,
+        performedBy: updated.assignedToName || currentUser?.name || 'Staff',
+        activityDate: new Date().toISOString().slice(0, 10),
+      });
+    }
+  } catch (_) {}
+
   await delCache('crm:leads:*').catch(() => {});
 
   return {
@@ -523,6 +547,25 @@ export async function createLeadProposalService(data, user) {
     include: { items: true },
   });
 
+  // Automatically record activity in timeline
+  try {
+    const amountStr = proposal.grandTotal ? ` · ₹ ${Math.round(proposal.grandTotal).toLocaleString('en-IN')}` : '';
+    await recordActivity({
+      type: 'proposal',
+      title: 'Proposal Created',
+      description: `Proposal #${proposal.proposalNumber}${amountStr} · ${proposal.status || 'Under Review'}`,
+      leadId: proposal.leadId,
+      customerName: proposal.companyName || proposal.contactName,
+      entityId: proposal.id,
+      entityType: 'Proposal',
+      entityNumber: proposal.proposalNumber,
+      amount: proposal.grandTotal || 0,
+      status: proposal.status || 'Created',
+      performedBy: user?.name || 'Staff',
+      activityDate: proposal.proposalDate,
+    });
+  } catch (_) {}
+
   return proposal;
 }
 export const createProposalService = createLeadProposalService;
@@ -597,6 +640,21 @@ export async function updateLeadProposalService(id, data, user) {
     data: updateData,
     include: { items: true },
   });
+
+  try {
+    await prisma.activity.updateMany({
+      where: {
+        OR: [
+          { entityId: updated.id },
+          { entityNumber: updated.proposalNumber },
+        ],
+      },
+      data: {
+        status: updated.status || 'Created',
+        amount: updated.grandTotal || updated.totalAmount || 0,
+      },
+    });
+  } catch (_) {}
 
   return updated;
 }
@@ -899,6 +957,25 @@ export async function createLeadNegotiationService(data, user = {}) {
     },
   });
 
+  // Automatically record activity in timeline
+  try {
+    const quotedStr = created.quotedAmount ? ` · Quoted: ₹ ${Math.round(created.quotedAmount).toLocaleString('en-IN')}` : '';
+    await recordActivity({
+      type: 'negotiation',
+      title: created.status === 'Won' ? 'Negotiation Won' : 'Negotiation Update',
+      description: `Negotiation #${created.negotiationId}${quotedStr} · Discount: ${created.discountPercentage}% · ${created.status}`,
+      leadId: created.leadId,
+      customerName: created.clientName || created.leadName,
+      entityId: created.id,
+      entityType: 'Negotiation',
+      entityNumber: created.negotiationId,
+      amount: created.expectedFinalAmount || created.quotedAmount || 0,
+      status: created.status,
+      performedBy: created.assignedToName || user?.name || 'Staff',
+      activityDate: created.negotiationDate,
+    });
+  } catch (_) {}
+
   return formatNegotiationResponse(created);
 }
 export const createNegotiationService = createLeadNegotiationService;
@@ -1029,6 +1106,22 @@ export async function updateLeadNegotiationService(id, data, user = {}) {
     where: { id: existing.id },
     data: updatePayload,
   });
+
+  try {
+    await prisma.activity.updateMany({
+      where: {
+        OR: [
+          { entityId: updated.id },
+          { entityNumber: updated.negotiationId },
+        ],
+      },
+      data: {
+        status: updated.status,
+        amount: updated.expectedFinalAmount || updated.quotedAmount || 0,
+        title: updated.status === 'Won' ? 'Negotiation Won' : 'Negotiation Update',
+      },
+    });
+  } catch (_) {}
 
   return formatNegotiationResponse(updated);
 }
@@ -1504,6 +1597,24 @@ export async function createLeadContractService(data, user = {}) {
     },
   });
 
+  // Automatically record activity in timeline
+  try {
+    await recordActivity({
+      type: 'contract',
+      title: created.signatureStatus === 'Signed' ? 'Contract Signed' : (created.status === 'Approved' ? 'Contract Approved' : 'Contract Created'),
+      description: `Contract #${created.contractId} · ${created.title || created.contractType || 'IT Service Agreement'}`,
+      leadId: created.leadId,
+      customerName: created.clientName,
+      entityId: created.id,
+      entityType: 'Contract',
+      entityNumber: created.contractId,
+      amount: created.contractValue || created.finalContractAmount || 0,
+      status: created.status || 'Active',
+      performedBy: created.assignedToName || user?.name || 'Staff',
+      activityDate: created.contractDate,
+    });
+  } catch (_) {}
+
   return formatContractResponse(created);
 }
 export const createContractService = createLeadContractService;
@@ -1852,6 +1963,22 @@ export async function updateLeadContractService(id, data, user = {}) {
     where: { id: existing.id },
     data: updatePayload,
   });
+
+  try {
+    await prisma.activity.updateMany({
+      where: {
+        OR: [
+          { entityId: updated.id },
+          { entityNumber: updated.contractId },
+        ],
+      },
+      data: {
+        status: updated.status,
+        amount: updated.contractValue || updated.finalContractAmount || 0,
+        title: updated.signatureStatus === 'Signed' ? 'Contract Signed' : (updated.status === 'Approved' ? 'Contract Approved' : 'Contract Created'),
+      },
+    });
+  } catch (_) {}
 
   return formatContractResponse(updated);
 }

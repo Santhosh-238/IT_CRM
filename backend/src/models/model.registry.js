@@ -66,6 +66,12 @@ export const SYSTEM_MODULES = [
     category: 'Main Navigation',
     description: 'Invoice management, GST tax calculations, payment tracking, and settlements.',
   },
+  {
+    id: 'activity_timeline',
+    name: 'Activity Timeline',
+    category: 'Main Navigation',
+    description: 'Chronological timeline of all CRM activities across leads, customers, and deals.',
+  },
 
   // 2. Administration & Security
   {

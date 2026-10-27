@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { getCache, setCache, delCache } from '../config/redis.js';
 import { io } from '../utils/socket.js';
+import { recordActivity } from './activity.service.js';
 
 const CACHE_KEY_PREFIX = 'crm:meetings:';
 
@@ -347,6 +348,28 @@ export async function createMeetingService(body) {
     io.emit('meeting:created', created);
   } catch (_) {}
 
+  // Automatically record activity in timeline
+  try {
+    await recordActivity({
+      type: 'meeting',
+      title: created.title || 'Meeting Scheduled',
+      description: created.purpose ? `${created.purpose}${created.notes ? ` - ${created.notes}` : ''}` : 'Meeting with client - Requirement discussion',
+      leadId: created.leadId || created.lead_id,
+      leadCode: created.leadCode,
+      leadName: created.leadName,
+      customerName: created.clientName,
+      entityId: created.id,
+      entityType: 'Meeting',
+      status: created.status || 'Scheduled',
+      performedBy: created.employeeName,
+      performedById: created.employeeId,
+      activityDate: created.meetingDate || created.date,
+      activityTime: created.startTime || created.time || '10:30 AM',
+    });
+  } catch (err) {
+    console.warn('Activity recording note:', err.message);
+  }
+
   return created;
 }
 
@@ -487,6 +510,29 @@ export async function updateMeetingService(id, body) {
     io.emit('meeting:updated', updated);
   } catch (_) {}
 
+  // Synchronize corresponding activity in timeline
+  try {
+    await prisma.activity.updateMany({
+      where: {
+        OR: [
+          { entityId: id },
+          { entityId: id, entityType: 'Meeting' },
+        ],
+      },
+      data: {
+        status: updated.status || 'Scheduled',
+        title: updated.title && updated.title !== 'Client Discussion' ? updated.title : 'Meeting Scheduled',
+        description: updated.purpose ? `${updated.purpose}${updated.notes ? ` - ${updated.notes}` : ''}` : 'Meeting with client - Requirement discussion',
+        activityDate: updated.meetingDate || updated.date,
+        activityTime: updated.startTime || updated.time,
+        customerName: updated.clientName,
+        performedBy: updated.employeeName || 'Staff',
+      },
+    });
+  } catch (actErr) {
+    console.warn('Note: Activity update error:', actErr.message);
+  }
+
   return updated;
 }
 
@@ -496,6 +542,17 @@ export async function updateMeetingService(id, body) {
 export async function deleteMeetingService(id) {
   await getMeetingByIdService(id);
   await prisma.$executeRawUnsafe(`DELETE FROM "ScheduledMeeting" WHERE id = $1`, id);
+
+  try {
+    await prisma.activity.deleteMany({
+      where: {
+        OR: [
+          { entityId: id },
+          { entityId: id, entityType: 'Meeting' },
+        ],
+      },
+    });
+  } catch (_) {}
 
   try {
     io.emit('meeting:deleted', { id });

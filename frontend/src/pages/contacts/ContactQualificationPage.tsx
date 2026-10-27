@@ -44,6 +44,9 @@ import {
   IconBox,
   IconBrandWhatsapp,
   IconChevronDown,
+  IconMapPin,
+  IconReceiptTax,
+  IconCreditCard,
 } from '@tabler/icons-react';
 import { Contact, QualificationStatus } from '../../types/contact';
 import { contactService } from '../../services/contactService';
@@ -129,6 +132,9 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
   const [employeeCount, setEmployeeCount] = useState<string>('');
   const [expectedCloseDate, setExpectedCloseDate] = useState<string>('');
   const [nextFollowDate, setNextFollowDate] = useState<string>('');
+  const [address, setAddress] = useState<string>('');
+  const [gstNumber, setGstNumber] = useState<string>('');
+  const [companyPan, setCompanyPan] = useState<string>('');
   const [remarks, setRemarks] = useState<string>('');
   const [qualifiedBy, setQualifiedBy] = useState<string>('');
   const [qualificationDate, setQualificationDate] = useState<string>(todayStr);
@@ -172,6 +178,9 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
       setEmployeeCount(activeContact.employeeCount || '');
       setExpectedCloseDate(activeContact.expectedCloseDate || '');
       setNextFollowDate(activeContact.nextFollowDate || '');
+      setAddress(activeContact.address || '');
+      setGstNumber(activeContact.gstNumber || '');
+      setCompanyPan(activeContact.companyPan || '');
       setRemarks(activeContact.remarks || activeContact.notes || '');
 
       const initialStatus = normalizeStatus(activeContact.qualificationStatus || activeContact.status);
@@ -213,6 +222,10 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
         status: statusValue,
         budgetRange: budgetRange?.trim() || '',
         interestedService: trimmedService,
+        address: address?.trim() || '',
+        gstNumber: gstNumber?.trim().toUpperCase() || '',
+        companyPan: companyPan?.trim().toUpperCase() || '',
+        panNumber: companyPan?.trim().toUpperCase() || '',
         // Employee count & Product code only saved for Qualified
         employeeCount: currentStatus === 'Qualified' ? employeeCount?.trim() || '' : '',
         productCode: currentStatus === 'Qualified' ? productCode?.trim() || '' : '',
@@ -232,6 +245,9 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
       if (res?.success) {
         const savedData = res.data || { ...activeContact, ...payload };
         setActiveContact(savedData);
+        setAddress(savedData.address || address?.trim() || '');
+        setGstNumber(savedData.gstNumber || gstNumber?.trim().toUpperCase() || '');
+        setCompanyPan(savedData.companyPan || companyPan?.trim().toUpperCase() || '');
         setInterestedService(savedData.interestedService || savedData.serviceList?.[0] || trimmedService);
         try {
           sessionStorage.setItem('crm_qualifying_contact', JSON.stringify(savedData));
@@ -847,6 +863,63 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                       </Group>
                     </Box>
                   )}
+
+                  {/* 5. Address */}
+                  {(address || activeContact.address) && (
+                    <Box p="9px 12px" style={{ borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #EEF2F6' }}>
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <Group gap={10} wrap="nowrap">
+                          <ThemeIcon size={26} radius="md" variant="light" color="orange">
+                            <IconMapPin size={13} stroke={2} />
+                          </ThemeIcon>
+                          <Text size="11.5px" fw={500} c="dimmed">
+                            Address
+                          </Text>
+                        </Group>
+                        <Text size="xs" fw={550} truncate maw={160} style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
+                          {address || activeContact.address}
+                        </Text>
+                      </Group>
+                    </Box>
+                  )}
+
+                  {/* 6. GST Number */}
+                  {(gstNumber || activeContact.gstNumber) && (
+                    <Box p="9px 12px" style={{ borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #EEF2F6' }}>
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <Group gap={10} wrap="nowrap">
+                          <ThemeIcon size={26} radius="md" variant="light" color="violet">
+                            <IconReceiptTax size={13} stroke={2} />
+                          </ThemeIcon>
+                          <Text size="11.5px" fw={500} c="dimmed">
+                            GST Number
+                          </Text>
+                        </Group>
+                        <Badge size="xs" variant="light" color="violet" radius="sm">
+                          {gstNumber || activeContact.gstNumber}
+                        </Badge>
+                      </Group>
+                    </Box>
+                  )}
+
+                  {/* 7. PAN Number */}
+                  {(companyPan || activeContact.companyPan) && (
+                    <Box p="9px 12px" style={{ borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #EEF2F6' }}>
+                      <Group justify="space-between" align="center" wrap="nowrap">
+                        <Group gap={10} wrap="nowrap">
+                          <ThemeIcon size={26} radius="md" variant="light" color="teal">
+                            <IconCreditCard size={13} stroke={2} />
+                          </ThemeIcon>
+                          <Text size="11.5px" fw={500} c="dimmed">
+                            PAN Number
+                          </Text>
+                        </Group>
+                        <Badge size="xs" variant="light" color="teal" radius="sm">
+                          {companyPan || activeContact.companyPan}
+                        </Badge>
+                      </Group>
+                    </Box>
+                  )}
                 </Paper>
               </Stack>
             </Paper>
@@ -1026,6 +1099,37 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                     />
                   </SimpleGrid>
 
+                  {/* GST & PAN Numbers (Optional) */}
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <TextInput
+                      label="GST Number (Optional)"
+                      placeholder="e.g. 33AAAAA0000A1Z5"
+                      leftSection={<IconReceiptTax size={16} color="#7C3AED" stroke={1.8} />}
+                      value={gstNumber}
+                      onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+                      styles={inputStyles}
+                    />
+
+                    <TextInput
+                      label="PAN Number (Optional)"
+                      placeholder="e.g. AAAAA0000A"
+                      leftSection={<IconCreditCard size={16} color="#059669" stroke={1.8} />}
+                      value={companyPan}
+                      onChange={(e) => setCompanyPan(e.target.value.toUpperCase())}
+                      styles={inputStyles}
+                    />
+                  </SimpleGrid>
+
+                  {/* Address */}
+                  <TextInput
+                    label="Address"
+                    placeholder="Enter street, city, state, postal code..."
+                    leftSection={<IconMapPin size={16} color="#EA580C" stroke={1.8} />}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    styles={inputStyles}
+                  />
+
                   {/* Notes (Full width) */}
                   <Textarea
                     label="Qualification Notes"
@@ -1083,6 +1187,36 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                       clearable
                     />
                   </SimpleGrid>
+
+                  {/* GST & PAN Numbers (Optional) */}
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <TextInput
+                      label="GST Number (Optional)"
+                      placeholder="e.g. 33AAAAA0000A1Z5"
+                      leftSection={<IconReceiptTax size={16} color="#7C3AED" stroke={1.8} />}
+                      value={gstNumber}
+                      onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+                      styles={inputStyles}
+                    />
+
+                    <TextInput
+                      label="PAN Number (Optional)"
+                      placeholder="e.g. AAAAA0000A"
+                      leftSection={<IconCreditCard size={16} color="#059669" stroke={1.8} />}
+                      value={companyPan}
+                      onChange={(e) => setCompanyPan(e.target.value.toUpperCase())}
+                      styles={inputStyles}
+                    />
+                  </SimpleGrid>
+
+                  <TextInput
+                    label="Address"
+                    placeholder="Enter street, city, state, postal code..."
+                    leftSection={<IconMapPin size={16} color="#EA580C" stroke={1.8} />}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    styles={inputStyles}
+                  />
 
                   <Textarea
                     label="Follow-up Remarks"
@@ -1198,6 +1332,36 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                       onClick={(e) => (e.target as any).showPicker?.()}
                     />
                   </SimpleGrid>
+
+                  {/* GST & PAN Numbers (Optional) */}
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+                    <TextInput
+                      label="GST Number (Optional)"
+                      placeholder="e.g. 33AAAAA0000A1Z5"
+                      leftSection={<IconReceiptTax size={16} color="#7C3AED" stroke={1.8} />}
+                      value={gstNumber}
+                      onChange={(e) => setGstNumber(e.target.value.toUpperCase())}
+                      styles={inputStyles}
+                    />
+
+                    <TextInput
+                      label="PAN Number (Optional)"
+                      placeholder="e.g. AAAAA0000A"
+                      leftSection={<IconCreditCard size={16} color="#059669" stroke={1.8} />}
+                      value={companyPan}
+                      onChange={(e) => setCompanyPan(e.target.value.toUpperCase())}
+                      styles={inputStyles}
+                    />
+                  </SimpleGrid>
+
+                  <TextInput
+                    label="Address"
+                    placeholder="Enter street, city, state, postal code..."
+                    leftSection={<IconMapPin size={16} color="#EA580C" stroke={1.8} />}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    styles={inputStyles}
+                  />
 
                   <Textarea
                     label="Pending Notes"

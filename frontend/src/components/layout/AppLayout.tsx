@@ -20,6 +20,7 @@ import { InvoicesPage, CreateInvoicePage, InvoiceDetailsPage } from '../../pages
 import { Invoice } from '../../types/billing';
 import { LeadNegotiationSection, LeadContractSection } from '../../pages/leads/components/LeadDealSections';
 import { AuthPage, SignupPage, LoginPage } from '../../pages/auth';
+import { ActivityTimelinePage } from '../../pages/activity-timeline';
 import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
 import { useProject } from '../../context/ProjectContext';
@@ -98,6 +99,7 @@ export const AppLayout: React.FC = () => {
       { nav: 'projects', id: 'projects' },
       { nav: 'negotiations', id: 'negotiations' },
       { nav: 'invoices', id: 'invoices' },
+      { nav: 'activity-timeline', id: 'activity_timeline' },
       { nav: 'employees', id: 'employee_management' },
       { nav: 'access-control', id: 'access_control' },
       { nav: 'settings', id: 'settings' },
@@ -675,6 +677,11 @@ export const AppLayout: React.FC = () => {
           );
         }
         return <BillingPage />;
+      case 'activity-timeline':
+      case 'activities':
+      case 'activity':
+      case 'timeline':
+        return <ActivityTimelinePage />;
       default:
         return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
     }
