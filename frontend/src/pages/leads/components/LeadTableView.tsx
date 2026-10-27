@@ -100,6 +100,7 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
     }
 
     // 2. Check each submodule stage in pipeline order
+    if (stgLow === 'handover') return { status: 'In Progress', stage: 'Handover' };
     if (stgLow === 'progress') return { status: 'In Progress', stage: 'Progress' };
     if (stgLow === 'payments' || stgLow === 'payment') return { status: 'In Progress', stage: 'Payments' };
     if (stgLow === 'invoices' || stgLow === 'invoice') return { status: 'In Progress', stage: 'Invoices' };
@@ -117,6 +118,12 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
         const saved = localStorage.getItem(`crm_lead_deal_${leadItem.id}`);
         if (saved) {
           const deal = JSON.parse(saved);
+          if (deal?.handover && (deal.handover.handoverStatus === 'Completed' || deal.handover.status === 'Handover Completed')) {
+            return { status: 'Complete', stage: 'Completed' };
+          }
+          if (deal?.handover || (deal?.progress?.overallPercentage === 100)) {
+            return { status: 'In Progress', stage: 'Handover' };
+          }
           if (deal?.progress?.overallPercentage > 50) {
             return { status: 'In Progress', stage: 'Progress' };
           }

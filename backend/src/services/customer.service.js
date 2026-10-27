@@ -1,32 +1,45 @@
 import { prisma } from '../config/prisma.js';
 import { delCache } from '../config/redis.js';
 
+let isSyncingCompletedLeads = false;
+
 /**
- * Generate Sequential Customer ID (e.g. CUST-1001)
+ * Generate Sequential Customer ID (e.g. CUST-1001) ensuring absolute uniqueness
  */
 async function generateCustomerId() {
-  const lastCustomer = await prisma.customer.findFirst({
-    orderBy: { createdAt: 'desc' },
+  const allCustomers = await prisma.customer.findMany({
     select: { customerId: true },
   });
 
-  if (!lastCustomer || !lastCustomer.customerId) {
-    return 'CUST-1001';
+  let maxNum = 1000;
+  for (const c of allCustomers) {
+    if (c.customerId) {
+      const match = c.customerId.match(/CUST-(\d+)/);
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    }
   }
 
-  const match = lastCustomer.customerId.match(/CUST-(\d+)/);
-  if (match && match[1]) {
-    const nextNum = parseInt(match[1], 10) + 1;
-    return `CUST-${nextNum}`;
+  let nextNum = maxNum + 1;
+  let candidateId = `CUST-${nextNum}`;
+
+  while (await prisma.customer.findUnique({ where: { customerId: candidateId } })) {
+    nextNum++;
+    candidateId = `CUST-${nextNum}`;
   }
 
-  return `CUST-${Date.now().toString().slice(-4)}`;
+  return candidateId;
 }
 
 /**
  * Automatically sync Leads with Complete/Completed/Won status to Customers
  */
 export async function syncCompletedLeads() {
+  if (isSyncingCompletedLeads) return;
+  isSyncingCompletedLeads = true;
+
   try {
     const completedLeads = await prisma.lead.findMany({
       where: {
@@ -46,8 +59,11 @@ export async function syncCompletedLeads() {
       if (lead.phone && lead.phone.trim().length >= 7) {
         orConditions.push({ phone: { equals: lead.phone.trim() } });
       }
+      if (lead.companyName && lead.companyName.trim()) {
+        orConditions.push({ companyName: { equals: lead.companyName.trim(), mode: 'insensitive' } });
+      }
 
-      const existing = await prisma.customer.findFirst({
+      let existing = await prisma.customer.findFirst({
         where: { OR: orConditions },
       });
 
@@ -90,28 +106,48 @@ export async function syncCompletedLeads() {
       const notesContent = `Converted from Completed Lead (${lead.leadId}) | Category: ${lead.category || 'Service'} (${requirementInfo})`;
 
       if (!existing) {
-        const custId = await generateCustomerId();
-        await prisma.customer.create({
-          data: {
-            customerId: custId,
-            companyName: lead.companyName || lead.name,
-            contactPerson: lead.name,
-            email: lead.email ? lead.email.trim() : null,
-            phone: lead.phone ? lead.phone.trim() : '',
-            designation: lead.designation || lead.profession || 'Client Representative',
-            industry: lead.category === 'Product' ? 'Software & Products' : 'Technology & IT Services',
-            customerTier: dynamicTier,
-            status: lead.status || 'Complete',
-            address: lead.address || (matchedContact ? matchedContact.address : null),
-            city: matchedContact?.registeredState || null,
-            gstNumber: matchedContact?.gstNumber || null,
-            panNumber: matchedContact?.companyPan || null,
-            website: matchedContact?.companyWebsite || null,
-            contractValue: dynamicContractValue,
-            accountManager: matchedContact?.assignedToName || lead.assignedToName || 'Unassigned',
-            notes: notesContent,
-          },
-        });
+        let created = false;
+        let attempts = 0;
+        while (!created && attempts < 5) {
+          attempts++;
+          const custId = await generateCustomerId();
+          try {
+            await prisma.customer.create({
+              data: {
+                customerId: custId,
+                companyName: lead.companyName || lead.name,
+                contactPerson: lead.name,
+                email: lead.email ? lead.email.trim() : null,
+                phone: lead.phone ? lead.phone.trim() : '',
+                designation: lead.designation || lead.profession || 'Client Representative',
+                industry: lead.category === 'Product' ? 'Software & Products' : 'Technology & IT Services',
+                customerTier: dynamicTier,
+                status: lead.status || 'Complete',
+                address: lead.address || (matchedContact ? matchedContact.address : null),
+                city: matchedContact?.registeredState || null,
+                gstNumber: matchedContact?.gstNumber || null,
+                panNumber: matchedContact?.companyPan || null,
+                website: matchedContact?.companyWebsite || null,
+                contractValue: dynamicContractValue,
+                accountManager: matchedContact?.assignedToName || lead.assignedToName || 'Unassigned',
+                notes: notesContent,
+              },
+            });
+            created = true;
+          } catch (createErr) {
+            if (createErr.code === 'P2002') {
+              // Check if customer already exists now from a concurrent operation
+              existing = await prisma.customer.findFirst({ where: { OR: orConditions } });
+              if (existing) {
+                created = true;
+                break;
+              }
+              // Otherwise candidate customerId conflicted, loop and retry next candidate
+              continue;
+            }
+            throw createErr;
+          }
+        }
       } else {
         await prisma.customer.update({
           where: { id: existing.id },
@@ -122,7 +158,6 @@ export async function syncCompletedLeads() {
             phone: lead.phone ? lead.phone.trim() : existing.phone,
             designation: lead.designation || lead.profession || existing.designation,
             address: lead.address || existing.address,
-            // Keep customer active; do not overwrite with temporary lead statuses
             status: existing.status || 'Active',
             accountManager: existing.accountManager && existing.accountManager !== 'Santhosh C'
               ? existing.accountManager
@@ -134,6 +169,8 @@ export async function syncCompletedLeads() {
     }
   } catch (err) {
     console.error('Error syncing completed leads to customers:', err);
+  } finally {
+    isSyncingCompletedLeads = false;
   }
 }
 

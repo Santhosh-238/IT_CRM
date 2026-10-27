@@ -1229,18 +1229,24 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
                   onClick={handleSaveQualification}
                   rightSection={<IconArrowRight size={15} />}
                   color={
-                    currentStatus === 'Qualified'
-                      ? 'teal'
-                      : currentStatus === 'Follow-up Required'
-                      ? 'blue'
-                      : currentStatus === 'Unqualified'
+                    currentStatus === 'Unqualified'
                       ? 'red'
-                      : 'dark'
+                      : 'blue'
                   }
                   style={{
                     fontWeight: 600,
-                    paddingLeft: 20,
-                    paddingRight: 20,
+                    paddingLeft: 22,
+                    paddingRight: 22,
+                    background:
+                      currentStatus === 'Unqualified'
+                        ? '#EF4444'
+                        : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                    boxShadow:
+                      currentStatus === 'Unqualified'
+                        ? '0 4px 14px rgba(239, 68, 68, 0.35)'
+                        : '0 4px 14px rgba(37, 99, 235, 0.35)',
+                    border: 'none',
+                    color: '#FFFFFF',
                   }}
                 >
                   {currentStatus === 'Qualified'

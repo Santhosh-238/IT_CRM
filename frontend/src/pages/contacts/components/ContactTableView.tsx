@@ -856,10 +856,10 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                         {isAssigned && (
                           <Tooltip label="Qualify Contact" withArrow>
                             <ActionIcon
-                              variant="subtle"
+                              variant="light"
                               size="sm"
                               radius="md"
-                              color="teal"
+                              color="blue"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 onQualify?.(contact);
