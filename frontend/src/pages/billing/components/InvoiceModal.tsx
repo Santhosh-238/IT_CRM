@@ -49,7 +49,9 @@ import { Invoice, InvoiceItem, BillingProduct, SalesOrder, BillingMilestone, Bil
 import { billingService } from '../../../services/billingService';
 import { contactService } from '../../../services/contactService';
 import { projectService } from '../../../services/projectService';
+import { settingsService } from '../../../services/settingsService';
 import { Project, ProjectModuleItem } from '../../../types/project';
+import { MasterProject } from '../../../types/settings';
 import { Contact } from '../../../types/contact';
 import { Lead } from '../../../types/lead';
 
@@ -58,19 +60,59 @@ interface ParsedModule {
   description: string;
 }
 
-const getProductModules = (product?: BillingProduct | null): ParsedModule[] => {
-  if (!product || !product.modules || !Array.isArray(product.modules)) return [];
-  return product.modules
-    .map((m: any) => {
-      if (typeof m === 'string') {
-        return { name: m, description: '' };
+const getProductModules = (
+  product?: BillingProduct | null,
+  availableProjectsList: { name: string; modules?: any }[] = []
+): ParsedModule[] => {
+  if (!product) return [];
+  let rawModules: any = product.modules;
+  if (typeof rawModules === 'string') {
+    try {
+      rawModules = JSON.parse(rawModules);
+    } catch {
+      rawModules = [];
+    }
+  }
+  if (Array.isArray(rawModules) && rawModules.length > 0) {
+    return rawModules
+      .map((m: any) => {
+        if (typeof m === 'string') {
+          return { name: m, description: '' };
+        }
+        return {
+          name: m?.name || '',
+          description: m?.description || '',
+        };
+      })
+      .filter((m) => m.name && m.name.trim() !== '');
+  }
+
+  // Fallback: check matching project / master project by name
+  if (availableProjectsList && availableProjectsList.length > 0) {
+    const matched = availableProjectsList.find(
+      (p) => p.name && p.name.toLowerCase() === product.name.toLowerCase()
+    );
+    if (matched) {
+      let mods: any = matched.modules;
+      if (typeof mods === 'string') {
+        try {
+          mods = JSON.parse(mods);
+        } catch {
+          mods = [];
+        }
       }
-      return {
-        name: m?.name || '',
-        description: m?.description || '',
-      };
-    })
-    .filter((m) => m.name && m.name.trim() !== '');
+      if (Array.isArray(mods) && mods.length > 0) {
+        return mods
+          .map((m: any) => {
+            if (typeof m === 'string') return { name: m, description: '' };
+            return { name: m?.name || '', description: m?.description || '' };
+          })
+          .filter((m) => m.name && m.name.trim() !== '');
+      }
+    }
+  }
+
+  return [];
 };
 
 const INDIAN_STATES = [
@@ -239,6 +281,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
   const [products, setProducts] = useState<BillingProduct[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [masterProjects, setMasterProjects] = useState<MasterProject[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [isManualProject, setIsManualProject] = useState<boolean>(false);
   const [billingSettings, setBillingSettings] = useState<BillingSettings | null>(null);
@@ -314,20 +357,94 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     },
   ]);
 
-  const selectedCatalogueProduct = products.find((p) => p.id === selectedCatalogueId);
-  const selectedProductModules = getProductModules(selectedCatalogueProduct);
+  // Combined available projects list: from Project Management + Master Projects configured in Settings
+  const availableProjects = useMemo(() => {
+    const combined: {
+      id: string;
+      name: string;
+      modules?: any;
+      estimatedBudget?: number;
+      clientName?: string;
+      clientEmail?: string;
+      clientPhone?: string;
+    }[] = [];
+    const seenNames = new Set<string>();
 
-  // Resolves the selected Project from Project Management (only when explicitly chosen by user)
+    for (const p of projects) {
+      if (p.id && !seenNames.has(p.name.toLowerCase())) {
+        seenNames.add(p.name.toLowerCase());
+        combined.push(p);
+      }
+    }
+
+    for (const mp of masterProjects) {
+      if (mp.id && !seenNames.has(mp.name.toLowerCase())) {
+        seenNames.add(mp.name.toLowerCase());
+        combined.push({
+          id: mp.id,
+          name: mp.name,
+          modules: mp.modules,
+          estimatedBudget: mp.basePrice,
+        });
+      }
+    }
+    return combined;
+  }, [projects, masterProjects]);
+
+  const selectedCatalogueProduct = products.find((p) => p.id === selectedCatalogueId);
+  const selectedProductModules = useMemo(() => {
+    return getProductModules(selectedCatalogueProduct, availableProjects);
+  }, [selectedCatalogueProduct, availableProjects]);
+
+  // Resolves the selected Project from Project Management or Master Projects
   const selectedProject = useMemo(() => {
     if (selectedProjectId) {
-      return projects.find((p) => p.id === selectedProjectId) || null;
+      const found = availableProjects.find((p) => p.id === selectedProjectId);
+      if (found) return found;
+    }
+    if (projectTitle && projectTitle.trim()) {
+      const titleLower = projectTitle.trim().toLowerCase();
+      const found = availableProjects.find(
+        (p) =>
+          p.name.toLowerCase() === titleLower ||
+          titleLower.includes(p.name.toLowerCase()) ||
+          p.name.toLowerCase().includes(titleLower)
+      );
+      if (found) return found;
+    }
+    if (selectedCatalogueProduct) {
+      const found = availableProjects.find(
+        (p) => p.name.toLowerCase() === selectedCatalogueProduct.name.toLowerCase()
+      );
+      if (found) return found;
     }
     return null;
-  }, [selectedProjectId, projects]);
+  }, [selectedProjectId, projectTitle, selectedCatalogueProduct, availableProjects]);
 
   const selectedProjectModules: ProjectModuleItem[] = useMemo(() => {
-    if (!selectedProject || !Array.isArray(selectedProject.modules)) return [];
-    return selectedProject.modules;
+    if (!selectedProject) return [];
+    let mods: any = selectedProject.modules;
+    if (typeof mods === 'string') {
+      try {
+        mods = JSON.parse(mods);
+      } catch {
+        mods = [];
+      }
+    }
+    if (!Array.isArray(mods)) return [];
+    return mods
+      .map((m: any, idx: number) => {
+        if (typeof m === 'string') {
+          return { id: `mod-${idx}`, name: m, description: '' };
+        }
+        return {
+          id: m.id || `mod-${idx}`,
+          name: m.name || '',
+          description: m.description || '',
+          price: m.price ? Number(m.price) : undefined,
+        };
+      })
+      .filter((m: any) => m.name && m.name.trim() !== '');
   }, [selectedProject]);
 
   const handleSelectProject = (projId: string | null) => {
@@ -336,7 +453,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       setProjectTitle('');
       return;
     }
-    const found = projects.find((p) => p.id === projId);
+    const found = availableProjects.find((p) => p.id === projId);
     if (found) {
       setProjectTitle(found.name);
 
@@ -351,33 +468,53 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
         setClientPhone(found.clientPhone);
       }
 
+      let modCount = 0;
+      if (Array.isArray(found.modules)) {
+        modCount = found.modules.length;
+      } else if (typeof found.modules === 'string') {
+        try {
+          modCount = JSON.parse(found.modules).length;
+        } catch {}
+      }
+
       notifications.show({
         color: 'indigo',
         title: `Project: ${found.name}`,
-        message: `${found.modules?.length || 0} module(s) available for line items.`,
+        message: `${modCount} module(s) available for line items.`,
       });
     }
   };
 
-  const handleAddAllProjectModules = (proj: Project) => {
-    if (!proj.modules || proj.modules.length === 0) {
+  const handleAddAllProjectModules = (proj: any) => {
+    let mods: any = proj.modules;
+    if (typeof mods === 'string') {
+      try {
+        mods = JSON.parse(mods);
+      } catch {
+        mods = [];
+      }
+    }
+    if (!Array.isArray(mods) || mods.length === 0) {
       notifications.show({ color: 'yellow', message: 'No modules found for this project in Project Management' });
       return;
     }
 
     const unitBudget =
       proj.estimatedBudget && proj.estimatedBudget > 0
-        ? Math.round(proj.estimatedBudget / proj.modules.length)
+        ? Math.round(proj.estimatedBudget / mods.length)
         : (items[0]?.unitPrice && items[0]?.unitPrice > 0 ? items[0].unitPrice : 0);
 
-    const newItems: InvoiceItem[] = proj.modules.map((m) => {
-      const price = unitBudget;
+    const newItems: InvoiceItem[] = mods.map((m: any) => {
+      const mName = typeof m === 'string' ? m : m.name;
+      const mDesc = typeof m === 'string' ? '' : m.description;
+      const mPrice = typeof m !== 'string' && m.price && Number(m.price) > 0 ? Number(m.price) : unitBudget;
+      const price = mPrice;
       const tax = Number(((price * 18) / 100).toFixed(2));
       const total = Number((price + tax).toFixed(2));
       return {
-        itemName: m.name,
+        itemName: mName,
         itemType: 'Service',
-        description: m.description || `Project scope deliverables & milestone deployment for ${m.name} (${proj.name})`,
+        description: mDesc || `Project scope deliverables & milestone deployment for ${mName} (${proj.name})`,
         hsnCode: '998314',
         quantity: 1,
         unit: 'Nos',
@@ -407,7 +544,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     );
   };
 
-  // Load Contacts, Products, Projects, Orders, and Settings in background
+  // Load Contacts, Products, Projects, Master Projects, Orders, and Settings in background
   useEffect(() => {
     if (opened) {
       contactService.getContacts({ limit: 100 }).then((res) => {
@@ -417,6 +554,12 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       projectService.getProjects({ limit: 100 }).then((res) => {
         if (res?.data && Array.isArray(res.data)) {
           setProjects(res.data);
+        }
+      }).catch(() => {});
+
+      settingsService.getMasterProjects().then((res) => {
+        if (res && res.success && Array.isArray(res.data)) {
+          setMasterProjects(res.data);
         }
       }).catch(() => {});
 
@@ -561,8 +704,31 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
             : '')
       );
       setPlaceOfSupply(initialLead.registeredState || matchedContact?.registeredState || 'Tamil Nadu');
-      setSelectedProjectId(null);
-      setProjectTitle('');
+
+      const leadItem =
+        initialLead.product ||
+        initialLead.service ||
+        initialLead.productList?.[0] ||
+        initialLead.serviceList?.[0];
+
+      if (leadItem) {
+        setProjectTitle(leadItem);
+        const matched = availableProjects.find(
+          (p) =>
+            p.name.toLowerCase() === leadItem.toLowerCase() ||
+            p.name.toLowerCase().includes(leadItem.toLowerCase()) ||
+            leadItem.toLowerCase().includes(p.name.toLowerCase())
+        );
+        if (matched) {
+          setSelectedProjectId(matched.id);
+        } else {
+          setSelectedProjectId(null);
+        }
+      } else {
+        setSelectedProjectId(null);
+        setProjectTitle('');
+      }
+
       setInvoiceDate(new Date().toISOString().split('T')[0]);
       setDueDate(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
       setStatus('Issued');
@@ -631,6 +797,31 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     }
   }, [invoice, defaultMilestone, defaultSalesOrderId, initialLead, contacts, opened]);
 
+  // Reactive auto-matching when availableProjects loads asynchronously for an initialLead
+  useEffect(() => {
+    if (initialLead && !selectedProjectId && availableProjects.length > 0) {
+      const leadItem =
+        initialLead.product ||
+        initialLead.service ||
+        initialLead.productList?.[0] ||
+        initialLead.serviceList?.[0];
+      if (leadItem) {
+        const matched = availableProjects.find(
+          (p) =>
+            p.name.toLowerCase() === leadItem.toLowerCase() ||
+            p.name.toLowerCase().includes(leadItem.toLowerCase()) ||
+            leadItem.toLowerCase().includes(p.name.toLowerCase())
+        );
+        if (matched) {
+          setSelectedProjectId(matched.id);
+          if (!projectTitle.trim()) {
+            setProjectTitle(matched.name);
+          }
+        }
+      }
+    }
+  }, [initialLead, availableProjects, selectedProjectId, projectTitle]);
+
   const handleSelectContact = (val: string | null) => {
     setContactId(val || '');
     if (!val) return;
@@ -671,7 +862,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     const seen = new Set<string>();
     const options: { value: string; label: string }[] = [];
 
-    // 1. Modules from Selected Project Management Project (clean label, no project suffix or emoji)
+    // 1. Modules from Selected Project (clean label, highest priority)
     if (selectedProject && selectedProjectModules.length > 0) {
       for (const m of selectedProjectModules) {
         if (m.name && !seen.has(m.name)) {
@@ -679,36 +870,48 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
           options.push({ value: m.name, label: m.name });
         }
       }
-    } else {
-      // 2. Modules from Projects in Project Management
-      for (const prj of projects) {
-        if (Array.isArray(prj.modules)) {
-          for (const m of prj.modules) {
-            if (m.name && !seen.has(m.name)) {
-              seen.add(m.name);
-              options.push({ value: m.name, label: `${m.name} (${prj.name})` });
-            }
+    }
+
+    // 2. Modules from Selected Catalogue Product
+    if (selectedCatalogueProduct && selectedProductModules.length > 0) {
+      for (const m of selectedProductModules) {
+        if (m.name && !seen.has(m.name)) {
+          seen.add(m.name);
+          options.push({ value: m.name, label: m.name });
+        }
+      }
+    }
+
+    // 3. Modules from other available projects (Master Projects + Delivery Projects)
+    for (const prj of availableProjects) {
+      if (selectedProject && prj.id === selectedProject.id) continue;
+      let mods: any = prj.modules;
+      if (typeof mods === 'string') {
+        try {
+          mods = JSON.parse(mods);
+        } catch {
+          mods = [];
+        }
+      }
+      if (Array.isArray(mods)) {
+        for (const m of mods) {
+          const mName = typeof m === 'string' ? m : m?.name;
+          if (mName && !seen.has(mName)) {
+            seen.add(mName);
+            options.push({ value: mName, label: `${mName} (${prj.name})` });
           }
         }
       }
+    }
 
-      // 3. Modules from Catalogue
-      if (selectedCatalogueProduct && selectedProductModules.length > 0) {
-        for (const m of selectedProductModules) {
-          if (m.name && !seen.has(m.name)) {
-            seen.add(m.name);
-            options.push({ value: m.name, label: `${m.name} (${selectedCatalogueProduct.name})` });
-          }
-        }
-      } else {
-        for (const p of products) {
-          const mods = getProductModules(p);
-          for (const m of mods) {
-            if (m.name && !seen.has(m.name)) {
-              seen.add(m.name);
-              options.push({ value: m.name, label: `${m.name} (${p.name})` });
-            }
-          }
+    // 4. Modules from Catalogue
+    for (const p of products) {
+      if (selectedCatalogueProduct && p.id === selectedCatalogueProduct.id) continue;
+      const mods = getProductModules(p, availableProjects);
+      for (const m of mods) {
+        if (m.name && !seen.has(m.name)) {
+          seen.add(m.name);
+          options.push({ value: m.name, label: `${m.name} (${p.name})` });
         }
       }
     }
@@ -761,13 +964,22 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     // 1. Check selected project modules
     let matchedProjectMod = selectedProjectModules.find((m) => m.name === val);
 
-    // 2. Check other projects
+    // 2. Check all available projects (Master Projects and Delivery Projects)
     if (!matchedProjectMod) {
-      for (const prj of projects) {
-        if (Array.isArray(prj.modules)) {
-          const mod = prj.modules.find((m) => m.name === val);
+      for (const prj of availableProjects) {
+        let mods: any = prj.modules;
+        if (typeof mods === 'string') {
+          try {
+            mods = JSON.parse(mods);
+          } catch {
+            mods = [];
+          }
+        }
+        if (Array.isArray(mods)) {
+          const mod = mods.find((m: any) => (typeof m === 'string' ? m : m.name) === val);
           if (mod) {
-            matchedProjectMod = mod;
+            matchedProjectMod =
+              typeof mod === 'string' ? { id: mod, name: mod, description: '' } : mod;
             break;
           }
         }
@@ -788,7 +1000,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       if (mod) foundDesc = mod.description;
     } else {
       for (const p of products) {
-        const mods = getProductModules(p);
+        const mods = getProductModules(p, availableProjects);
         const mod = mods.find((m) => m.name === val);
         if (mod) {
           foundProdId = p.id;
@@ -1480,7 +1692,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                           </Group>
                         }
                         placeholder="Select project..."
-                        data={projects.map((p) => ({
+                        data={availableProjects.map((p) => ({
                           value: p.id,
                           label: p.name,
                         }))}

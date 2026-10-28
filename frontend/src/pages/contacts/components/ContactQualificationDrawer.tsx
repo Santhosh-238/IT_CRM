@@ -35,6 +35,8 @@ import {
   IconBriefcase,
   IconAlertCircle,
   IconFileText,
+  IconReceiptTax,
+  IconCreditCard,
 } from '@tabler/icons-react';
 import { Contact, QualificationStatus, ContactPriority } from '../../../types/contact';
 import { useContact } from '../../../context/ContactContext';
@@ -73,6 +75,9 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
   const [qualificationStatus, setQualificationStatus] = useState<QualificationStatus>('Pending');
   const [qualifiedBy, setQualifiedBy] = useState<string>('');
   const [qualificationDate, setQualificationDate] = useState<string>(todayStr);
+  const [address, setAddress] = useState<string>('');
+  const [gstNumber, setGstNumber] = useState<string>('');
+  const [companyPan, setCompanyPan] = useState<string>('');
   const [unqualifiedReason, setUnqualifiedReason] = useState<string>('');
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -113,6 +118,9 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
           ''
       );
       setQualificationDate(contact.qualificationDate || todayStr);
+      setAddress(contact.address || '');
+      setGstNumber(contact.gstNumber || '');
+      setCompanyPan(contact.companyPan || '');
       setUnqualifiedReason(contact.unqualifiedReason || contact.disqualificationReason || '');
     }
   }, [contact, opened]);
@@ -133,6 +141,10 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
         qualificationStatus,
         qualifiedBy: qualifiedBy.trim(),
         qualificationDate: qualificationDate || todayStr,
+        address: address.trim(),
+        gstNumber: gstNumber.trim().toUpperCase() || '',
+        companyPan: companyPan.trim().toUpperCase() || '',
+        panNumber: companyPan.trim().toUpperCase() || '',
         unqualifiedReason: qualificationStatus === 'Unqualified' ? unqualifiedReason.trim() : '',
         disqualificationReason: qualificationStatus === 'Unqualified' ? unqualifiedReason.trim() : '',
         status:
@@ -521,6 +533,78 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
                 styles={{
                   root: {
                     backgroundColor: isDark ? '#1E293B' : '#F1F5F9',
+                  },
+                }}
+              />
+            </Box>
+
+            {/* GST Number & PAN Number (Optional) */}
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              <Box>
+                <Text fw={600} size="13px" style={{ color: labelColor }}>
+                  GST Number (Optional)
+                </Text>
+                <Text size="11px" c="dimmed" mb={4}>
+                  e.g. 33AAAAA0000A1Z5
+                </Text>
+                <TextInput
+                  placeholder="Enter GST number..."
+                  leftSection={<IconReceiptTax size={16} color="#7C3AED" stroke={1.8} />}
+                  value={gstNumber}
+                  onChange={(e) => setGstNumber(e.currentTarget.value.toUpperCase())}
+                  radius="md"
+                  styles={{
+                    input: {
+                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#CBD5E1',
+                      fontSize: 13,
+                    },
+                  }}
+                />
+              </Box>
+
+              <Box>
+                <Text fw={600} size="13px" style={{ color: labelColor }}>
+                  PAN Number (Optional)
+                </Text>
+                <Text size="11px" c="dimmed" mb={4}>
+                  e.g. AAAAA0000A
+                </Text>
+                <TextInput
+                  placeholder="Enter PAN number..."
+                  leftSection={<IconCreditCard size={16} color="#059669" stroke={1.8} />}
+                  value={companyPan}
+                  onChange={(e) => setCompanyPan(e.currentTarget.value.toUpperCase())}
+                  radius="md"
+                  styles={{
+                    input: {
+                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                      borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#CBD5E1',
+                      fontSize: 13,
+                    },
+                  }}
+                />
+              </Box>
+            </SimpleGrid>
+
+            {/* Address */}
+            <Box>
+              <Text fw={600} size="13px" style={{ color: labelColor }}>
+                Address
+              </Text>
+              <Text size="11px" c="dimmed" mb={4}>
+                Contact / Company office address
+              </Text>
+              <TextInput
+                placeholder="Enter street, city, state, postal code..."
+                value={address}
+                onChange={(e) => setAddress(e.currentTarget.value)}
+                radius="md"
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#CBD5E1',
+                    fontSize: 13,
                   },
                 }}
               />

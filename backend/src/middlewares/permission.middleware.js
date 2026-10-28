@@ -61,6 +61,8 @@ export async function getUserPermissions(user) {
         'employee_management',
         'access_control',
         'settings',
+        'activity_timeline',
+        'activities',
       ];
       allModules.forEach((mod) => {
         permsMap[mod] = {

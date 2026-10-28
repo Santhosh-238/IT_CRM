@@ -98,6 +98,8 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (path === 'invoices/edit' || path === 'edit-invoice') return 'edit-invoice';
     if (path === 'invoices' || path === 'invoice') return 'invoices';
 
+    if (path === 'activity-timeline' || path === 'activity' || path === 'activities' || path === 'timeline') return 'activity-timeline';
+
     if (path === 'access-control' || path === 'access-control-matrix' || path === 'rbac') return 'access-control';
     if (path === 'settings' || path === 'setting' || path === 'master-catalog' || path === 'catalog') return 'settings';
 
@@ -145,6 +147,7 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       else if (normalizedNav === 'create-invoice') targetPath = '/invoices/create';
       else if (normalizedNav === 'invoice-details') targetPath = '/invoices/details';
       else if (normalizedNav === 'edit-invoice') targetPath = '/invoices/edit';
+      else if (normalizedNav === 'activity-timeline' || normalizedNav === 'activities') targetPath = '/activity-timeline';
       else if (normalizedNav === 'access-control' || normalizedNav === 'rbac') targetPath = '/access-control';
       else if (normalizedNav === 'settings') {
         const savedTab = localStorage.getItem('crm_settings_tab');

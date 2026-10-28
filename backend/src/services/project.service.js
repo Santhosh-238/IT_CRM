@@ -3,6 +3,7 @@ import { getCache, setCache, delCache } from '../config/redis.js';
 import { io } from '../utils/socket.js';
 import { PROJECT_MODULE } from '../models/project.model.js';
 import { generateProjectId, buildProjectFilterQuery, formatProjectResponse } from '../utils/project.util.js';
+import { recordActivity } from './activity.service.js';
 
 /**
  * 1. List Projects with pagination, search, sorting, filters, and Redis caching
@@ -433,6 +434,22 @@ export async function createProjectService(body, user) {
   if (io) {
     io.emit('project_created', newProject);
   }
+
+  // Automatically record activity in timeline
+  try {
+    await recordActivity({
+      type: 'progress',
+      title: 'Project Handover',
+      description: `Handover completed - Assigned to ${newProject.projectManagerName || 'Development Team'}`,
+      customerName: newProject.clientName,
+      entityId: newProject.id,
+      entityType: 'Project',
+      entityNumber: newProject.projectId,
+      status: newProject.status || 'In Progress',
+      performedBy: newProject.projectManagerName || user?.name || 'Deepak V',
+      activityDate: newProject.startDate || new Date().toISOString().slice(0, 10),
+    });
+  } catch (_) {}
 
   return {
     message: `Project '${newProject.name}' (${newProject.projectId}) created successfully!`,

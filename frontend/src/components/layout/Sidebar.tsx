@@ -242,6 +242,27 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
+            {/* Activity Timeline Item */}
+            {(can('activity_timeline', 'view') || can('activities', 'view') || isSuperAdmin || can('leads', 'view')) && (
+              <NavLink
+                label="Activity Timeline"
+                leftSection={<IconClock size={18} stroke={2} />}
+                active={
+                  activeNav === 'activity-timeline' ||
+                  activeNav === 'activities' ||
+                  activeNav === 'activity'
+                }
+                onClick={() => onSelectNav('activity-timeline')}
+                className={
+                  activeNav === 'activity-timeline' ||
+                  activeNav === 'activities' ||
+                  activeNav === 'activity'
+                    ? 'crextio-pill-active'
+                    : 'crextio-pill-inactive'
+                }
+                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
           </Stack>
 
           {/* Administration & Security Section */}
