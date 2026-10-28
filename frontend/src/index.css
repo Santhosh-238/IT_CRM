@@ -9,52 +9,87 @@
   --font-mono: 'JetBrains Mono', monospace;
   
   /* =========================================================
-   * DYNAMIC CRM DESIGN TOKENS (Airy Slate & Pastel Candy Theme)
+   * ONEASSIST TECHNOLOGIES CRM TOKENS (Signature Indigo & Cyan)
    * ========================================================= */
-  --crm-primary: #14181F;
-  --crm-primary-hover: #232936;
-  --crm-primary-light: #F1F5F9;
-  --crm-primary-dark: #0A0D12;
+  --crm-primary: #4F46E5;
+  --crm-primary-hover: #4338CA;
+  --crm-primary-light: #EEF2FF;
+  --crm-primary-dark: #312E81;
+  --crm-primary-gradient: linear-gradient(135deg, #4F46E5 0%, #2563EB 50%, #06B6D4 100%);
 
-  --crm-bg: #EDF3F7;
-  --crm-bg-light: #F5F8FA;
-  --crm-bg-dark: #E2ECF2;
+  --crm-brand-cyan: #06B6D4;
+  --crm-brand-sky: #0EA5E9;
+  --crm-brand-blue: #2563EB;
+
+  --crm-bg: #F8FAFC;
+  --crm-bg-light: #FFFFFF;
+  --crm-bg-dark: #F1F5F9;
 
   --crm-card-bg: #FFFFFF;
   --crm-card-surface: #FFFFFF;
-  --crm-card-bg-dark: #14181F;
-  --crm-border: rgba(15, 23, 42, 0.07);
+  --crm-card-bg-dark: #0F172A;
+  --crm-border: #E2E8F0;
 
   --crm-text-primary: #0F172A;
   --crm-text-secondary: #475569;
   --crm-text-muted: #94A3B8;
   --crm-text-on-primary: #FFFFFF;
 
-  /* 🍬 Signature Pastel Accent Colors */
-  --crm-pastel-lime: #D8F4B8;
-  --crm-pastel-lime-text: #244C0E;
-  --crm-pastel-mint: #A4E8D9;
-  --crm-pastel-mint-text: #0B4F42;
-  --crm-pastel-coral: #F9B7B4;
-  --crm-pastel-coral-text: #5C1E1C;
-  --crm-pastel-purple: #E2D6FE;
-  --crm-pastel-purple-text: #3B1C76;
-  --crm-pastel-blue: #C9E4FE;
-  --crm-pastel-blue-text: #173B82;
+  /* 🍬 Sales Pipeline & Status Badges */
+  --crm-pastel-lime: #D1FAE5;
+  --crm-pastel-lime-text: #065F46;
+  --crm-pastel-mint: #CFFAFE;
+  --crm-pastel-mint-text: #0E7490;
+  --crm-pastel-coral: #FFE4E6;
+  --crm-pastel-coral-text: #9F1239;
+  --crm-pastel-purple: #EDE9FE;
+  --crm-pastel-purple-text: #5B21B6;
+  --crm-pastel-blue: #E0F2FE;
+  --crm-pastel-blue-text: #0369A1;
 
   --crm-success: #10B981;
   --crm-warning: #F59E0B;
   --crm-danger: #EF4444;
 
-  /* Mantine Core Overrides */
+  /* Mantine Core Overrides (Light Mode Defaults) */
   --mantine-color-white: #FFFFFF !important;
-  --mantine-color-body: #EDF3F7 !important;
+  --mantine-color-body: #F8FAFC !important;
   --mantine-color-default: #FFFFFF !important;
   --mantine-color-default-hover: #F8FAFC !important;
-  --mantine-color-default-border: rgba(15, 23, 42, 0.08) !important;
+  --mantine-color-default-border: #E2E8F0 !important;
   --mantine-color-default-color: #0F172A !important;
-  --mantine-primary-color-filled: #14181F !important;
-  --mantine-primary-color-filled-hover: #232936 !important;
+  --mantine-primary-color-filled: #4F46E5 !important;
+  --mantine-primary-color-filled-hover: #4338CA !important;
+}
+
+[data-mantine-color-scheme="dark"] {
+  --crm-primary: #3B82F6;
+  --crm-primary-hover: #2563EB;
+  --crm-primary-light: #1E293B;
+  --crm-primary-dark: #1D4ED8;
+
+  --crm-bg: #0B0F17;
+  --crm-bg-light: #0F172A;
+  --crm-bg-dark: #05080C;
+
+  --crm-card-bg: #111827;
+  --crm-card-surface: #111827;
+  --crm-card-bg-dark: #0B0F17;
+  --crm-border: rgba(255, 255, 255, 0.08);
+
+  --crm-text-primary: #F8FAFC;
+  --crm-text-secondary: #94A3B8;
+  --crm-text-muted: #64748B;
+  --crm-text-on-primary: #FFFFFF;
+
+  /* Mantine Core Overrides (Dark Mode) */
+  --mantine-color-body: #0B0F17 !important;
+  --mantine-color-default: #0F172A !important;
+  --mantine-color-default-hover: #1E293B !important;
+  --mantine-color-default-border: rgba(255, 255, 255, 0.08) !important;
+  --mantine-color-default-color: #F8FAFC !important;
+  --mantine-primary-color-filled: #3B82F6 !important;
+  --mantine-primary-color-filled-hover: #2563EB !important;
 }
 
 * {
@@ -63,16 +98,32 @@
   padding: 0;
 }
 
+html,
+body {
+  height: 100%;
+  max-height: 100%;
+  max-width: 100vw;
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   font-family: var(--font-family);
-  background: radial-gradient(circle at 90% 10%, rgba(200, 225, 240, 0.45) 0%, var(--crm-bg) 40%, transparent 80%),
-              radial-gradient(circle at 10% 90%, rgba(215, 244, 184, 0.3) 0%, var(--crm-bg) 40%, transparent 80%),
-              linear-gradient(180deg, var(--crm-bg-light) 0%, var(--crm-bg) 50%, var(--crm-bg-dark) 100%);
+  background: radial-gradient(circle at 90% 10%, rgba(99, 102, 241, 0.08) 0%, transparent 45%),
+              radial-gradient(circle at 10% 90%, rgba(6, 182, 212, 0.08) 0%, transparent 45%),
+              #F8FAFC;
   background-attachment: fixed;
   color: var(--crm-text-primary);
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100%;
+  max-height: 100%;
+  width: 100%;
+  max-width: 100vw;
+  overflow: hidden;
 }
 
 [data-mantine-color-scheme="dark"] body {
@@ -80,7 +131,7 @@ body {
               radial-gradient(circle at 10% 80%, rgba(15, 23, 42, 0.9) 0%, transparent 50%),
               linear-gradient(180deg, #0B0F17 0%, #05080C 100%);
   background-attachment: fixed;
-  color: var(--crm-text-on-primary);
+  color: var(--crm-text-primary);
 }
 
 /* Custom sleek scrollbar */
@@ -98,8 +149,47 @@ body {
   border-radius: 9999px;
 }
 
+[data-mantine-color-scheme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(15, 23, 42, 0.3);
+}
+
+[data-mantine-color-scheme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* =========================================================
+ * Modern Tooltip Theme (Light & Dark)
+ * ========================================================= */
+.mantine-Tooltip-tooltip {
+  background-color: #0F172A !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 5px 12px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Tooltip-tooltip {
+  background-color: #1E293B !important;
+  color: #F8FAFC !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+}
+
+.mantine-Tooltip-arrow {
+  background-color: #0F172A !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Tooltip-arrow {
+  background-color: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
 /* Dynamic Crisp Floating Cards */
@@ -114,11 +204,11 @@ body {
 }
 
 [data-mantine-color-scheme="dark"] .crextio-card,
-[data-mantine-color-scheme="dark"] .mantine-Paper-root {
-  background: rgba(20, 24, 31, 0.85);
+[data-mantine-color-scheme="dark"] .mantine-Paper-root:not(.pastel-lime-card):not(.pastel-mint-card):not(.pastel-coral-card) {
+  background: #111827;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
-  color: var(--crm-text-on-primary);
+  color: var(--crm-text-primary);
 }
 
 /* 🍬 Signature Pastel Cards */
@@ -171,49 +261,165 @@ body {
   box-shadow: 0 20px 35px -10px rgba(15, 23, 42, 0.08), 0 8px 16px -4px rgba(15, 23, 42, 0.03);
 }
 
-/* Dynamic Obsidian Nav Buttons */
+/* =========================================================
+ * SIGNATURE ANIMATED CRM SIDEBAR
+ * ========================================================= */
+
+@keyframes sidebarEntrance {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes activeBarGlow {
+  0%, 100% {
+    opacity: 0.85;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 1);
+  }
+}
+
+/* Sidebar Brand Logo Hover Animation */
+.sidebar-brand-box {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sidebar-brand-box:hover .sidebar-logo-icon {
+  transform: scale(1.08) rotate(-4deg);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
+}
+
+.sidebar-logo-icon {
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Sidebar Section Headers */
+.sidebar-section-header {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.sidebar-section-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.3), transparent);
+}
+
+/* Staggered entrance for items */
+.sidebar-nav-item {
+  animation: sidebarEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sidebar-nav-item:nth-child(1) { animation-delay: 20ms; }
+.sidebar-nav-item:nth-child(2) { animation-delay: 45ms; }
+.sidebar-nav-item:nth-child(3) { animation-delay: 70ms; }
+.sidebar-nav-item:nth-child(4) { animation-delay: 95ms; }
+.sidebar-nav-item:nth-child(5) { animation-delay: 120ms; }
+.sidebar-nav-item:nth-child(6) { animation-delay: 145ms; }
+.sidebar-nav-item:nth-child(7) { animation-delay: 170ms; }
+.sidebar-nav-item:nth-child(8) { animation-delay: 195ms; }
+.sidebar-nav-item:nth-child(9) { animation-delay: 220ms; }
+.sidebar-nav-item:nth-child(10) { animation-delay: 245ms; }
+
+/* OneAssist Signature Gradient Active Nav Button */
 .crextio-pill-active {
-  background: #14181F !important;
+  background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%) !important;
   color: #FFFFFF !important;
-  border-radius: 10px !important;
-  font-weight: 600 !important;
-  box-shadow: 0 4px 12px rgba(20, 24, 31, 0.2) !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  white-space: nowrap !important;
+  transform: translateX(4px);
+  position: relative;
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.crextio-pill-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  height: 60%;
+  width: 4px;
+  background: #FFFFFF;
+  border-radius: 0 4px 4px 0;
+  animation: activeBarGlow 2.5s infinite ease-in-out;
+}
+
+.crextio-pill-active .mantine-NavLink-label {
+  color: #FFFFFF !important;
   white-space: nowrap !important;
 }
 
-.crextio-pill-active .mantine-NavLink-label,
 .crextio-pill-active .mantine-NavLink-section {
   color: #FFFFFF !important;
-  white-space: nowrap !important;
+  transform: scale(1.12);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 [data-mantine-color-scheme="dark"] .crextio-pill-active {
-  background: #FFFFFF !important;
+  background: linear-gradient(135deg, #6366F1 0%, #38BDF8 100%) !important;
   color: #0F172A !important;
-  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
 }
 
 [data-mantine-color-scheme="dark"] .crextio-pill-active .mantine-NavLink-label,
 [data-mantine-color-scheme="dark"] .crextio-pill-active .mantine-NavLink-section {
-  color: #0F172A !important;
+  color: #FFFFFF !important;
 }
 
+/* Inactive Nav Link with fluid hover and icon tilt animation */
 .crextio-pill-inactive {
   background: transparent !important;
   color: var(--crm-text-secondary) !important;
-  border-radius: 10px !important;
-  transition: all 0.15s ease !important;
+  border-radius: 12px !important;
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
   white-space: nowrap !important;
+  position: relative;
+}
+
+.crextio-pill-inactive .mantine-NavLink-section {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+  color: #64748B;
 }
 
 .crextio-pill-inactive:hover {
-  background: rgba(15, 23, 42, 0.05) !important;
-  color: var(--crm-text-primary) !important;
+  background: rgba(79, 70, 229, 0.08) !important;
+  color: #4F46E5 !important;
+  transform: translateX(6px);
+  box-shadow: 0 2px 10px rgba(79, 70, 229, 0.08);
+}
+
+.crextio-pill-inactive:hover .mantine-NavLink-section {
+  transform: scale(1.18) rotate(-5deg);
+  color: #4F46E5 !important;
+}
+
+.crextio-pill-inactive:active {
+  transform: scale(0.97) translateX(3px);
+  transition: transform 0.08s ease !important;
 }
 
 [data-mantine-color-scheme="dark"] .crextio-pill-inactive:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #FFFFFF !important;
+  background: rgba(99, 102, 241, 0.16) !important;
+  color: #38BDF8 !important;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
+}
+
+[data-mantine-color-scheme="dark"] .crextio-pill-inactive:hover .mantine-NavLink-section {
+  color: #38BDF8 !important;
 }
 
 /* Big Aesthetic Counter Numbers */
@@ -237,43 +443,73 @@ body {
 .mantine-Drawer-body,
 .mantine-Menu-dropdown,
 .mantine-Popover-dropdown,
-.mantine-Select-dropdown {
+.mantine-Select-dropdown,
+.mantine-Autocomplete-dropdown {
   background-color: #FFFFFF !important;
   color: var(--crm-text-primary) !important;
   border: 1px solid var(--crm-border) !important;
-  border-radius: 24px !important;
+  border-radius: 20px !important;
   box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.1) !important;
 }
 
 [data-mantine-color-scheme="dark"] .mantine-Modal-content,
+[data-mantine-color-scheme="dark"] .mantine-Modal-header,
 [data-mantine-color-scheme="dark"] .mantine-Drawer-content,
-[data-mantine-color-scheme="dark"] .mantine-Menu-dropdown {
-  background-color: #14181F !important;
-  color: #FFFFFF !important;
+[data-mantine-color-scheme="dark"] .mantine-Drawer-header,
+[data-mantine-color-scheme="dark"] .mantine-Drawer-body,
+[data-mantine-color-scheme="dark"] .mantine-Menu-dropdown,
+[data-mantine-color-scheme="dark"] .mantine-Popover-dropdown,
+[data-mantine-color-scheme="dark"] .mantine-Select-dropdown,
+[data-mantine-color-scheme="dark"] .mantine-Autocomplete-dropdown {
+  background-color: #111827 !important;
+  color: #F8FAFC !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.6) !important;
 }
 
-.mantine-Menu-item {
+.mantine-Menu-item,
+.mantine-Select-option,
+.mantine-Autocomplete-option {
   color: var(--crm-text-primary) !important;
-  border-radius: 12px !important;
+  border-radius: 10px !important;
 }
 
-.mantine-Menu-item:hover {
+.mantine-Menu-item:hover,
+.mantine-Select-option:hover,
+.mantine-Autocomplete-option:hover {
   background-color: rgba(15, 23, 42, 0.05) !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Menu-item,
+[data-mantine-color-scheme="dark"] .mantine-Select-option,
+[data-mantine-color-scheme="dark"] .mantine-Autocomplete-option {
+  color: #F8FAFC !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Menu-item:hover,
+[data-mantine-color-scheme="dark"] .mantine-Select-option:hover,
+[data-mantine-color-scheme="dark"] .mantine-Autocomplete-option:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Form inputs styling */
 .mantine-TextInput-input,
+.mantine-PasswordInput-input,
 .mantine-Select-input,
+.mantine-Autocomplete-input,
 .mantine-NumberInput-input,
 .mantine-MultiSelect-input,
 .mantine-Textarea-input {
   background-color: #F8FAFC !important;
-  border-color: rgba(15, 23, 42, 0.1) !important;
-  color: var(--crm-text-primary) !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  color: #0F172A !important;
+  transition: all 0.2s ease !important;
 }
 
 .mantine-TextInput-input:focus,
+.mantine-PasswordInput-input:focus,
 .mantine-Select-input:focus,
+.mantine-Autocomplete-input:focus,
 .mantine-NumberInput-input:focus,
 .mantine-MultiSelect-input:focus,
 .mantine-Textarea-input:focus {
@@ -281,13 +517,55 @@ body {
   background-color: #FFFFFF !important;
 }
 
-/* Override browser autofill blue highlights */
+[data-mantine-color-scheme="dark"] .mantine-TextInput-input,
+[data-mantine-color-scheme="dark"] .mantine-PasswordInput-input,
+[data-mantine-color-scheme="dark"] .mantine-Select-input,
+[data-mantine-color-scheme="dark"] .mantine-Autocomplete-input,
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-input,
+[data-mantine-color-scheme="dark"] .mantine-MultiSelect-input,
+[data-mantine-color-scheme="dark"] .mantine-Textarea-input {
+  background-color: #1E293B !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #F8FAFC !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-TextInput-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-PasswordInput-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-Select-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-Autocomplete-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-NumberInput-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-MultiSelect-input:focus,
+[data-mantine-color-scheme="dark"] .mantine-Textarea-input:focus {
+  border-color: #3B82F6 !important;
+  background-color: #1E293B !important;
+}
+
+/* Input labels */
+.mantine-TextInput-label,
+.mantine-PasswordInput-label,
+.mantine-Select-label,
+.mantine-Autocomplete-label,
+.mantine-NumberInput-label,
+.mantine-Textarea-label {
+  color: var(--crm-text-primary) !important;
+}
+
+/* Override browser autofill highlights */
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
   -webkit-text-fill-color: #0F172A !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+[data-mantine-color-scheme="dark"] input:-webkit-autofill,
+[data-mantine-color-scheme="dark"] input:-webkit-autofill:hover, 
+[data-mantine-color-scheme="dark"] input:-webkit-autofill:focus,
+[data-mantine-color-scheme="dark"] input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #1E293B inset !important;
+  -webkit-text-fill-color: #F8FAFC !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 
@@ -298,6 +576,10 @@ input:-webkit-autofill:active {
 
 .mantine-Table-thead {
   background-color: #F8FAFC !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Table-thead {
+  background-color: #1E293B !important;
 }
 
 .mantine-Table-th {
@@ -363,3 +645,393 @@ input:-webkit-autofill:active {
   transform: scale(0.98);
 }
 
+/* =========================================================
+ * ULTRA-SLEEK MODERN NOTIFICATION TOAST DESIGN
+ * ========================================================= */
+.mantine-Notification-root {
+  background-color: #FFFFFF !important;
+  border: 1px solid rgba(226, 232, 240, 0.85) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 20px 35px -8px rgba(15, 23, 42, 0.12), 0 6px 14px -3px rgba(15, 23, 42, 0.04), 0 0 0 1px rgba(15, 23, 42, 0.04) !important;
+  padding: 13px 16px !important;
+  min-width: 320px !important;
+  max-width: 440px !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: flex-start !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Notification-root {
+  background-color: #1E293B !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.6), 0 8px 16px -4px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Elegant Top Gradient Accent Line */
+.mantine-Notification-root::after {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3px !important;
+  background: linear-gradient(90deg, #6366F1, #818CF8) !important;
+  border-top-left-radius: 14px !important;
+  border-top-right-radius: 14px !important;
+}
+
+.mantine-Notification-root[data-color="teal"]::after,
+.mantine-Notification-root[data-color="green"]::after {
+  background: linear-gradient(90deg, #10B981, #34D399) !important;
+}
+
+.mantine-Notification-root[data-color="orange"]::after,
+.mantine-Notification-root[data-color="yellow"]::after {
+  background: linear-gradient(90deg, #F59E0B, #FBBF24) !important;
+}
+
+.mantine-Notification-root[data-color="red"]::after {
+  background: linear-gradient(90deg, #EF4444, #F87171) !important;
+}
+
+/* Modern Glowing Status Icon Badge (rendered when caller doesn't provide an explicit icon) */
+.mantine-Notification-root::before {
+  content: '' !important;
+  position: static !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  flex-shrink: 0 !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 9px !important;
+  margin: 2px 12px 0 0 !important;
+  display: block !important;
+  background-size: 15px 15px !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-color: #6366F1 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='16' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='8' x2='12.01' y2='8'%3E%3C/line%3E%3C/svg%3E") !important;
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Success Icon */
+.mantine-Notification-root[data-color="teal"]::before,
+.mantine-Notification-root[data-color="green"]::before {
+  background-color: #10B981 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.32) !important;
+}
+
+/* Warning Icon */
+.mantine-Notification-root[data-color="orange"]::before,
+.mantine-Notification-root[data-color="yellow"]::before {
+  background-color: #F59E0B !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z'%3E%3C/path%3E%3Cline x1='12' y1='9' x2='12' y2='13'%3E%3C/line%3E%3Cline x1='12' y1='17' x2='12.01' y2='17'%3E%3C/line%3E%3C/svg%3E") !important;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.32) !important;
+}
+
+/* Error / Danger Icon */
+.mantine-Notification-root[data-color="red"]::before {
+  background-color: #EF4444 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'%3E%3C/circle%3E%3Cline x1='12' y1='8' x2='12' y2='12'%3E%3C/line%3E%3Cline x1='12' y1='16' x2='12.01' y2='16'%3E%3C/line%3E%3C/svg%3E") !important;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.32) !important;
+}
+
+/* If an explicit icon was passed, hide pseudo-element and style the native icon container */
+.mantine-Notification-root:has(.mantine-Notification-icon)::before,
+.mantine-Notification-root:has(.mantine-Notification-loader)::before {
+  display: none !important;
+}
+
+.mantine-Notification-icon {
+  border-radius: 9px !important;
+  width: 30px !important;
+  height: 30px !important;
+  margin-right: 12px !important;
+  margin-top: 2px !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+.mantine-Notification-body {
+  flex: 1 !important;
+  min-width: 0 !important;
+  padding-right: 6px !important;
+}
+
+.mantine-Notification-title {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #0F172A !important;
+  letter-spacing: -0.015em !important;
+  line-height: 1.35 !important;
+  margin-bottom: 2px !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Notification-title {
+  color: #F8FAFC !important;
+}
+
+.mantine-Notification-description {
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  color: #475569 !important;
+  line-height: 1.45 !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Notification-description {
+  color: #94A3B8 !important;
+}
+
+.mantine-Notification-closeButton {
+  border-radius: 6px !important;
+  width: 24px !important;
+  height: 24px !important;
+  color: #94A3B8 !important;
+  margin-top: -2px !important;
+  transition: all 0.15s ease !important;
+}
+
+.mantine-Notification-closeButton:hover {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+  transform: scale(1.05) !important;
+}
+
+[data-mantine-color-scheme="dark"] .mantine-Notification-closeButton:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #F8FAFC !important;
+}
+
+/* =========================================================
+ * SIGNATURE CRM INPUT BOX DESIGN (Projects & Forms)
+ * ========================================================= */
+.project-form-input .mantine-TextInput-input,
+.project-form-input .mantine-Select-input,
+.project-form-input .mantine-DatePickerInput-input,
+.project-form-input .mantine-DateInput-input {
+  height: 36px !important;
+  border-radius: 7px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  color: #0F172A !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.project-form-input .mantine-Textarea-input {
+  border-radius: 8px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  background-color: #FFFFFF !important;
+  border: 1.5px solid #CBD5E1 !important;
+  color: #0F172A !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  min-height: 85px !important;
+  padding: 8px 12px !important;
+}
+
+.project-form-input .mantine-TextInput-input:hover,
+.project-form-input .mantine-Select-input:hover,
+.project-form-input .mantine-DatePickerInput-input:hover,
+.project-form-input .mantine-DateInput-input:hover,
+.project-form-input .mantine-Textarea-input:hover {
+  border-color: #94A3B8 !important;
+  background-color: #FAFAFA !important;
+}
+
+.project-form-input .mantine-TextInput-input:focus,
+.project-form-input .mantine-Select-input:focus,
+.project-form-input .mantine-DatePickerInput-input:focus,
+.project-form-input .mantine-DateInput-input:focus,
+.project-form-input .mantine-Textarea-input:focus,
+.project-form-input .mantine-TextInput-input:focus-within,
+.project-form-input .mantine-Select-input:focus-within,
+.project-form-input .mantine-DatePickerInput-input:focus-within,
+.project-form-input .mantine-DateInput-input:focus-within {
+  border-color: #2563EB !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.14) !important;
+  outline: none !important;
+}
+
+.project-form-input .mantine-TextInput-input::placeholder,
+.project-form-input .mantine-Select-input::placeholder,
+.project-form-input .mantine-DatePickerInput-input::placeholder,
+.project-form-input .mantine-DateInput-input::placeholder,
+.project-form-input .mantine-Textarea-input::placeholder {
+  color: #94A3B8 !important;
+  font-weight: 400 !important;
+  font-size: 13.5px !important;
+}
+
+.project-form-input .mantine-TextInput-label,
+.project-form-input .mantine-Select-label,
+.project-form-input .mantine-DatePickerInput-label,
+.project-form-input .mantine-DateInput-label,
+.project-form-input .mantine-Textarea-label {
+  font-weight: 600 !important;
+  font-size: 12.5px !important;
+  margin-bottom: 5px !important;
+  color: #334155 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.project-form-input .mantine-TextInput-section,
+.project-form-input .mantine-Select-section,
+.project-form-input .mantine-DatePickerInput-section,
+.project-form-input .mantine-DateInput-section {
+  color: #64748B !important;
+}
+
+/* Dark mode overrides */
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-input,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-input,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-input,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-input,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Textarea-input {
+  background-color: #1E293B !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.12) !important;
+  color: #F8FAFC !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-input:hover,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-input:hover,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-input:hover,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-input:hover,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Textarea-input:hover {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background-color: #243247 !important;
+}
+
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-input:focus,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-input:focus,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-input:focus,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-input:focus,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Textarea-input:focus {
+  border-color: #3B82F6 !important;
+  background-color: #1E293B !important;
+  box-shadow: 0 0 0 3.5px rgba(59, 130, 246, 0.2) !important;
+}
+
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-label,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-label,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-label,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-label,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Textarea-label {
+  color: #E2E8F0 !important;
+}
+
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-section,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-section,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-section,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-section {
+  color: #94A3B8 !important;
+}
+
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-TextInput-input::placeholder,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Select-input::placeholder,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DatePickerInput-input::placeholder,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-DateInput-input::placeholder,
+[data-mantine-color-scheme="dark"] .project-form-input .mantine-Textarea-input::placeholder {
+  color: #64748B !important;
+}
+
+/* =========================================================
+ * 🚫 HIDE HORIZONTAL SCROLLBARS ON TABLES & CONTAINERS
+ * ========================================================= */
+.mantine-Table-scrollContainer,
+[class*="Table-scrollContainer"],
+.no-scrollbar,
+.hide-scrollbar,
+[data-no-scrollbar] {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE 10+ and Edge */
+}
+
+.mantine-Table-scrollContainer::-webkit-scrollbar,
+[class*="Table-scrollContainer"]::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar,
+.hide-scrollbar::-webkit-scrollbar,
+[data-no-scrollbar]::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+/* Sleek global custom scrollbars for any essential vertical scroll */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 0px; /* Hide horizontal scrollbar by default */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.4);
+}
+
+/* Odoo Contact Card Hover & Styling */
+.odoo-contact-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.odoo-contact-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+  border-color: rgba(99, 102, 241, 0.45) !important;
+}
+
+[data-mantine-color-scheme="dark"] .odoo-contact-card:hover {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4) !important;
+  border-color: rgba(99, 102, 241, 0.6) !important;
+}
+
+/* Date Input: Ensure calendar picker indicator is clickable and styled */
+.mantine-TextInput-input[type="date"],
+input[type="date"] {
+  position: relative;
+  cursor: pointer;
+}
+
+.mantine-TextInput-input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+
+.mantine-TextInput-input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+.superadmin-kpi-card:hover,
+.employee-kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.07) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+[data-mantine-color-scheme="dark"] .superadmin-kpi-card:hover,
+[data-mantine-color-scheme="dark"] .employee-kpi-card:hover {
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45) !important;
+  border-color: rgba(99, 102, 241, 0.5) !important;
+}

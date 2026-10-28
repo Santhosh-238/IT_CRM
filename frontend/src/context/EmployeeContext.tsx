@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Employee, EmployeeStats, EmployeeStatus } from '../types/employee';
 import {
   fetchEmployeesApi,
@@ -9,6 +9,13 @@ import {
   deleteEmployeeApi,
 } from '../services/employeeService';
 import { notifications } from '@mantine/notifications';
+import {
+  IconCheck,
+  IconUserCheck,
+  IconUserX,
+  IconTrash,
+  IconAlertCircle,
+} from '@tabler/icons-react';
 
 interface EmployeeContextType {
   employees: Employee[];
@@ -32,8 +39,8 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-  // Fetch employees from API
-  const fetchEmployees = async (filters?: any) => {
+  // Fetch employees from API (Memoized with useCallback)
+  const fetchEmployees = useCallback(async (filters?: any) => {
     setLoading(true);
     try {
       const res = await fetchEmployeesApi(filters);
@@ -43,17 +50,17 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Fetch statistics from API
-  const fetchEmployeeStats = async () => {
+  // Fetch statistics from API (Memoized with useCallback)
+  const fetchEmployeeStats = useCallback(async () => {
     try {
       const stats = await fetchEmployeeStatsApi();
       setEmployeeStats(stats);
     } catch (err) {
       console.error('Failed to load employee stats:', err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchEmployees();
@@ -65,19 +72,27 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const result = await createEmployeeApi(empData);
       if (result.success && result.data) {
-        setEmployees((prev) => [result.data!, ...prev]);
+        setEmployees((prev) => [
+          result.data!,
+          ...prev.filter((e) => e.id !== result.data!.id && e.empCode !== result.data!.empCode),
+        ]);
         notifications.show({
           title: 'Employee Added',
           message: `${result.data.name} (${result.data.empCode}) has been successfully added.`,
           color: 'teal',
+          icon: <IconUserCheck size={18} />,
         });
-        fetchEmployeeStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_employees_updated'));
+        }
+        await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
         return true;
       } else {
         notifications.show({
           title: 'Add Employee Failed',
           message: result.message || 'Could not add employee. Please try again.',
           color: 'red',
+          icon: <IconAlertCircle size={18} />,
         });
         return false;
       }
@@ -86,6 +101,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         title: 'Error',
         message: err.message || 'An unexpected error occurred.',
         color: 'red',
+        icon: <IconAlertCircle size={18} />,
       });
       return false;
     }
@@ -96,30 +112,50 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       const result = await updateEmployeeApi(id, empData);
       if (result.success && result.data) {
-        setEmployees((prev) => prev.map((e) => (e.id === id ? result.data! : e)));
+        setEmployees((prev) => {
+          const exists = prev.some((e) => e.id === result.data!.id);
+          if (exists) {
+            return prev.map((e) => (e.id === result.data!.id ? result.data! : e));
+          }
+          return [result.data!, ...prev];
+        });
         if (selectedEmployee?.id === id) {
           setSelectedEmployee(result.data);
         }
         notifications.show({
           title: 'Profile Updated',
-          message: `${result.data.name}'s details updated successfully.`,
+          message: `${result.data.name}'s details saved successfully.`,
           color: 'teal',
+          icon: <IconCheck size={18} />,
         });
-        fetchEmployeeStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_employees_updated'));
+        }
+        await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
         return true;
       } else {
+        if (result.message?.toLowerCase().includes('not found')) {
+          if (typeof window !== 'undefined') sessionStorage.removeItem('crm_editing_employee');
+          return await addEmployee(empData);
+        }
         notifications.show({
           title: 'Update Failed',
           message: result.message || 'Could not update employee details.',
           color: 'red',
+          icon: <IconAlertCircle size={18} />,
         });
         return false;
       }
     } catch (err: any) {
+      if (err.message?.toLowerCase().includes('not found') || err.response?.status === 404) {
+        if (typeof window !== 'undefined') sessionStorage.removeItem('crm_editing_employee');
+        return await addEmployee(empData);
+      }
       notifications.show({
         title: 'Error',
         message: err.message || 'An error occurred during update.',
         color: 'red',
+        icon: <IconAlertCircle size={18} />,
       });
       return false;
     }
@@ -133,12 +169,19 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         setEmployees((prev) =>
           prev.map((e) => (e.id === id ? { ...e, status } : e))
         );
+        const isInactive = (status || '').toUpperCase().includes('INACT');
         notifications.show({
-          title: 'Status Updated',
-          message: `Employee status changed to ${status}.`,
-          color: 'blue',
+          title: isInactive ? 'Employee Deactivated' : 'Employee Activated',
+          message: isInactive
+            ? 'Employee moved to Relieved / Inactive directory.'
+            : 'Employee restored to Active directory.',
+          color: isInactive ? 'orange' : 'teal',
+          icon: isInactive ? <IconUserX size={18} /> : <IconUserCheck size={18} />,
         });
-        fetchEmployeeStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_employees_updated'));
+        }
+        await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
         return true;
       }
       return false;
@@ -158,16 +201,21 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
         notifications.show({
           title: 'Employee Removed',
-          message: 'Employee record has been successfully deleted.',
-          color: 'orange',
+          message: 'Employee record has been deleted.',
+          color: 'red',
+          icon: <IconTrash size={18} />,
         });
-        fetchEmployeeStats();
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('crm_employees_updated'));
+        }
+        await Promise.all([fetchEmployees(), fetchEmployeeStats()]);
         return true;
       } else {
         notifications.show({
           title: 'Delete Failed',
           message: 'Could not delete employee record.',
           color: 'red',
+          icon: <IconAlertCircle size={18} />,
         });
         return false;
       }
@@ -176,6 +224,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         title: 'Error',
         message: err.message || 'Failed to remove employee.',
         color: 'red',
+        icon: <IconAlertCircle size={18} />,
       });
       return false;
     }

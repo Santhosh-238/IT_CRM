@@ -145,7 +145,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
             <TextInput
               label="Full Name"
-              placeholder="e.g. Vikram Sundaram"
+              placeholder="e.g. Santhosh C"
               required
               value={formData.name || ''}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -157,7 +157,7 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
 
             <TextInput
               label="Email"
-              placeholder="e.g. vikram@omnitech.io"
+              placeholder="e.g. santhosh@company.com"
               required
               type="email"
               value={formData.email || ''}

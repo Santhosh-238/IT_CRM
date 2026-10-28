@@ -47,6 +47,14 @@ export const EmployeeDrawer: React.FC<EmployeeDrawerProps> = ({
 }) => {
   if (!employee) return null;
 
+  const getInitials = (name?: string) => {
+    if (!name) return '';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
   const getStatusBadge = (status?: string) => {
     const s = (status || '').toUpperCase();
     if (s.includes('ACT') || s.includes('FULL')) {
@@ -141,7 +149,6 @@ export const EmployeeDrawer: React.FC<EmployeeDrawerProps> = ({
           }}
         >
           <Avatar
-            src={employee.avatar}
             size={90}
             radius="28px"
             mx="auto"
@@ -150,7 +157,9 @@ export const EmployeeDrawer: React.FC<EmployeeDrawerProps> = ({
               border: `3px solid ${CRM_COLORS.cardBg}`,
               boxShadow: '0 8px 24px rgba(15, 23, 42, 0.1)',
             }}
-          />
+          >
+            {getInitials(employee.name)}
+          </Avatar>
           <Text fw={800} size="20px" mt="sm" style={{ color: CRM_COLORS.textPrimary }}>
             {employee.name}
           </Text>

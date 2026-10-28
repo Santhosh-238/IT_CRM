@@ -1,8 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { UserProfile, UserRole } from '../types/employee';
-import { initialCurrentUser } from '../services/mockData';
 import { crmApi } from '../services/api';
 import { notifications } from '@mantine/notifications';
+
+const defaultEmptyUser: UserProfile = {
+  id: '',
+  name: '',
+  email: '',
+  role: '' as UserRole,
+  avatar: '',
+  department: '',
+};
 
 interface CRMContextType {
   currentUser: UserProfile;
@@ -16,6 +24,10 @@ interface CRMContextType {
   globalSearch: string;
   setGlobalSearch: (term: string) => void;
 
+  // Sidebar mobile toggle
+  sidebarMobileOpened: boolean;
+  setSidebarMobileOpened: (opened: boolean) => void;
+
   // Clear Database & Storage
   clearDatabase: () => Promise<void>;
 }
@@ -24,36 +36,83 @@ const CRMContext = createContext<CRMContextType | undefined>(undefined);
 
 export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
-    const saved = localStorage.getItem('crm_user');
-    return saved ? JSON.parse(saved) : initialCurrentUser;
+    try {
+      const saved = localStorage.getItem('crm_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.email && !parsed.email.includes('omnitech.io') && parsed.name !== 'Vikram Sundaram') {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return defaultEmptyUser;
   });
 
-  const [activeNav, setActiveNavState] = useState<string>(() => {
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname.replace(/^\//, '').toLowerCase();
-      if (path === 'signup') return 'signup';
-      if (path === 'login' || path === 'signin' || path === 'auth') return 'login';
-      if (
-        path === 'employees/add' ||
-        path === 'add-employee' ||
-        path === 'add' ||
-        path === 'employees/onboard' ||
-        path === 'onboard' ||
-        path === 'onboard-employee'
-      ) {
-        return 'add-employee';
-      }
-      if (path === 'employees') return 'employees';
-      if (path === 'dashboard') return 'dashboard';
-      if (path) return path;
+  const resolveNavFromPath = (rawPathname?: string): string => {
+    if (typeof window === 'undefined') return 'dashboard';
+    const pathname = rawPathname || window.location.pathname;
+    const path = pathname.replace(/^\//, '').split('?')[0].replace(/\/+$/, '').toLowerCase();
 
-      const saved = localStorage.getItem('crm_active_nav');
-      if (saved && saved !== 'login' && saved !== 'signup') {
-        return saved === 'onboard-employee' || saved === 'onboard' ? 'add-employee' : saved;
-      }
+    if (path === 'signup') return 'signup';
+    if (path === 'login' || path === 'signin' || path === 'auth') return 'login';
+
+    if (
+      path === 'employees/add' ||
+      path === 'add-employee' ||
+      path === 'add' ||
+      path === 'employees/onboard' ||
+      path === 'onboard' ||
+      path === 'onboard-employee'
+    ) {
+      return 'add-employee';
     }
+    if (path === 'employees') return 'employees';
+
+    if (path === 'contacts/add' || path === 'add-contact') return 'add-contact';
+    if (path === 'contacts/qualification' || path === 'contacts/qualify' || path === 'qualification') return 'contact-qualification';
+    if (path === 'contacts/details' || path === 'contact-details') return 'contact-details';
+    if (path === 'contacts') return 'contacts';
+
+    if (path === 'leads/schedule' || path === 'lead-schedule' || path === 'lead-details' || path === 'schedule-meeting') return 'lead-schedule';
+    if (path === 'leads' || path === 'lead') return 'leads';
+
+    if (path === 'scheduled-meetings' || path === 'meetings') return 'scheduled-meetings';
+    if (path === 'call-logs' || path === 'calls' || path === 'call-log') return 'call-logs';
+
+    if (path === 'customers/details' || path === 'customer-details') return 'customer-details';
+    if (path === 'customers' || path === 'customer' || path === 'customers-all') return 'customers';
+
+    if (path === 'negotiations' || path === 'negotiation') return 'negotiations';
+    if (path === 'contracts' || path === 'contract' || path === 'create-contract') return 'contracts';
+
+    if (path === 'projects/add' || path === 'add-project' || path === 'projects/create' || path === 'create-project') return 'add-project';
+    if (path === 'projects/details' || path === 'project-details' || path === 'projects-details') return 'project-details';
+    if (path === 'projects/my' || path === 'projects-my') return 'projects-my';
+    if (path === 'projects/tasks' || path === 'projects-tasks') return 'projects-tasks';
+    if (path === 'projects/team' || path === 'projects-team') return 'projects-team';
+    if (path === 'projects/reports' || path === 'projects-reports') return 'projects-reports';
+    if (path === 'projects' || path === 'projects-management' || path === 'projects-all' || path === 'project') return 'projects';
+
+    if (path === 'invoices/create' || path === 'invoices/add' || path === 'create-invoice') return 'create-invoice';
+    if (path === 'invoices/details' || path === 'invoice-details') return 'invoice-details';
+    if (path === 'invoices/edit' || path === 'edit-invoice') return 'edit-invoice';
+    if (path === 'invoices' || path === 'invoice') return 'invoices';
+
+    if (path === 'access-control' || path === 'access-control-matrix' || path === 'rbac') return 'access-control';
+    if (path === 'settings' || path === 'setting' || path === 'master-catalog' || path === 'catalog') return 'settings';
+
+    if (path === 'dashboard') return 'dashboard';
+    if (path) return path;
+
+    const saved = localStorage.getItem('crm_active_nav');
+    if (saved && saved !== 'login' && saved !== 'signup') {
+      return saved === 'onboard-employee' || saved === 'onboard' ? 'add-employee' : saved;
+    }
+
     return 'dashboard';
-  });
+  };
+
+  const [activeNav, setActiveNavState] = useState<string>(() => resolveNavFromPath());
 
   const setActiveNav = (nav: string) => {
     const normalizedNav = nav === 'onboard-employee' || nav === 'onboard' ? 'add-employee' : nav;
@@ -64,11 +123,39 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (normalizedNav === 'dashboard') targetPath = '/';
       else if (normalizedNav === 'employees') targetPath = '/employees';
       else if (normalizedNav === 'add-employee') targetPath = '/employees/add';
+      else if (normalizedNav === 'contacts') targetPath = '/contacts';
+      else if (normalizedNav === 'add-contact') targetPath = '/contacts/add';
+      else if (normalizedNav === 'contact-qualification' || normalizedNav === 'qualification') targetPath = '/contacts/qualification';
+      else if (normalizedNav === 'contact-details') targetPath = '/contacts/details';
+      else if (normalizedNav === 'leads' || normalizedNav === 'lead') targetPath = '/leads';
+      else if (normalizedNav === 'lead-schedule' || normalizedNav === 'lead-details' || normalizedNav === 'schedule-meeting') targetPath = '/leads/schedule';
+      else if (normalizedNav === 'scheduled-meetings' || normalizedNav === 'meetings') targetPath = '/scheduled-meetings';
+      else if (normalizedNav === 'call-logs' || normalizedNav === 'calls' || normalizedNav === 'call-log') targetPath = '/call-logs';
+      else if (normalizedNav === 'customers' || normalizedNav === 'customer') targetPath = '/customers';
+      else if (normalizedNav === 'customer-details') targetPath = '/customers/details';
+      else if (normalizedNav === 'negotiations' || normalizedNav === 'negotiation') targetPath = '/negotiations';
+      else if (normalizedNav === 'projects' || normalizedNav === 'projects-management') targetPath = '/projects';
+      else if (normalizedNav === 'add-project' || normalizedNav === 'create-project' || normalizedNav === 'projects/add') targetPath = '/projects/add';
+      else if (normalizedNav === 'project-details') targetPath = '/projects/details';
+      else if (normalizedNav === 'projects-my') targetPath = '/projects/my';
+      else if (normalizedNav === 'projects-tasks') targetPath = '/projects/tasks';
+      else if (normalizedNav === 'projects-team') targetPath = '/projects/team';
+      else if (normalizedNav === 'projects-reports') targetPath = '/projects/reports';
+      else if (normalizedNav === 'invoices') targetPath = '/invoices';
+      else if (normalizedNav === 'create-invoice') targetPath = '/invoices/create';
+      else if (normalizedNav === 'invoice-details') targetPath = '/invoices/details';
+      else if (normalizedNav === 'edit-invoice') targetPath = '/invoices/edit';
+      else if (normalizedNav === 'access-control' || normalizedNav === 'rbac') targetPath = '/access-control';
+      else if (normalizedNav === 'settings') {
+        const savedTab = localStorage.getItem('crm_settings_tab');
+        targetPath = savedTab && savedTab !== 'company' ? `/settings?tab=${savedTab}` : '/settings';
+      }
       else if (normalizedNav === 'login') targetPath = '/login';
       else if (normalizedNav === 'signup') targetPath = '/signup';
       else targetPath = `/${normalizedNav}`;
 
-      if (window.location.pathname !== targetPath) {
+      const currentFullPath = window.location.pathname + window.location.search;
+      if (currentFullPath !== targetPath && window.location.pathname !== targetPath.split('?')[0]) {
         window.history.pushState({ nav: normalizedNav }, '', targetPath);
       }
     }
@@ -76,28 +163,28 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(() => {
     const handlePopState = () => {
-      const path = window.location.pathname.replace(/^\//, '').toLowerCase();
-      if (path === 'signup') {
-        setActiveNavState('signup');
-      } else if (path === 'login' || path === 'signin' || path === 'auth') {
-        setActiveNavState('login');
-      } else if (
-        path === 'employees/add' ||
-        path === 'add-employee' ||
-        path === 'add' ||
-        path === 'employees/onboard' ||
-        path === 'onboard' ||
-        path === 'onboard-employee'
-      ) {
-        setActiveNavState('add-employee');
-      } else if (path === 'employees') {
-        setActiveNavState('employees');
-      } else {
-        setActiveNavState('dashboard');
+      const resolved = resolveNavFromPath();
+      setActiveNavState(resolved);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('crm_active_nav', resolved);
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Auto-sync current user session from API on load
+  useEffect(() => {
+    crmApi.getMe()
+      .then((res) => {
+        if (res?.user && res.user.name) {
+          setCurrentUser((prev) => ({
+            ...prev,
+            ...res.user,
+          }));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const [globalSearch, setGlobalSearch] = useState<string>('');
@@ -143,11 +230,17 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const [sidebarMobileOpened, setSidebarMobileOpened] = useState<boolean>(false);
+
   // User Logout: Clears HttpOnly Cookie & Session
   const logoutUser = async () => {
     try {
       await crmApi.logout().catch(() => {});
       localStorage.removeItem('crm_user');
+      localStorage.removeItem('crm_token');
+      localStorage.removeItem('crm_my_permissions');
+      setCurrentUser(defaultEmptyUser);
+      window.dispatchEvent(new CustomEvent('crm_permissions_updated'));
       notifications.show({
         title: 'Logged Out',
         message: 'Session closed and Redis cache purged successfully.',
@@ -171,9 +264,14 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setCurrentUserRole,
         logoutUser,
         activeNav,
-        setActiveNav,
+        setActiveNav: (nav: string) => {
+          setSidebarMobileOpened(false);
+          setActiveNav(nav);
+        },
         globalSearch,
         setGlobalSearch,
+        sidebarMobileOpened,
+        setSidebarMobileOpened,
         clearDatabase,
       }}
     >

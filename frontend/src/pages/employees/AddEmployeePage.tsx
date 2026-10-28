@@ -8,15 +8,21 @@ import {
   Autocomplete,
   Textarea,
   Button,
+  UnstyledButton,
   Group,
   SimpleGrid,
   Stack,
-  Avatar,
   Badge,
   Divider,
   ThemeIcon,
   Progress,
   Tooltip,
+  Select,
+  Switch,
+  Modal,
+  ActionIcon,
+  Avatar,
+  useComputedColorScheme,
 } from '@mantine/core';
 import {
   IconArrowLeft,
@@ -26,7 +32,6 @@ import {
   IconPhone,
   IconUser,
   IconLock,
-  IconCamera,
   IconTrash,
   IconBuilding,
   IconBriefcase,
@@ -38,8 +43,11 @@ import {
   IconClock,
   IconHome,
   IconGenderBigender,
+  IconPlus,
+  IconCamera,
 } from '@tabler/icons-react';
 import { useEmployee } from '../../context/EmployeeContext';
+import { useAccessControl } from '../../context/AccessControlContext';
 import { Employee } from '../../types/employee';
 import { CRM_COLORS } from '../../theme/colors';
 
@@ -48,34 +56,167 @@ export interface AddEmployeePageProps {
   initialData?: Employee | null;
 }
 
-// Clean, standard normal input styling
-const normalInputStyles = {
-  label: {
-    fontWeight: 600,
-    fontSize: '13px',
-    marginBottom: '6px',
-    color: '#1E293B',
-  },
-  input: {
-    borderRadius: '8px',
-    fontSize: '14px',
-    height: '42px',
-    color: '#0F172A',
-  },
-  error: {
-    fontSize: '12px',
-    marginTop: '4px',
-    fontWeight: 500,
-  },
-};
-
 export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
   onBack,
   initialData,
 }) => {
-  const { employees, addEmployee, updateEmployee } = useEmployee();
-  const isEditing = Boolean(initialData);
+  const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
+  const isDark = computedColorScheme === 'dark';
+
+  const normalInputStyles = {
+    label: {
+      fontWeight: 600,
+      fontSize: '13px',
+      marginBottom: '6px',
+      color: isDark ? '#E2E8F0' : '#1E293B',
+    },
+    input: {
+      borderRadius: '8px',
+      fontSize: '14px',
+      height: '42px',
+      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+      border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid rgba(15, 23, 42, 0.1)',
+      color: isDark ? '#F8FAFC' : '#0F172A',
+    },
+    error: {
+      fontSize: '12px',
+      marginTop: '4px',
+      fontWeight: 500,
+    },
+  };
+
+  const { employees, fetchEmployees, addEmployee, updateEmployee } = useEmployee();
+  const { roles, users, fetchRoles, fetchUsers } = useAccessControl();
+  const isEditing = Boolean(
+    initialData &&
+    initialData.id &&
+    (!employees.length || employees.some((e) => e.id === initialData.id))
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetchRoles();
+    fetchUsers();
+    fetchEmployees();
+  }, [fetchRoles, fetchUsers, fetchEmployees]);
+
+  useEffect(() => {
+    if (initialData?.id && employees.length > 0 && !employees.some((e) => e.id === initialData.id)) {
+      if (typeof window !== 'undefined') sessionStorage.removeItem('crm_editing_employee');
+    }
+  }, [initialData, employees]);
+
+  // Helper to load and save custom items from localStorage
+  const loadCustomItems = (key: string): string[] => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) return parsed.filter((b) => typeof b === 'string' && b.trim());
+        }
+      } catch (_) {}
+    }
+    return [];
+  };
+
+  const saveCustomItems = (key: string, items: string[]) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(key, JSON.stringify(items));
+      } catch (_) {}
+    }
+  };
+
+  // Admin-Added Custom items (persisted across sessions via localStorage)
+  const [customBranches, setCustomBranches] = useState<string[]>(() => loadCustomItems('crm_admin_branches'));
+  const [customDepartments, setCustomDepartments] = useState<string[]>(() => loadCustomItems('crm_admin_departments'));
+  const [customDesignations, setCustomDesignations] = useState<string[]>(() => loadCustomItems('crm_admin_designations'));
+  const [customRoles, setCustomRoles] = useState<string[]>(() => loadCustomItems('crm_admin_roles'));
+  const [customEmploymentTypes, setCustomEmploymentTypes] = useState<string[]>(() => loadCustomItems('crm_admin_employment_types'));
+  const [customGenders, setCustomGenders] = useState<string[]>(() => loadCustomItems('crm_admin_genders'));
+
+  type CustomFieldKey = 'branch' | 'department' | 'designation' | 'role' | 'employmentType' | 'gender';
+
+  const [customModal, setCustomModal] = useState<{
+    opened: boolean;
+    field: CustomFieldKey;
+    title: string;
+    label: string;
+    placeholder: string;
+  }>({
+    opened: false,
+    field: 'branch',
+    title: '',
+    label: '',
+    placeholder: '',
+  });
+  const [customModalInput, setCustomModalInput] = useState('');
+
+  const handleOpenCustomModal = (
+    field: CustomFieldKey,
+    title: string,
+    label: string,
+    placeholder: string
+  ) => {
+    setCustomModal({ opened: true, field, title, label, placeholder });
+    setCustomModalInput('');
+  };
+
+  const handleCloseCustomModal = () => {
+    setCustomModal((prev) => ({ ...prev, opened: false }));
+    setCustomModalInput('');
+  };
+
+  const getCustomListInfo = (field: CustomFieldKey): {
+    list: string[];
+    setter: React.Dispatch<React.SetStateAction<string[]>>;
+    storageKey: string;
+    formProp: 'workLocation' | 'department' | 'designation' | 'role' | 'employmentType' | 'gender';
+  } => {
+    switch (field) {
+      case 'branch':
+        return { list: customBranches, setter: setCustomBranches, storageKey: 'crm_admin_branches', formProp: 'workLocation' };
+      case 'department':
+        return { list: customDepartments, setter: setCustomDepartments, storageKey: 'crm_admin_departments', formProp: 'department' };
+      case 'designation':
+        return { list: customDesignations, setter: setCustomDesignations, storageKey: 'crm_admin_designations', formProp: 'designation' };
+      case 'role':
+        return { list: customRoles, setter: setCustomRoles, storageKey: 'crm_admin_roles', formProp: 'role' };
+      case 'employmentType':
+        return { list: customEmploymentTypes, setter: setCustomEmploymentTypes, storageKey: 'crm_admin_employment_types', formProp: 'employmentType' };
+      case 'gender':
+        return { list: customGenders, setter: setCustomGenders, storageKey: 'crm_admin_genders', formProp: 'gender' };
+    }
+  };
+
+  const handleSaveCustomItem = () => {
+    const val = customModalInput.trim();
+    if (!val) return;
+    const { setter, storageKey, formProp } = getCustomListInfo(customModal.field);
+    setter((prev) => {
+      const updated = prev.includes(val) ? prev : [...prev, val];
+      saveCustomItems(storageKey, updated);
+      return updated;
+    });
+    setFormData((prev) => ({ ...prev, [formProp]: val }));
+    handleCloseCustomModal();
+  };
+
+  const handleRemoveCustomItem = (itemToRemove: string) => {
+    const { setter, storageKey, formProp } = getCustomListInfo(customModal.field);
+    setter((prev) => {
+      const updated = prev.filter((i) => i !== itemToRemove);
+      saveCustomItems(storageKey, updated);
+      return updated;
+    });
+    setFormData((prev) => {
+      if (prev[formProp] === itemToRemove) {
+        return { ...prev, [formProp]: '' };
+      }
+      return prev;
+    });
+  };
 
   const [formData, setFormData] = useState<{
     // 1. Personal & Contact Information
@@ -87,7 +228,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     dob: string;
     gender: string;
     address: string;
-    avatar: string;
+    avatar?: string;
 
     // 2. Job & Organization Details
     department: string;
@@ -113,79 +254,11 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     designation: initialData?.designation || '',
     role: initialData?.role || '',
     reportingManager: initialData?.reportingManager || '',
-    joiningDate: initialData?.joiningDate || new Date().toISOString().split('T')[0],
+    joiningDate: initialData?.joiningDate || '',
     employmentType: initialData?.employmentType || '',
     workLocation: initialData?.workLocation || '',
     status: initialData?.status || 'Active',
   });
-
-  // Auto-fill Employee ID code (Non-editable, sequential)
-  useEffect(() => {
-    if (!isEditing && !formData.empCode) {
-      const numericCodes = employees
-        .map((e) => {
-          const match = e.empCode?.match(/EMP-(\d+)/i);
-          return match ? parseInt(match[1], 10) : null;
-        })
-        .filter((n): n is number => n !== null);
-
-      const maxCode = numericCodes.length > 0 ? Math.max(...numericCodes) : 1000;
-      const nextCode = `EMP-${maxCode + 1}`;
-      setFormData((prev) => ({ ...prev, empCode: nextCode }));
-    }
-  }, [employees, isEditing, formData.empCode]);
-
-  // 100% Dynamic lists derived from active database records
-  const dynamicDepartments = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.department?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
-
-  const dynamicDesignations = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.designation?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
-
-  const dynamicRoles = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.role?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
-
-  const dynamicManagers = useMemo(() => {
-    return employees
-      .filter((e) => !isEditing || e.id !== initialData?.id)
-      .map((e) => `${e.name} (${e.empCode})${e.designation ? ` - ${e.designation}` : ''}`);
-  }, [employees, isEditing, initialData]);
-
-  const dynamicEmploymentTypes = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.employmentType?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
-
-  const dynamicLocations = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.workLocation?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
-
-  const dynamicStatuses = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.status?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
-
-  const dynamicGenders = useMemo(() => {
-    return Array.from(
-      new Set(employees.map((e) => e.gender?.trim()).filter(Boolean) as string[])
-    ).sort();
-  }, [employees]);
-
-  const [errors, setErrors] = useState<{ [key: string]: string | undefined }>({});
-  const [loading, setLoading] = useState(false);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -196,12 +269,162 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = reader.result as string;
-        setFormData((prev) => ({ ...prev, avatar: base64 }));
+        if (typeof reader.result === 'string') {
+          setFormData((prev) => ({ ...prev, avatar: reader.result as string }));
+        }
       };
       reader.readAsDataURL(file);
     }
   };
+
+  // Auto-fill Employee ID code (Non-editable, sequential)
+  useEffect(() => {
+    if (!isEditing) {
+      const numericCodes = employees
+        .map((e) => {
+          const match = e.empCode?.match(/EMP-(\d+)/i);
+          return match ? parseInt(match[1], 10) : null;
+        })
+        .filter((n): n is number => n !== null);
+
+      const maxCode = numericCodes.length > 0 ? Math.max(...numericCodes) : 1000;
+      const nextCode = `EMP-${maxCode + 1}`;
+
+      if (!formData.empCode || employees.some((emp) => emp.empCode?.toUpperCase() === formData.empCode?.toUpperCase())) {
+        setFormData((prev) => ({ ...prev, empCode: nextCode }));
+
+        
+      }
+    }
+  }, [employees, isEditing, formData.empCode]);
+
+  // 100% Dynamic lists derived strictly from active database records, Admin-added custom items, and current form value
+  const dynamicDepartments = useMemo(() => {
+    const fromDb = employees.map((e) => e.department?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customDepartments,
+        ...(formData.department ? [formData.department.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return combined;
+  }, [employees, customDepartments, formData.department]);
+
+  const dynamicDesignations = useMemo(() => {
+    const fromDb = employees.map((e) => e.designation?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customDesignations,
+        ...(formData.designation ? [formData.designation.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return combined;
+  }, [employees, customDesignations, formData.designation]);
+
+  const dynamicRoles = useMemo(() => {
+    const fromAccessControl = roles.map((r) => r.name?.trim()).filter(Boolean) as string[];
+    const fromDb = employees.map((e) => e.role?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(
+      new Set([
+        ...fromAccessControl,
+        ...fromDb,
+        ...customRoles,
+        ...(formData.role ? [formData.role.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return combined;
+  }, [roles, employees, customRoles, formData.role]);
+
+  // Dynamic Reporting Manager options fetched from active employees and system managers
+  const reportingManagerOptions = useMemo(() => {
+    // 1. Available active employees (excluding self if editing)
+    const availableEmployees = employees.filter((e) => {
+      if (isEditing && initialData?.id && e.id === initialData.id) return false;
+      return e.status?.toUpperCase() !== 'INACTIVE' && e.status?.toUpperCase() !== 'TERMINATED';
+    });
+
+    const list: { value: string; label: string }[] = availableEmployees.map((e) => {
+      const code = e.empCode ? ` (${e.empCode})` : '';
+      const roleOrDesig = e.designation || e.role || '';
+      return {
+        value: `${e.name}${code}`,
+        label: `${e.name}${code}${roleOrDesig ? ` - ${roleOrDesig}` : ''}`,
+      };
+    });
+
+    // 2. Also include users from AccessControl (e.g. Super Admin / Admins if not already in employee list)
+    users.forEach((u) => {
+      if (!u.name) return;
+      const alreadyPresent = list.some(
+        (item) => item.value.toLowerCase().includes(u.name.toLowerCase()) || item.label.toLowerCase().includes(u.name.toLowerCase())
+      );
+      if (!alreadyPresent) {
+        list.push({
+          value: u.name,
+          label: `${u.name} (${u.role || 'Admin'})`,
+        });
+      }
+    });
+
+    // 3. Keep current selected reportingManager if not in list
+    if (formData.reportingManager && !list.some((item) => item.value === formData.reportingManager)) {
+      list.unshift({
+        value: formData.reportingManager,
+        label: formData.reportingManager,
+      });
+    }
+
+    return list;
+  }, [employees, users, isEditing, initialData, formData.reportingManager]);
+
+  const dynamicEmploymentTypes = useMemo(() => {
+    const fromDb = employees.map((e) => e.employmentType?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customEmploymentTypes,
+        ...(formData.employmentType ? [formData.employmentType.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return combined.map((t) => ({ value: t, label: t }));
+  }, [employees, customEmploymentTypes, formData.employmentType]);
+
+  const branchOptions = useMemo(() => {
+    const fromDb = employees.map((e) => e.workLocation?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customBranches,
+        ...(formData.workLocation ? [formData.workLocation.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
+
+    return combined.map((b) => ({ value: b, label: b }));
+  }, [employees, customBranches, formData.workLocation]);
+
+  const dynamicStatuses = useMemo(() => {
+    return Array.from(
+      new Set(employees.map((e) => e.status?.trim()).filter(Boolean) as string[])
+    ).sort();
+  }, [employees]);
+
+  const dynamicGenders = useMemo(() => {
+    const fromDb = employees.map((e) => e.gender?.trim()).filter(Boolean) as string[];
+    const combined = Array.from(
+      new Set([
+        ...fromDb,
+        ...customGenders,
+        ...(formData.gender ? [formData.gender.trim()] : []),
+      ])
+    ).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    return combined;
+  }, [employees, customGenders, formData.gender]);
+
+  const [errors, setErrors] = useState<{ [key: string]: string | undefined }>({});
+  const [loading, setLoading] = useState(false);
+
 
   // Dynamic calculations for Live Preview & Readiness
   const nameValid = formData.name.trim().length >= 3;
@@ -411,7 +634,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
 
     setLoading(true);
     let success = false;
-    if (isEditing && initialData) {
+    if (isEditing && initialData?.id) {
       success = await updateEmployee(initialData.id, formData);
     } else {
       success = await addEmployee(formData);
@@ -423,58 +646,76 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
     }
   };
 
+  const paperBg = isDark ? '#111827' : '#FFFFFF';
+  const paperBorder = isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0';
+  const paperShadow = isDark ? '0 12px 36px rgba(0, 0, 0, 0.45)' : '0 2px 8px -2px rgba(0, 0, 0, 0.05)';
+  const headingColor = isDark ? '#F8FAFC' : '#0F172A';
+  const backBtnColor = isDark ? '#94A3B8' : '#475569';
+  const backBtnHover = isDark ? '#F8FAFC' : '#0F172A';
+
   return (
     <Box>
-      {/* 1. Top Navigation Bar */}
-      <Group justify="flex-start" align="center" mb="xl">
-        <Button
-          variant="default"
-          leftSection={<IconArrowLeft size={16} />}
-          radius="md"
-          size="sm"
+      {/* 1. Top Navigation */}
+      <Group justify="flex-start" align="center" mb="lg">
+        <UnstyledButton
           onClick={onBack}
           style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: backBtnColor,
             fontWeight: 600,
-            border: '1px solid #CBD5E1',
-            backgroundColor: '#FFFFFF',
-            boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+            fontSize: '14px',
+            cursor: 'pointer',
+            padding: '4px 0',
+            transition: 'color 0.15s ease, transform 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = backBtnHover;
+            e.currentTarget.style.transform = 'translateX(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = backBtnColor;
+            e.currentTarget.style.transform = 'translateX(0)';
           }}
         >
-          Back to Employee Directory
-        </Button>
+          <IconArrowLeft size={18} stroke={2.2} />
+          <Text fw={600} size="14px" style={{ color: 'inherit' }}>
+            Back to Employee Management
+          </Text>
+        </UnstyledButton>
       </Group>
 
       {/* 2. Main Form Layout */}
       <form onSubmit={handleSubmit} noValidate autoComplete="off">
-        <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="xl" style={{ alignItems: 'flex-start' }}>
-          {/* Left 2 Columns: Form Sections */}
+        <SimpleGrid cols={{ base: 1, lg: 3 }} spacing="xl">
           <Box style={{ gridColumn: 'span 2' }}>
             <Stack gap="xl">
-              {/* SECTION 1: Personal & Contact Information */}
-              <Paper
-                p="xl"
-                radius="lg"
-                style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.05)',
-                }}
-              >
-                <Group gap="sm" mb="xl">
-                  <ThemeIcon size={40} radius="md" variant="light" color="blue">
-                    <IconUserPlus size={22} />
-                  </ThemeIcon>
-                  <div>
-                    <Text fw={700} size="md" style={{ color: '#0F172A' }}>
-                      Personal & Contact Information
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      Enter basic identity, login access, and contact coordinates
-                    </Text>
-                  </div>
-                </Group>
+            {/* SECTION 1: Personal & Contact Information */}
+            <Paper
+              p="xl"
+              radius="lg"
+              style={{
+                background: paperBg,
+                border: paperBorder,
+                boxShadow: paperShadow,
+              }}
+            >
+              <Group gap="sm" mb="xl">
+                <ThemeIcon size={40} radius="md" variant="light" color="blue">
+                  <IconUserPlus size={22} />
+                </ThemeIcon>
+                <div>
+                  <Text fw={700} size="md" style={{ color: headingColor }}>
+                    Personal & Contact Information
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    Enter basic identity, login access, and contact coordinates
+                  </Text>
+                </div>
+              </Group>
 
-                <Stack gap="lg">
+              <Stack gap="lg">
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                     {/* 1. Full Name */}
                     <TextInput
@@ -571,7 +812,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                     {/* 6. Date of Birth */}
                     <TextInput
                       label="Date of Birth (Optional)"
-                      placeholder="YYYY-MM-DD"
+                      placeholder=""
                       type="date"
                       autoComplete="off"
                       leftSection={<IconCalendar size={16} color="#64748B" />}
@@ -581,16 +822,49 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                     />
 
                     {/* 7. Gender */}
-                    <Autocomplete
-                      label="Gender (Optional)"
-                      placeholder="Type or select gender"
-                      data={dynamicGenders}
-                      leftSection={<IconGenderBigender size={16} color="#64748B" />}
-                      value={formData.gender}
-                      onChange={(val) => setFormData({ ...formData, gender: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Gender (Optional)
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('gender', 'Add Gender', 'Gender Option', '')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Gender
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder=""
+                        data={dynamicGenders}
+                        leftSection={<IconGenderBigender size={16} color="#64748B" />}
+                        value={formData.gender || null}
+                        onChange={(val) => setFormData({ ...formData, gender: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
                     {/* 8. Address */}
                     <Box style={{ gridColumn: 'span 2' }}>
@@ -613,9 +887,9 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                 p="xl"
                 radius="lg"
                 style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E2E8F0',
-                  boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.05)',
+                  background: paperBg,
+                  border: paperBorder,
+                  boxShadow: paperShadow,
                 }}
               >
                 <Group gap="sm" mb="xl">
@@ -623,7 +897,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                     <IconBriefcase size={22} />
                   </ThemeIcon>
                   <div>
-                    <Text fw={700} size="md" style={{ color: '#0F172A' }}>
+                    <Text fw={700} size="md" style={{ color: headingColor }}>
                       Job & Organization Details
                     </Text>
                     <Text size="xs" c="dimmed">
@@ -635,57 +909,170 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                 <Stack gap="lg">
                   <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
                     {/* 1. Department */}
-                    <Autocomplete
-                      label="Department"
-                      placeholder="Type or select department"
-                      data={dynamicDepartments}
-                      leftSection={<IconBuilding size={16} color="#64748B" />}
-                      value={formData.department}
-                      onChange={(val) => setFormData({ ...formData, department: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Department
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('department', 'Add Department', 'Department Name', '')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Department
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder=""
+                        data={dynamicDepartments}
+                        leftSection={<IconBuilding size={16} color="#64748B" />}
+                        value={formData.department || null}
+                        onChange={(val) => setFormData({ ...formData, department: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
                     {/* 2. Designation */}
-                    <Autocomplete
-                      label="Designation"
-                      placeholder="e.g. Senior Software Engineer"
-                      data={dynamicDesignations}
-                      leftSection={<IconBriefcase size={16} color="#64748B" />}
-                      value={formData.designation}
-                      onChange={(val) => setFormData({ ...formData, designation: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Designation
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('designation', 'Add Designation', 'Designation Name', '')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Designation
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder=""
+                        data={dynamicDesignations}
+                        leftSection={<IconBriefcase size={16} color="#64748B" />}
+                        value={formData.designation || null}
+                        onChange={(val) => setFormData({ ...formData, designation: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
                     {/* 3. System Role */}
-                    <Autocomplete
-                      label="Role"
-                      placeholder="Type or select role"
-                      data={dynamicRoles}
-                      leftSection={<IconShield size={16} color="#64748B" />}
-                      value={formData.role}
-                      onChange={(val) => setFormData({ ...formData, role: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Role
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('role', 'Add Role', 'Role Name', '')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Role
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder=""
+                        data={dynamicRoles}
+                        searchable
+                        leftSection={<IconShield size={16} color="#64748B" />}
+                        value={formData.role || null}
+                        onChange={(val) => setFormData({ ...formData, role: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        nothingFoundMessage="No matching roles found"
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
                     {/* 4. Reporting Manager */}
-                    <Autocomplete
+                    <Select
                       label="Reporting Manager (Optional)"
-                      placeholder="Type or select manager / supervisor"
-                      data={dynamicManagers}
+                      placeholder=""
+                      data={reportingManagerOptions}
+                      searchable
                       leftSection={<IconUsers size={16} color="#64748B" />}
-                      value={formData.reportingManager}
-                      onChange={(val) => setFormData({ ...formData, reportingManager: val })}
-                      styles={normalInputStyles}
+                      value={formData.reportingManager || null}
+                      onChange={(val) => setFormData({ ...formData, reportingManager: val || '' })}
+                      styles={{
+                        ...normalInputStyles,
+                        input: {
+                          ...normalInputStyles.input,
+                          cursor: 'pointer',
+                        },
+                      }}
+                      clearable
+                      allowDeselect
+                      checkIconPosition="right"
+                      comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                      nothingFoundMessage="No matching reporting managers found"
                       maxDropdownHeight={220}
                     />
 
                     {/* 5. Date of Joining */}
                     <TextInput
                       label="Date of Joining"
-                      placeholder="YYYY-MM-DD"
+                      placeholder=""
                       type="date"
                       leftSection={<IconCalendar size={16} color="#64748B" />}
                       value={formData.joiningDate}
@@ -693,44 +1080,203 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                       styles={normalInputStyles}
                     />
 
-                    {/* 6. Employment Type */}
-                    <Autocomplete
-                      label="Employment Type"
-                      placeholder="Type or select employment type"
-                      data={dynamicEmploymentTypes}
-                      leftSection={<IconClock size={16} color="#64748B" />}
-                      value={formData.employmentType}
-                      onChange={(val) => setFormData({ ...formData, employmentType: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    {/* 6. Employment Type (Dropdown) */}
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Employment Type
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('employmentType', 'Add Employment Type', 'Employment Type', '')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Employment Type
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder=""
+                        data={dynamicEmploymentTypes}
+                        leftSection={<IconClock size={16} color="#64748B" />}
+                        value={formData.employmentType || null}
+                        onChange={(val) => setFormData({ ...formData, employmentType: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
-                    {/* 7. Work Location */}
-                    <Autocomplete
-                      label="Work Location"
-                      placeholder="Type or select branch / city"
-                      data={dynamicLocations}
-                      leftSection={<IconMapPin size={16} color="#64748B" />}
-                      value={formData.workLocation}
-                      onChange={(val) => setFormData({ ...formData, workLocation: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    {/* 7. Branch (Formerly Work Location with Custom Branch addition) */}
+                    <Box>
+                      <Group justify="space-between" align="center" mb="6px">
+                        <Text
+                          component="label"
+                          style={{
+                            fontWeight: 600,
+                            fontSize: '13px',
+                            color: isDark ? '#CBD5E1' : '#1E293B',
+                          }}
+                        >
+                          Branch
+                        </Text>
+                        <Button
+                          variant="subtle"
+                          size="compact-xs"
+                          color="blue"
+                          leftSection={<IconPlus size={12} />}
+                          onClick={() => handleOpenCustomModal('branch', 'Add Branch', 'Branch Name', '')}
+                          style={{ fontWeight: 600, fontSize: '11px', height: '22px' }}
+                        >
+                          + Add Branch
+                        </Button>
+                      </Group>
+                      <Select
+                        placeholder=""
+                        data={branchOptions}
+                        leftSection={<IconMapPin size={16} color="#64748B" />}
+                        value={formData.workLocation || null}
+                        onChange={(val) => setFormData({ ...formData, workLocation: val || '' })}
+                        styles={{
+                          ...normalInputStyles,
+                          input: {
+                            ...normalInputStyles.input,
+                            cursor: 'pointer',
+                          },
+                        }}
+                        clearable
+                        allowDeselect
+                        checkIconPosition="right"
+                        comboboxProps={{ transitionProps: { transition: 'pop', duration: 150 } }}
+                        maxDropdownHeight={220}
+                      />
+                    </Box>
 
-                    {/* 8. Employee Status */}
-                    <Autocomplete
-                      label="Employee Status"
-                      placeholder="Type or select employee status"
-                      data={dynamicStatuses}
-                      leftSection={<IconActivity size={16} color="#64748B" />}
-                      value={formData.status}
-                      onChange={(val) => setFormData({ ...formData, status: val })}
-                      styles={normalInputStyles}
-                      maxDropdownHeight={220}
-                    />
+                    {/* 8. Employee Status (Toggle Button) */}
+                    <Box>
+                      <Text
+                        component="label"
+                        style={{
+                          display: 'block',
+                          fontWeight: 600,
+                          fontSize: '13px',
+                          marginBottom: '6px',
+                          color: '#1E293B',
+                        }}
+                      >
+                        Employee Status
+                      </Text>
+                      <Paper
+                        p="xs"
+                        style={{
+                          height: '42px',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          paddingLeft: '14px',
+                          paddingRight: '14px',
+                          backgroundColor: '#FFFFFF',
+                        }}
+                      >
+                        <Group gap="xs">
+                          <IconActivity
+                            size={16}
+                            color={
+                              (formData.status || '').toLowerCase().includes('inact')
+                                ? '#94A3B8'
+                                : '#10B981'
+                            }
+                          />
+                          <Badge
+                            size="sm"
+                            variant="light"
+                            color={
+                              (formData.status || '').toLowerCase().includes('inact')
+                                ? 'gray'
+                                : 'teal'
+                            }
+                          >
+                            {(formData.status || '').toLowerCase().includes('inact')
+                              ? 'Inactive'
+                              : 'Active'}
+                          </Badge>
+                        </Group>
+                        <Switch
+                          checked={!(formData.status || '').toLowerCase().includes('inact')}
+                          onChange={(event) =>
+                            setFormData({
+                              ...formData,
+                              status: event.currentTarget.checked ? 'Active' : 'Inactive',
+                            })
+                          }
+                          color="teal"
+                          size="md"
+                          thumbIcon={
+                            !(formData.status || '').toLowerCase().includes('inact') ? (
+                              <IconCheck size={12} color="#10B981" stroke={3} />
+                            ) : undefined
+                          }
+                        />
+                      </Paper>
+                    </Box>
                   </SimpleGrid>
                 </Stack>
               </Paper>
+
+              {/* Bottom Action Buttons */}
+              <Group justify="flex-end" gap="sm" mt="sm">
+                <Button
+                  variant="default"
+                  size="sm"
+                  radius="md"
+                  onClick={onBack}
+                  style={{
+                    fontWeight: 600,
+                    border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #CBD5E1',
+                    color: isDark ? '#CBD5E1' : '#475569',
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                  }}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  type="submit"
+                  size="sm"
+                  radius="md"
+                  loading={loading}
+                  leftSection={<IconCheck size={16} />}
+                  style={{
+                    background: isDark ? '#3B82F6' : '#0F172A',
+                    color: '#FFFFFF',
+                    fontWeight: 600,
+                    minWidth: 150,
+                    boxShadow: isDark ? '0 4px 14px rgba(59, 130, 246, 0.35)' : undefined,
+                  }}
+                >
+                  {isEditing ? 'Save Changes' : 'Add Employee'}
+                </Button>
+              </Group>
             </Stack>
           </Box>
 
@@ -887,7 +1433,7 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
                   </Group>
 
                   <Group justify="space-between" wrap="nowrap">
-                    <Text size="xs" c="dimmed">Location:</Text>
+                    <Text size="xs" c="dimmed">Branch:</Text>
                     <Text size="xs" fw={500} c={formData.workLocation ? '#0F172A' : 'dimmed'}>
                       {formData.workLocation || '—'}
                     </Text>
@@ -959,6 +1505,81 @@ export const AddEmployeePage: React.FC<AddEmployeePageProps> = ({
           </Box>
         </SimpleGrid>
       </form>
+
+      {/* Unified Custom Option Modal for all dropdowns (Branch, Department, Designation, Role, Employment Type, Gender) */}
+      <Modal
+        opened={customModal.opened}
+        onClose={handleCloseCustomModal}
+        title={<Text fw={700} size="md">{customModal.title}</Text>}
+        centered
+        radius="md"
+        size="sm"
+      >
+        <Stack gap="md">
+          <TextInput
+            label={customModal.label}
+            placeholder={customModal.placeholder}
+            value={customModalInput}
+            onChange={(e) => setCustomModalInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSaveCustomItem();
+              }
+            }}
+            autoFocus
+            required
+          />
+
+          {getCustomListInfo(customModal.field).list.length > 0 && (
+            <Box>
+              <Text size="xs" fw={600} c="dimmed" mb="xs">
+                Admin-Added {customModal.title.replace('Add ', '')}s:
+              </Text>
+              <Group gap={6}>
+                {getCustomListInfo(customModal.field).list.map((item) => (
+                  <Badge
+                    key={item}
+                    variant="light"
+                    color="blue"
+                    size="sm"
+                    rightSection={
+                      <ActionIcon
+                        size={14}
+                        radius="xl"
+                        variant="transparent"
+                        color="blue"
+                        onClick={() => handleRemoveCustomItem(item)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <IconTrash size={10} />
+                      </ActionIcon>
+                    }
+                  >
+                    {item}
+                  </Badge>
+                ))}
+              </Group>
+            </Box>
+          )}
+
+          <Group justify="flex-end" gap="xs">
+            <Button
+              variant="default"
+              onClick={handleCloseCustomModal}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="blue"
+              onClick={handleSaveCustomItem}
+              disabled={!customModalInput.trim()}
+            >
+              Add & Select
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 };

@@ -5,13 +5,19 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
  */
 async function fetchWithCookies<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+  const token = typeof window !== 'undefined' ? localStorage.getItem('crm_token') : null;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(url, {
     ...options,
-    credentials: 'include', // Automatically passes and receives HttpOnly cookies
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    credentials: 'include',
+    headers,
   });
 
   if (!response.ok) {
@@ -28,20 +34,29 @@ export const crmApi = {
   getRedisStatus: () => fetchWithCookies<any>('/redis/status'),
 
   // Auth (HttpOnly Cookie-based & Redis Cached)
-  register: (userData: { name: string; email: string; phone?: string; password: string; confirmPassword?: string }) =>
+  register: (userData: { organisationName: string; name: string; email: string; phone?: string; password: string; confirmPassword?: string }) =>
     fetchWithCookies<any>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     }),
-  login: (credentials: { email: string; password: string }) =>
-    fetchWithCookies<any>('/auth/login', {
+  login: async (credentials: { email: string; password: string }) => {
+    const res = await fetchWithCookies<any>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
-    }),
-  logout: () =>
-    fetchWithCookies<any>('/auth/logout', {
+    });
+    if (res && res.token && typeof window !== 'undefined') {
+      localStorage.setItem('crm_token', res.token);
+    }
+    return res;
+  },
+  logout: async () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('crm_token');
+    }
+    return fetchWithCookies<any>('/auth/logout', {
       method: 'POST',
-    }),
+    });
+  },
   getMe: () => fetchWithCookies<any>('/auth/me'),
 
   // Dashboard Stats (Cached via Redis)
@@ -51,6 +66,28 @@ export const crmApi = {
   clearDatabase: () =>
     fetchWithCookies<any>('/database/clear', {
       method: 'POST',
+    }),
+
+  // Customers API
+  getCustomerStats: () => fetchWithCookies<any>('/customers/stats'),
+  getCustomers: (params: Record<string, string> = {}) => {
+    const qs = new URLSearchParams(params).toString();
+    return fetchWithCookies<any>(`/customers${qs ? `?${qs}` : ''}`);
+  },
+  getCustomerById: (id: string) => fetchWithCookies<any>(`/customers/${id}`),
+  createCustomer: (data: any) =>
+    fetchWithCookies<any>('/customers', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateCustomer: (id: string, data: any) =>
+    fetchWithCookies<any>(`/customers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  deleteCustomer: (id: string) =>
+    fetchWithCookies<any>(`/customers/${id}`, {
+      method: 'DELETE',
     }),
 };
 

@@ -81,8 +81,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
     e.preventDefault();
     setErrorMsg('');
 
-    if (!email.trim() || !email.includes('@')) {
-      setErrorMsg('Please enter a valid Email Address');
+    if (!email.trim()) {
+      setErrorMsg('Please enter your Email Address or Employee ID');
       return;
     }
     if (!password) {
@@ -94,10 +94,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
     try {
       const res = await crmApi.login({ email, password });
       if (res.success && res.user) {
+        if (res.token) {
+          localStorage.setItem('crm_token', res.token);
+        }
         setCurrentUser(res.user);
+        window.dispatchEvent(new CustomEvent('crm_permissions_updated'));
         notifications.show({
           title: 'Welcome Back!',
-          message: `Signed in as ${res.user.name}. Redis session active.`,
+          message: `Signed in as ${res.user.name}. Session active.`,
           color: 'teal',
           icon: <IconShieldCheck size={18} />,
         });
@@ -218,9 +222,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
                     <Text fw={800} size="sm" style={{ color: textColor }}>
                       IT CRM
                     </Text>
-                    <Badge size="xs" color="blue" variant="light">
-                      v2.4
-                    </Badge>
                   </Group>
                 </Box>
 
@@ -255,9 +256,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
                 <form onSubmit={handleLogin}>
                   <Stack gap="md">
                     <TextInput
-                      label={<Text size="xs" fw={700} style={{ color: textColor }}>Email Address</Text>}
-                      placeholder="Enter your email"
-                      type="email"
+                      label={<Text size="xs" fw={700} style={{ color: textColor }}>Email Address or Employee ID</Text>}
+                      placeholder="e.g. name@company.com or EMP-1001"
                       value={email}
                       onChange={(e) => setEmail(e.currentTarget.value)}
                       leftSection={<IconMail size={15} color={subtextColor} />}
@@ -328,19 +328,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onSuccess, onSwitchToSignu
               </Box>
 
               {/* Footer Switch */}
-              <Group justify="center" mt="md" pt="xs" style={{ borderTop: `1px solid ${cardBorder}` }}>
+              <Box mt="md" pt="xs" style={{ borderTop: `1px solid ${cardBorder}`, textAlign: 'center' }}>
                 <Text size="xs" style={{ color: subtextColor }}>
-                  Need a new account?
+                  New Organisation?{' '}
+                  <Anchor
+                    size="xs"
+                    fw={700}
+                    style={{ color: isDark ? '#38BDF8' : CRM_COLORS.primary, cursor: 'pointer' }}
+                    onClick={handleGoToSignup}
+                  >
+                    Register Super Admin Account
+                  </Anchor>
                 </Text>
-                <Anchor
-                  size="xs"
-                  fw={700}
-                  style={{ color: isDark ? '#38BDF8' : CRM_COLORS.primary, cursor: 'pointer' }}
-                  onClick={handleGoToSignup}
-                >
-                  Create an Account
-                </Anchor>
-              </Group>
+                <Text size="11px" c="dimmed" mt={4}>
+                  Employees are onboarded by the Super Admin in the Employee Directory.
+                </Text>
+              </Box>
             </Grid.Col>
           </Grid>
         </Paper>

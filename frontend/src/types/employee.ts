@@ -20,10 +20,10 @@ export interface Employee {
   name: string;
   email: string;
   phone?: string;
-  avatar?: string;
   dob?: string;
   gender?: string;
   address?: string;
+  avatar?: string;
   department: string;
   designation: string;
   role: UserRole;

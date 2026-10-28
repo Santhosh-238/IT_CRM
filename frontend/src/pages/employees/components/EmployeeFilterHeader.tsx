@@ -82,7 +82,7 @@ export const EmployeeFilterHeader: React.FC<EmployeeFilterHeaderProps> = ({
         <div>
           <Group gap="xs" align="center">
             <Text size="26px" fw={800} style={{ letterSpacing: '-0.03em', color: CRM_COLORS.textPrimary }}>
-              Employee Directory
+              Employee Management
             </Text>
             <Badge
               size="md"

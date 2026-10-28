@@ -3,6 +3,32 @@ import { Employee, EmployeeStats } from '../types/employee';
 const API_BASE = 'http://localhost:5000/api/employees';
 
 /**
+ * Safe Response Parser (prevents JSON parse errors on HTML 404/500 pages)
+ */
+async function safeParseResponse(res: Response): Promise<{ success: boolean; data?: any; message?: string }> {
+  const contentType = res.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      const json = await res.json();
+      return {
+        success: res.ok && json.success !== false,
+        data: json.data,
+        message: json.message || (res.ok ? undefined : `Request failed with status ${res.status}`),
+      };
+    } catch {
+      return { success: false, message: 'Invalid JSON response from server.' };
+    }
+  } else {
+    const text = await res.text();
+    const cleanMsg = text.replace(/<[^>]*>?/gm, '').trim();
+    return {
+      success: res.ok,
+      message: res.ok ? undefined : (cleanMsg ? `Error (${res.status}): ${cleanMsg.slice(0, 100)}` : `Server returned error status ${res.status}`),
+    };
+  }
+}
+
+/**
  * Fetch all employees with optional filter query
  */
 export async function fetchEmployeesApi(filters?: {
@@ -29,6 +55,11 @@ export async function fetchEmployeesApi(filters?: {
       throw new Error(`Failed to fetch employees: ${res.statusText}`);
     }
 
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return { data: [], count: 0 };
+    }
+
     const data = await res.json();
     return {
       data: data.data || [],
@@ -51,6 +82,9 @@ export async function fetchEmployeeStatsApi(): Promise<EmployeeStats | null> {
     });
 
     if (!res.ok) return null;
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) return null;
+
     const data = await res.json();
     return data.stats || null;
   } catch (error) {
@@ -71,14 +105,9 @@ export async function createEmployeeApi(employeeData: Partial<Employee>): Promis
       body: JSON.stringify(employeeData),
     });
 
-    const result = await res.json();
-    return {
-      success: res.ok && result.success,
-      data: result.data,
-      message: result.message,
-    };
+    return await safeParseResponse(res);
   } catch (error: any) {
-    return { success: false, message: error.message };
+    return { success: false, message: error.message || 'Network connection failed.' };
   }
 }
 
@@ -87,6 +116,9 @@ export async function createEmployeeApi(employeeData: Partial<Employee>): Promis
  */
 export async function updateEmployeeApi(id: string, employeeData: Partial<Employee>): Promise<{ success: boolean; data?: Employee; message?: string }> {
   try {
+    if (!id || id === 'undefined' || id === 'null') {
+      return { success: false, message: 'Employee ID is required for update.' };
+    }
     const res = await fetch(`${API_BASE}/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -94,14 +126,9 @@ export async function updateEmployeeApi(id: string, employeeData: Partial<Employ
       body: JSON.stringify(employeeData),
     });
 
-    const result = await res.json();
-    return {
-      success: res.ok && result.success,
-      data: result.data,
-      message: result.message,
-    };
+    return await safeParseResponse(res);
   } catch (error: any) {
-    return { success: false, message: error.message };
+    return { success: false, message: error.message || 'Network connection failed.' };
   }
 }
 
@@ -110,6 +137,7 @@ export async function updateEmployeeApi(id: string, employeeData: Partial<Employ
  */
 export async function updateEmployeeStatusApi(id: string, status: string): Promise<boolean> {
   try {
+    if (!id || id === 'undefined' || id === 'null') return false;
     const res = await fetch(`${API_BASE}/${id}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -127,6 +155,7 @@ export async function updateEmployeeStatusApi(id: string, status: string): Promi
  */
 export async function deleteEmployeeApi(id: string): Promise<boolean> {
   try {
+    if (!id || id === 'undefined' || id === 'null') return false;
     const res = await fetch(`${API_BASE}/${id}`, {
       method: 'DELETE',
       credentials: 'include',

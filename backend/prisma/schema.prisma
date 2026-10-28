@@ -5,6 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/client_v2"
 }
 
 model User {
@@ -14,11 +15,60 @@ model User {
   phone        String?
   passwordHash String
   role         String      @default("SUPER_ADMIN")
+  roleId       String?
+  roleRelation Role?       @relation(fields: [roleId], references: [id], onDelete: SetNull)
   avatar       String?
   department   String?
   refreshToken String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
+}
+
+model Role {
+  id           String           @id @default(uuid())
+  name         String           @unique
+  slug         String           @unique
+  description  String?
+  isSystem     Boolean          @default(false)
+  appType      String           @default("admin") // "admin" | "manager" | "sales_employee" | "support"
+  parentRoleId String?
+  parentRole   Role?            @relation("RoleHierarchy", fields: [parentRoleId], references: [id], onDelete: SetNull)
+  childRoles   Role[]           @relation("RoleHierarchy")
+  permissions  RolePermission[]
+  users        User[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
+model RolePermission {
+  id         String   @id @default(uuid())
+  roleId     String
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  moduleId   String   // e.g. "dashboard", "employees", "contacts", "companies", "leads", "access_control", "settings"
+  moduleName String
+  category   String   @default("Core") // "Core", "Sales & CRM", "Human Resources", "Administration"
+  canView    Boolean  @default(false)
+  canCreate  Boolean  @default(false)
+  canEdit    Boolean  @default(false)
+  canDelete  Boolean  @default(false)
+  canExport  Boolean  @default(false)
+  canApprove Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([roleId, moduleId])
+}
+
+model AccessAuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  userName   String?
+  action     String   // "ROLE_CREATED", "PERMISSIONS_UPDATED", "USER_ROLE_REASSIGNED", "ROLE_DELETED"
+  targetType String   // "Role", "Permission", "User"
+  targetName String?
+  details    String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
 }
 
 model Employee {
@@ -27,19 +77,748 @@ model Employee {
   name             String
   email            String   @unique
   phone            String?
-  avatar           String?
   dob              String?
   gender           String?
   address          String?
-  department       String?  @default("Engineering")
-  designation      String?  @default("Employee")
-  role             String?  @default("Developer")
+  department       String?  @default("")
+  designation      String?  @default("")
+  role             String?  @default("")
   reportingManager String?
   joiningDate      String?  @default("")
-  employmentType   String?  @default("Full Time")
-  workLocation     String?  @default("Chennai HQ")
+  employmentType   String?  @default("")
+  workLocation     String?  @default("")
   status           String?  @default("Active")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model Contact {
+  // Primary Keys & Identifiers
+  id                     String    @id @default(uuid())
+  contactId              String    @unique // e.g. CNT-1001
+
+  // 1. Basic Contact Information
+  name                   String
+  email                  String?
+  phone                  String    // Mobile Number (Required)
+  address                String?
+  source                 String?   @default("Website") // Website, Referral, Cold Call, LinkedIn, Other
+  customSource           String?
+
+  // 2. Professional & Company Information
+  contactType            String?   @default("Company Representative") // Individual / Company Representative
+  companyName            String?
+  contactPerson          String?   // Contact person (Representative)
+  estimatedValue         String?   // Estimated Value
+  expectedCloseDate      String?   // Expected Close Date (YYYY-MM-DD)
+  description            String?   // Context, requirements, or notes
+  designation            String?
+  profession             String?   // when contactType is Individual
+
+  // Company Verification & Firmographic Details
+  gstNumber              String?   // GSTIN (e.g. 33AAAAA0000A1Z5)
+  employeeCount          String?   // e.g. "1-10", "11-50", "51-200", "201-500", "500+"
+  companyPan             String?   // PAN (e.g. AAAAA0000A)
+  cinNumber              String?   // Corporate Identification Number
+  companyWebsite         String?   // e.g. https://example.com
+  linkedinUrl            String?   // LinkedIn Company Profile URL
+  annualTurnover         String?   // e.g. ₹5 Cr - ₹25 Cr
+  verificationStatus     String?   @default("Unverified") // "Verified", "Pending", "Unverified"
+  registeredState        String?   // e.g. Tamil Nadu, Karnataka
+
+  // 3. Requirement Details
+  category               String?   @default("Product") // Product / Service
+  productList            String[]  @default([]) // e.g. ["HRMS", "IT CRM"]
+  serviceList            String[]  @default([])
+  customProduct          String?
+
+  // 4. Interaction & Follow-up Details
+  nextFollowDate         String?   // YYYY-MM-DD
+  remarks                String?
+  notes                  String?
+
+  // 5. Streamlined Qualification Details
+  status                 String?   @default("New")
+  stage                  String?   @default("Initialization")
+  businessNeed           String?   // Business Need: Enna software/service thevai?
+  budgetRange            String?   // Budget Range: Customer budget evvalavu?
+  decisionMaker          String?   // Decision Maker: Purchase decision yaar eduppanga?
+  purchaseTimeline       String?   // Purchase Timeline: Eppo service vaanga plan pannuraanga?
+  interestedService      String?   // Interested Service: Web app, mobile app, ERP, CRM, etc.
+  priority               String?   @default("Medium") // Low / Medium / High
+  qualificationStatus    String?   @default("Pending") // Qualified / Unqualified / Pending
+  qualifiedBy            String?   // Endha employee qualify pannanga?
+  qualificationDate      String?   // Eppo qualify pannanga? (YYYY-MM-DD)
+  unqualifiedReason      String?   // Unqualified Reason: Budget illa, need illa, wrong contact, etc.
+  disqualificationReason String?   // Backward compatibility fallback
+
+  // 6. Assignment & Metadata
+  assignedTo             String?   // Employee ID
+  assignedToName         String?   // Assigned Employee Name
+  assignmentStatus       String?   @default("Unassigned") // Assigned / Unassigned
+  contactMode            String?
+  createdBy              String?
+  // 7. Odoo ERP Contact Verified Fields
+  title                  String?   // Salutation: Mr., Mrs., Ms., Dr., Prof. (Odoo: res.partner.title)
+  mobile                 String?   // Direct Mobile Number (Odoo: mobile)
+  tags                   String[]  @default([]) // Tags / Categories (Odoo: category_id)
+  street                 String?   // Street Address 1 (Odoo: street)
+  street2                String?   // Street Address 2 / Landmark (Odoo: street2)
+  city                   String?   // City (Odoo: city)
+  zip                    String?   // ZIP / Postal Code (Odoo: zip)
+  country                String?   @default("India") // Country (Odoo: country_id)
+  paymentTerms           String?   @default("Immediate Payment") // Customer Payment Terms (Odoo: property_payment_term_id)
+  creditLimit            String?   // Credit Limit (Odoo: credit_limit)
+  internalReference      String?   // Internal Reference / Code (Odoo: ref)
+
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+}
+
+model Company {
+  id             String   @id @default(uuid())
+  name           String   @unique
+  website        String?
+  industry       String?
+  address        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Lead {
+  id             String    @id @default(uuid())
+  leadId         String    @unique
+  name           String
+  email          String?
+  phone          String?
+  contactType    String?   @default("Individual")
+  profession     String?
+  companyName    String?
+  designation    String?
+  address        String?
+  source         String?   @default("Website")
+  customSource   String?
+  category       String?   @default("Service")
+  productList    String[]  @default([])
+  serviceList    String[]  @default([])
+  status         String?   @default("New")
+  stage          String?   @default("Initialization")
+  assignedTo     String?
+  assignedToName String?
+  createdBy      String?
+  createdByName  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model ScheduledMeeting {
+  id                  String   @id @default(uuid())
+  title               String   @default("Client Discussion")
+  purpose             String
+  meetingDate         String
+  startTime           String
+  endTime             String
+  meetingType         String?  @default("Virtual")
+  location            String?
+  employeeId          String?
+  employeeName        String
+  employeeEmail       String?
+  employeeDesignation String?
+  contactId           String?
+  leadId              String?  @map("lead_id")
+  clientName          String?
+  status              String   @default("Scheduled")
+  notes               String?
+  requirements        String?
+  requirementFileName String?
+  requirementFileUrl  String?
+  requirementFileSize String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model Project {
+  id                 String    @id @default(uuid())
+  projectId          String    @unique // e.g. PRJ-1001
+  name               String    // Project Title
+  description        String?
+  
+  // Client Details
+  contactId          String?   // Reference to Contact
+  clientName         String    // Client / Company Name
+  clientEmail        String?
+  clientPhone        String?
+  
+  // Project Type & Domain
+  projectType        String?   @default("Fixed Price") // "Fixed Price", "Time & Material", "Retainer", "Dedicated Team"
+  category           String?   @default("Full-Stack Web Development") // "Web Dev", "Mobile App", "DevOps & Cloud", "AI/ML Solutions", "UI/UX Design"
+  
+  // Ownership & Team
+  projectManagerId   String?   // Lead / PM Employee ID
+  projectManagerName String?   // Lead / PM Name
+  teamMembers        String[]  @default([]) // Array of assigned Employee IDs
+  
+  // Lifecycle & Metrics
+  status             String    @default("Planning") // "Planning", "In Progress", "In Review", "On Hold", "Completed", "Cancelled"
+  priority           String    @default("Medium") // "Low", "Medium", "High", "Critical"
+  progress           Int       @default(0) // 0 to 100 percentage
+  modules            Json?     @default("[]")
+  
+  // Budget & Timeline
+  estimatedBudget    Float?    // e.g. 500000
+  actualCost         Float?    // e.g. 350000
+  startDate          String?   // YYYY-MM-DD
+  targetEndDate      String?   // YYYY-MM-DD
+  actualEndDate      String?
+  
+  // Project Assets & Repositories
+  figmaUrl           String?
+  githubUrl          String?
+  liveUrl            String?
+  
+  // Link to Billing Module
+  salesOrderId       String?   // Reference to SalesOrder
+  contractRef        String?   // Sales Order / Contract Number
+  
+  // Metadata
+  createdBy          String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model CallLog {
+  id           String   @id @default(uuid())
+  callId       String   @unique // e.g. CAL-1001
+  callType     String   // "Incoming" | "Outgoing"
+  employeeId   String?  // Reference to Employee id / empCode
+  employeeName String   // Assigned Employee Name (Caller Name)
+  contactId    String?  // Reference to Contact id
+  contactName  String   // Contact Name (Receiver Name)
+  phoneNumber  String   // Contact Phone Number (Receiver Number)
+  leadId       String?  @map("lead_id") // Reference to Lead id / leadId
+  duration     String   // Duration (e.g. "02:30" or "2m 30s")
+  status       String   // "Completed" | "Follow-up" | "Missed" | "Busy" | "No Answer" | "Not Interested"
+  callDate     String   // YYYY-MM-DD
+  callTime     String   // e.g. "10:30 AM"
+  description  String?  // Notes / discussion summary
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Customer {
+  id               String   @id @default(uuid())
+  customerId       String   @unique // e.g. CUST-1001
+  companyName      String
+  contactPerson    String
+  email            String?
+  phone            String
+  designation      String?
+  industry         String?  @default("Technology & IT Services")
+  customerTier     String?  @default("Mid-Market") // "Enterprise", "Mid-Market", "Startup", "Government"
+  status           String   @default("Active") // "Active", "Onboarding", "Inactive", "Churned"
+  address          String?
+  city             String?
+  state            String?
+  gstNumber        String?
+  panNumber        String?
+  website          String?
+  contractValue    Float?   @default(0)
+  accountManager   String?
+  accountManagerId String?
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model MasterProject {
+  id              String   @id @default(uuid())
+  projectCode     String   @unique // e.g. "PRJ-HRMS", "PRJ-ECOM"
+  name            String   // e.g. "OneAssist HRMS Suite"
+  category        String   @default("Full-Stack Web Development")
+  projectType     String   @default("Fixed Price") // "Fixed Price", "Time & Material", "Retainer", "Dedicated Team"
+  basePrice       Float?   @default(0)
+  currency        String   @default("INR")
+  defaultDuration String?  @default("60 Days")
+  techStack       String[] @default([]) // e.g. ["React", "Node.js", "PostgreSQL", "AWS"]
+  description     String?
+  status          String   @default("Active") // "Active" | "Draft" | "Archived"
+  modules         Json     @default("[]") // Array of { id, name, code, description, durationDays, priority, isCore, deliverables, price }
+  deliverables    String[] @default([]) // Common deliverables list
+  icon            String?  @default("folders")
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  settingKey  String   @unique // "company_profile", "crm_pipeline", "email_config", "general_prefs"
+  value       Json     // Key-value settings JSON
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+}
+
+// =============================================================================
+// BILLING MODULE ENTITIES
+// =============================================================================
+
+model BillingProduct {
+  id          String   @id @default(uuid())
+  itemCode    String   @unique // e.g. "PRD-HRMS", "SRV-WEBDEV"
+  name        String
+  type        String   @default("Product") // "Product" | "Service"
+  description String?
+  unitPrice   Float    @default(0)
+  taxRate     Float    @default(18.0) // Percentage (e.g. 18 for 18% GST)
+  unit        String   @default("Unit") // "Unit", "Month", "Hour", "Project"
+  status      String   @default("Active") // "Active" | "Inactive"
+  modules     Json?    @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Quotation {
+  id                 String          @id @default(uuid())
+  quotationNumber    String          @unique // e.g. "QUO-2026-1001"
+  contactId          String?         // Reference to CRM Contact
+  contactName        String
+  contactEmail       String?
+  contactPhone       String?
+  companyName        String?
+  clientGst          String?
+  clientAddress      String?
+  leadId             String?         // Reference to CRM Lead
+  quotationDate      String          // YYYY-MM-DD
+  validUntil         String          // YYYY-MM-DD
+  status             String          @default("Draft") // "Draft" | "Sent" | "Accepted" | "Rejected" | "Expired"
+  currency           String          @default("INR")
+  subtotal           Float           @default(0)
+  discountType       String          @default("percentage") // "percentage" | "fixed"
+  discountValue      Float           @default(0)
+  discountAmount     Float           @default(0)
+  taxAmount          Float           @default(0)
+  grandTotal         Float           @default(0)
+  paymentTerms       String?         @default("Net 30")
+  notes              String?
+  termsConditions    String?
+  salesOwnerId       String?
+  salesOwnerName     String?
+  convertedToOrderId String?         // ID of SalesOrder converted to
+  convertedAt        DateTime?
+  items              QuotationItem[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+}
+
+model QuotationItem {
+  id          String    @id @default(uuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  productId   String?   // Reference to BillingProduct
+  itemCode    String?
+  itemName    String
+  itemType    String    @default("Product") // "Product" | "Service"
+  description String?
+  quantity    Float     @default(1)
+  unitPrice   Float     @default(0)
+  discount    Float     @default(0)
+  discountType String?  @default("percentage")
+  taxRate     Float     @default(18.0)
+  taxAmount   Float     @default(0)
+  totalAmount Float     @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// =============================================================================
+// LEAD MODULE PROPOSAL ENTITIES
+// =============================================================================
+
+model Proposal {
+  id              String         @id @default(uuid())
+  proposalNumber  String         @unique // e.g. "PROP-2026-1001"
+  leadId          String?        @map("lead_id") // Reference to CRM Lead
+  contactId       String?        // Reference to CRM Contact
+  contactName     String
+  contactEmail    String?
+  contactPhone    String?
+  companyName     String?
+  clientGst       String?
+  clientAddress   String?
+  title           String?
+  proposalDate    String         // YYYY-MM-DD
+  validUntil      String         // YYYY-MM-DD
+  status          String         @default("Draft") // "Draft" | "Sent" | "Under Review" | "Accepted" | "Rejected"
+  currency        String         @default("INR (₹)")
+  subtotal        Float          @default(0)
+  totalAmount     Float          @default(0)
+  grandTotal      Float          @default(0)
+  discountPercent Float          @default(0)
+  taxPercent      Float          @default(0)
+  paymentTerms    String?        @default("Net 30 Days")
+  documentName    String?
+  documentUrl     String?
+  documentSize    String?
+  notes           String?
+  terms           String?
+  items           ProposalItem[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("proposals")
+}
+
+model ProposalItem {
+  id          String   @id @default(uuid())
+  proposalId  String   @map("proposal_id")
+  proposal    Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  itemName    String
+  description String?
+  quantity    Float    @default(1)
+  unitPrice   Float    @default(0)
+  totalAmount Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("proposal_items")
+}
+
+model SalesOrder {
+  id              String             @id @default(uuid())
+  orderNumber     String             @unique // e.g. "SO-2026-1001"
+  quotationId     String?            // Ref to accepted quotation
+  contactId       String?            // Ref to Contact
+  contactName     String
+  contactEmail    String?
+  contactPhone    String?
+  companyName     String?
+  clientGst       String?
+  clientAddress   String?
+  leadId          String?            // Ref to Lead
+  dealId          String?
+  billingMethod   String             @default("Milestone") // "Milestone" | "Fixed Price" | "Product"
+  contractValue   Float              @default(0)
+  currency        String             @default("INR")
+  orderDate       String             // YYYY-MM-DD
+  startDate       String?            // YYYY-MM-DD
+  endDate         String?            // YYYY-MM-DD
+  paymentTerms    String?            @default("Net 30")
+  status          String             @default("Confirmed") // "Draft" | "Confirmed" | "In Progress" | "Completed" | "Cancelled"
+  notes           String?
+  termsConditions String?
+  projectId       String?            // Linked Project
+  items           SalesOrderItem[]
+  milestones      BillingMilestone[]
+  invoices        Invoice[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model SalesOrderItem {
+  id           String     @id @default(uuid())
+  salesOrderId String
+  salesOrder   SalesOrder @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
+  productId    String?
+  itemCode     String?
+  itemName     String
+  itemType     String     @default("Product")
+  description  String?
+  quantity     Float      @default(1)
+  unitPrice    Float      @default(0)
+  taxRate      Float      @default(18.0)
+  taxAmount    Float      @default(0)
+  totalAmount  Float      @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model BillingMilestone {
+  id                String      @id @default(uuid())
+  salesOrderId      String?
+  salesOrder        SalesOrder? @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  projectId         String?     // Linked Project ID
+  projectName       String?
+  milestoneNumber   Int         @default(1)
+  name              String      // e.g. "Milestone 1: Discovery & Architecture"
+  description       String?
+  percentage        Float?      // e.g. 25 (%)
+  amount            Float       @default(0) // Fixed amount (INR)
+  dueDate           String?     // YYYY-MM-DD
+  status            String      @default("Pending") // "Pending" | "In Progress" | "Completed" | "Cancelled"
+  isApproved        Boolean     @default(false)
+  approvedBy        String?
+  approvedAt        DateTime?
+  isInvoiceEligible Boolean     @default(false)
+  invoiceId         String?     // ID of invoice generated for this milestone
+  invoicedAmount    Float       @default(0)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
+model Invoice {
+  id                 String              @id @default(uuid())
+  invoiceNumber      String              @unique // e.g. "INV-2026-000001"
+  contactId          String?             // Reference to Contact
+  contactName        String
+  contactEmail       String?
+  contactPhone       String?
+  companyName        String?
+  clientGst          String?
+  clientAddress      String?
+  leadId             String?
+  salesOrderId       String?
+  salesOrder         SalesOrder?         @relation(fields: [salesOrderId], references: [id], onDelete: SetNull)
+  projectId          String?
+  projectName        String?
+  milestoneId        String?
+  milestoneName      String?
+  invoiceDate        String              // YYYY-MM-DD
+  dueDate            String              // YYYY-MM-DD
+  subtotal           Float               @default(0)
+  discountAmount     Float               @default(0)
+  taxAmount          Float               @default(0)
+  grandTotal         Float               @default(0)
+  amountPaid         Float               @default(0)
+  outstandingBalance Float               @default(0)
+  status             String              @default("Draft") // "Draft" | "Issued" | "Partially Paid" | "Paid" | "Overdue" | "Cancelled"
+  paymentTerms       String?             @default("Net 30")
+  notes              String?
+  termsConditions    String?
+  bankDetails        Json?               // Bank name, account number, IFSC, UPI ID
+  cancellationReason String?
+  issuedAt           DateTime?
+  paidAt             DateTime?
+  createdBy          String?
+  items              InvoiceItem[]
+  allocations        PaymentAllocation[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId   String?
+  itemCode    String?
+  itemName    String
+  itemType    String   @default("Product")
+  description String?
+  quantity    Float    @default(1)
+  unitPrice   Float    @default(0)
+  discount    Float    @default(0)
+  taxRate     Float    @default(18.0)
+  taxAmount   Float    @default(0)
+  totalAmount Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Payment {
+  id                   String              @id @default(uuid())
+  paymentNumber        String              @unique // e.g. "PAY-2026-1001"
+  contactId            String?             // Ref to Contact
+  clientName           String
+  paymentDate          String              // YYYY-MM-DD
+  amountReceived       Float               @default(0)
+  paymentMethod        String              @default("Bank Transfer") // "Bank Transfer" | "UPI" | "Cheque" | "Cash" | "Payment Gateway"
+  transactionReference String?             // UTR / Cheque / UPI Ref
+  bankName             String?
+  notes                String?
+  recordedBy           String?             // User who recorded payment
+  status               String              @default("Completed") // "Completed" | "Refunded" | "Void"
+  allocations          PaymentAllocation[]
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+}
+
+model PaymentAllocation {
+  id              String   @id @default(uuid())
+  paymentId       String
+  payment         Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoiceId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amountAllocated Float    @default(0)
+  createdAt       DateTime @default(now())
+}
+
+model BillingAuditLog {
+  id           String   @id @default(uuid())
+  entityType   String   // "Quotation" | "SalesOrder" | "Milestone" | "Invoice" | "Payment" | "Settings"
+  entityId     String
+  entityNumber String?  // e.g. "INV-2026-000001", "QUO-2026-1001"
+  action       String   // "CREATED" | "UPDATED" | "STATUS_CHANGED" | "CONVERTED" | "PAYMENT_RECORDED" | "CANCELLED"
+  performedBy  String?  // User Name / Email
+  details      String?
+  createdAt    DateTime @default(now())
+}
+
+model BillingSettings {
+  id                     String   @id @default("default_billing_settings")
+  companyName            String   @default("OmniTech Solutions Pvt Ltd")
+  companyAddress         String?  @default("Tidel Park, Rajiv Gandhi Salai, Taramani, Chennai, Tamil Nadu 600113")
+  companyGst             String?  @default("33AAAAA0000A1Z5")
+  companyPan             String?  @default("AAAAA0000A")
+  companyPhone           String?  @default("+91 98765 43210")
+  companyEmail           String?  @default("billing@omnitech.io")
+  companyWebsite         String?  @default("https://omnitech.io")
+  companyLogoUrl         String?
+  bankName               String?  @default("HDFC Bank")
+  accountNumber          String?  @default("50200012345678")
+  accountHolderName      String?  @default("OmniTech Solutions Pvt Ltd")
+  ifscCode               String?  @default("HDFC0001234")
+  branchName             String?  @default("Tidel Park Branch")
+  upiId                  String?  @default("omnitech@hdfcbank")
+  invoicePrefix          String   @default("INV-2026-")
+  invoiceNextNumber      Int      @default(1)
+  quotationPrefix        String   @default("QUO-2026-")
+  quotationNextNumber    Int      @default(1001)
+  orderPrefix            String   @default("SO-2026-")
+  orderNextNumber        Int      @default(1001)
+  paymentPrefix          String   @default("PAY-2026-")
+  paymentNextNumber      Int      @default(1001)
+  defaultTaxRate         Float    @default(18.0)
+  defaultPaymentTerms    String   @default("Net 30")
+  defaultTermsConditions String?  @default("1. Payment is due within the stipulated credit term from invoice date.\n2. In case of delayed payment, interest @ 18% per annum will be charged.\n3. Goods or services once delivered/rendered are not refundable.")
+  updatedAt              DateTime @updatedAt
+}
+
+// =============================================================================
+// NEGOTIATION MODULE ENTITY
+// =============================================================================
+
+model Negotiation {
+  id                  String   @id @default(uuid())
+  negotiationId       String   @unique // e.g. "NEG-2026-1001"
+  leadId              String?  @map("lead_id") // Reference to CRM Lead
+  leadName            String   // Lead / Client Name
+  clientName          String?  // Client / Company Name
+  contactId           String?  // Reference to CRM Contact
+  quotationId         String?  // Reference to Quotation
+  quotationNumber     String?  // Linked Quotation Number
+  proposalId          String?  // Reference to Proposal
+  proposalNumber      String?  // Linked Proposal Number
+  assignedTo          String?  // Responsible Employee ID
+  assignedToName      String   // Responsible Employee Name
+  negotiationDate     String   // YYYY-MM-DD
+  status              String   @default("In Progress") // "In Progress" | "Awaiting Client" | "Revised Quotation" | "Won" | "Lost"
+  quotedAmount        Float    @default(0) // Original quotation amount
+  expectedFinalAmount Float    @default(0) // Expected negotiated deal amount
+  discountPercentage  Float    @default(0) // Proposed discount percentage (%)
+  discountAmount      Float    @default(0) // Calculated discount amount
+  paymentTerms        String?  @default("Milestone Based") // e.g. "Full Payment", "50% Advance", "Milestone Based", "Net 30"
+  scopeChanges        String?  // Describe additions, removals, or modifications
+  deliveryTimeline    String?  // Proposed or agreed delivery period
+  clientRequirements  String?  // Client concerns, requested changes, and objections
+  notes               String?  // Negotiation summaries, commitments, decisions
+  nextFollowUpDate    String?  // Conditionally required when status is "Awaiting Client"
+  discussionHistory   Json?    @default("[]") // Discussion entries: { id, date, author, topic, notes, priceImpact, status, createdAt }
+  lossReason          String?  // Recorded if status is "Lost"
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("negotiations")
+}
+
+// =============================================================================
+// CONTRACT MODULE ENTITY (UNDER LEAD MODULE)
+// =============================================================================
+
+model Contract {
+  id                               String   @id @default(uuid())
+  contractId                       String   @unique // e.g. "CNT-2026-1001"
+  title                            String   // Contract Title
+  contractType                     String   @default("Software Development") // "Software Development" | "IT Product Sales" | "IT Services" | "AMC/Support" | "Subscription/License" | "Other"
+  clientName                       String   // Client Name
+  leadId                           String?  @map("lead_id") // Reference to CRM Lead
+  leadName                         String?  // Lead Name
+  contactId                        String?  // Reference to CRM Contact
+  customerId                       String?  // Reference to Customer
+  quotationId                      String?  // Reference to Quotation
+  quotationNumber                  String?  // Linked Quotation Number
+  proposalId                       String?  // Reference to Proposal
+  proposalNumber                   String?  // Linked Proposal Number
+  negotiationId                    String?  // Reference to Negotiation
+  negotiationNumber                String?  // Linked Negotiation Number
+  assignedTo                       String?  // Assigned Employee ID
+  assignedToName                   String   // Assigned Employee Name
+  contractDate                     String   // YYYY-MM-DD
+  
+  // Project & Scope Details
+  projectName                      String?
+  projectDescription               String?
+  scopeOfWork                      String?
+  deliverables                     String?  // Contractual deliverables description
+  acceptanceCriteria               String?  // Criteria for acceptance and sign-off
+  responsibilities                 String?
+  startDate                        String?  // YYYY-MM-DD
+  endDate                          String?  // YYYY-MM-DD
+  specialConditions                String?
+
+  // Contract Type Specific Additional Fields
+  // 1. IT Product Sales
+  productDetails                   Json?    @default("[]") // Array of products, quantities, delivery details
+  deliveryDetails                  String?  // Delivery address, shipping method, schedule
+  warrantyTerms                    String?  // Warranty terms & conditions
+  // 2. AMC/Support
+  supportPeriod                    String?  // e.g. "12 Months (24/7 Coverage)"
+  slaTerms                         String?  // Service Level Agreement
+  responseTime                     String?  // e.g. "Critical: <1hr, High: <4hrs, Normal: <8hrs"
+  // 3. Subscription/License & Renewal
+  licenseQuantity                  Int?     @default(1)
+  subscriptionStartDate            String?  // YYYY-MM-DD
+  subscriptionEndDate              String?  // YYYY-MM-DD
+  renewalDetails                   String?  // Renewal notice period, auto-renewal clause, terms
+  
+  // Commercial & Payment Terms
+  contractValue                    Float    @default(0) // Base contract value
+  currency                         String   @default("INR") // Configured currency
+  discountAmount                   Float    @default(0) // Discount amount
+  taxAmount                        Float    @default(0) // GST/Tax amount
+  taxRate                          Float    @default(18.0) // Tax percentage
+  taxIncluded                      Boolean  @default(false) // GST Inclusive vs Exclusive
+  finalContractAmount              Float    @default(0) // Calculated final amount
+  paymentMethod                    String   @default("Full Payment") // "Full Payment" | "Partial Payment" | "Milestone-Based Payment"
+  paymentDueTerms                  String   @default("Net 30") // "Due on Receipt" | "Net 15" | "Net 30" | "Custom"
+  customPaymentDueTerms            String?
+  advancePaymentType               String?  @default("percentage") // "amount" | "percentage"
+  advancePaymentValue              Float    @default(0) // percentage or fixed amount
+  advancePaymentAmount             Float    @default(0) // computed advance amount
+  quotationValueMismatchConfirmed  Boolean  @default(false) // Authorized confirmation when contract value differs from quotation
+
+  // Legal Clauses
+  confidentialityClause            String?
+  terminationClause                String?
+  additionalTerms                  String?
+  
+  // Documents & Signatures
+  documentName                     String?
+  documentUrl                      String?
+  documentSize                     String?
+  documentVersion                  String   @default("v1.0")
+  documentVersions                 Json?    @default("[]") // [{ version, documentName, documentUrl, uploadedBy, uploadedAt, notes }]
+  attachments                      Json?    @default("[]")
+  clientSignatoryName              String?
+  clientSignatoryEmail             String?
+  companySignatoryName             String?  @default("OmniTech Solutions Representative")
+  companySignatoryEmail            String?
+  signatureStatus                  String   @default("Pending") // "Pending" | "Partially Signed" | "Signed" | "Rejected"
+  signedDate                       String?
+
+  // Approval Workflow
+  approvalStatus                   String   @default("Draft") // "Draft" | "Pending Approval" | "Approved" | "Rejected"
+  approvedBy                       String?
+  approvalDate                     String?
+  rejectionReason                  String?
+  internalNotes                    String?
+  
+  // Contract Lifecycle Status
+  // "Draft" | "Pending Approval" | "Approved" | "Pending Signature" | "Active" | "On Hold" | "Completed" | "Terminated" | "Expired"
+  status                           String   @default("Draft")
+  
+  createdAt                        DateTime @default(now())
+  updatedAt                        DateTime @updatedAt
+
+  @@map("contracts")
 }
 

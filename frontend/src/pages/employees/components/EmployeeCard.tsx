@@ -49,6 +49,14 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
   onDelete,
   onStatusChange,
 }) => {
+  const getInitials = (name?: string) => {
+    if (!name) return '';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
   const getStatusBadge = (status?: string) => {
     const s = (status || '').toUpperCase();
     if (s.includes('ACT') || s.includes('FULL')) {
@@ -201,15 +209,17 @@ export const EmployeeCard: React.FC<EmployeeCardProps> = ({
             withBorder
           >
             <Avatar
-              src={employee.avatar}
               size={60}
               radius="20px"
               alt={employee.name}
               style={{
                 border: `2px solid ${CRM_COLORS.borderLight}`,
                 boxShadow: '0 4px 14px rgba(15, 23, 42, 0.06)',
+                fontWeight: 700,
               }}
-            />
+            >
+              {getInitials(employee.name)}
+            </Avatar>
           </Indicator>
 
           <div style={{ flex: 1, minWidth: 0 }}>
