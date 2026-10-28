@@ -21,6 +21,7 @@ import {
   IconBuilding,
   IconSettings,
   IconUserCheck,
+  IconClock,
 } from '@tabler/icons-react';
 import { useCRM } from '../../context/CRMContext';
 import { usePermissions } from '../../context/AccessControlContext';
