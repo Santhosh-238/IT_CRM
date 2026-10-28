@@ -406,11 +406,23 @@ export function generateQuotationPrintHtml(quotation: Quotation): string {
     <!-- Header -->
     <div class="header-row">
       <div>
-        <div class="quotation-title">Quotation</div>
+        <div class="quotation-title">Quotation ${quotation.revisionName ? `<span style="font-size: 18px; color: #7C3AED; font-weight: 700; margin-left: 6px;">[${escapeHtml(quotation.revisionName)}]</span>` : ''}</div>
         <div class="meta-row">
           <span class="meta-label">Quotation#</span>
-          <span class="meta-value">${escapeHtml(cleanQuotationNumber)}</span>
+          <span class="meta-value">${escapeHtml(quotation.quotationNumber || cleanQuotationNumber)}</span>
         </div>
+        ${quotation.version && quotation.version > 1 ? `
+        <div class="meta-row" style="margin-top: 3px;">
+          <span class="meta-label">Revision</span>
+          <span class="meta-value" style="color: #7C3AED;">${escapeHtml(quotation.revisionName || `V${quotation.version}`)} (Original: ${escapeHtml(quotation.originalQuotationNumber || cleanQuotationNumber)})</span>
+        </div>
+        ` : ''}
+        ${quotation.projectName ? `
+        <div class="meta-row" style="margin-top: 3px;">
+          <span class="meta-label">Project</span>
+          <span class="meta-value">${escapeHtml(quotation.projectName)}</span>
+        </div>
+        ` : ''}
         <div class="meta-row" style="margin-top: 3px;">
           <span class="meta-label">Quotation Date</span>
           <span class="meta-value">${escapeHtml(quotationDateFormatted)}</span>

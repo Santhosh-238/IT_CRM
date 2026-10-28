@@ -101,6 +101,7 @@ import {
   ContractStatus,
 } from '../../../types/lead';
 import { Quotation } from '../../../types/billing';
+import { QuotationModal } from '../../billing/components/QuotationModal';
 import { useEmployee } from '../../../context/EmployeeContext';
 import { useContact } from '../../../context/ContactContext';
 import { useLead } from '../../../context/LeadContext';
@@ -515,6 +516,9 @@ export const LeadNegotiationSection: React.FC<LeadNegotiationSectionProps> = ({
   const [deleteTarget, setDeleteTarget] = useState<Negotiation | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+  const [revisionQuoteModalOpen, setRevisionQuoteModalOpen] = useState<boolean>(false);
+  const [revisionBaseQuote, setRevisionBaseQuote] = useState<Quotation | null>(null);
+  const [activeNegotiationForRevision, setActiveNegotiationForRevision] = useState<Negotiation | null>(null);
 
   // Form State
   const [formNegotiationId, setFormNegotiationId] = useState<string>('');
@@ -641,10 +645,64 @@ export const LeadNegotiationSection: React.FC<LeadNegotiationSectionProps> = ({
     billingService
       .getQuotations()
       .then((quotes) => {
-        if (quotes && Array.isArray(quotes)) setQuotations(quotes);
+        if (quotes && Array.isArray(quotes)) {
+          const flattened: Quotation[] = [];
+          quotes.forEach((q) => {
+            if (q.allRevisions && q.allRevisions.length > 0) {
+              flattened.push(...q.allRevisions);
+            } else {
+              flattened.push(q);
+            }
+          });
+          setQuotations(flattened);
+        }
       })
       .catch(() => {});
   }, [loadData]);
+
+  const handleCreateRevisionFromNegotiation = (neg: Negotiation) => {
+    let quote = quotations.find((q) => q.id === neg.quotationId || q.quotationNumber === neg.quotationNumber);
+    if (!quote && quotations.length > 0) {
+      quote = quotations.find((q) => q.leadId === lead?.id) || quotations[0];
+    }
+    if (quote) {
+      setActiveNegotiationForRevision(neg);
+      setRevisionBaseQuote(quote);
+      setRevisionQuoteModalOpen(true);
+    } else {
+      notifications.show({
+        color: 'blue',
+        title: 'No Linked Quotation',
+        message: 'No quotation found to revise. Navigating to Quotation section.',
+      });
+      if (onNavigateSection) onNavigateSection('quotations');
+    }
+  };
+
+  const handleRevisionQuoteSaved = async (savedQuote?: Quotation) => {
+    setRevisionQuoteModalOpen(false);
+    if (savedQuote && activeNegotiationForRevision) {
+      try {
+        await leadService.updateNegotiation(activeNegotiationForRevision.id, {
+          quotationId: savedQuote.id,
+          quotationNumber: savedQuote.quotationNumber,
+          expectedFinalAmount: savedQuote.grandTotal,
+          status: 'Revised Quotation',
+          notes: `Updated with revision ${savedQuote.revisionName || savedQuote.quotationNumber}. Total: ₹${Number(savedQuote.grandTotal).toLocaleString('en-IN')}`,
+        });
+        notifications.show({
+          color: 'teal',
+          title: 'Negotiation Updated',
+          message: `Linked negotiation updated with revised quotation ${savedQuote.revisionName || savedQuote.quotationNumber}.`,
+        });
+        loadData();
+      } catch (err: any) {
+        console.warn('Update negotiation error:', err);
+      }
+    }
+    setActiveNegotiationForRevision(null);
+    setRevisionBaseQuote(null);
+  };
 
   // Tab counts
   const totalCount = negotiations.length;
@@ -1576,6 +1634,18 @@ export const LeadNegotiationSection: React.FC<LeadNegotiationSectionProps> = ({
                               onClick={() => setDetailsNegotiation(item)}
                             >
                               <IconEye size={16} />
+                            </ActionIcon>
+                          </Tooltip>
+
+                          <Tooltip label="Create Revised Quotation" withArrow>
+                            <ActionIcon
+                              variant="light"
+                              color="indigo"
+                              size="md"
+                              radius="md"
+                              onClick={() => handleCreateRevisionFromNegotiation(item)}
+                            >
+                              <IconPlus size={16} />
                             </ActionIcon>
                           </Tooltip>
 
@@ -2547,6 +2617,20 @@ export const LeadNegotiationSection: React.FC<LeadNegotiationSectionProps> = ({
           </Group>
         </Stack>
       </Modal>
+      {/* 7. REVISION QUOTATION MODAL */}
+      <QuotationModal
+        opened={revisionQuoteModalOpen}
+        onClose={() => {
+          setRevisionQuoteModalOpen(false);
+          setRevisionBaseQuote(null);
+          setActiveNegotiationForRevision(null);
+        }}
+        isRevision={true}
+        baseQuotation={revisionBaseQuote}
+        onSuccess={handleRevisionQuoteSaved}
+        initialLead={lead}
+        onNavigateSection={onNavigateSection}
+      />
     </Box>
   );
 };

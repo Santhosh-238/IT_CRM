@@ -280,7 +280,11 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                   lineHeight: 1.1,
                 }}
               >
-                Quotation
+                Quotation {quotation.revisionName && (
+                  <Text span size="18px" fw={700} c="#7C3AED" ml={8}>
+                    [{quotation.revisionName}]
+                  </Text>
+                )}
               </Text>
 
               <Group gap="xs" mt={10}>
@@ -288,9 +292,31 @@ export const QuotationPrintModal: React.FC<QuotationPrintModalProps> = ({
                   Quotation#
                 </Text>
                 <Text size="12px" fw={700} c="#0F172A">
-                  {cleanQuotationNumber}
+                  {quotation.quotationNumber || cleanQuotationNumber}
                 </Text>
               </Group>
+
+              {quotation.version && quotation.version > 1 && (
+                <Group gap="xs" mt={4}>
+                  <Text size="11px" c="#64748B" fw={500} style={{ width: 85 }}>
+                    Revision
+                  </Text>
+                  <Text size="12px" fw={700} c="#7C3AED">
+                    {quotation.revisionName || `V${quotation.version}`} (Original: {quotation.originalQuotationNumber || cleanQuotationNumber})
+                  </Text>
+                </Group>
+              )}
+
+              {quotation.projectName && (
+                <Group gap="xs" mt={4}>
+                  <Text size="11px" c="#64748B" fw={500} style={{ width: 85 }}>
+                    Project
+                  </Text>
+                  <Text size="12px" fw={700} c="#0F172A">
+                    {quotation.projectName}
+                  </Text>
+                </Group>
+              )}
 
               <Group gap="xs" mt={4}>
                 <Text size="11px" c="#64748B" fw={500} style={{ width: 85 }}>
