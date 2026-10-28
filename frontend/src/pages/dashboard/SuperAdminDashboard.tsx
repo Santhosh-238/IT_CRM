@@ -22,6 +22,7 @@ import {
   Tooltip,
   ActionIcon,
   Menu,
+  Drawer,
 } from '@mantine/core';
 import {
   IconUsers,
@@ -52,10 +53,13 @@ import {
   IconDots,
   IconCheck,
   IconPlus,
+  IconExternalLink,
 } from '@tabler/icons-react';
 import { AreaChart, BarChart, DonutChart } from '@mantine/charts';
 import { Area } from 'recharts';
+import { EmployeeDashboard } from './EmployeeDashboard';
 import { useCRM } from '../../context/CRMContext';
+import { usePermissions } from '../../context/AccessControlContext';
 import { useEmployee } from '../../context/EmployeeContext';
 import { useCustomer } from '../../context/CustomerContext';
 import { useProject } from '../../context/ProjectContext';
@@ -92,6 +96,7 @@ function formatRelativeTime(dateStr?: string | null): string {
 
 export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onNavigate }) => {
   const { currentUser } = useCRM();
+  const { can } = usePermissions();
   const { employees, employeeStats } = useEmployee();
   const { customers, stats: customerStats } = useCustomer();
   const { projects, stats: projectStats } = useProject();
@@ -111,6 +116,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onNavi
   const [distributionView, setDistributionView] = useState<'roles' | 'pipeline' | 'projects'>('roles');
   const [revenueTimeRange, setRevenueTimeRange] = useState<string>('6months');
   const [allocationView, setAllocationView] = useState<'services' | 'projects' | 'pipeline' | 'roles'>('pipeline');
+  const [employeeDrawerOpened, setEmployeeDrawerOpened] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
   const [currentDate, setCurrentDate] = useState<string>('');
 
@@ -706,6 +712,23 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onNavi
 
           {/* Quick Executive Actions */}
           <Group gap="sm" wrap="wrap">
+            {can('employee_dashboard', 'view') && (
+              <Button
+                size="sm"
+                variant="light"
+                color="indigo"
+                radius="xl"
+                leftSection={<IconUserCheck size={16} />}
+                onClick={() => setEmployeeDrawerOpened(true)}
+                style={{
+                  fontWeight: 700,
+                  border: isDark ? '1px solid rgba(99, 102, 241, 0.35)' : '1px solid rgba(99, 102, 241, 0.25)',
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.12)',
+                }}
+              >
+                Employee Dashboard
+              </Button>
+            )}
             <Button
               size="sm"
               variant="default"
@@ -1550,6 +1573,73 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onNavi
           </Paper>
         </Grid.Col>
       </Grid>
+
+      {/* Side Slide-Over Drawer: Employee Dashboard */}
+      <Drawer
+        opened={employeeDrawerOpened}
+        onClose={() => setEmployeeDrawerOpened(false)}
+        position="right"
+        size="88%"
+        radius="24px 0 0 24px"
+        title={
+          <Group justify="space-between" align="center" style={{ width: '100%', paddingRight: 12 }}>
+            <Group gap="xs">
+              <ThemeIcon size={34} radius="md" color="indigo" variant="light">
+                <IconUserCheck size={20} />
+              </ThemeIcon>
+              <div>
+                <Text fw={800} size="md" style={{ color: headingColor, lineHeight: 1.2 }}>
+                  Employee Dashboard
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Side View • Real-time employee workflow, meetings, and activity feed
+                </Text>
+              </div>
+              <Badge color="indigo" variant="light" size="sm" radius="sm">
+                Side View
+              </Badge>
+            </Group>
+            <Group gap="xs">
+              <Button
+                size="xs"
+                variant="light"
+                color="indigo"
+                radius="xl"
+                leftSection={<IconExternalLink size={14} />}
+                onClick={() => {
+                  setEmployeeDrawerOpened(false);
+                  onNavigate('employee-dashboard');
+                }}
+                style={{ fontWeight: 600 }}
+              >
+                Open Full Screen
+              </Button>
+            </Group>
+          </Group>
+        }
+        styles={{
+          content: {
+            background: isDark ? '#0F172A' : '#F8FAFC',
+          },
+          header: {
+            borderBottom: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0'}`,
+            paddingBottom: 16,
+            background: isDark ? '#1E293B' : '#FFFFFF',
+          },
+          body: {
+            padding: '20px 24px',
+          },
+        }}
+      >
+        <Box>
+          <EmployeeDashboard
+            onNavigate={(nav) => {
+              setEmployeeDrawerOpened(false);
+              onNavigate(nav);
+            }}
+          />
+        </Box>
+      </Drawer>
     </Stack>
   );
 };

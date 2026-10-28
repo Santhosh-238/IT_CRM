@@ -6,6 +6,7 @@ import { Sidebar } from './Sidebar';
 import { useCRM } from '../../context/CRMContext';
 import { usePermissions } from '../../context/AccessControlContext';
 import { DashboardPage } from '../../pages/DashboardPage';
+import { EmployeeDashboard } from '../../pages/dashboard/EmployeeDashboard';
 import { EmployeesPage, AddEmployeePage } from '../../pages/employees';
 import { ContactsPage, AddContactPage, ContactDetailsPage, ContactQualificationPage } from '../../pages/contacts';
 import { LeadsPage, LeadSchedulePage } from '../../pages/leads';
@@ -90,6 +91,7 @@ export const AppLayout: React.FC = () => {
   const findFirstAllowedNav = (): string => {
     const candidateModules: { nav: string; id: string }[] = [
       { nav: 'dashboard', id: 'dashboard' },
+      { nav: 'employee-dashboard', id: 'employee_dashboard' },
       { nav: 'contacts', id: 'contacts' },
       { nav: 'leads', id: 'leads' },
       { nav: 'scheduled-meetings', id: 'scheduled_meetings' },
@@ -120,6 +122,16 @@ export const AppLayout: React.FC = () => {
           );
         }
         return <DashboardPage onNavigate={(nav) => setActiveNav(nav)} />;
+      case 'employee-dashboard':
+        if (!can('employee_dashboard', 'view')) {
+          return (
+            <AccessRestrictedView
+              moduleName="Employee Dashboard"
+              onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
+            />
+          );
+        }
+        return <EmployeeDashboard onNavigate={(nav) => setActiveNav(nav)} />;
       case 'employees':
         if (!can('employee_management', 'view')) {
           return (

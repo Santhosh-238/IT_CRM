@@ -13,6 +13,12 @@ export const SYSTEM_MODULES = [
     description: 'Executive analytics, revenue, KPIs, and overview charts.',
   },
   {
+    id: 'employee_dashboard',
+    name: 'Employee Dashboard',
+    category: 'Main Navigation',
+    description: 'Personal employee dashboard, assigned tasks, leads, and operational workflow.',
+  },
+  {
     id: 'employee_management',
     name: 'Employee Management',
     category: 'Main Navigation',
@@ -92,7 +98,6 @@ export const MODULE_CATEGORIES = [
 const EXCLUDED_LEGACY_MODULES = new Set([
   'calendar',
   'daily_working_plan',
-  'employee_dashboard',
   'distributor_dashboard',
   'client_visits',
   'daily_reports',

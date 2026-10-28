@@ -156,6 +156,33 @@ export async function ensureSystemRolesService() {
     });
   }
 
+  // Auto-sync missing system module permissions for all existing roles
+  const allRoles = await prisma.role.findMany({ select: { id: true, slug: true } });
+  for (const r of allRoles) {
+    const existingPerms = await prisma.rolePermission.findMany({
+      where: { roleId: r.id },
+      select: { moduleId: true },
+    });
+    const existingSet = new Set(existingPerms.map((p) => p.moduleId));
+    const missing = SYSTEM_MODULES.filter((m) => !existingSet.has(m.id));
+    if (missing.length > 0) {
+      await prisma.rolePermission.createMany({
+        data: missing.map((m) => ({
+          roleId: r.id,
+          moduleId: m.id,
+          moduleName: m.name,
+          category: m.category,
+          canView: r.slug === 'admin' || r.slug === 'super_admin' || m.id === 'employee_dashboard',
+          canCreate: r.slug === 'admin' || r.slug === 'super_admin' || m.id === 'employee_dashboard',
+          canEdit: r.slug === 'admin' || r.slug === 'super_admin' || m.id === 'employee_dashboard',
+          canDelete: r.slug === 'admin' || r.slug === 'super_admin',
+          canExport: r.slug === 'admin' || r.slug === 'super_admin',
+          canApprove: r.slug === 'admin' || r.slug === 'super_admin',
+        })),
+      });
+    }
+  }
+
   return { superAdminRole };
 }
 
@@ -390,24 +417,24 @@ export async function updateRoleService(id, data, currentUser = null, ipAddress 
           },
         },
         update: {
-          canView: isSuperAdmin ? true : Boolean(p.canView),
-          canCreate: isSuperAdmin ? true : Boolean(p.canCreate),
-          canEdit: isSuperAdmin ? true : Boolean(p.canEdit),
-          canDelete: isSuperAdmin ? true : Boolean(p.canDelete),
-          canExport: isSuperAdmin ? true : Boolean(p.canExport),
-          canApprove: isSuperAdmin ? true : Boolean(p.canApprove),
+          canView: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canView),
+          canCreate: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canCreate),
+          canEdit: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canEdit),
+          canDelete: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canDelete),
+          canExport: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canExport),
+          canApprove: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canApprove),
         },
         create: {
           roleId: id,
           moduleId: p.moduleId,
           moduleName: p.moduleName || p.moduleId,
           category: p.category || 'Core',
-          canView: isSuperAdmin ? true : Boolean(p.canView),
-          canCreate: isSuperAdmin ? true : Boolean(p.canCreate),
-          canEdit: isSuperAdmin ? true : Boolean(p.canEdit),
-          canDelete: isSuperAdmin ? true : Boolean(p.canDelete),
-          canExport: isSuperAdmin ? true : Boolean(p.canExport),
-          canApprove: isSuperAdmin ? true : Boolean(p.canApprove),
+          canView: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canView),
+          canCreate: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canCreate),
+          canEdit: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canEdit),
+          canDelete: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canDelete),
+          canExport: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canExport),
+          canApprove: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canApprove),
         },
       });
     }

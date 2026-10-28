@@ -416,6 +416,7 @@ export const AccessControlPage: React.FC = () => {
     const map = new Map<string, typeof systemModules>();
     const sidebarOrder = [
       'dashboard',
+      'employee_dashboard',
       'employee_management',
       'contacts',
       'leads',

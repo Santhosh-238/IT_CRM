@@ -20,6 +20,7 @@ import {
   IconPhoneCall,
   IconBuilding,
   IconSettings,
+  IconUserCheck,
 } from '@tabler/icons-react';
 import { useCRM } from '../../context/CRMContext';
 import { usePermissions } from '../../context/AccessControlContext';
@@ -65,8 +66,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
           gap: 6,
         }}
       >
-        <Group gap={8} wrap="nowrap" align="center" style={{ cursor: 'pointer', minWidth: 0, flex: 1 }} onClick={() => onSelectNav('dashboard')}>
+        <Group
+          gap={8}
+          wrap="nowrap"
+          align="center"
+          className="sidebar-brand-box"
+          style={{ cursor: 'pointer', minWidth: 0, flex: 1 }}
+          onClick={() => onSelectNav('dashboard')}
+        >
           <Box
+            className="sidebar-logo-icon"
             style={{
               width: 36,
               height: 36,
@@ -101,7 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
       {/* 2. Main Navigation Items */}
       <ScrollArea style={{ flex: 1 }} p="md" type="never">
         <Stack gap="sm">
-          <Text size="10px" fw={800} c="dimmed" tt="uppercase" px="xs" style={{ letterSpacing: '0.08em' }}>
+          <Text className="sidebar-section-header" size="10px" fw={800} c="dimmed" tt="uppercase" px="xs" style={{ letterSpacing: '0.08em' }}>
             Main Navigation
           </Text>
           <Stack gap={6}>
@@ -111,8 +120,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 leftSection={<IconDashboard size={18} stroke={2} />}
                 active={activeNav === 'dashboard'}
                 onClick={() => onSelectNav('dashboard')}
-                className={activeNav === 'dashboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                className={`sidebar-nav-item ${activeNav === 'dashboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}`}
+                style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+              />
+            )}
+            {can('employee_dashboard', 'view') && (
+              <NavLink
+                label="Employee Dashboard"
+                leftSection={<IconUserCheck size={18} stroke={2} />}
+                active={activeNav === 'employee-dashboard'}
+                onClick={() => onSelectNav('employee-dashboard')}
+                className={`sidebar-nav-item ${activeNav === 'employee-dashboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}`}
+                style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
             {can('employee_management', 'view') && (
@@ -121,8 +140,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 leftSection={<IconUsersGroup size={18} stroke={2} />}
                 active={activeNav === 'employees' || activeNav === 'add-employee' || activeNav === 'onboard-employee' || activeNav === 'onboard'}
                 onClick={() => onSelectNav('employees')}
-                className={activeNav === 'employees' || activeNav === 'add-employee' || activeNav === 'onboard-employee' || activeNav === 'onboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                className={`sidebar-nav-item ${activeNav === 'employees' || activeNav === 'add-employee' || activeNav === 'onboard-employee' || activeNav === 'onboard' ? 'crextio-pill-active' : 'crextio-pill-inactive'}`}
+                style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
             {can('contacts', 'view') && (
@@ -137,7 +156,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                   activeNav === 'qualification'
                 }
                 onClick={() => onSelectNav('contacts')}
-                className={
+                className={`sidebar-nav-item ${
                   activeNav === 'contacts' ||
                   activeNav === 'add-contact' ||
                   activeNav === 'contact-details' ||
@@ -145,8 +164,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                   activeNav === 'qualification'
                     ? 'crextio-pill-active'
                     : 'crextio-pill-inactive'
-                }
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                }`}
+                style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
             {can('leads', 'view') && (
@@ -155,8 +174,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 leftSection={<IconTarget size={18} stroke={2} />}
                 active={activeNav === 'leads' || activeNav === 'add-lead' || activeNav === 'lead-schedule' || activeNav === 'lead-details'}
                 onClick={() => onSelectNav('leads')}
-                className={activeNav === 'leads' || activeNav === 'add-lead' || activeNav === 'lead-schedule' || activeNav === 'lead-details' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                className={`sidebar-nav-item ${activeNav === 'leads' || activeNav === 'add-lead' || activeNav === 'lead-schedule' || activeNav === 'lead-details' ? 'crextio-pill-active' : 'crextio-pill-inactive'}`}
+                style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
             {/* Scheduled Meetings Item - Directly following Leads */}
@@ -166,8 +185,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 leftSection={<IconCalendarEvent size={18} stroke={2} />}
                 active={activeNav === 'scheduled-meetings' || activeNav === 'meetings'}
                 onClick={() => onSelectNav('scheduled-meetings')}
-                className={activeNav === 'scheduled-meetings' || activeNav === 'meetings' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                className={`sidebar-nav-item ${activeNav === 'scheduled-meetings' || activeNav === 'meetings' ? 'crextio-pill-active' : 'crextio-pill-inactive'}`}
+                style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
             {/* Call Logs Item */}
@@ -177,8 +196,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 leftSection={<IconPhoneCall size={18} stroke={2} />}
                 active={activeNav === 'call-logs' || activeNav === 'calls'}
                 onClick={() => onSelectNav('call-logs')}
-                className={activeNav === 'call-logs' || activeNav === 'calls' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                className={`sidebar-nav-item ${activeNav === 'call-logs' || activeNav === 'calls' ? 'crextio-pill-active' : 'crextio-pill-inactive'}`}
+                style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
             {/* Customers Item */}
@@ -193,15 +212,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                   activeNav === 'add-customer'
                 }
                 onClick={() => onSelectNav('customers')}
-                className={
+                className={`sidebar-nav-item ${
                   activeNav === 'customers' ||
                   activeNav === 'customer' ||
                   activeNav === 'customer-details' ||
                   activeNav === 'add-customer'
                     ? 'crextio-pill-active'
                     : 'crextio-pill-inactive'
-                }
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                }`}
+                style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
             {/* Projects Management Item */}
@@ -215,12 +234,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                   activeNav === 'add-project'
                 }
                 onClick={() => onSelectNav('projects')}
-                className={
+                className={`sidebar-nav-item ${
                   activeNav.startsWith('projects') || activeNav === 'project' || activeNav === 'add-project'
                     ? 'crextio-pill-active'
                     : 'crextio-pill-inactive'
-                }
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                }`}
+                style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
           </Stack>
@@ -228,7 +247,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
           {/* Administration & Security Section */}
           {(can('access_control', 'view') || can('settings', 'view') || isSuperAdmin) && (
             <>
-              <Text size="10px" fw={800} c="dimmed" tt="uppercase" px="xs" mt="sm" style={{ letterSpacing: '0.08em' }}>
+              <Text className="sidebar-section-header" size="10px" fw={800} c="dimmed" tt="uppercase" px="xs" mt="sm" style={{ letterSpacing: '0.08em' }}>
                 Administration & Security
               </Text>
               <Stack gap={6}>
@@ -238,8 +257,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                     leftSection={<IconShieldLock size={18} stroke={2} />}
                     active={activeNav === 'access-control' || activeNav === 'rbac'}
                     onClick={() => onSelectNav('access-control')}
-                    className={activeNav === 'access-control' || activeNav === 'rbac' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-                    style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                    className={`sidebar-nav-item ${activeNav === 'access-control' || activeNav === 'rbac' ? 'crextio-pill-active' : 'crextio-pill-inactive'}`}
+                    style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
                   />
                 )}
                 {(can('settings', 'view') || isSuperAdmin) && (
@@ -248,8 +267,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                     leftSection={<IconSettings size={18} stroke={2} />}
                     active={activeNav === 'settings'}
                     onClick={() => onSelectNav('settings')}
-                    className={activeNav === 'settings' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-                    style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
+                    className={`sidebar-nav-item ${activeNav === 'settings' ? 'crextio-pill-active' : 'crextio-pill-inactive'}`}
+                    style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
                   />
                 )}
               </Stack>

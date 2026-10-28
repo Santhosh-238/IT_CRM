@@ -56,6 +56,7 @@ const AccessControlContext = createContext<AccessControlContextType | undefined>
 const DEFAULT_SYSTEM_MODULES: SystemModule[] = [
   // 1. Main Navigation
   { id: 'dashboard', name: 'Dashboard', category: 'Main Navigation', description: 'Executive analytics, revenue, KPIs, and overview charts.' },
+  { id: 'employee_dashboard', name: 'Employee Dashboard', category: 'Main Navigation', description: 'Personal employee dashboard, assigned tasks, leads, and operational workflow.' },
   { id: 'employee_management', name: 'Employee Management', category: 'Main Navigation', description: 'Staff directory, onboarding, designations, and employee records.' },
   { id: 'contacts', name: 'Contacts', category: 'Main Navigation', description: 'Customer profiles, contact details, and account ownership.' },
   { id: 'leads', name: 'Leads', category: 'Main Navigation', description: 'Prospect pipeline, lead stages, and qualification workflows.' },
@@ -194,15 +195,11 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const can = useCallback(
     (moduleId: string, action: PermissionAction = 'view'): boolean => {
-      if (isSuperAdmin) return true;
-      // If permissions are not yet loaded and no cache exists, do not block or flip screen during initial render
-      if (!myPermissions?.permissions) {
-        return !permissionsLoaded;
-      }
-
       // Alias mapping between sidebar IDs, route names, and DB keys
       const normalizeMap: Record<string, string[]> = {
         dashboard: ['dashboard'],
+        employee_dashboard: ['employee_dashboard', 'employee-dashboard'],
+        'employee-dashboard': ['employee_dashboard', 'employee-dashboard'],
         employee_management: ['employee_management', 'employees'],
         employees: ['employees', 'employee_management'],
         contacts: ['contacts'],
@@ -220,30 +217,45 @@ export const AccessControlProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       const candidates = normalizeMap[moduleId] || [moduleId];
-      for (const key of candidates) {
-        const p = myPermissions.permissions[key];
-        if (p) {
-          const val =
-            action === 'view'
-              ? (p.view !== undefined ? p.view : (p as any).canView)
-              : action === 'create'
-              ? (p.create !== undefined ? p.create : (p as any).canCreate)
-              : action === 'edit'
-              ? (p.edit !== undefined ? p.edit : (p as any).canEdit)
-              : action === 'delete'
-              ? (p.delete !== undefined ? p.delete : (p as any).canDelete)
-              : action === 'export'
-              ? (p.export !== undefined ? p.export : (p as any).canExport)
-              : action === 'approve'
-              ? (p.approve !== undefined ? p.approve : (p as any).canApprove)
-              : (p as any)[action];
 
-          return Boolean(val);
+      // If user has permissions loaded from backend, check the explicit permission
+      if (myPermissions?.permissions) {
+        for (const key of candidates) {
+          const p = myPermissions.permissions[key];
+          if (p) {
+            const val =
+              action === 'view'
+                ? (p.view !== undefined ? p.view : (p as any).canView)
+                : action === 'create'
+                ? (p.create !== undefined ? p.create : (p as any).canCreate)
+                : action === 'edit'
+                ? (p.edit !== undefined ? p.edit : (p as any).canEdit)
+                : action === 'delete'
+                ? (p.delete !== undefined ? p.delete : (p as any).canDelete)
+                : action === 'export'
+                ? (p.export !== undefined ? p.export : (p as any).canExport)
+                : action === 'approve'
+                ? (p.approve !== undefined ? p.approve : (p as any).canApprove)
+                : (p as any)[action];
+
+            if (val !== undefined) {
+              return Boolean(val);
+            }
+          }
         }
       }
+
+      // If no explicit permission entry was found and user is Super Admin, grant access
+      if (isSuperAdmin) return true;
+
+      // If permissions are not yet loaded and no cache exists, do not block or flip screen during initial render
+      if (!permissionsLoaded) {
+        return true;
+      }
+
       return false;
     },
-    [isSuperAdmin, myPermissions]
+    [isSuperAdmin, myPermissions, permissionsLoaded]
   );
 
   const canView = useCallback((moduleId: string) => can(moduleId, 'view'), [can]);
