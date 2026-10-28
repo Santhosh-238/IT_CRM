@@ -3640,10 +3640,12 @@ export namespace Prisma {
    */
 
   export type QuotationCountOutputType = {
+    revisions: number
     items: number
   }
 
   export type QuotationCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    revisions?: boolean | QuotationCountOutputTypeCountRevisionsArgs
     items?: boolean | QuotationCountOutputTypeCountItemsArgs
   }
 
@@ -3656,6 +3658,13 @@ export namespace Prisma {
      * Select specific fields to fetch from the QuotationCountOutputType
      */
     select?: QuotationCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * QuotationCountOutputType without action
+   */
+  export type QuotationCountOutputTypeCountRevisionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: QuotationWhereInput
   }
 
   /**
@@ -21824,6 +21833,8 @@ export namespace Prisma {
   }
 
   export type QuotationAvgAggregateOutputType = {
+    version: number | null
+    revisionNumber: number | null
     subtotal: number | null
     discountValue: number | null
     discountAmount: number | null
@@ -21832,6 +21843,8 @@ export namespace Prisma {
   }
 
   export type QuotationSumAggregateOutputType = {
+    version: number | null
+    revisionNumber: number | null
     subtotal: number | null
     discountValue: number | null
     discountAmount: number | null
@@ -21842,6 +21855,14 @@ export namespace Prisma {
   export type QuotationMinAggregateOutputType = {
     id: string | null
     quotationNumber: string | null
+    originalQuotationNumber: string | null
+    version: number | null
+    revisionNumber: number | null
+    revisionName: string | null
+    isLatest: boolean | null
+    projectName: string | null
+    revisionNotes: string | null
+    parentQuotationId: string | null
     contactId: string | null
     contactName: string | null
     contactEmail: string | null
@@ -21867,6 +21888,9 @@ export namespace Prisma {
     salesOwnerName: string | null
     convertedToOrderId: string | null
     convertedAt: Date | null
+    sentAt: Date | null
+    acceptedAt: Date | null
+    supersededAt: Date | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -21874,6 +21898,14 @@ export namespace Prisma {
   export type QuotationMaxAggregateOutputType = {
     id: string | null
     quotationNumber: string | null
+    originalQuotationNumber: string | null
+    version: number | null
+    revisionNumber: number | null
+    revisionName: string | null
+    isLatest: boolean | null
+    projectName: string | null
+    revisionNotes: string | null
+    parentQuotationId: string | null
     contactId: string | null
     contactName: string | null
     contactEmail: string | null
@@ -21899,6 +21931,9 @@ export namespace Prisma {
     salesOwnerName: string | null
     convertedToOrderId: string | null
     convertedAt: Date | null
+    sentAt: Date | null
+    acceptedAt: Date | null
+    supersededAt: Date | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -21906,6 +21941,14 @@ export namespace Prisma {
   export type QuotationCountAggregateOutputType = {
     id: number
     quotationNumber: number
+    originalQuotationNumber: number
+    version: number
+    revisionNumber: number
+    revisionName: number
+    isLatest: number
+    projectName: number
+    revisionNotes: number
+    parentQuotationId: number
     contactId: number
     contactName: number
     contactEmail: number
@@ -21931,6 +21974,9 @@ export namespace Prisma {
     salesOwnerName: number
     convertedToOrderId: number
     convertedAt: number
+    sentAt: number
+    acceptedAt: number
+    supersededAt: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -21938,6 +21984,8 @@ export namespace Prisma {
 
 
   export type QuotationAvgAggregateInputType = {
+    version?: true
+    revisionNumber?: true
     subtotal?: true
     discountValue?: true
     discountAmount?: true
@@ -21946,6 +21994,8 @@ export namespace Prisma {
   }
 
   export type QuotationSumAggregateInputType = {
+    version?: true
+    revisionNumber?: true
     subtotal?: true
     discountValue?: true
     discountAmount?: true
@@ -21956,6 +22006,14 @@ export namespace Prisma {
   export type QuotationMinAggregateInputType = {
     id?: true
     quotationNumber?: true
+    originalQuotationNumber?: true
+    version?: true
+    revisionNumber?: true
+    revisionName?: true
+    isLatest?: true
+    projectName?: true
+    revisionNotes?: true
+    parentQuotationId?: true
     contactId?: true
     contactName?: true
     contactEmail?: true
@@ -21981,6 +22039,9 @@ export namespace Prisma {
     salesOwnerName?: true
     convertedToOrderId?: true
     convertedAt?: true
+    sentAt?: true
+    acceptedAt?: true
+    supersededAt?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -21988,6 +22049,14 @@ export namespace Prisma {
   export type QuotationMaxAggregateInputType = {
     id?: true
     quotationNumber?: true
+    originalQuotationNumber?: true
+    version?: true
+    revisionNumber?: true
+    revisionName?: true
+    isLatest?: true
+    projectName?: true
+    revisionNotes?: true
+    parentQuotationId?: true
     contactId?: true
     contactName?: true
     contactEmail?: true
@@ -22013,6 +22082,9 @@ export namespace Prisma {
     salesOwnerName?: true
     convertedToOrderId?: true
     convertedAt?: true
+    sentAt?: true
+    acceptedAt?: true
+    supersededAt?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -22020,6 +22092,14 @@ export namespace Prisma {
   export type QuotationCountAggregateInputType = {
     id?: true
     quotationNumber?: true
+    originalQuotationNumber?: true
+    version?: true
+    revisionNumber?: true
+    revisionName?: true
+    isLatest?: true
+    projectName?: true
+    revisionNotes?: true
+    parentQuotationId?: true
     contactId?: true
     contactName?: true
     contactEmail?: true
@@ -22045,6 +22125,9 @@ export namespace Prisma {
     salesOwnerName?: true
     convertedToOrderId?: true
     convertedAt?: true
+    sentAt?: true
+    acceptedAt?: true
+    supersededAt?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -22139,6 +22222,14 @@ export namespace Prisma {
   export type QuotationGroupByOutputType = {
     id: string
     quotationNumber: string
+    originalQuotationNumber: string | null
+    version: number
+    revisionNumber: number
+    revisionName: string | null
+    isLatest: boolean
+    projectName: string | null
+    revisionNotes: string | null
+    parentQuotationId: string | null
     contactId: string | null
     contactName: string
     contactEmail: string | null
@@ -22164,6 +22255,9 @@ export namespace Prisma {
     salesOwnerName: string | null
     convertedToOrderId: string | null
     convertedAt: Date | null
+    sentAt: Date | null
+    acceptedAt: Date | null
+    supersededAt: Date | null
     createdAt: Date
     updatedAt: Date
     _count: QuotationCountAggregateOutputType | null
@@ -22190,6 +22284,14 @@ export namespace Prisma {
   export type QuotationSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     quotationNumber?: boolean
+    originalQuotationNumber?: boolean
+    version?: boolean
+    revisionNumber?: boolean
+    revisionName?: boolean
+    isLatest?: boolean
+    projectName?: boolean
+    revisionNotes?: boolean
+    parentQuotationId?: boolean
     contactId?: boolean
     contactName?: boolean
     contactEmail?: boolean
@@ -22215,8 +22317,13 @@ export namespace Prisma {
     salesOwnerName?: boolean
     convertedToOrderId?: boolean
     convertedAt?: boolean
+    sentAt?: boolean
+    acceptedAt?: boolean
+    supersededAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    parentQuotation?: boolean | Quotation$parentQuotationArgs<ExtArgs>
+    revisions?: boolean | Quotation$revisionsArgs<ExtArgs>
     items?: boolean | Quotation$itemsArgs<ExtArgs>
     _count?: boolean | QuotationCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["quotation"]>
@@ -22224,6 +22331,14 @@ export namespace Prisma {
   export type QuotationSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     quotationNumber?: boolean
+    originalQuotationNumber?: boolean
+    version?: boolean
+    revisionNumber?: boolean
+    revisionName?: boolean
+    isLatest?: boolean
+    projectName?: boolean
+    revisionNotes?: boolean
+    parentQuotationId?: boolean
     contactId?: boolean
     contactName?: boolean
     contactEmail?: boolean
@@ -22249,13 +22364,25 @@ export namespace Prisma {
     salesOwnerName?: boolean
     convertedToOrderId?: boolean
     convertedAt?: boolean
+    sentAt?: boolean
+    acceptedAt?: boolean
+    supersededAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    parentQuotation?: boolean | Quotation$parentQuotationArgs<ExtArgs>
   }, ExtArgs["result"]["quotation"]>
 
   export type QuotationSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     quotationNumber?: boolean
+    originalQuotationNumber?: boolean
+    version?: boolean
+    revisionNumber?: boolean
+    revisionName?: boolean
+    isLatest?: boolean
+    projectName?: boolean
+    revisionNotes?: boolean
+    parentQuotationId?: boolean
     contactId?: boolean
     contactName?: boolean
     contactEmail?: boolean
@@ -22281,13 +22408,25 @@ export namespace Prisma {
     salesOwnerName?: boolean
     convertedToOrderId?: boolean
     convertedAt?: boolean
+    sentAt?: boolean
+    acceptedAt?: boolean
+    supersededAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
+    parentQuotation?: boolean | Quotation$parentQuotationArgs<ExtArgs>
   }, ExtArgs["result"]["quotation"]>
 
   export type QuotationSelectScalar = {
     id?: boolean
     quotationNumber?: boolean
+    originalQuotationNumber?: boolean
+    version?: boolean
+    revisionNumber?: boolean
+    revisionName?: boolean
+    isLatest?: boolean
+    projectName?: boolean
+    revisionNotes?: boolean
+    parentQuotationId?: boolean
     contactId?: boolean
     contactName?: boolean
     contactEmail?: boolean
@@ -22313,26 +22452,45 @@ export namespace Prisma {
     salesOwnerName?: boolean
     convertedToOrderId?: boolean
     convertedAt?: boolean
+    sentAt?: boolean
+    acceptedAt?: boolean
+    supersededAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type QuotationOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "quotationNumber" | "contactId" | "contactName" | "contactEmail" | "contactPhone" | "companyName" | "clientGst" | "clientAddress" | "leadId" | "quotationDate" | "validUntil" | "status" | "currency" | "subtotal" | "discountType" | "discountValue" | "discountAmount" | "taxAmount" | "grandTotal" | "paymentTerms" | "notes" | "termsConditions" | "salesOwnerId" | "salesOwnerName" | "convertedToOrderId" | "convertedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["quotation"]>
+  export type QuotationOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "quotationNumber" | "originalQuotationNumber" | "version" | "revisionNumber" | "revisionName" | "isLatest" | "projectName" | "revisionNotes" | "parentQuotationId" | "contactId" | "contactName" | "contactEmail" | "contactPhone" | "companyName" | "clientGst" | "clientAddress" | "leadId" | "quotationDate" | "validUntil" | "status" | "currency" | "subtotal" | "discountType" | "discountValue" | "discountAmount" | "taxAmount" | "grandTotal" | "paymentTerms" | "notes" | "termsConditions" | "salesOwnerId" | "salesOwnerName" | "convertedToOrderId" | "convertedAt" | "sentAt" | "acceptedAt" | "supersededAt" | "createdAt" | "updatedAt", ExtArgs["result"]["quotation"]>
   export type QuotationInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    parentQuotation?: boolean | Quotation$parentQuotationArgs<ExtArgs>
+    revisions?: boolean | Quotation$revisionsArgs<ExtArgs>
     items?: boolean | Quotation$itemsArgs<ExtArgs>
     _count?: boolean | QuotationCountOutputTypeDefaultArgs<ExtArgs>
   }
-  export type QuotationIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
-  export type QuotationIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
+  export type QuotationIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    parentQuotation?: boolean | Quotation$parentQuotationArgs<ExtArgs>
+  }
+  export type QuotationIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    parentQuotation?: boolean | Quotation$parentQuotationArgs<ExtArgs>
+  }
 
   export type $QuotationPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "Quotation"
     objects: {
+      parentQuotation: Prisma.$QuotationPayload<ExtArgs> | null
+      revisions: Prisma.$QuotationPayload<ExtArgs>[]
       items: Prisma.$QuotationItemPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
       quotationNumber: string
+      originalQuotationNumber: string | null
+      version: number
+      revisionNumber: number
+      revisionName: string | null
+      isLatest: boolean
+      projectName: string | null
+      revisionNotes: string | null
+      parentQuotationId: string | null
       contactId: string | null
       contactName: string
       contactEmail: string | null
@@ -22358,6 +22516,9 @@ export namespace Prisma {
       salesOwnerName: string | null
       convertedToOrderId: string | null
       convertedAt: Date | null
+      sentAt: Date | null
+      acceptedAt: Date | null
+      supersededAt: Date | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["quotation"]>
@@ -22754,6 +22915,8 @@ export namespace Prisma {
    */
   export interface Prisma__QuotationClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
+    parentQuotation<T extends Quotation$parentQuotationArgs<ExtArgs> = {}>(args?: Subset<T, Quotation$parentQuotationArgs<ExtArgs>>): Prisma__QuotationClient<$Result.GetResult<Prisma.$QuotationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    revisions<T extends Quotation$revisionsArgs<ExtArgs> = {}>(args?: Subset<T, Quotation$revisionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuotationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     items<T extends Quotation$itemsArgs<ExtArgs> = {}>(args?: Subset<T, Quotation$itemsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QuotationItemPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -22786,6 +22949,14 @@ export namespace Prisma {
   interface QuotationFieldRefs {
     readonly id: FieldRef<"Quotation", 'String'>
     readonly quotationNumber: FieldRef<"Quotation", 'String'>
+    readonly originalQuotationNumber: FieldRef<"Quotation", 'String'>
+    readonly version: FieldRef<"Quotation", 'Int'>
+    readonly revisionNumber: FieldRef<"Quotation", 'Int'>
+    readonly revisionName: FieldRef<"Quotation", 'String'>
+    readonly isLatest: FieldRef<"Quotation", 'Boolean'>
+    readonly projectName: FieldRef<"Quotation", 'String'>
+    readonly revisionNotes: FieldRef<"Quotation", 'String'>
+    readonly parentQuotationId: FieldRef<"Quotation", 'String'>
     readonly contactId: FieldRef<"Quotation", 'String'>
     readonly contactName: FieldRef<"Quotation", 'String'>
     readonly contactEmail: FieldRef<"Quotation", 'String'>
@@ -22811,6 +22982,9 @@ export namespace Prisma {
     readonly salesOwnerName: FieldRef<"Quotation", 'String'>
     readonly convertedToOrderId: FieldRef<"Quotation", 'String'>
     readonly convertedAt: FieldRef<"Quotation", 'DateTime'>
+    readonly sentAt: FieldRef<"Quotation", 'DateTime'>
+    readonly acceptedAt: FieldRef<"Quotation", 'DateTime'>
+    readonly supersededAt: FieldRef<"Quotation", 'DateTime'>
     readonly createdAt: FieldRef<"Quotation", 'DateTime'>
     readonly updatedAt: FieldRef<"Quotation", 'DateTime'>
   }
@@ -23062,6 +23236,10 @@ export namespace Prisma {
      */
     data: QuotationCreateManyInput | QuotationCreateManyInput[]
     skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuotationIncludeCreateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -23132,6 +23310,10 @@ export namespace Prisma {
      * Limit how many Quotations to update.
      */
     limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuotationIncludeUpdateManyAndReturn<ExtArgs> | null
   }
 
   /**
@@ -23198,6 +23380,49 @@ export namespace Prisma {
      * Limit how many Quotations to delete.
      */
     limit?: number
+  }
+
+  /**
+   * Quotation.parentQuotation
+   */
+  export type Quotation$parentQuotationArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Quotation
+     */
+    select?: QuotationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Quotation
+     */
+    omit?: QuotationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuotationInclude<ExtArgs> | null
+    where?: QuotationWhereInput
+  }
+
+  /**
+   * Quotation.revisions
+   */
+  export type Quotation$revisionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Quotation
+     */
+    select?: QuotationSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Quotation
+     */
+    omit?: QuotationOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: QuotationInclude<ExtArgs> | null
+    where?: QuotationWhereInput
+    orderBy?: QuotationOrderByWithRelationInput | QuotationOrderByWithRelationInput[]
+    cursor?: QuotationWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: QuotationScalarFieldEnum | QuotationScalarFieldEnum[]
   }
 
   /**
@@ -43445,6 +43670,14 @@ export namespace Prisma {
   export const QuotationScalarFieldEnum: {
     id: 'id',
     quotationNumber: 'quotationNumber',
+    originalQuotationNumber: 'originalQuotationNumber',
+    version: 'version',
+    revisionNumber: 'revisionNumber',
+    revisionName: 'revisionName',
+    isLatest: 'isLatest',
+    projectName: 'projectName',
+    revisionNotes: 'revisionNotes',
+    parentQuotationId: 'parentQuotationId',
     contactId: 'contactId',
     contactName: 'contactName',
     contactEmail: 'contactEmail',
@@ -43470,6 +43703,9 @@ export namespace Prisma {
     salesOwnerName: 'salesOwnerName',
     convertedToOrderId: 'convertedToOrderId',
     convertedAt: 'convertedAt',
+    sentAt: 'sentAt',
+    acceptedAt: 'acceptedAt',
+    supersededAt: 'supersededAt',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -45873,6 +46109,14 @@ export namespace Prisma {
     NOT?: QuotationWhereInput | QuotationWhereInput[]
     id?: StringFilter<"Quotation"> | string
     quotationNumber?: StringFilter<"Quotation"> | string
+    originalQuotationNumber?: StringNullableFilter<"Quotation"> | string | null
+    version?: IntFilter<"Quotation"> | number
+    revisionNumber?: IntFilter<"Quotation"> | number
+    revisionName?: StringNullableFilter<"Quotation"> | string | null
+    isLatest?: BoolFilter<"Quotation"> | boolean
+    projectName?: StringNullableFilter<"Quotation"> | string | null
+    revisionNotes?: StringNullableFilter<"Quotation"> | string | null
+    parentQuotationId?: StringNullableFilter<"Quotation"> | string | null
     contactId?: StringNullableFilter<"Quotation"> | string | null
     contactName?: StringFilter<"Quotation"> | string
     contactEmail?: StringNullableFilter<"Quotation"> | string | null
@@ -45898,14 +46142,27 @@ export namespace Prisma {
     salesOwnerName?: StringNullableFilter<"Quotation"> | string | null
     convertedToOrderId?: StringNullableFilter<"Quotation"> | string | null
     convertedAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
+    sentAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
+    acceptedAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
+    supersededAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
     createdAt?: DateTimeFilter<"Quotation"> | Date | string
     updatedAt?: DateTimeFilter<"Quotation"> | Date | string
+    parentQuotation?: XOR<QuotationNullableScalarRelationFilter, QuotationWhereInput> | null
+    revisions?: QuotationListRelationFilter
     items?: QuotationItemListRelationFilter
   }
 
   export type QuotationOrderByWithRelationInput = {
     id?: SortOrder
     quotationNumber?: SortOrder
+    originalQuotationNumber?: SortOrderInput | SortOrder
+    version?: SortOrder
+    revisionNumber?: SortOrder
+    revisionName?: SortOrderInput | SortOrder
+    isLatest?: SortOrder
+    projectName?: SortOrderInput | SortOrder
+    revisionNotes?: SortOrderInput | SortOrder
+    parentQuotationId?: SortOrderInput | SortOrder
     contactId?: SortOrderInput | SortOrder
     contactName?: SortOrder
     contactEmail?: SortOrderInput | SortOrder
@@ -45931,8 +46188,13 @@ export namespace Prisma {
     salesOwnerName?: SortOrderInput | SortOrder
     convertedToOrderId?: SortOrderInput | SortOrder
     convertedAt?: SortOrderInput | SortOrder
+    sentAt?: SortOrderInput | SortOrder
+    acceptedAt?: SortOrderInput | SortOrder
+    supersededAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
+    parentQuotation?: QuotationOrderByWithRelationInput
+    revisions?: QuotationOrderByRelationAggregateInput
     items?: QuotationItemOrderByRelationAggregateInput
   }
 
@@ -45942,6 +46204,14 @@ export namespace Prisma {
     AND?: QuotationWhereInput | QuotationWhereInput[]
     OR?: QuotationWhereInput[]
     NOT?: QuotationWhereInput | QuotationWhereInput[]
+    originalQuotationNumber?: StringNullableFilter<"Quotation"> | string | null
+    version?: IntFilter<"Quotation"> | number
+    revisionNumber?: IntFilter<"Quotation"> | number
+    revisionName?: StringNullableFilter<"Quotation"> | string | null
+    isLatest?: BoolFilter<"Quotation"> | boolean
+    projectName?: StringNullableFilter<"Quotation"> | string | null
+    revisionNotes?: StringNullableFilter<"Quotation"> | string | null
+    parentQuotationId?: StringNullableFilter<"Quotation"> | string | null
     contactId?: StringNullableFilter<"Quotation"> | string | null
     contactName?: StringFilter<"Quotation"> | string
     contactEmail?: StringNullableFilter<"Quotation"> | string | null
@@ -45967,14 +46237,27 @@ export namespace Prisma {
     salesOwnerName?: StringNullableFilter<"Quotation"> | string | null
     convertedToOrderId?: StringNullableFilter<"Quotation"> | string | null
     convertedAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
+    sentAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
+    acceptedAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
+    supersededAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
     createdAt?: DateTimeFilter<"Quotation"> | Date | string
     updatedAt?: DateTimeFilter<"Quotation"> | Date | string
+    parentQuotation?: XOR<QuotationNullableScalarRelationFilter, QuotationWhereInput> | null
+    revisions?: QuotationListRelationFilter
     items?: QuotationItemListRelationFilter
   }, "id" | "quotationNumber">
 
   export type QuotationOrderByWithAggregationInput = {
     id?: SortOrder
     quotationNumber?: SortOrder
+    originalQuotationNumber?: SortOrderInput | SortOrder
+    version?: SortOrder
+    revisionNumber?: SortOrder
+    revisionName?: SortOrderInput | SortOrder
+    isLatest?: SortOrder
+    projectName?: SortOrderInput | SortOrder
+    revisionNotes?: SortOrderInput | SortOrder
+    parentQuotationId?: SortOrderInput | SortOrder
     contactId?: SortOrderInput | SortOrder
     contactName?: SortOrder
     contactEmail?: SortOrderInput | SortOrder
@@ -46000,6 +46283,9 @@ export namespace Prisma {
     salesOwnerName?: SortOrderInput | SortOrder
     convertedToOrderId?: SortOrderInput | SortOrder
     convertedAt?: SortOrderInput | SortOrder
+    sentAt?: SortOrderInput | SortOrder
+    acceptedAt?: SortOrderInput | SortOrder
+    supersededAt?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: QuotationCountOrderByAggregateInput
@@ -46015,6 +46301,14 @@ export namespace Prisma {
     NOT?: QuotationScalarWhereWithAggregatesInput | QuotationScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"Quotation"> | string
     quotationNumber?: StringWithAggregatesFilter<"Quotation"> | string
+    originalQuotationNumber?: StringNullableWithAggregatesFilter<"Quotation"> | string | null
+    version?: IntWithAggregatesFilter<"Quotation"> | number
+    revisionNumber?: IntWithAggregatesFilter<"Quotation"> | number
+    revisionName?: StringNullableWithAggregatesFilter<"Quotation"> | string | null
+    isLatest?: BoolWithAggregatesFilter<"Quotation"> | boolean
+    projectName?: StringNullableWithAggregatesFilter<"Quotation"> | string | null
+    revisionNotes?: StringNullableWithAggregatesFilter<"Quotation"> | string | null
+    parentQuotationId?: StringNullableWithAggregatesFilter<"Quotation"> | string | null
     contactId?: StringNullableWithAggregatesFilter<"Quotation"> | string | null
     contactName?: StringWithAggregatesFilter<"Quotation"> | string
     contactEmail?: StringNullableWithAggregatesFilter<"Quotation"> | string | null
@@ -46040,6 +46334,9 @@ export namespace Prisma {
     salesOwnerName?: StringNullableWithAggregatesFilter<"Quotation"> | string | null
     convertedToOrderId?: StringNullableWithAggregatesFilter<"Quotation"> | string | null
     convertedAt?: DateTimeNullableWithAggregatesFilter<"Quotation"> | Date | string | null
+    sentAt?: DateTimeNullableWithAggregatesFilter<"Quotation"> | Date | string | null
+    acceptedAt?: DateTimeNullableWithAggregatesFilter<"Quotation"> | Date | string | null
+    supersededAt?: DateTimeNullableWithAggregatesFilter<"Quotation"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Quotation"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Quotation"> | Date | string
   }
@@ -50502,6 +50799,13 @@ export namespace Prisma {
   export type QuotationCreateInput = {
     id?: string
     quotationNumber: string
+    originalQuotationNumber?: string | null
+    version?: number
+    revisionNumber?: number
+    revisionName?: string | null
+    isLatest?: boolean
+    projectName?: string | null
+    revisionNotes?: string | null
     contactId?: string | null
     contactName: string
     contactEmail?: string | null
@@ -50527,14 +50831,27 @@ export namespace Prisma {
     salesOwnerName?: string | null
     convertedToOrderId?: string | null
     convertedAt?: Date | string | null
+    sentAt?: Date | string | null
+    acceptedAt?: Date | string | null
+    supersededAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    parentQuotation?: QuotationCreateNestedOneWithoutRevisionsInput
+    revisions?: QuotationCreateNestedManyWithoutParentQuotationInput
     items?: QuotationItemCreateNestedManyWithoutQuotationInput
   }
 
   export type QuotationUncheckedCreateInput = {
     id?: string
     quotationNumber: string
+    originalQuotationNumber?: string | null
+    version?: number
+    revisionNumber?: number
+    revisionName?: string | null
+    isLatest?: boolean
+    projectName?: string | null
+    revisionNotes?: string | null
+    parentQuotationId?: string | null
     contactId?: string | null
     contactName: string
     contactEmail?: string | null
@@ -50560,14 +50877,25 @@ export namespace Prisma {
     salesOwnerName?: string | null
     convertedToOrderId?: string | null
     convertedAt?: Date | string | null
+    sentAt?: Date | string | null
+    acceptedAt?: Date | string | null
+    supersededAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    revisions?: QuotationUncheckedCreateNestedManyWithoutParentQuotationInput
     items?: QuotationItemUncheckedCreateNestedManyWithoutQuotationInput
   }
 
   export type QuotationUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
     contactName?: StringFieldUpdateOperationsInput | string
     contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
@@ -50593,14 +50921,27 @@ export namespace Prisma {
     salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
     convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    parentQuotation?: QuotationUpdateOneWithoutRevisionsNestedInput
+    revisions?: QuotationUpdateManyWithoutParentQuotationNestedInput
     items?: QuotationItemUpdateManyWithoutQuotationNestedInput
   }
 
   export type QuotationUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
+    parentQuotationId?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
     contactName?: StringFieldUpdateOperationsInput | string
     contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
@@ -50626,14 +50967,26 @@ export namespace Prisma {
     salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
     convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revisions?: QuotationUncheckedUpdateManyWithoutParentQuotationNestedInput
     items?: QuotationItemUncheckedUpdateManyWithoutQuotationNestedInput
   }
 
   export type QuotationCreateManyInput = {
     id?: string
     quotationNumber: string
+    originalQuotationNumber?: string | null
+    version?: number
+    revisionNumber?: number
+    revisionName?: string | null
+    isLatest?: boolean
+    projectName?: string | null
+    revisionNotes?: string | null
+    parentQuotationId?: string | null
     contactId?: string | null
     contactName: string
     contactEmail?: string | null
@@ -50659,6 +51012,9 @@ export namespace Prisma {
     salesOwnerName?: string | null
     convertedToOrderId?: string | null
     convertedAt?: Date | string | null
+    sentAt?: Date | string | null
+    acceptedAt?: Date | string | null
+    supersededAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -50666,6 +51022,13 @@ export namespace Prisma {
   export type QuotationUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
     quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
     contactName?: StringFieldUpdateOperationsInput | string
     contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
@@ -50691,6 +51054,9 @@ export namespace Prisma {
     salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
     convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -50698,6 +51064,14 @@ export namespace Prisma {
   export type QuotationUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
+    parentQuotationId?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
     contactName?: StringFieldUpdateOperationsInput | string
     contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
@@ -50723,6 +51097,9 @@ export namespace Prisma {
     salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
     convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -54780,10 +55157,25 @@ export namespace Prisma {
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
+  export type QuotationNullableScalarRelationFilter = {
+    is?: QuotationWhereInput | null
+    isNot?: QuotationWhereInput | null
+  }
+
+  export type QuotationListRelationFilter = {
+    every?: QuotationWhereInput
+    some?: QuotationWhereInput
+    none?: QuotationWhereInput
+  }
+
   export type QuotationItemListRelationFilter = {
     every?: QuotationItemWhereInput
     some?: QuotationItemWhereInput
     none?: QuotationItemWhereInput
+  }
+
+  export type QuotationOrderByRelationAggregateInput = {
+    _count?: SortOrder
   }
 
   export type QuotationItemOrderByRelationAggregateInput = {
@@ -54793,6 +55185,14 @@ export namespace Prisma {
   export type QuotationCountOrderByAggregateInput = {
     id?: SortOrder
     quotationNumber?: SortOrder
+    originalQuotationNumber?: SortOrder
+    version?: SortOrder
+    revisionNumber?: SortOrder
+    revisionName?: SortOrder
+    isLatest?: SortOrder
+    projectName?: SortOrder
+    revisionNotes?: SortOrder
+    parentQuotationId?: SortOrder
     contactId?: SortOrder
     contactName?: SortOrder
     contactEmail?: SortOrder
@@ -54818,11 +55218,16 @@ export namespace Prisma {
     salesOwnerName?: SortOrder
     convertedToOrderId?: SortOrder
     convertedAt?: SortOrder
+    sentAt?: SortOrder
+    acceptedAt?: SortOrder
+    supersededAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
 
   export type QuotationAvgOrderByAggregateInput = {
+    version?: SortOrder
+    revisionNumber?: SortOrder
     subtotal?: SortOrder
     discountValue?: SortOrder
     discountAmount?: SortOrder
@@ -54833,6 +55238,14 @@ export namespace Prisma {
   export type QuotationMaxOrderByAggregateInput = {
     id?: SortOrder
     quotationNumber?: SortOrder
+    originalQuotationNumber?: SortOrder
+    version?: SortOrder
+    revisionNumber?: SortOrder
+    revisionName?: SortOrder
+    isLatest?: SortOrder
+    projectName?: SortOrder
+    revisionNotes?: SortOrder
+    parentQuotationId?: SortOrder
     contactId?: SortOrder
     contactName?: SortOrder
     contactEmail?: SortOrder
@@ -54858,6 +55271,9 @@ export namespace Prisma {
     salesOwnerName?: SortOrder
     convertedToOrderId?: SortOrder
     convertedAt?: SortOrder
+    sentAt?: SortOrder
+    acceptedAt?: SortOrder
+    supersededAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -54865,6 +55281,14 @@ export namespace Prisma {
   export type QuotationMinOrderByAggregateInput = {
     id?: SortOrder
     quotationNumber?: SortOrder
+    originalQuotationNumber?: SortOrder
+    version?: SortOrder
+    revisionNumber?: SortOrder
+    revisionName?: SortOrder
+    isLatest?: SortOrder
+    projectName?: SortOrder
+    revisionNotes?: SortOrder
+    parentQuotationId?: SortOrder
     contactId?: SortOrder
     contactName?: SortOrder
     contactEmail?: SortOrder
@@ -54890,11 +55314,16 @@ export namespace Prisma {
     salesOwnerName?: SortOrder
     convertedToOrderId?: SortOrder
     convertedAt?: SortOrder
+    sentAt?: SortOrder
+    acceptedAt?: SortOrder
+    supersededAt?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
 
   export type QuotationSumOrderByAggregateInput = {
+    version?: SortOrder
+    revisionNumber?: SortOrder
     subtotal?: SortOrder
     discountValue?: SortOrder
     discountAmount?: SortOrder
@@ -56656,11 +57085,31 @@ export namespace Prisma {
     divide?: number
   }
 
+  export type QuotationCreateNestedOneWithoutRevisionsInput = {
+    create?: XOR<QuotationCreateWithoutRevisionsInput, QuotationUncheckedCreateWithoutRevisionsInput>
+    connectOrCreate?: QuotationCreateOrConnectWithoutRevisionsInput
+    connect?: QuotationWhereUniqueInput
+  }
+
+  export type QuotationCreateNestedManyWithoutParentQuotationInput = {
+    create?: XOR<QuotationCreateWithoutParentQuotationInput, QuotationUncheckedCreateWithoutParentQuotationInput> | QuotationCreateWithoutParentQuotationInput[] | QuotationUncheckedCreateWithoutParentQuotationInput[]
+    connectOrCreate?: QuotationCreateOrConnectWithoutParentQuotationInput | QuotationCreateOrConnectWithoutParentQuotationInput[]
+    createMany?: QuotationCreateManyParentQuotationInputEnvelope
+    connect?: QuotationWhereUniqueInput | QuotationWhereUniqueInput[]
+  }
+
   export type QuotationItemCreateNestedManyWithoutQuotationInput = {
     create?: XOR<QuotationItemCreateWithoutQuotationInput, QuotationItemUncheckedCreateWithoutQuotationInput> | QuotationItemCreateWithoutQuotationInput[] | QuotationItemUncheckedCreateWithoutQuotationInput[]
     connectOrCreate?: QuotationItemCreateOrConnectWithoutQuotationInput | QuotationItemCreateOrConnectWithoutQuotationInput[]
     createMany?: QuotationItemCreateManyQuotationInputEnvelope
     connect?: QuotationItemWhereUniqueInput | QuotationItemWhereUniqueInput[]
+  }
+
+  export type QuotationUncheckedCreateNestedManyWithoutParentQuotationInput = {
+    create?: XOR<QuotationCreateWithoutParentQuotationInput, QuotationUncheckedCreateWithoutParentQuotationInput> | QuotationCreateWithoutParentQuotationInput[] | QuotationUncheckedCreateWithoutParentQuotationInput[]
+    connectOrCreate?: QuotationCreateOrConnectWithoutParentQuotationInput | QuotationCreateOrConnectWithoutParentQuotationInput[]
+    createMany?: QuotationCreateManyParentQuotationInputEnvelope
+    connect?: QuotationWhereUniqueInput | QuotationWhereUniqueInput[]
   }
 
   export type QuotationItemUncheckedCreateNestedManyWithoutQuotationInput = {
@@ -56672,6 +57121,30 @@ export namespace Prisma {
 
   export type NullableDateTimeFieldUpdateOperationsInput = {
     set?: Date | string | null
+  }
+
+  export type QuotationUpdateOneWithoutRevisionsNestedInput = {
+    create?: XOR<QuotationCreateWithoutRevisionsInput, QuotationUncheckedCreateWithoutRevisionsInput>
+    connectOrCreate?: QuotationCreateOrConnectWithoutRevisionsInput
+    upsert?: QuotationUpsertWithoutRevisionsInput
+    disconnect?: QuotationWhereInput | boolean
+    delete?: QuotationWhereInput | boolean
+    connect?: QuotationWhereUniqueInput
+    update?: XOR<XOR<QuotationUpdateToOneWithWhereWithoutRevisionsInput, QuotationUpdateWithoutRevisionsInput>, QuotationUncheckedUpdateWithoutRevisionsInput>
+  }
+
+  export type QuotationUpdateManyWithoutParentQuotationNestedInput = {
+    create?: XOR<QuotationCreateWithoutParentQuotationInput, QuotationUncheckedCreateWithoutParentQuotationInput> | QuotationCreateWithoutParentQuotationInput[] | QuotationUncheckedCreateWithoutParentQuotationInput[]
+    connectOrCreate?: QuotationCreateOrConnectWithoutParentQuotationInput | QuotationCreateOrConnectWithoutParentQuotationInput[]
+    upsert?: QuotationUpsertWithWhereUniqueWithoutParentQuotationInput | QuotationUpsertWithWhereUniqueWithoutParentQuotationInput[]
+    createMany?: QuotationCreateManyParentQuotationInputEnvelope
+    set?: QuotationWhereUniqueInput | QuotationWhereUniqueInput[]
+    disconnect?: QuotationWhereUniqueInput | QuotationWhereUniqueInput[]
+    delete?: QuotationWhereUniqueInput | QuotationWhereUniqueInput[]
+    connect?: QuotationWhereUniqueInput | QuotationWhereUniqueInput[]
+    update?: QuotationUpdateWithWhereUniqueWithoutParentQuotationInput | QuotationUpdateWithWhereUniqueWithoutParentQuotationInput[]
+    updateMany?: QuotationUpdateManyWithWhereWithoutParentQuotationInput | QuotationUpdateManyWithWhereWithoutParentQuotationInput[]
+    deleteMany?: QuotationScalarWhereInput | QuotationScalarWhereInput[]
   }
 
   export type QuotationItemUpdateManyWithoutQuotationNestedInput = {
@@ -56686,6 +57159,20 @@ export namespace Prisma {
     update?: QuotationItemUpdateWithWhereUniqueWithoutQuotationInput | QuotationItemUpdateWithWhereUniqueWithoutQuotationInput[]
     updateMany?: QuotationItemUpdateManyWithWhereWithoutQuotationInput | QuotationItemUpdateManyWithWhereWithoutQuotationInput[]
     deleteMany?: QuotationItemScalarWhereInput | QuotationItemScalarWhereInput[]
+  }
+
+  export type QuotationUncheckedUpdateManyWithoutParentQuotationNestedInput = {
+    create?: XOR<QuotationCreateWithoutParentQuotationInput, QuotationUncheckedCreateWithoutParentQuotationInput> | QuotationCreateWithoutParentQuotationInput[] | QuotationUncheckedCreateWithoutParentQuotationInput[]
+    connectOrCreate?: QuotationCreateOrConnectWithoutParentQuotationInput | QuotationCreateOrConnectWithoutParentQuotationInput[]
+    upsert?: QuotationUpsertWithWhereUniqueWithoutParentQuotationInput | QuotationUpsertWithWhereUniqueWithoutParentQuotationInput[]
+    createMany?: QuotationCreateManyParentQuotationInputEnvelope
+    set?: QuotationWhereUniqueInput | QuotationWhereUniqueInput[]
+    disconnect?: QuotationWhereUniqueInput | QuotationWhereUniqueInput[]
+    delete?: QuotationWhereUniqueInput | QuotationWhereUniqueInput[]
+    connect?: QuotationWhereUniqueInput | QuotationWhereUniqueInput[]
+    update?: QuotationUpdateWithWhereUniqueWithoutParentQuotationInput | QuotationUpdateWithWhereUniqueWithoutParentQuotationInput[]
+    updateMany?: QuotationUpdateManyWithWhereWithoutParentQuotationInput | QuotationUpdateManyWithWhereWithoutParentQuotationInput[]
+    deleteMany?: QuotationScalarWhereInput | QuotationScalarWhereInput[]
   }
 
   export type QuotationItemUncheckedUpdateManyWithoutQuotationNestedInput = {
@@ -57831,6 +58318,197 @@ export namespace Prisma {
     users?: UserUncheckedUpdateManyWithoutRoleRelationNestedInput
   }
 
+  export type QuotationCreateWithoutRevisionsInput = {
+    id?: string
+    quotationNumber: string
+    originalQuotationNumber?: string | null
+    version?: number
+    revisionNumber?: number
+    revisionName?: string | null
+    isLatest?: boolean
+    projectName?: string | null
+    revisionNotes?: string | null
+    contactId?: string | null
+    contactName: string
+    contactEmail?: string | null
+    contactPhone?: string | null
+    companyName?: string | null
+    clientGst?: string | null
+    clientAddress?: string | null
+    leadId?: string | null
+    quotationDate: string
+    validUntil: string
+    status?: string
+    currency?: string
+    subtotal?: number
+    discountType?: string
+    discountValue?: number
+    discountAmount?: number
+    taxAmount?: number
+    grandTotal?: number
+    paymentTerms?: string | null
+    notes?: string | null
+    termsConditions?: string | null
+    salesOwnerId?: string | null
+    salesOwnerName?: string | null
+    convertedToOrderId?: string | null
+    convertedAt?: Date | string | null
+    sentAt?: Date | string | null
+    acceptedAt?: Date | string | null
+    supersededAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    parentQuotation?: QuotationCreateNestedOneWithoutRevisionsInput
+    items?: QuotationItemCreateNestedManyWithoutQuotationInput
+  }
+
+  export type QuotationUncheckedCreateWithoutRevisionsInput = {
+    id?: string
+    quotationNumber: string
+    originalQuotationNumber?: string | null
+    version?: number
+    revisionNumber?: number
+    revisionName?: string | null
+    isLatest?: boolean
+    projectName?: string | null
+    revisionNotes?: string | null
+    parentQuotationId?: string | null
+    contactId?: string | null
+    contactName: string
+    contactEmail?: string | null
+    contactPhone?: string | null
+    companyName?: string | null
+    clientGst?: string | null
+    clientAddress?: string | null
+    leadId?: string | null
+    quotationDate: string
+    validUntil: string
+    status?: string
+    currency?: string
+    subtotal?: number
+    discountType?: string
+    discountValue?: number
+    discountAmount?: number
+    taxAmount?: number
+    grandTotal?: number
+    paymentTerms?: string | null
+    notes?: string | null
+    termsConditions?: string | null
+    salesOwnerId?: string | null
+    salesOwnerName?: string | null
+    convertedToOrderId?: string | null
+    convertedAt?: Date | string | null
+    sentAt?: Date | string | null
+    acceptedAt?: Date | string | null
+    supersededAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    items?: QuotationItemUncheckedCreateNestedManyWithoutQuotationInput
+  }
+
+  export type QuotationCreateOrConnectWithoutRevisionsInput = {
+    where: QuotationWhereUniqueInput
+    create: XOR<QuotationCreateWithoutRevisionsInput, QuotationUncheckedCreateWithoutRevisionsInput>
+  }
+
+  export type QuotationCreateWithoutParentQuotationInput = {
+    id?: string
+    quotationNumber: string
+    originalQuotationNumber?: string | null
+    version?: number
+    revisionNumber?: number
+    revisionName?: string | null
+    isLatest?: boolean
+    projectName?: string | null
+    revisionNotes?: string | null
+    contactId?: string | null
+    contactName: string
+    contactEmail?: string | null
+    contactPhone?: string | null
+    companyName?: string | null
+    clientGst?: string | null
+    clientAddress?: string | null
+    leadId?: string | null
+    quotationDate: string
+    validUntil: string
+    status?: string
+    currency?: string
+    subtotal?: number
+    discountType?: string
+    discountValue?: number
+    discountAmount?: number
+    taxAmount?: number
+    grandTotal?: number
+    paymentTerms?: string | null
+    notes?: string | null
+    termsConditions?: string | null
+    salesOwnerId?: string | null
+    salesOwnerName?: string | null
+    convertedToOrderId?: string | null
+    convertedAt?: Date | string | null
+    sentAt?: Date | string | null
+    acceptedAt?: Date | string | null
+    supersededAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    revisions?: QuotationCreateNestedManyWithoutParentQuotationInput
+    items?: QuotationItemCreateNestedManyWithoutQuotationInput
+  }
+
+  export type QuotationUncheckedCreateWithoutParentQuotationInput = {
+    id?: string
+    quotationNumber: string
+    originalQuotationNumber?: string | null
+    version?: number
+    revisionNumber?: number
+    revisionName?: string | null
+    isLatest?: boolean
+    projectName?: string | null
+    revisionNotes?: string | null
+    contactId?: string | null
+    contactName: string
+    contactEmail?: string | null
+    contactPhone?: string | null
+    companyName?: string | null
+    clientGst?: string | null
+    clientAddress?: string | null
+    leadId?: string | null
+    quotationDate: string
+    validUntil: string
+    status?: string
+    currency?: string
+    subtotal?: number
+    discountType?: string
+    discountValue?: number
+    discountAmount?: number
+    taxAmount?: number
+    grandTotal?: number
+    paymentTerms?: string | null
+    notes?: string | null
+    termsConditions?: string | null
+    salesOwnerId?: string | null
+    salesOwnerName?: string | null
+    convertedToOrderId?: string | null
+    convertedAt?: Date | string | null
+    sentAt?: Date | string | null
+    acceptedAt?: Date | string | null
+    supersededAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    revisions?: QuotationUncheckedCreateNestedManyWithoutParentQuotationInput
+    items?: QuotationItemUncheckedCreateNestedManyWithoutQuotationInput
+  }
+
+  export type QuotationCreateOrConnectWithoutParentQuotationInput = {
+    where: QuotationWhereUniqueInput
+    create: XOR<QuotationCreateWithoutParentQuotationInput, QuotationUncheckedCreateWithoutParentQuotationInput>
+  }
+
+  export type QuotationCreateManyParentQuotationInputEnvelope = {
+    data: QuotationCreateManyParentQuotationInput | QuotationCreateManyParentQuotationInput[]
+    skipDuplicates?: boolean
+  }
+
   export type QuotationItemCreateWithoutQuotationInput = {
     id?: string
     productId?: string | null
@@ -57877,6 +58555,167 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type QuotationUpsertWithoutRevisionsInput = {
+    update: XOR<QuotationUpdateWithoutRevisionsInput, QuotationUncheckedUpdateWithoutRevisionsInput>
+    create: XOR<QuotationCreateWithoutRevisionsInput, QuotationUncheckedCreateWithoutRevisionsInput>
+    where?: QuotationWhereInput
+  }
+
+  export type QuotationUpdateToOneWithWhereWithoutRevisionsInput = {
+    where?: QuotationWhereInput
+    data: XOR<QuotationUpdateWithoutRevisionsInput, QuotationUncheckedUpdateWithoutRevisionsInput>
+  }
+
+  export type QuotationUpdateWithoutRevisionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: StringFieldUpdateOperationsInput | string
+    contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    contactPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    companyName?: NullableStringFieldUpdateOperationsInput | string | null
+    clientGst?: NullableStringFieldUpdateOperationsInput | string | null
+    clientAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationDate?: StringFieldUpdateOperationsInput | string
+    validUntil?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    currency?: StringFieldUpdateOperationsInput | string
+    subtotal?: FloatFieldUpdateOperationsInput | number
+    discountType?: StringFieldUpdateOperationsInput | string
+    discountValue?: FloatFieldUpdateOperationsInput | number
+    discountAmount?: FloatFieldUpdateOperationsInput | number
+    taxAmount?: FloatFieldUpdateOperationsInput | number
+    grandTotal?: FloatFieldUpdateOperationsInput | number
+    paymentTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    termsConditions?: NullableStringFieldUpdateOperationsInput | string | null
+    salesOwnerId?: NullableStringFieldUpdateOperationsInput | string | null
+    salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
+    convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
+    convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    parentQuotation?: QuotationUpdateOneWithoutRevisionsNestedInput
+    items?: QuotationItemUpdateManyWithoutQuotationNestedInput
+  }
+
+  export type QuotationUncheckedUpdateWithoutRevisionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
+    parentQuotationId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: StringFieldUpdateOperationsInput | string
+    contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    contactPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    companyName?: NullableStringFieldUpdateOperationsInput | string | null
+    clientGst?: NullableStringFieldUpdateOperationsInput | string | null
+    clientAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationDate?: StringFieldUpdateOperationsInput | string
+    validUntil?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    currency?: StringFieldUpdateOperationsInput | string
+    subtotal?: FloatFieldUpdateOperationsInput | number
+    discountType?: StringFieldUpdateOperationsInput | string
+    discountValue?: FloatFieldUpdateOperationsInput | number
+    discountAmount?: FloatFieldUpdateOperationsInput | number
+    taxAmount?: FloatFieldUpdateOperationsInput | number
+    grandTotal?: FloatFieldUpdateOperationsInput | number
+    paymentTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    termsConditions?: NullableStringFieldUpdateOperationsInput | string | null
+    salesOwnerId?: NullableStringFieldUpdateOperationsInput | string | null
+    salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
+    convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
+    convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    items?: QuotationItemUncheckedUpdateManyWithoutQuotationNestedInput
+  }
+
+  export type QuotationUpsertWithWhereUniqueWithoutParentQuotationInput = {
+    where: QuotationWhereUniqueInput
+    update: XOR<QuotationUpdateWithoutParentQuotationInput, QuotationUncheckedUpdateWithoutParentQuotationInput>
+    create: XOR<QuotationCreateWithoutParentQuotationInput, QuotationUncheckedCreateWithoutParentQuotationInput>
+  }
+
+  export type QuotationUpdateWithWhereUniqueWithoutParentQuotationInput = {
+    where: QuotationWhereUniqueInput
+    data: XOR<QuotationUpdateWithoutParentQuotationInput, QuotationUncheckedUpdateWithoutParentQuotationInput>
+  }
+
+  export type QuotationUpdateManyWithWhereWithoutParentQuotationInput = {
+    where: QuotationScalarWhereInput
+    data: XOR<QuotationUpdateManyMutationInput, QuotationUncheckedUpdateManyWithoutParentQuotationInput>
+  }
+
+  export type QuotationScalarWhereInput = {
+    AND?: QuotationScalarWhereInput | QuotationScalarWhereInput[]
+    OR?: QuotationScalarWhereInput[]
+    NOT?: QuotationScalarWhereInput | QuotationScalarWhereInput[]
+    id?: StringFilter<"Quotation"> | string
+    quotationNumber?: StringFilter<"Quotation"> | string
+    originalQuotationNumber?: StringNullableFilter<"Quotation"> | string | null
+    version?: IntFilter<"Quotation"> | number
+    revisionNumber?: IntFilter<"Quotation"> | number
+    revisionName?: StringNullableFilter<"Quotation"> | string | null
+    isLatest?: BoolFilter<"Quotation"> | boolean
+    projectName?: StringNullableFilter<"Quotation"> | string | null
+    revisionNotes?: StringNullableFilter<"Quotation"> | string | null
+    parentQuotationId?: StringNullableFilter<"Quotation"> | string | null
+    contactId?: StringNullableFilter<"Quotation"> | string | null
+    contactName?: StringFilter<"Quotation"> | string
+    contactEmail?: StringNullableFilter<"Quotation"> | string | null
+    contactPhone?: StringNullableFilter<"Quotation"> | string | null
+    companyName?: StringNullableFilter<"Quotation"> | string | null
+    clientGst?: StringNullableFilter<"Quotation"> | string | null
+    clientAddress?: StringNullableFilter<"Quotation"> | string | null
+    leadId?: StringNullableFilter<"Quotation"> | string | null
+    quotationDate?: StringFilter<"Quotation"> | string
+    validUntil?: StringFilter<"Quotation"> | string
+    status?: StringFilter<"Quotation"> | string
+    currency?: StringFilter<"Quotation"> | string
+    subtotal?: FloatFilter<"Quotation"> | number
+    discountType?: StringFilter<"Quotation"> | string
+    discountValue?: FloatFilter<"Quotation"> | number
+    discountAmount?: FloatFilter<"Quotation"> | number
+    taxAmount?: FloatFilter<"Quotation"> | number
+    grandTotal?: FloatFilter<"Quotation"> | number
+    paymentTerms?: StringNullableFilter<"Quotation"> | string | null
+    notes?: StringNullableFilter<"Quotation"> | string | null
+    termsConditions?: StringNullableFilter<"Quotation"> | string | null
+    salesOwnerId?: StringNullableFilter<"Quotation"> | string | null
+    salesOwnerName?: StringNullableFilter<"Quotation"> | string | null
+    convertedToOrderId?: StringNullableFilter<"Quotation"> | string | null
+    convertedAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
+    sentAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
+    acceptedAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
+    supersededAt?: DateTimeNullableFilter<"Quotation"> | Date | string | null
+    createdAt?: DateTimeFilter<"Quotation"> | Date | string
+    updatedAt?: DateTimeFilter<"Quotation"> | Date | string
+  }
+
   export type QuotationItemUpsertWithWhereUniqueWithoutQuotationInput = {
     where: QuotationItemWhereUniqueInput
     update: XOR<QuotationItemUpdateWithoutQuotationInput, QuotationItemUncheckedUpdateWithoutQuotationInput>
@@ -57918,6 +58757,13 @@ export namespace Prisma {
   export type QuotationCreateWithoutItemsInput = {
     id?: string
     quotationNumber: string
+    originalQuotationNumber?: string | null
+    version?: number
+    revisionNumber?: number
+    revisionName?: string | null
+    isLatest?: boolean
+    projectName?: string | null
+    revisionNotes?: string | null
     contactId?: string | null
     contactName: string
     contactEmail?: string | null
@@ -57943,13 +58789,26 @@ export namespace Prisma {
     salesOwnerName?: string | null
     convertedToOrderId?: string | null
     convertedAt?: Date | string | null
+    sentAt?: Date | string | null
+    acceptedAt?: Date | string | null
+    supersededAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    parentQuotation?: QuotationCreateNestedOneWithoutRevisionsInput
+    revisions?: QuotationCreateNestedManyWithoutParentQuotationInput
   }
 
   export type QuotationUncheckedCreateWithoutItemsInput = {
     id?: string
     quotationNumber: string
+    originalQuotationNumber?: string | null
+    version?: number
+    revisionNumber?: number
+    revisionName?: string | null
+    isLatest?: boolean
+    projectName?: string | null
+    revisionNotes?: string | null
+    parentQuotationId?: string | null
     contactId?: string | null
     contactName: string
     contactEmail?: string | null
@@ -57975,8 +58834,12 @@ export namespace Prisma {
     salesOwnerName?: string | null
     convertedToOrderId?: string | null
     convertedAt?: Date | string | null
+    sentAt?: Date | string | null
+    acceptedAt?: Date | string | null
+    supersededAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
+    revisions?: QuotationUncheckedCreateNestedManyWithoutParentQuotationInput
   }
 
   export type QuotationCreateOrConnectWithoutItemsInput = {
@@ -57998,6 +58861,13 @@ export namespace Prisma {
   export type QuotationUpdateWithoutItemsInput = {
     id?: StringFieldUpdateOperationsInput | string
     quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
     contactName?: StringFieldUpdateOperationsInput | string
     contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
@@ -58023,13 +58893,26 @@ export namespace Prisma {
     salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
     convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    parentQuotation?: QuotationUpdateOneWithoutRevisionsNestedInput
+    revisions?: QuotationUpdateManyWithoutParentQuotationNestedInput
   }
 
   export type QuotationUncheckedUpdateWithoutItemsInput = {
     id?: StringFieldUpdateOperationsInput | string
     quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
+    parentQuotationId?: NullableStringFieldUpdateOperationsInput | string | null
     contactId?: NullableStringFieldUpdateOperationsInput | string | null
     contactName?: StringFieldUpdateOperationsInput | string
     contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
@@ -58055,8 +58938,12 @@ export namespace Prisma {
     salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
     convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
     convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revisions?: QuotationUncheckedUpdateManyWithoutParentQuotationNestedInput
   }
 
   export type ProposalItemCreateWithoutProposalInput = {
@@ -59741,6 +60628,48 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type QuotationCreateManyParentQuotationInput = {
+    id?: string
+    quotationNumber: string
+    originalQuotationNumber?: string | null
+    version?: number
+    revisionNumber?: number
+    revisionName?: string | null
+    isLatest?: boolean
+    projectName?: string | null
+    revisionNotes?: string | null
+    contactId?: string | null
+    contactName: string
+    contactEmail?: string | null
+    contactPhone?: string | null
+    companyName?: string | null
+    clientGst?: string | null
+    clientAddress?: string | null
+    leadId?: string | null
+    quotationDate: string
+    validUntil: string
+    status?: string
+    currency?: string
+    subtotal?: number
+    discountType?: string
+    discountValue?: number
+    discountAmount?: number
+    taxAmount?: number
+    grandTotal?: number
+    paymentTerms?: string | null
+    notes?: string | null
+    termsConditions?: string | null
+    salesOwnerId?: string | null
+    salesOwnerName?: string | null
+    convertedToOrderId?: string | null
+    convertedAt?: Date | string | null
+    sentAt?: Date | string | null
+    acceptedAt?: Date | string | null
+    supersededAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
   export type QuotationItemCreateManyQuotationInput = {
     id?: string
     productId?: string | null
@@ -59757,6 +60686,136 @@ export namespace Prisma {
     totalAmount?: number
     createdAt?: Date | string
     updatedAt?: Date | string
+  }
+
+  export type QuotationUpdateWithoutParentQuotationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: StringFieldUpdateOperationsInput | string
+    contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    contactPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    companyName?: NullableStringFieldUpdateOperationsInput | string | null
+    clientGst?: NullableStringFieldUpdateOperationsInput | string | null
+    clientAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationDate?: StringFieldUpdateOperationsInput | string
+    validUntil?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    currency?: StringFieldUpdateOperationsInput | string
+    subtotal?: FloatFieldUpdateOperationsInput | number
+    discountType?: StringFieldUpdateOperationsInput | string
+    discountValue?: FloatFieldUpdateOperationsInput | number
+    discountAmount?: FloatFieldUpdateOperationsInput | number
+    taxAmount?: FloatFieldUpdateOperationsInput | number
+    grandTotal?: FloatFieldUpdateOperationsInput | number
+    paymentTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    termsConditions?: NullableStringFieldUpdateOperationsInput | string | null
+    salesOwnerId?: NullableStringFieldUpdateOperationsInput | string | null
+    salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
+    convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
+    convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revisions?: QuotationUpdateManyWithoutParentQuotationNestedInput
+    items?: QuotationItemUpdateManyWithoutQuotationNestedInput
+  }
+
+  export type QuotationUncheckedUpdateWithoutParentQuotationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: StringFieldUpdateOperationsInput | string
+    contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    contactPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    companyName?: NullableStringFieldUpdateOperationsInput | string | null
+    clientGst?: NullableStringFieldUpdateOperationsInput | string | null
+    clientAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationDate?: StringFieldUpdateOperationsInput | string
+    validUntil?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    currency?: StringFieldUpdateOperationsInput | string
+    subtotal?: FloatFieldUpdateOperationsInput | number
+    discountType?: StringFieldUpdateOperationsInput | string
+    discountValue?: FloatFieldUpdateOperationsInput | number
+    discountAmount?: FloatFieldUpdateOperationsInput | number
+    taxAmount?: FloatFieldUpdateOperationsInput | number
+    grandTotal?: FloatFieldUpdateOperationsInput | number
+    paymentTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    termsConditions?: NullableStringFieldUpdateOperationsInput | string | null
+    salesOwnerId?: NullableStringFieldUpdateOperationsInput | string | null
+    salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
+    convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
+    convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revisions?: QuotationUncheckedUpdateManyWithoutParentQuotationNestedInput
+    items?: QuotationItemUncheckedUpdateManyWithoutQuotationNestedInput
+  }
+
+  export type QuotationUncheckedUpdateManyWithoutParentQuotationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    quotationNumber?: StringFieldUpdateOperationsInput | string
+    originalQuotationNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    version?: IntFieldUpdateOperationsInput | number
+    revisionNumber?: IntFieldUpdateOperationsInput | number
+    revisionName?: NullableStringFieldUpdateOperationsInput | string | null
+    isLatest?: BoolFieldUpdateOperationsInput | boolean
+    projectName?: NullableStringFieldUpdateOperationsInput | string | null
+    revisionNotes?: NullableStringFieldUpdateOperationsInput | string | null
+    contactId?: NullableStringFieldUpdateOperationsInput | string | null
+    contactName?: StringFieldUpdateOperationsInput | string
+    contactEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    contactPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    companyName?: NullableStringFieldUpdateOperationsInput | string | null
+    clientGst?: NullableStringFieldUpdateOperationsInput | string | null
+    clientAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    leadId?: NullableStringFieldUpdateOperationsInput | string | null
+    quotationDate?: StringFieldUpdateOperationsInput | string
+    validUntil?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    currency?: StringFieldUpdateOperationsInput | string
+    subtotal?: FloatFieldUpdateOperationsInput | number
+    discountType?: StringFieldUpdateOperationsInput | string
+    discountValue?: FloatFieldUpdateOperationsInput | number
+    discountAmount?: FloatFieldUpdateOperationsInput | number
+    taxAmount?: FloatFieldUpdateOperationsInput | number
+    grandTotal?: FloatFieldUpdateOperationsInput | number
+    paymentTerms?: NullableStringFieldUpdateOperationsInput | string | null
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    termsConditions?: NullableStringFieldUpdateOperationsInput | string | null
+    salesOwnerId?: NullableStringFieldUpdateOperationsInput | string | null
+    salesOwnerName?: NullableStringFieldUpdateOperationsInput | string | null
+    convertedToOrderId?: NullableStringFieldUpdateOperationsInput | string | null
+    convertedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    acceptedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    supersededAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type QuotationItemUpdateWithoutQuotationInput = {

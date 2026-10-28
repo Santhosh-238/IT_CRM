@@ -448,6 +448,14 @@ exports.Prisma.BillingProductScalarFieldEnum = {
 exports.Prisma.QuotationScalarFieldEnum = {
   id: 'id',
   quotationNumber: 'quotationNumber',
+  originalQuotationNumber: 'originalQuotationNumber',
+  version: 'version',
+  revisionNumber: 'revisionNumber',
+  revisionName: 'revisionName',
+  isLatest: 'isLatest',
+  projectName: 'projectName',
+  revisionNotes: 'revisionNotes',
+  parentQuotationId: 'parentQuotationId',
   contactId: 'contactId',
   contactName: 'contactName',
   contactEmail: 'contactEmail',
@@ -473,6 +481,9 @@ exports.Prisma.QuotationScalarFieldEnum = {
   salesOwnerName: 'salesOwnerName',
   convertedToOrderId: 'convertedToOrderId',
   convertedAt: 'convertedAt',
+  sentAt: 'sentAt',
+  acceptedAt: 'acceptedAt',
+  supersededAt: 'supersededAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };

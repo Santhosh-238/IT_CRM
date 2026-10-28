@@ -463,23 +463,23 @@ export const ActivityTimelinePage: React.FC = () => {
     }
   };
 
-  // Group sorted activities by date
+  // Group sorted activities by date (single group per date to prevent duplicate keys)
   const groupedActivities = useMemo(() => {
-    const groups: { dateKey: string; dateLabel: string; items: ActivityItem[] }[] = [];
+    const map = new Map<string, { dateKey: string; dateLabel: string; items: ActivityItem[] }>();
     for (const item of sortedActivities) {
+      const rawDate = item.activityDate || 'earlier';
       const label = getDateGroupLabel(item.activityDate);
-      const lastGroup = groups[groups.length - 1];
-      if (lastGroup && lastGroup.dateLabel === label) {
-        lastGroup.items.push(item);
-      } else {
-        groups.push({
-          dateKey: item.activityDate || label,
+      const groupKey = `${rawDate}_${label}`;
+      if (!map.has(groupKey)) {
+        map.set(groupKey, {
+          dateKey: groupKey,
           dateLabel: label,
-          items: [item],
+          items: [],
         });
       }
+      map.get(groupKey)!.items.push(item);
     }
-    return groups;
+    return Array.from(map.values());
   }, [sortedActivities]);
 
   // Visual style for each activity type
@@ -1718,7 +1718,7 @@ export const ActivityTimelinePage: React.FC = () => {
                 /* Date-Grouped Timeline Entries (Matching Reference) */
                 <Box style={{ width: '100%', minWidth: 0 }}>
                   {groupedActivities.map((group, groupIdx) => (
-                    <Box key={group.dateKey} mb={18} style={{ width: '100%', minWidth: 0 }}>
+                    <Box key={`${group.dateKey}-${groupIdx}`} mb={18} style={{ width: '100%', minWidth: 0 }}>
                       {/* Date Capsule Pill (Centered on the Left Vertical Track) */}
                       <Box
                         style={{
@@ -1764,7 +1764,7 @@ export const ActivityTimelinePage: React.FC = () => {
 
                           return (
                             <Box
-                              key={item.id}
+                              key={item.id ? `${item.id}-${itemIdx}` : `item-${groupIdx}-${itemIdx}`}
                               style={{
                                 position: 'relative',
                                 zIndex: 2,

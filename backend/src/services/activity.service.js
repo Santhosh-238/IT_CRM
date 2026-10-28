@@ -66,7 +66,6 @@ function formatTime12Hr(dateObj = new Date()) {
  */
 export async function recordActivity(data) {
   try {
-    const activityNumber = data.activityNumber || (await generateActivityNumber());
     const now = new Date();
     const todayStr = data.activityDate || now.toISOString().slice(0, 10);
     const timeStr = data.activityTime || formatTime12Hr(now);
@@ -95,6 +94,87 @@ export async function recordActivity(data) {
     }
 
     const typeNormalized = (data.type || 'meeting').toLowerCase().trim();
+    const entityId = data.entityId ? String(data.entityId) : null;
+    const entityType = data.entityType || null;
+    const leadId = data.leadId || null;
+
+    // Deduplication Rule 1: A lead can only have one closure activity
+    if (typeNormalized === 'closure' && leadId) {
+      const existingClosure = await prisma.activity.findFirst({
+        where: {
+          leadId,
+          type: 'closure',
+        },
+      });
+      if (existingClosure) {
+        const updated = await prisma.activity.update({
+          where: { id: existingClosure.id },
+          data: {
+            status: data.status || existingClosure.status,
+            description: data.description || existingClosure.description,
+            amount: typeof data.amount === 'number' ? data.amount : existingClosure.amount,
+            performedBy: data.performedBy || existingClosure.performedBy,
+            performedById: data.performedById ? String(data.performedById) : existingClosure.performedById,
+            activityDate: todayStr,
+            activityTime: timeStr,
+            metadata: data.metadata || existingClosure.metadata,
+          },
+        });
+        return formatActivityResponse(updated);
+      }
+    }
+
+    // Deduplication Rule 2: If entityId and entityType exist, avoid duplicate activity for the same entity
+    if (entityId && entityType) {
+      const existingEntityActivity = await prisma.activity.findFirst({
+        where: {
+          entityId,
+          entityType,
+          type: typeNormalized,
+        },
+      });
+      if (existingEntityActivity) {
+        const updated = await prisma.activity.update({
+          where: { id: existingEntityActivity.id },
+          data: {
+            title: data.title || existingEntityActivity.title,
+            status: data.status || existingEntityActivity.status,
+            description: data.description || existingEntityActivity.description,
+            amount: typeof data.amount === 'number' ? data.amount : existingEntityActivity.amount,
+            performedBy: data.performedBy || existingEntityActivity.performedBy,
+            performedById: data.performedById ? String(data.performedById) : existingEntityActivity.performedById,
+            metadata: data.metadata || existingEntityActivity.metadata,
+          },
+        });
+        return formatActivityResponse(updated);
+      }
+    }
+
+    // Deduplication Rule 3: Rapid repeat action for the same lead, type and title within the same date/time
+    if (leadId && data.title) {
+      const duplicateRecent = await prisma.activity.findFirst({
+        where: {
+          leadId,
+          type: typeNormalized,
+          title: data.title,
+          activityDate: todayStr,
+          activityTime: timeStr,
+        },
+      });
+      if (duplicateRecent) {
+        const updated = await prisma.activity.update({
+          where: { id: duplicateRecent.id },
+          data: {
+            status: data.status || duplicateRecent.status,
+            description: data.description || duplicateRecent.description,
+            amount: typeof data.amount === 'number' ? data.amount : duplicateRecent.amount,
+          },
+        });
+        return formatActivityResponse(updated);
+      }
+    }
+
+    const activityNumber = data.activityNumber || (await generateActivityNumber());
 
     const activity = await prisma.activity.create({
       data: {
@@ -102,15 +182,15 @@ export async function recordActivity(data) {
         type: typeNormalized,
         title: data.title || 'CRM Activity',
         description: data.description || '',
-        leadId: data.leadId || null,
+        leadId: leadId || null,
         leadName: leadName || null,
         leadCode: leadCode || null,
         customerId: data.customerId || null,
         customerName: customerName || null,
         contactId: data.contactId || null,
         contactName: data.contactName || null,
-        entityId: data.entityId ? String(data.entityId) : null,
-        entityType: data.entityType || null,
+        entityId,
+        entityType,
         entityNumber: data.entityNumber || null,
         status: data.status || null,
         amount: typeof data.amount === 'number' ? data.amount : 0,
@@ -198,13 +278,19 @@ export async function syncExistingActivities() {
 
     // Existing activity signature set to prevent duplicates: entityType:entityId
     const existingActivities = await prisma.activity.findMany({
-      select: { id: true, entityType: true, entityId: true },
+      select: { id: true, entityType: true, entityId: true, type: true, leadId: true },
     });
-    const existingSet = new Set(
-      existingActivities
-        .filter((a) => a.entityType && a.entityId)
-        .map((a) => `${a.entityType}:${a.entityId}`)
-    );
+    const existingSet = new Set();
+    for (const a of existingActivities) {
+      if (a.entityType && a.entityId) existingSet.add(`${a.entityType}:${a.entityId}`);
+      if (a.type === 'closure' && a.leadId) {
+        existingSet.add(`LeadClosure:${a.leadId}`);
+        existingSet.add(`Lead:${a.leadId}`);
+      }
+      if (a.type === 'qualification' && a.leadId) {
+        existingSet.add(`LeadQualification:${a.leadId}`);
+      }
+    }
 
     const activitiesToCreate = [];
 
@@ -456,7 +542,8 @@ export async function syncExistingActivities() {
       const isClosed = statusLower.includes('won') || statusLower.includes('closed') || statusLower.includes('completed') || stageLower.includes('closure') || stageLower.includes('completed');
       if (isClosed) {
         const key = `LeadClosure:${l.id}`;
-        if (!existingSet.has(key)) {
+        const keyLead = `Lead:${l.id}`;
+        if (!existingSet.has(key) && !existingSet.has(keyLead)) {
           activitiesToCreate.push({
             type: 'closure',
             title: 'Lead Closed',
@@ -474,6 +561,7 @@ export async function syncExistingActivities() {
             activityTime: '03:20 PM',
           });
           existingSet.add(key);
+          existingSet.add(keyLead);
         }
       }
     }

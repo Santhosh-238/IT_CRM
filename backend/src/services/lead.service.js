@@ -375,26 +375,42 @@ export async function updateLeadService(id, body, currentUser = null) {
     data: updateData,
   });
 
-  // If lead is closed or won, automatically record closure activity in timeline
+  // If lead is closed or won, automatically record or update closure activity in timeline
   try {
     const sLow = (updated.status || '').toLowerCase();
     const stgLow = (updated.stage || '').toLowerCase();
     if (sLow.includes('won') || sLow.includes('closed') || sLow.includes('completed') || stgLow.includes('completed') || stgLow.includes('closure')) {
-      await recordActivity({
-        type: 'closure',
-        title: 'Lead Closed',
-        description: `Status: ${updated.status} · Reason: ${sLow.includes('won') ? 'Successful conversion' : 'Lead completed/closed'}`,
-        leadId: updated.id,
-        leadCode: updated.leadId,
-        leadName: updated.name,
-        customerName: updated.companyName || updated.name,
-        entityId: updated.id,
-        entityType: 'Lead',
-        entityNumber: updated.leadId,
-        status: updated.status,
-        performedBy: updated.assignedToName || currentUser?.name || 'Staff',
-        activityDate: new Date().toISOString().slice(0, 10),
+      const existingClosure = await prisma.activity.findFirst({
+        where: {
+          leadId: updated.id,
+          type: 'closure',
+        },
       });
+      if (existingClosure) {
+        await prisma.activity.update({
+          where: { id: existingClosure.id },
+          data: {
+            status: updated.status,
+            description: `Status: ${updated.status} · Reason: ${sLow.includes('won') ? 'Successful conversion' : 'Lead completed/closed'} · Client: ${updated.companyName || updated.name} (By ${updated.assignedToName || currentUser?.name || 'Staff'})`,
+          },
+        });
+      } else {
+        await recordActivity({
+          type: 'closure',
+          title: 'Lead Closed',
+          description: `Status: ${updated.status} · Reason: ${sLow.includes('won') ? 'Successful conversion' : 'Lead completed/closed'} · Client: ${updated.companyName || updated.name} (By ${updated.assignedToName || currentUser?.name || 'Staff'})`,
+          leadId: updated.id,
+          leadCode: updated.leadId,
+          leadName: updated.name,
+          customerName: updated.companyName || updated.name,
+          entityId: updated.id,
+          entityType: 'Lead',
+          entityNumber: updated.leadId,
+          status: updated.status,
+          performedBy: updated.assignedToName || currentUser?.name || 'Staff',
+          activityDate: new Date().toISOString().slice(0, 10),
+        });
+      }
     }
   } catch (_) {}
 

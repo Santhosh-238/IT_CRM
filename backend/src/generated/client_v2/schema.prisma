@@ -378,36 +378,49 @@ model BillingProduct {
 }
 
 model Quotation {
-  id                 String          @id @default(uuid())
-  quotationNumber    String          @unique // e.g. "QUO-2026-1001"
-  contactId          String? // Reference to CRM Contact
-  contactName        String
-  contactEmail       String?
-  contactPhone       String?
-  companyName        String?
-  clientGst          String?
-  clientAddress      String?
-  leadId             String? // Reference to CRM Lead
-  quotationDate      String // YYYY-MM-DD
-  validUntil         String // YYYY-MM-DD
-  status             String          @default("Draft") // "Draft" | "Sent" | "Accepted" | "Rejected" | "Expired"
-  currency           String          @default("INR")
-  subtotal           Float           @default(0)
-  discountType       String          @default("percentage") // "percentage" | "fixed"
-  discountValue      Float           @default(0)
-  discountAmount     Float           @default(0)
-  taxAmount          Float           @default(0)
-  grandTotal         Float           @default(0)
-  paymentTerms       String?         @default("Net 30")
-  notes              String?
-  termsConditions    String?
-  salesOwnerId       String?
-  salesOwnerName     String?
-  convertedToOrderId String? // ID of SalesOrder converted to
-  convertedAt        DateTime?
-  items              QuotationItem[]
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+  id                      String          @id @default(uuid())
+  quotationNumber         String          @unique // e.g. "QUO-2026-1001" or "QUO-2026-1001-V2"
+  originalQuotationNumber String? // Base quotation number, e.g. "QUO-2026-1001"
+  version                 Int             @default(1) // 1 for V1, 2 for V2, 3 for V3...
+  revisionNumber          Int             @default(1)
+  revisionName            String?         @default("V1") // "V1", "V2", "V3"...
+  isLatest                Boolean         @default(true)
+  projectName             String? // Project name
+  revisionNotes           String? // Notes/reason for revision
+  parentQuotationId       String? // Reference to parent/original Quotation
+  parentQuotation         Quotation?      @relation("QuotationRevisions", fields: [parentQuotationId], references: [id], onDelete: Cascade)
+  revisions               Quotation[]     @relation("QuotationRevisions")
+  contactId               String? // Reference to CRM Contact
+  contactName             String
+  contactEmail            String?
+  contactPhone            String?
+  companyName             String?
+  clientGst               String?
+  clientAddress           String?
+  leadId                  String? // Reference to CRM Lead
+  quotationDate           String // YYYY-MM-DD
+  validUntil              String // YYYY-MM-DD
+  status                  String          @default("Draft") // "Draft" | "Sent" | "Accepted" | "Rejected" | "Changes Required" | "Superseded" | "Expired"
+  currency                String          @default("INR")
+  subtotal                Float           @default(0)
+  discountType            String          @default("percentage") // "percentage" | "fixed"
+  discountValue           Float           @default(0)
+  discountAmount          Float           @default(0)
+  taxAmount               Float           @default(0)
+  grandTotal              Float           @default(0)
+  paymentTerms            String?         @default("Net 30")
+  notes                   String?
+  termsConditions         String?
+  salesOwnerId            String?
+  salesOwnerName          String?
+  convertedToOrderId      String? // ID of SalesOrder converted to
+  convertedAt             DateTime?
+  sentAt                  DateTime?
+  acceptedAt              DateTime?
+  supersededAt            DateTime?
+  items                   QuotationItem[]
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
 }
 
 model QuotationItem {
