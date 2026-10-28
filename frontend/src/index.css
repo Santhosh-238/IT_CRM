@@ -261,26 +261,118 @@ body {
   box-shadow: 0 20px 35px -10px rgba(15, 23, 42, 0.08), 0 8px 16px -4px rgba(15, 23, 42, 0.03);
 }
 
+/* =========================================================
+ * SIGNATURE ANIMATED CRM SIDEBAR
+ * ========================================================= */
+
+@keyframes sidebarEntrance {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes activeBarGlow {
+  0%, 100% {
+    opacity: 0.85;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.7);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(255, 255, 255, 1);
+  }
+}
+
+/* Sidebar Brand Logo Hover Animation */
+.sidebar-brand-box {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sidebar-brand-box:hover .sidebar-logo-icon {
+  transform: scale(1.08) rotate(-4deg);
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
+}
+
+.sidebar-logo-icon {
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Sidebar Section Headers */
+.sidebar-section-header {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.sidebar-section-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.3), transparent);
+}
+
+/* Staggered entrance for items */
+.sidebar-nav-item {
+  animation: sidebarEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sidebar-nav-item:nth-child(1) { animation-delay: 20ms; }
+.sidebar-nav-item:nth-child(2) { animation-delay: 45ms; }
+.sidebar-nav-item:nth-child(3) { animation-delay: 70ms; }
+.sidebar-nav-item:nth-child(4) { animation-delay: 95ms; }
+.sidebar-nav-item:nth-child(5) { animation-delay: 120ms; }
+.sidebar-nav-item:nth-child(6) { animation-delay: 145ms; }
+.sidebar-nav-item:nth-child(7) { animation-delay: 170ms; }
+.sidebar-nav-item:nth-child(8) { animation-delay: 195ms; }
+.sidebar-nav-item:nth-child(9) { animation-delay: 220ms; }
+.sidebar-nav-item:nth-child(10) { animation-delay: 245ms; }
+
 /* OneAssist Signature Gradient Active Nav Button */
 .crextio-pill-active {
   background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%) !important;
   color: #FFFFFF !important;
-  border-radius: 10px !important;
-  font-weight: 600 !important;
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28) !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  white-space: nowrap !important;
+  transform: translateX(4px);
+  position: relative;
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.crextio-pill-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  height: 60%;
+  width: 4px;
+  background: #FFFFFF;
+  border-radius: 0 4px 4px 0;
+  animation: activeBarGlow 2.5s infinite ease-in-out;
+}
+
+.crextio-pill-active .mantine-NavLink-label {
+  color: #FFFFFF !important;
   white-space: nowrap !important;
 }
 
-.crextio-pill-active .mantine-NavLink-label,
 .crextio-pill-active .mantine-NavLink-section {
   color: #FFFFFF !important;
-  white-space: nowrap !important;
+  transform: scale(1.12);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 [data-mantine-color-scheme="dark"] .crextio-pill-active {
   background: linear-gradient(135deg, #6366F1 0%, #38BDF8 100%) !important;
   color: #0F172A !important;
-  box-shadow: 0 4px 18px rgba(99, 102, 241, 0.35) !important;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
 }
 
 [data-mantine-color-scheme="dark"] .crextio-pill-active .mantine-NavLink-label,
@@ -288,22 +380,46 @@ body {
   color: #FFFFFF !important;
 }
 
+/* Inactive Nav Link with fluid hover and icon tilt animation */
 .crextio-pill-inactive {
   background: transparent !important;
   color: var(--crm-text-secondary) !important;
-  border-radius: 10px !important;
-  transition: all 0.15s ease !important;
+  border-radius: 12px !important;
+  transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
   white-space: nowrap !important;
+  position: relative;
+}
+
+.crextio-pill-inactive .mantine-NavLink-section {
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+  color: #64748B;
 }
 
 .crextio-pill-inactive:hover {
-  background: rgba(15, 23, 42, 0.05) !important;
-  color: var(--crm-text-primary) !important;
+  background: rgba(79, 70, 229, 0.08) !important;
+  color: #4F46E5 !important;
+  transform: translateX(6px);
+  box-shadow: 0 2px 10px rgba(79, 70, 229, 0.08);
+}
+
+.crextio-pill-inactive:hover .mantine-NavLink-section {
+  transform: scale(1.18) rotate(-5deg);
+  color: #4F46E5 !important;
+}
+
+.crextio-pill-inactive:active {
+  transform: scale(0.97) translateX(3px);
+  transition: transform 0.08s ease !important;
 }
 
 [data-mantine-color-scheme="dark"] .crextio-pill-inactive:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #FFFFFF !important;
+  background: rgba(99, 102, 241, 0.16) !important;
+  color: #38BDF8 !important;
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
+}
+
+[data-mantine-color-scheme="dark"] .crextio-pill-inactive:hover .mantine-NavLink-section {
+  color: #38BDF8 !important;
 }
 
 /* Big Aesthetic Counter Numbers */
