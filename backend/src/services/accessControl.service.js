@@ -285,6 +285,7 @@ export async function createRoleService(data, currentUser = null, ipAddress = '1
       canDelete: Boolean(customPerm?.canDelete),
       canExport: Boolean(customPerm?.canExport),
       canApprove: Boolean(customPerm?.canApprove),
+      dataScope: customPerm?.dataScope || (newRole.appType === 'admin' ? 'All' : 'Own'),
     };
   });
 
@@ -396,6 +397,7 @@ export async function updateRoleService(id, data, currentUser = null, ipAddress 
           canDelete: isSuperAdmin ? true : Boolean(p.canDelete),
           canExport: isSuperAdmin ? true : Boolean(p.canExport),
           canApprove: isSuperAdmin ? true : Boolean(p.canApprove),
+          dataScope: isSuperAdmin ? 'All' : (p.dataScope || (role.slug === 'admin' ? 'All' : 'Own')),
         },
         create: {
           roleId: id,
@@ -408,6 +410,7 @@ export async function updateRoleService(id, data, currentUser = null, ipAddress 
           canDelete: isSuperAdmin ? true : Boolean(p.canDelete),
           canExport: isSuperAdmin ? true : Boolean(p.canExport),
           canApprove: isSuperAdmin ? true : Boolean(p.canApprove),
+          dataScope: isSuperAdmin ? 'All' : (p.dataScope || (role.slug === 'admin' ? 'All' : 'Own')),
         },
       });
     }

@@ -605,11 +605,49 @@ export async function syncContactToLead(contact) {
  * 6. Update Contact
  */
 export async function updateContactService(id, body, user) {
-  const existing = await prisma.contact.findFirst({
+  let existing = await prisma.contact.findFirst({
     where: { OR: [{ id }, { contactId: id }] },
   });
 
   if (!existing) {
+    const existingBulk = await prisma.bulkUploadContact.findFirst({
+      where: { OR: [{ id }, { bulkId: id }] },
+    });
+    if (existingBulk) {
+      const updatedBulk = await prisma.bulkUploadContact.update({
+        where: { id: existingBulk.id },
+        data: {
+          ...(body.name && { name: body.name.trim() }),
+          ...(body.companyName !== undefined && { companyName: body.companyName }),
+          ...(body.contactPerson !== undefined && { contactPerson: body.contactPerson }),
+          ...(body.email !== undefined && { email: body.email ? body.email.toLowerCase().trim() : null }),
+          ...(body.phone !== undefined && {
+            phone: (() => {
+              const digits = String(body.phone || '').replace(/\D/g, '');
+              return digits.slice(0, 10);
+            })(),
+          }),
+          ...(body.status !== undefined && { status: body.status }),
+          ...(body.stage !== undefined && { stage: body.stage }),
+          ...(body.description !== undefined && { description: body.description, notes: body.description }),
+          ...(body.notes !== undefined && { notes: body.notes }),
+          ...(body.remarks !== undefined && { remarks: body.remarks }),
+          ...(body.assignedTo !== undefined && {
+            assignedTo: body.assignedTo && body.assignedTo !== 'none' && body.assignedTo !== 'Unassigned' ? body.assignedTo : null,
+          }),
+        },
+      });
+
+      await delCache('crm:contacts:*');
+      if (io) {
+        io.emit('contact_updated', updatedBulk);
+      }
+      return {
+        message: 'Contact updated successfully',
+        data: formatContactResponse(updatedBulk),
+      };
+    }
+
     const error = new Error('Contact not found');
     error.status = 404;
     throw error;

@@ -39,7 +39,17 @@ export function buildContactFilterQuery(queryParams = {}) {
     andConditions.push({ category: { equals: category.trim(), mode: 'insensitive' } });
   }
   if (source && source !== 'All' && source.trim() !== '') {
-    andConditions.push({ source: { equals: source.trim(), mode: 'insensitive' } });
+    const s = source.trim();
+    if (s.toLowerCase() === 'bulk import' || s.toLowerCase() === 'import') {
+      andConditions.push({
+        OR: [
+          { source: { equals: 'Bulk Import', mode: 'insensitive' } },
+          { source: { equals: 'Import', mode: 'insensitive' } },
+        ],
+      });
+    } else {
+      andConditions.push({ source: { equals: s, mode: 'insensitive' } });
+    }
   }
   if (status && status !== 'All' && status.trim() !== '') {
     const s = status.trim();

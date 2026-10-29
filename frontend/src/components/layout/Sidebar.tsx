@@ -18,6 +18,7 @@ import {
   IconCalendarEvent,
   IconFolders,
   IconPhoneCall,
+  IconClipboardList,
   IconBuilding,
   IconSettings,
   IconClock,
@@ -171,14 +172,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
-            {/* Call Logs Item */}
+            {/* Activity Logs Item */}
             {can('call_logs', 'view') && (
               <NavLink
-                label="Call Logs"
-                leftSection={<IconPhoneCall size={18} stroke={2} />}
-                active={activeNav === 'call-logs' || activeNav === 'calls'}
+                label="Activity Logs"
+                leftSection={<IconClipboardList size={18} stroke={2} />}
+                active={activeNav === 'call-logs' || activeNav === 'calls' || activeNav === 'activity-logs'}
                 onClick={() => onSelectNav('call-logs')}
-                className={activeNav === 'call-logs' || activeNav === 'calls' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
+                className={activeNav === 'call-logs' || activeNav === 'calls' || activeNav === 'activity-logs' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
                 style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}

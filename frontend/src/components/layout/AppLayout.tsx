@@ -462,10 +462,12 @@ export const AppLayout: React.FC = () => {
       case 'call-logs':
       case 'calls':
       case 'call-log':
+      case 'activity-logs':
+      case 'activity-log':
         if (!can('call_logs', 'view')) {
           return (
             <AccessRestrictedView
-              moduleName="Call Logs"
+              moduleName="Activity Logs"
               onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
             />
           );

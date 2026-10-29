@@ -53,6 +53,7 @@ model RolePermission {
   canDelete  Boolean  @default(false)
   canExport  Boolean  @default(false)
   canApprove Boolean  @default(false)
+  dataScope  String?  @default("All") // "All" | "Own"
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -173,6 +174,78 @@ model Contact {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model BulkUploadContact {
+  id                  String   @id @default(uuid())
+  bulkId              String? // e.g. BLK-1001
+  batchId             String? // Batch or upload session identifier
+  fileName            String? // Original uploaded file name
+  name                String
+  email               String?
+  phone               String?
+  companyName         String?
+  contactPerson       String?
+  designation         String?
+  profession          String?
+  category            String?  @default("Product")
+  source              String?  @default("Bulk Import")
+  customSource        String?
+  contactType         String?  @default("Company Representative")
+  estimatedValue      String?
+  expectedCloseDate   String?
+  description         String?
+  remarks             String?
+  notes               String?
+  gstNumber           String?
+  employeeCount       String?
+  companyPan          String?
+  cinNumber           String?
+  companyWebsite      String?
+  linkedinUrl         String?
+  annualTurnover      String?
+  verificationStatus  String?  @default("Unverified")
+  registeredState     String?
+  productList         String[] @default([])
+  serviceList         String[] @default([])
+  status              String?  @default("New")
+  stage               String?  @default("Initialization")
+  priority            String?  @default("Medium")
+  assignedTo          String?
+  assignedToName      String?
+  assignmentStatus    String?  @default("Unassigned")
+  contactMode         String?
+  street              String?
+  city                String?
+  zip                 String?
+  country             String?  @default("India")
+  isImportedToContact Boolean  @default(false)
+  importedContactId   String?
+  createdBy           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([batchId])
+}
+
+model ImportBatch {
+  id             String   @id @default(uuid())
+  batchId        String   @unique
+  fileName       String
+  fileSize       Int?     @default(0)
+  totalRows      Int      @default(0)
+  importedCount  Int      @default(0)
+  failedCount    Int      @default(0)
+  status         String   @default("Completed") // "Completed" | "Partial" | "Failed"
+  failedRows     Json? // [{ row: number, name?: string, phone?: string, email?: string, reason: string }]
+  assignedTo     String?
+  assignedToName String?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([batchId])
+  @@index([createdAt])
 }
 
 model Company {

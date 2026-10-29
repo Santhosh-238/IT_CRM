@@ -363,10 +363,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
       id: string;
       name: string;
       modules?: any;
-      estimatedBudget?: number;
-      clientName?: string;
-      clientEmail?: string;
-      clientPhone?: string;
+      estimatedBudget?: number | null;
+      clientName?: string | null;
+      clientEmail?: string | null;
+      clientPhone?: string | null;
     }[] = [];
     const seenNames = new Set<string>();
 
@@ -435,13 +435,21 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
     return mods
       .map((m: any, idx: number) => {
         if (typeof m === 'string') {
-          return { id: `mod-${idx}`, name: m, description: '' };
+          return {
+            id: `mod-${idx}`,
+            name: m,
+            description: '',
+            progress: 0,
+            status: 'Not Started' as const,
+          };
         }
         return {
           id: m.id || `mod-${idx}`,
           name: m.name || '',
           description: m.description || '',
           price: m.price ? Number(m.price) : undefined,
+          progress: typeof m.progress === 'number' ? m.progress : 0,
+          status: (m.status || 'Not Started') as ProjectModuleItem['status'],
         };
       })
       .filter((m: any) => m.name && m.name.trim() !== '');

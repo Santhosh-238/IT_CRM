@@ -27,6 +27,7 @@ apiRouter.use('/leads', leadRouter);
 apiRouter.use('/tasks', taskRouter);
 apiRouter.use('/meetings', meetingRouter);
 apiRouter.use('/call-logs', callLogRouter);
+apiRouter.use('/activity-logs', callLogRouter);
 apiRouter.use('/customers', customerRouter);
 apiRouter.use('/billing', billingRouter);
 apiRouter.use('/invoices', invoiceRouter);
