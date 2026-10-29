@@ -43,6 +43,7 @@ export async function getUserPermissions(user) {
       const permsMap = {};
       const allModules = [
         'dashboard',
+        'employee_dashboard',
         'leads',
         'negotiations',
         'negotiation',
@@ -85,6 +86,12 @@ export async function getUserPermissions(user) {
             export: true,
             approve: true,
             dataScope: p.dataScope || 'All',
+            view: p.moduleId === 'access_control' ? true : p.canView,
+            create: p.moduleId === 'access_control' ? true : p.canCreate,
+            edit: p.moduleId === 'access_control' ? true : p.canEdit,
+            delete: p.moduleId === 'access_control' ? true : p.canDelete,
+            export: p.moduleId === 'access_control' ? true : p.canExport,
+            approve: p.moduleId === 'access_control' ? true : p.canApprove,
           };
         });
       }
@@ -132,6 +139,12 @@ export async function getUserPermissions(user) {
         export: isSuperAdmin ? true : p.canExport,
         approve: isSuperAdmin ? true : p.canApprove,
         dataScope: p.dataScope || defaultScope,
+        view: isSuperAdmin && p.moduleId === 'access_control' ? true : p.canView,
+        create: isSuperAdmin && p.moduleId === 'access_control' ? true : p.canCreate,
+        edit: isSuperAdmin && p.moduleId === 'access_control' ? true : p.canEdit,
+        delete: isSuperAdmin && p.moduleId === 'access_control' ? true : p.canDelete,
+        export: isSuperAdmin && p.moduleId === 'access_control' ? true : p.canExport,
+        approve: isSuperAdmin && p.moduleId === 'access_control' ? true : p.canApprove,
       };
     });
   }
