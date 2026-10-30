@@ -12,6 +12,11 @@ import {
   buildContractFilterQuery,
 } from '../utils/lead.util.js';
 import { recordActivity } from './activity.service.js';
+import {
+  resolveUserScope,
+  buildLeadScopeFilter,
+  isRecordAccessible,
+} from '../middlewares/permission.middleware.js';
 
 /**
  * 1. List leads with search, filters, pagination, and sorting
@@ -30,55 +35,13 @@ export async function getLeadsService(queryParams = {}, currentUser = null) {
 
   const where = buildLeadFilterQuery(queryParams);
 
-  // Role-Based Data Access: Super Admin sees all leads.
-  // Non-admin employees strictly see ONLY leads assigned to them!
-  const roleUpper = (currentUser?.role || '').toUpperCase();
-  const isSuperAdmin = !currentUser || roleUpper === 'SUPER_ADMIN' || roleUpper.includes('ADMIN');
-
-  if (!isSuperAdmin) {
-    const emp = await prisma.employee.findFirst({
-      where: {
-        OR: [
-          currentUser?.email ? { email: { equals: currentUser.email, mode: 'insensitive' } } : null,
-          currentUser?.name ? { name: { equals: currentUser.name, mode: 'insensitive' } } : null,
-          currentUser?.id ? { id: currentUser.id } : null,
-        ].filter(Boolean),
-      },
-    });
-
-    const assignedMatch = [];
-    if (emp?.id) assignedMatch.push({ assignedTo: emp.id });
-    if (emp?.empCode) assignedMatch.push({ assignedTo: emp.empCode });
-    if (emp?.name) assignedMatch.push({ assignedToName: { equals: emp.name, mode: 'insensitive' } });
-    if (currentUser?.id) assignedMatch.push({ assignedTo: currentUser.id });
-    if (currentUser?.name) assignedMatch.push({ assignedToName: { equals: currentUser.name, mode: 'insensitive' } });
-    if (currentUser?.email) assignedMatch.push({ assignedTo: currentUser.email });
-
-    // Include leads created or qualified by this user/employee
-    if (currentUser?.name) {
-      assignedMatch.push({ createdBy: { equals: currentUser.name, mode: 'insensitive' } });
-      assignedMatch.push({ createdByName: { equals: currentUser.name, mode: 'insensitive' } });
-    }
-    if (currentUser?.email) {
-      assignedMatch.push({ createdBy: { equals: currentUser.email, mode: 'insensitive' } });
-    }
-    if (currentUser?.id) {
-      assignedMatch.push({ createdBy: currentUser.id });
-    }
-    if (emp?.id) {
-      assignedMatch.push({ createdBy: emp.id });
-    }
-    if (emp?.name) {
-      assignedMatch.push({ createdBy: { equals: emp.name, mode: 'insensitive' } });
-      assignedMatch.push({ createdByName: { equals: emp.name, mode: 'insensitive' } });
-    }
-
-    if (assignedMatch.length > 0) {
-      if (!where.AND) where.AND = [];
-      where.AND.push({ OR: assignedMatch });
-    } else {
-      if (!where.AND) where.AND = [];
-      where.AND.push({ id: '__none__' });
+  // Enforce role-based Data Scope (Own / All)
+  if (currentUser) {
+    const userScope = await resolveUserScope(currentUser, 'leads');
+    const scopeFilter = buildLeadScopeFilter(userScope);
+    if (scopeFilter) {
+      where.AND = where.AND || [];
+      where.AND.push(scopeFilter);
     }
   }
 
@@ -110,7 +73,7 @@ export async function getLeadsService(queryParams = {}, currentUser = null) {
 /**
  * 2. Get Single Lead by ID
  */
-export async function getLeadByIdService(id) {
+export async function getLeadByIdService(id, currentUser = null) {
   const lead = await prisma.lead.findFirst({
     where: {
       OR: [{ id }, { leadId: id }],
@@ -123,6 +86,15 @@ export async function getLeadByIdService(id) {
     throw error;
   }
 
+  if (currentUser) {
+    const userScope = await resolveUserScope(currentUser, 'leads');
+    if (!isRecordAccessible(lead, userScope)) {
+      const error = new Error('Access denied: You do not have permission to access this lead.');
+      error.status = 403;
+      throw error;
+    }
+  }
+
   return { data: formatLeadResponse(lead) };
 }
 
@@ -131,51 +103,12 @@ export async function getLeadByIdService(id) {
  */
 export async function getLeadStatsService(currentUser = null) {
   let baseWhere = {};
-  const roleUpper = (currentUser?.role || '').toUpperCase();
-  const isSuperAdmin = !currentUser || roleUpper === 'SUPER_ADMIN' || roleUpper.includes('ADMIN');
 
-  if (!isSuperAdmin) {
-    const emp = await prisma.employee.findFirst({
-      where: {
-        OR: [
-          currentUser?.email ? { email: { equals: currentUser.email, mode: 'insensitive' } } : null,
-          currentUser?.name ? { name: { equals: currentUser.name, mode: 'insensitive' } } : null,
-          currentUser?.id ? { id: currentUser.id } : null,
-        ].filter(Boolean),
-      },
-    });
-
-    const assignedMatch = [];
-    if (emp?.id) assignedMatch.push({ assignedTo: emp.id });
-    if (emp?.empCode) assignedMatch.push({ assignedTo: emp.empCode });
-    if (emp?.name) assignedMatch.push({ assignedToName: { equals: emp.name, mode: 'insensitive' } });
-    if (currentUser?.id) assignedMatch.push({ assignedTo: currentUser.id });
-    if (currentUser?.name) assignedMatch.push({ assignedToName: { equals: currentUser.name, mode: 'insensitive' } });
-    if (currentUser?.email) assignedMatch.push({ assignedTo: currentUser.email });
-
-    // Include leads created or qualified by this user/employee
-    if (currentUser?.name) {
-      assignedMatch.push({ createdBy: { equals: currentUser.name, mode: 'insensitive' } });
-      assignedMatch.push({ createdByName: { equals: currentUser.name, mode: 'insensitive' } });
-    }
-    if (currentUser?.email) {
-      assignedMatch.push({ createdBy: { equals: currentUser.email, mode: 'insensitive' } });
-    }
-    if (currentUser?.id) {
-      assignedMatch.push({ createdBy: currentUser.id });
-    }
-    if (emp?.id) {
-      assignedMatch.push({ createdBy: emp.id });
-    }
-    if (emp?.name) {
-      assignedMatch.push({ createdBy: { equals: emp.name, mode: 'insensitive' } });
-      assignedMatch.push({ createdByName: { equals: emp.name, mode: 'insensitive' } });
-    }
-
-    if (assignedMatch.length > 0) {
-      baseWhere = { OR: assignedMatch };
-    } else {
-      baseWhere = { id: '__none__' };
+  if (currentUser) {
+    const userScope = await resolveUserScope(currentUser, 'leads');
+    const scopeFilter = buildLeadScopeFilter(userScope);
+    if (scopeFilter) {
+      baseWhere = scopeFilter;
     }
   }
 
@@ -310,6 +243,15 @@ export async function updateLeadService(id, body, currentUser = null) {
     throw error;
   }
 
+  if (currentUser) {
+    const userScope = await resolveUserScope(currentUser, 'leads');
+    if (!isRecordAccessible(existing, userScope)) {
+      const error = new Error('Access denied: You do not have permission to edit this lead.');
+      error.status = 403;
+      throw error;
+    }
+  }
+
   const {
     name,
     email,
@@ -426,15 +368,6 @@ export async function updateLeadService(id, body, currentUser = null) {
  * 7. Delete Lead
  */
 export async function deleteLeadService(id, currentUser = null) {
-  const roleUpper = (currentUser?.role || '').toUpperCase();
-  const isSuperAdmin = !currentUser || roleUpper === 'SUPER_ADMIN' || roleUpper.includes('ADMIN');
-
-  if (currentUser && !isSuperAdmin) {
-    const error = new Error('Access denied. Only Super Admin can delete leads.');
-    error.status = 403;
-    throw error;
-  }
-
   const existing = await prisma.lead.findFirst({
     where: { OR: [{ id }, { leadId: id }] },
   });
@@ -443,6 +376,15 @@ export async function deleteLeadService(id, currentUser = null) {
     const error = new Error('Lead not found');
     error.status = 404;
     throw error;
+  }
+
+  if (currentUser) {
+    const userScope = await resolveUserScope(currentUser, 'leads');
+    if (!isRecordAccessible(existing, userScope)) {
+      const error = new Error('Access denied: You do not have permission to delete this lead.');
+      error.status = 403;
+      throw error;
+    }
   }
 
   await prisma.lead.delete({

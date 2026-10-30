@@ -26,6 +26,7 @@ interface MeetingTimePickerProps {
   leftSection?: React.ReactNode;
   rightSection?: React.ReactNode;
   error?: React.ReactNode;
+  hideQuickSelect?: boolean;
 }
 
 const STANDARD_TIME_SLOTS = [
@@ -133,6 +134,7 @@ export const MeetingTimePicker: React.FC<MeetingTimePickerProps> = ({
   leftSection,
   rightSection,
   error,
+  hideQuickSelect = false,
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
@@ -332,50 +334,54 @@ export const MeetingTimePicker: React.FC<MeetingTimePickerProps> = ({
           </Group>
 
           {/* Quick Select Buttons */}
-          <Text size="xs" fw={700} c="dimmed" mb={4} style={{ letterSpacing: '0.03em' }}>
-            QUICK SELECT
-          </Text>
-          <SimpleGrid cols={3} spacing={6} mb={8}>
-            {QUICK_TIME_PRESETS.map((slot) => (
-              <Button
-                key={slot}
-                size="xs"
-                radius="md"
-                variant={inputText === slot ? 'filled' : 'light'}
-                color={inputText === slot ? 'orange' : 'gray'}
-                onClick={() => handleSelectSlot(slot)}
-                style={{
-                  fontWeight: 600,
-                  height: 28,
-                  fontSize: 11,
-                }}
-              >
-                {slot}
-              </Button>
-            ))}
-          </SimpleGrid>
+          {!hideQuickSelect && (
+            <>
+              <Text size="xs" fw={700} c="dimmed" mb={4} style={{ letterSpacing: '0.03em' }}>
+                QUICK SELECT
+              </Text>
+              <SimpleGrid cols={3} spacing={6} mb={8}>
+                {QUICK_TIME_PRESETS.map((slot) => (
+                  <Button
+                    key={slot}
+                    size="xs"
+                    radius="md"
+                    variant={inputText === slot ? 'filled' : 'light'}
+                    color={inputText === slot ? 'orange' : 'gray'}
+                    onClick={() => handleSelectSlot(slot)}
+                    style={{
+                      fontWeight: 600,
+                      height: 28,
+                      fontSize: 11,
+                    }}
+                  >
+                    {slot}
+                  </Button>
+                ))}
+              </SimpleGrid>
 
-          {/* Standard Interval Select Dropdown */}
-          <Select
-            size="xs"
-            placeholder="Select standard time slot..."
-            data={STANDARD_TIME_SLOTS}
-            value={STANDARD_TIME_SLOTS.includes(inputText) ? inputText : null}
-            onChange={(val) => {
-              if (val) handleSelectSlot(val);
-            }}
-            searchable
-            clearable
-            radius="md"
-            mb={8}
-            styles={{
-              input: {
-                fontSize: 12,
-                fontWeight: 600,
-              },
-            }}
-          />
-          <Divider mb={8} />
+              {/* Standard Interval Select Dropdown */}
+              <Select
+                size="xs"
+                placeholder="Select standard time slot..."
+                data={STANDARD_TIME_SLOTS}
+                value={STANDARD_TIME_SLOTS.includes(inputText) ? inputText : null}
+                onChange={(val) => {
+                  if (val) handleSelectSlot(val);
+                }}
+                searchable
+                clearable
+                radius="md"
+                mb={8}
+                styles={{
+                  input: {
+                    fontSize: 12,
+                    fontWeight: 600,
+                  },
+                }}
+              />
+              <Divider mb={8} />
+            </>
+          )}
 
           {/* Period (AM / PM) */}
           <Text size="xs" fw={700} c="dimmed" mb={4} style={{ letterSpacing: '0.03em' }}>

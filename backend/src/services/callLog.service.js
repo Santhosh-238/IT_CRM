@@ -415,3 +415,288 @@ export async function deleteCallLogService(id) {
 
   return { id: existing.id, callId: existing.callId };
 }
+
+/**
+ * Format Activity item for Activity Logs module
+ */
+export function formatSectionActivity(act) {
+  if (!act) return null;
+  const meta = typeof act.metadata === 'object' && act.metadata !== null ? act.metadata : {};
+  return {
+    id: act.id,
+    activityNumber: act.activityNumber || `ACT-${act.id.slice(0, 8)}`,
+    type: act.type,
+    title: act.title,
+    description: act.description,
+    leadId: act.leadId,
+    leadName: act.leadName,
+    customerId: act.customerId,
+    customerName: act.customerName || meta.companyName || '',
+    contactId: act.contactId,
+    contactName: act.contactName || '',
+    phone: meta.phoneNumber || meta.phone || '',
+    phoneNumber: meta.phoneNumber || meta.phone || '',
+    email: meta.email || '',
+    messageType: meta.messageType || (act.title?.includes('Template') ? 'Template Message' : (act.title?.includes('Direct') ? 'Direct Message' : (act.title?.includes('Incoming') ? 'Incoming' : 'Outgoing'))),
+    emailType: meta.emailType || (act.title?.includes('Proposal') ? 'Proposal' : (act.title?.includes('Introduction') ? 'Introduction' : (act.title?.includes('Incoming') ? 'Incoming' : 'Outgoing'))),
+    activityType: meta.activityType || (act.title?.includes('Direct Visit') ? 'Direct Visit' : (act.title?.includes('SMS') ? 'SMS' : (act.title?.includes('Social') ? 'Social Media' : (act.title?.includes('Event') ? 'Event / Exhibition' : 'Other')))),
+    status: act.status || 'Completed',
+    activityDate: act.activityDate,
+    activityTime: act.activityTime || '10:00 AM',
+    performedBy: act.performedBy || 'Staff',
+    performedById: act.performedById,
+    nextFollowDate: meta.nextFollowDate || null,
+    metadata: meta,
+    createdAt: act.createdAt,
+    updatedAt: act.updatedAt,
+  };
+}
+
+/**
+ * 7. Get Section Activities (whatsapp, email, others, calls)
+ */
+export async function getSectionActivitiesService(section = 'calls', queryParams = {}) {
+  const sec = String(section).toLowerCase().trim();
+  if (sec === 'calls' || sec === 'call') {
+    return getCallLogsService(queryParams);
+  }
+
+  const {
+    status,
+    search,
+    date,
+    startDate,
+    endDate,
+    contactId,
+    leadId,
+    page,
+    limit,
+    sortBy = 'createdAt',
+    sortOrder = 'desc',
+  } = queryParams;
+
+  const where = {};
+
+  if (sec === 'whatsapp') {
+    where.type = 'whatsapp';
+  } else if (sec === 'email') {
+    where.type = 'email';
+  } else {
+    // others
+    where.type = { in: ['other', 'others', 'task'] };
+  }
+
+  if (status && status !== 'ALL' && status !== 'All') {
+    where.status = { equals: status, mode: 'insensitive' };
+  }
+
+  if (contactId && contactId !== 'ALL') {
+    where.contactId = contactId;
+  }
+
+  if (leadId && leadId !== 'ALL') {
+    where.leadId = leadId;
+  }
+
+  if (date && date !== 'ALL') {
+    where.activityDate = date;
+  } else {
+    if (startDate && endDate) {
+      where.activityDate = { gte: startDate, lte: endDate };
+    } else if (startDate) {
+      where.activityDate = { gte: startDate };
+    } else if (endDate) {
+      where.activityDate = { lte: endDate };
+    }
+  }
+
+  if (search && search.trim()) {
+    const s = search.trim();
+    where.OR = [
+      { activityNumber: { contains: s, mode: 'insensitive' } },
+      { contactName: { contains: s, mode: 'insensitive' } },
+      { customerName: { contains: s, mode: 'insensitive' } },
+      { performedBy: { contains: s, mode: 'insensitive' } },
+      { title: { contains: s, mode: 'insensitive' } },
+      { description: { contains: s, mode: 'insensitive' } },
+      { status: { contains: s, mode: 'insensitive' } },
+    ];
+  }
+
+  const orderBy = [];
+  if (sortBy === 'activityDate' || sortBy === 'callDate') {
+    orderBy.push({ activityDate: sortOrder === 'asc' ? 'asc' : 'desc' });
+  } else {
+    orderBy.push({ [sortBy]: sortOrder === 'asc' ? 'asc' : 'desc' });
+  }
+
+  let items;
+  let total;
+
+  if (page && limit) {
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 10));
+    const skip = (pageNum - 1) * limitNum;
+
+    [total, items] = await Promise.all([
+      prisma.activity.count({ where }),
+      prisma.activity.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limitNum,
+      }),
+    ]);
+  } else {
+    items = await prisma.activity.findMany({
+      where,
+      orderBy,
+    });
+    total = items.length;
+  }
+
+  return {
+    count: total,
+    items: items.map(formatSectionActivity),
+  };
+}
+
+/**
+ * 8. Get Section Statistics (calls, whatsapp, email, others)
+ */
+export async function getSectionStatsService(section = 'calls') {
+  const sec = String(section).toLowerCase().trim();
+  if (sec === 'calls' || sec === 'call') {
+    return getCallLogStatsService();
+  }
+
+  if (sec === 'whatsapp') {
+    const baseWhere = { type: 'whatsapp' };
+    const [total, sent, replied, interested, followUp, failed, notInterested] = await Promise.all([
+      prisma.activity.count({ where: baseWhere }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Sent', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Replied', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Interested', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Follow', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Failed', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Not Interested', mode: 'insensitive' } } }),
+    ]);
+    return { total, sent, replied, interested, followUp, failed, notInterested };
+  }
+
+  if (sec === 'email') {
+    const baseWhere = { type: 'email' };
+    const [total, sent, replied, draft, interested, followUp, failed, notInterested] = await Promise.all([
+      prisma.activity.count({ where: baseWhere }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Sent', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Replied', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Draft', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Interested', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Follow', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Failed', mode: 'insensitive' } } }),
+      prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Not Interested', mode: 'insensitive' } } }),
+    ]);
+    return { total, sent, replied, draft, interested, followUp, failed, notInterested };
+  }
+
+  // others
+  const baseWhere = { type: { in: ['other', 'others', 'task'] } };
+  const [total, interested, followUp, notInterested, directVisit, sms] = await Promise.all([
+    prisma.activity.count({ where: baseWhere }),
+    prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Interested', mode: 'insensitive' } } }),
+    prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Follow', mode: 'insensitive' } } }),
+    prisma.activity.count({ where: { ...baseWhere, status: { contains: 'Not Interested', mode: 'insensitive' } } }),
+    prisma.activity.count({ where: { ...baseWhere, OR: [{ title: { contains: 'Visit', mode: 'insensitive' } }, { description: { contains: 'Visit', mode: 'insensitive' } }] } }),
+    prisma.activity.count({ where: { ...baseWhere, OR: [{ title: { contains: 'SMS', mode: 'insensitive' } }, { description: { contains: 'SMS', mode: 'insensitive' } }] } }),
+  ]);
+  return { total, interested, followUp, notInterested, directVisit, sms };
+}
+
+/**
+ * 9. Create Section Activity (whatsapp, email, others)
+ */
+export async function createSectionActivityService(section, data, user) {
+  const sec = String(section).toLowerCase().trim();
+  if (sec === 'calls' || sec === 'call') {
+    return createCallLogService(data);
+  }
+
+  const now = new Date();
+  const todayStr = data.activityDate || now.toISOString().slice(0, 10);
+  const timeStr = data.activityTime || '10:00 AM';
+
+  const type = sec === 'whatsapp' ? 'whatsapp' : (sec === 'email' ? 'email' : 'other');
+  const count = await prisma.activity.count();
+  const prefix = sec === 'whatsapp' ? 'WA' : (sec === 'email' ? 'EML' : 'ACT');
+  const activityNumber = `${prefix}-2026-${1001 + count}`;
+
+  const meta = {
+    ...(data.metadata || {}),
+    phoneNumber: data.phoneNumber || data.phone || undefined,
+    email: data.email || undefined,
+    messageType: data.messageType || (sec === 'whatsapp' ? 'Outgoing' : undefined),
+    emailType: data.emailType || (sec === 'email' ? 'Outgoing' : undefined),
+    activityType: data.activityType || (sec === 'others' ? 'Direct Visit' : undefined),
+    nextFollowDate: data.nextFollowDate || undefined,
+    companyName: data.companyName || data.customerName || undefined,
+  };
+
+  const activity = await prisma.activity.create({
+    data: {
+      activityNumber,
+      type,
+      title: data.title || `${sec.toUpperCase()}: ${data.status || 'Logged'}`,
+      description: data.description || '',
+      contactId: data.contactId || null,
+      contactName: data.contactName || 'Contact',
+      customerName: data.customerName || data.companyName || null,
+      status: data.status || (sec === 'whatsapp' ? 'Msg Sent' : (sec === 'email' ? 'Mail Sent' : 'Interested')),
+      performedBy: data.performedBy || user?.name || 'Staff',
+      performedById: data.performedById ? String(data.performedById) : (user?.id ? String(user.id) : null),
+      activityDate: todayStr,
+      activityTime: timeStr,
+      metadata: meta,
+    },
+  });
+
+  try {
+    if (io) {
+      io.emit('activity:created', formatSectionActivity(activity));
+      io.emit('activity:new', formatSectionActivity(activity));
+    }
+  } catch (_) {}
+
+  return formatSectionActivity(activity);
+}
+
+/**
+ * 10. Delete Section Activity
+ */
+export async function deleteSectionActivityService(section, id) {
+  const sec = String(section).toLowerCase().trim();
+  if (sec === 'calls' || sec === 'call') {
+    return deleteCallLogService(id);
+  }
+
+  const existing = await prisma.activity.findFirst({
+    where: { OR: [{ id }, { activityNumber: id }] },
+  });
+
+  if (!existing) {
+    const error = new Error('Activity record not found.');
+    error.status = 404;
+    throw error;
+  }
+
+  await prisma.activity.delete({
+    where: { id: existing.id },
+  });
+
+  try {
+    if (io) {
+      io.emit('activity:deleted', { id: existing.id });
+    }
+  } catch (_) {}
+
+  return { id: existing.id, success: true };
+}

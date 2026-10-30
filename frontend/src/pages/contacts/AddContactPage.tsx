@@ -126,7 +126,7 @@ export const AddContactPage: React.FC<AddContactPageProps> = ({ onBack, initialD
 
     try {
       const payload: ContactFormData = {
-        name: formData.name.trim(),
+        name: (formData.name || '').trim(),
         companyName: formData.companyName?.trim(),
         contactPerson: formData.contactPerson?.trim() || undefined,
         email: formData.email?.trim() || undefined,

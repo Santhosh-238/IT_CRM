@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -25,13 +25,21 @@ import {
   IconChevronRight,
   IconBuilding,
   IconUser,
+  IconFileSpreadsheet,
+  IconDownload,
+  IconUpload,
 } from '@tabler/icons-react';
 import { useContact } from '../../context/ContactContext';
 import { useCRM } from '../../context/CRMContext';
-import { Contact } from '../../types/contact';
+import { Contact, ImportBatch } from '../../types/contact';
 import { ContactTableView } from './components/ContactTableView';
 import { ContactModal } from './components/ContactModal';
 import { ContactDrawer } from './components/ContactDrawer';
+import { BulkImportSection, downloadSampleCSV } from './components/BulkImportSection';
+import { BulkImportHistoryTable } from './components/BulkImportHistoryTable';
+import { BatchDetailsView } from './components/BatchDetailsView';
+import contactService from '../../services/contactService';
+import { notifications } from '@mantine/notifications';
 import { CRM_COLORS } from '../../theme/colors';
 import {
   DateFilterControl,
@@ -40,7 +48,7 @@ import {
   isDateMatchingFilter,
 } from '../../components/common/DateFilterControl';
 
-type ActiveTabType = 'NEW' | 'ASSIGNED';
+type ActiveTabType = 'BULK_IMPORT' | 'NEW' | 'ASSIGNED';
 
 export const ContactsPage: React.FC = () => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
@@ -67,7 +75,7 @@ export const ContactsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTabType>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('crm_contacts_tab') as ActiveTabType;
-      if (saved === 'NEW' || saved === 'ASSIGNED') {
+      if (saved === 'BULK_IMPORT' || saved === 'NEW' || saved === 'ASSIGNED') {
         return saved;
       }
     }
@@ -77,9 +85,93 @@ export const ContactsPage: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<Contact | null>(null);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
+  // Modal State for Delete Batch Confirmation
+  const [deleteBatchTarget, setDeleteBatchTarget] = useState<ImportBatch | null>(null);
+  const [deleteBatchLoading, setDeleteBatchLoading] = useState<boolean>(false);
+
   // Modal State for Add / Edit Contact Popup
   const [contactModalOpened, setContactModalOpened] = useState<boolean>(false);
   const [modalContact, setModalContact] = useState<Contact | null>(null);
+  const [bulkModalOpened, setBulkModalOpened] = useState<boolean>(false);
+
+  // Batch Selection & History State for Bulk Import
+  const [selectedBatch, setSelectedBatch] = useState<ImportBatch | null>(null);
+  const [batches, setBatches] = useState<ImportBatch[]>([]);
+  const [batchesLoading, setBatchesLoading] = useState<boolean>(false);
+  const [batchPage, setBatchPage] = useState<number>(1);
+  const [batchPagination, setBatchPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+  });
+
+  const fetchImportBatches = useCallback(async (pageToLoad = batchPage) => {
+    try {
+      setBatchesLoading(true);
+      const res = await contactService.getImportBatches({
+        page: pageToLoad,
+        limit: 10,
+        sortBy: 'createdAt',
+        sortOrder: 'desc',
+      });
+      if (res.success) {
+        setBatches(res.data || []);
+        if (res.pagination) {
+          setBatchPagination({
+            total: res.pagination.total ?? 0,
+            page: res.pagination.page ?? pageToLoad,
+            limit: res.pagination.limit ?? 10,
+            totalPages: res.pagination.totalPages ?? 1,
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch import batches:', err);
+    } finally {
+      setBatchesLoading(false);
+    }
+  }, [batchPage]);
+
+  useEffect(() => {
+    if (activeTab === 'BULK_IMPORT') {
+      fetchImportBatches(batchPage);
+    }
+  }, [activeTab, batchPage, fetchImportBatches]);
+
+  const handleDeleteBatch = (batchToDelete: ImportBatch) => {
+    setDeleteBatchTarget(batchToDelete);
+  };
+
+  const handleConfirmDeleteBatch = async () => {
+    if (!deleteBatchTarget) return;
+    try {
+      setDeleteBatchLoading(true);
+      const res = await contactService.deleteImportBatch(deleteBatchTarget.batchId);
+      if (res.success) {
+        notifications.show({
+          title: 'Batch Deleted',
+          message: res.message || 'Import batch deleted.',
+          color: 'teal',
+        });
+        if (selectedBatch?.batchId === deleteBatchTarget.batchId) {
+          setSelectedBatch(null);
+        }
+        setDeleteBatchTarget(null);
+        fetchImportBatches(1);
+        fetchStats();
+        fetchContacts();
+      }
+    } catch (err: any) {
+      notifications.show({
+        title: 'Error Deleting Batch',
+        message: err.message || 'Could not delete batch.',
+        color: 'red',
+      });
+    } finally {
+      setDeleteBatchLoading(false);
+    }
+  };
 
   const [searchInput, setSearchInput] = useState<string>(filters.search || '');
   const [dateFilter, setDateFilter] = useState<DateFilterValue>(DEFAULT_DATE_FILTER);
@@ -92,7 +184,16 @@ export const ContactsPage: React.FC = () => {
         const myEmail = currentUser?.email?.toLowerCase().trim();
         const myId = currentUser?.id?.toLowerCase().trim();
 
-        if (activeTab === 'NEW' || c.assignmentStatus === 'Unassigned') {
+        if (activeTab === 'BULK_IMPORT') {
+          const creator = (c.createdBy || '').toLowerCase().trim();
+          const assignedName = (c.assignedToName || '').toLowerCase().trim();
+          const assignedId = (c.assignedTo || '').toLowerCase().trim();
+          const isMine =
+            (myName && (creator === myName || assignedName === myName || assignedName.includes(myName))) ||
+            (myEmail && (creator === myEmail || assignedId === myEmail)) ||
+            (myId && (creator === myId || assignedId === myId));
+          if (!isMine) return false;
+        } else if (activeTab === 'NEW' || c.assignmentStatus === 'Unassigned') {
           // Employee sees unassigned contacts created by themselves
           const creator = (c.createdBy || '').toLowerCase().trim();
           const isMine =
@@ -112,12 +213,27 @@ export const ContactsPage: React.FC = () => {
         }
       }
 
+      if (activeTab === 'BULK_IMPORT') {
+        const src = (c.source || '').toLowerCase().trim();
+        if (!(c as any).isBulkRecord && src !== 'bulk import' && src !== 'import') return false;
+      } else {
+        const src = (c.source || '').toLowerCase().trim();
+        if ((c as any).isBulkRecord || src === 'bulk import' || src === 'import') return false;
+      }
+
       // Status filter matching (checks both status and qualificationStatus)
       if (filters.status && filters.status !== 'All') {
         const s = filters.status.toLowerCase().trim();
         const contactStatus = (c.status || '').toLowerCase().trim();
         const qualStatus = (c.qualificationStatus || '').toLowerCase().trim();
+        const isNotConnected =
+          contactStatus === 'not connected' ||
+          contactStatus === 'new' ||
+          qualStatus === 'new' ||
+          (!contactStatus && !qualStatus) ||
+          (contactStatus !== 'qualified' && contactStatus !== 'unqualified' && contactStatus !== 'disqualified' && qualStatus !== 'qualified' && qualStatus !== 'unqualified' && qualStatus !== 'disqualified');
         const matchesStatus =
+          (s === 'not connected' && isNotConnected) ||
           contactStatus === s ||
           qualStatus === s ||
           (s === 'disqualified' && (qualStatus === 'unqualified' || contactStatus === 'unqualified')) ||
@@ -140,9 +256,11 @@ export const ContactsPage: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'ASSIGNED') {
       const assignedTarget = !isAdmin && currentUser?.name ? currentUser.name : 'All';
-      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: assignedTarget, sortBy: 'updatedAt', sortOrder: 'desc' });
+      setFilters({ assignmentStatus: 'Assigned', status: 'All', source: 'All', assignedTo: assignedTarget, sortBy: 'updatedAt', sortOrder: 'desc' });
+    } else if (activeTab === 'BULK_IMPORT') {
+      setFilters({ source: 'Bulk Import', assignmentStatus: 'All', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     } else {
-      setFilters({ assignmentStatus: 'Unassigned', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
+      setFilters({ assignmentStatus: 'Unassigned', status: 'All', source: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     }
   }, [activeTab, isAdmin, currentUser?.name]);
 
@@ -181,14 +299,18 @@ export const ContactsPage: React.FC = () => {
 
   const handleTabChange = (tab: ActiveTabType) => {
     setActiveTab(tab);
+    setSelectedBatch(null);
     if (typeof window !== 'undefined') {
       localStorage.setItem('crm_contacts_tab', tab);
     }
     if (tab === 'ASSIGNED') {
       const assignedTarget = !isAdmin && currentUser?.name ? currentUser.name : 'All';
-      setFilters({ assignmentStatus: 'Assigned', status: 'All', assignedTo: assignedTarget, sortBy: 'updatedAt', sortOrder: 'desc' });
+      setFilters({ assignmentStatus: 'Assigned', status: 'All', source: 'All', assignedTo: assignedTarget, sortBy: 'updatedAt', sortOrder: 'desc' });
+    } else if (tab === 'BULK_IMPORT') {
+      setFilters({ source: 'Bulk Import', assignmentStatus: 'All', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
+      fetchImportBatches(1);
     } else {
-      setFilters({ assignmentStatus: 'Unassigned', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
+      setFilters({ assignmentStatus: 'Unassigned', status: 'All', source: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     }
   };
 
@@ -228,57 +350,91 @@ export const ContactsPage: React.FC = () => {
     }
   };
 
-  const statusOptions = [
-    { value: 'All', label: 'All Statuses' },
-    { value: 'Qualified', label: 'Qualified' },
-    { value: 'In Progress', label: 'In Progress' },
-    { value: 'Follow-up Required', label: 'Follow-up Required' },
-    { value: 'Disqualified', label: 'Disqualified' },
-    ...(metadata?.statuses && metadata.statuses.length > 0
-      ? metadata.statuses
-          .filter((s) => !['Qualified', 'In Progress', 'Follow-up Required', 'Disqualified'].includes(s))
-          .map((s) => ({ value: s, label: s }))
-      : [
-          { value: 'New', label: 'New' },
-          { value: 'Active', label: 'Active' },
-          { value: 'Won', label: 'Won' },
-          { value: 'Lost', label: 'Lost' },
-        ]),
-  ];
+  const statusOptions = useMemo(() => {
+    const rawOptions = [
+      { value: 'All', label: 'All Statuses' },
+      { value: 'Not Connected', label: 'Not Connected' },
+      { value: 'Qualified', label: 'Qualified' },
+      { value: 'In Progress', label: 'In Progress' },
+      { value: 'Follow-up Required', label: 'Follow-up Required' },
+      { value: 'Disqualified', label: 'Disqualified' },
+      ...(metadata?.statuses && metadata.statuses.length > 0
+        ? metadata.statuses
+            .filter((s) => !['All', 'Not Connected', 'Qualified', 'In Progress', 'Follow-up Required', 'Disqualified'].includes(s))
+            .map((s) => ({ value: s, label: s }))
+        : [
+            { value: 'New', label: 'New' },
+            { value: 'Active', label: 'Active' },
+            { value: 'Won', label: 'Won' },
+            { value: 'Lost', label: 'Lost' },
+          ]),
+    ];
+    const seen = new Set<string>();
+    return rawOptions.filter((opt) => {
+      if (!opt.value || seen.has(opt.value)) return false;
+      seen.add(opt.value);
+      return true;
+    });
+  }, [metadata?.statuses]);
 
-  const sourceOptions = [
-    { value: 'All', label: 'All Sources' },
-    { value: 'Social Media', label: 'Social Media' },
-    { value: 'Website', label: 'Website' },
-    { value: 'Referral', label: 'Referral' },
-    { value: 'Cold Call', label: 'Cold Call' },
-    { value: 'LinkedIn', label: 'LinkedIn' },
-    { value: 'Other', label: 'Other' },
-    ...(metadata?.sources
-      ?.filter(
-        (s) =>
-          !['Social Media', 'Website', 'Referral', 'Cold Call', 'LinkedIn', 'Other'].includes(s)
-      )
-      .map((s) => ({ value: s, label: s })) || []),
-  ];
+  const sourceOptions = useMemo(() => {
+    const rawOptions = [
+      { value: 'All', label: 'All Sources' },
+      { value: 'Bulk Import', label: 'Bulk Import' },
+      { value: 'Social Media', label: 'Social Media' },
+      { value: 'Website', label: 'Website' },
+      { value: 'Referral', label: 'Referral' },
+      { value: 'Cold Call', label: 'Cold Call' },
+      { value: 'LinkedIn', label: 'LinkedIn' },
+      { value: 'Other', label: 'Other' },
+      ...(metadata?.sources
+        ?.filter(
+          (s) =>
+            !['All', 'Bulk Import', 'Social Media', 'Website', 'Referral', 'Cold Call', 'LinkedIn', 'Other'].includes(s)
+        )
+        .map((s) => ({ value: s, label: s })) || []),
+    ];
+    const seen = new Set<string>();
+    return rawOptions.filter((opt) => {
+      if (!opt.value || seen.has(opt.value)) return false;
+      seen.add(opt.value);
+      return true;
+    });
+  }, [metadata?.sources]);
 
   const assignedOptions = useMemo(() => {
+    let opts: { value: string; label: string }[] = [];
     if (!isAdmin) {
-      return [
+      opts = [
         { value: currentUser?.name || 'Assigned', label: 'My Assigned Contacts' },
         { value: 'Unassigned', label: 'Unassigned Only' },
       ];
+    } else {
+      opts = [
+        { value: 'All', label: 'All Assigned' },
+        ...(currentUser?.name ? [{ value: currentUser.name, label: `Assigned to Me (${currentUser.name})` }] : []),
+        { value: 'Assigned', label: 'Assigned Only' },
+        { value: 'Unassigned', label: 'Unassigned Only' },
+        ...(metadata?.employees?.map((emp) => ({ value: emp.id, label: emp.name })) || []),
+      ];
     }
-    return [
-      { value: 'All', label: 'All Assigned' },
-      ...(currentUser?.name ? [{ value: currentUser.name, label: `Assigned to Me (${currentUser.name})` }] : []),
-      { value: 'Assigned', label: 'Assigned Only' },
-      { value: 'Unassigned', label: 'Unassigned Only' },
-      ...(metadata?.employees?.map((emp) => ({ value: emp.id, label: emp.name })) || []),
-    ];
+    const seen = new Set<string>();
+    return opts.filter((opt) => {
+      if (!opt.value || seen.has(opt.value)) return false;
+      seen.add(opt.value);
+      return true;
+    });
   }, [isAdmin, currentUser, metadata?.employees]);
 
   const totalCount = stats?.total ?? contacts.length;
+  const bulkImportCount = useMemo(() => {
+    if (stats?.bulkImport !== undefined) return stats.bulkImport;
+    return contacts.filter((c) => {
+      const src = (c.source || '').toLowerCase().trim();
+      return src === 'bulk import' || src === 'import';
+    }).length;
+  }, [stats?.bulkImport, contacts]);
+
   const newCount = useMemo(() => {
     if (isAdmin) return stats?.unassigned ?? stats?.new ?? 0;
     if (stats?.unassigned !== undefined) return stats.unassigned;
@@ -303,11 +459,12 @@ export const ContactsPage: React.FC = () => {
     ).length;
   }, [isAdmin, stats?.assigned, contacts, currentUser]);
 
-  const startRecord = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
-  const endRecord = Math.min(pagination.page * pagination.limit, pagination.total);
+  const totalRecords = pagination.total ?? filteredContacts.length ?? 0;
+  const startRecord = totalRecords === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
+  const endRecord = Math.min(pagination.page * pagination.limit, totalRecords);
 
   return (
-    <Box p={{ base: 'xs', sm: 'sm', md: 'md' }} style={{ width: '100%', maxWidth: '100%' }}>
+    <Box p={{ base: 'xs', sm: 'sm' }} style={{ width: '100%', maxWidth: '100%', overflow: 'hidden' }}>
       {/* 1. Header Toolbar */}
       <Paper
         p="sm"
@@ -318,7 +475,7 @@ export const ContactsPage: React.FC = () => {
           boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
         }}
       >
-        <Group justify="space-between" align="center" wrap="nowrap" gap={8}>
+        <Group justify="space-between" align="center" wrap="wrap" gap={8}>
           {/* Left: Modern Capsule Segmented Tabs */}
           <Box
             style={{
@@ -331,7 +488,69 @@ export const ContactsPage: React.FC = () => {
               flexShrink: 0,
             }}
           >
-
+            {/* Tab: Bulk Import */}
+            <UnstyledButton
+              onClick={() => handleTabChange('BULK_IMPORT')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '5px 9px',
+                borderRadius: 8,
+                backgroundColor:
+                  activeTab === 'BULK_IMPORT'
+                    ? isDark
+                      ? '#0F172A'
+                      : '#FFFFFF'
+                    : 'transparent',
+                boxShadow:
+                  activeTab === 'BULK_IMPORT'
+                    ? isDark
+                      ? '0 1px 3px rgba(0, 0, 0, 0.4)'
+                      : '0 1px 3px rgba(0, 0, 0, 0.08)'
+                    : 'none',
+                color:
+                  activeTab === 'BULK_IMPORT'
+                    ? isDark
+                      ? '#38BDF8'
+                      : '#0284C7'
+                    : isDark
+                    ? '#94A3B8'
+                    : '#64748B',
+                fontWeight: activeTab === 'BULK_IMPORT' ? 700 : 500,
+                fontSize: 12.5,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>Bulk Import</span>
+              <Box
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: 18,
+                  height: 18,
+                  padding: '0 5px',
+                  borderRadius: 10,
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  backgroundColor:
+                    activeTab === 'BULK_IMPORT'
+                      ? '#0284C7'
+                      : isDark
+                      ? 'rgba(255, 255, 255, 0.1)'
+                      : '#E2E8F0',
+                  color:
+                    activeTab === 'BULK_IMPORT'
+                      ? '#FFFFFF'
+                      : isDark
+                      ? '#CBD5E1'
+                      : '#64748B',
+                }}
+              >
+                {bulkImportCount}
+              </Box>
+            </UnstyledButton>
 
             {/* Tab: New */}
             <UnstyledButton
@@ -339,8 +558,8 @@ export const ContactsPage: React.FC = () => {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
-                padding: '5px 11px',
+                gap: 5,
+                padding: '5px 9px',
                 borderRadius: 8,
                 backgroundColor:
                   activeTab === 'NEW'
@@ -363,7 +582,7 @@ export const ContactsPage: React.FC = () => {
                     ? '#94A3B8'
                     : '#64748B',
                 fontWeight: activeTab === 'NEW' ? 700 : 500,
-                fontSize: 13,
+                fontSize: 12.5,
                 transition: 'all 0.15s ease',
               }}
             >
@@ -373,11 +592,11 @@ export const ContactsPage: React.FC = () => {
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minWidth: 20,
-                  height: 20,
-                  padding: '0 6px',
+                  minWidth: 18,
+                  height: 18,
+                  padding: '0 5px',
                   borderRadius: 10,
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   backgroundColor:
                     activeTab === 'NEW'
@@ -397,14 +616,14 @@ export const ContactsPage: React.FC = () => {
               </Box>
             </UnstyledButton>
 
-            {/* Tab: Assigned */}
+            {/* Tab: Qualification */}
             <UnstyledButton
               onClick={() => handleTabChange('ASSIGNED')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
-                padding: '5px 11px',
+                gap: 5,
+                padding: '5px 9px',
                 borderRadius: 8,
                 backgroundColor:
                   activeTab === 'ASSIGNED'
@@ -427,21 +646,21 @@ export const ContactsPage: React.FC = () => {
                     ? '#94A3B8'
                     : '#64748B',
                 fontWeight: activeTab === 'ASSIGNED' ? 700 : 500,
-                fontSize: 13,
+                fontSize: 12.5,
                 transition: 'all 0.15s ease',
               }}
             >
-              <span>Assigned</span>
+              <span>Qualification</span>
               <Box
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minWidth: 20,
-                  height: 20,
-                  padding: '0 6px',
+                  minWidth: 18,
+                  height: 18,
+                  padding: '0 5px',
                   borderRadius: 10,
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   backgroundColor:
                     activeTab === 'ASSIGNED'
@@ -463,9 +682,9 @@ export const ContactsPage: React.FC = () => {
           </Box>
 
           {/* Right: Search, Filter Selects & Add Button (All in Single Row) */}
-          <Group gap={6} align="center" wrap="nowrap" style={{ flexShrink: 0 }}>
+          <Group gap={6} align="center" wrap="wrap" style={{ flexShrink: 1, minWidth: 0, justifyContent: 'flex-end' }}>
             {/* Search contacts... */}
-            <form onSubmit={handleSearchSubmit} style={{ width: 160 }}>
+            <form onSubmit={handleSearchSubmit} style={{ width: 140 }}>
               <TextInput
                 placeholder="Search contacts..."
                 leftSection={<IconSearch size={14} color="#94A3B8" />}
@@ -514,7 +733,7 @@ export const ContactsPage: React.FC = () => {
               onChange={(val) => setFilters({ status: val || 'All' })}
               size="sm"
               radius="md"
-              style={{ width: 122 }}
+              style={{ width: 112 }}
               comboboxProps={{ width: 195, position: 'bottom-start', withinPortal: true, shadow: 'md' }}
               styles={{
                 input: {
@@ -531,29 +750,31 @@ export const ContactsPage: React.FC = () => {
               }}
             />
 
-            {/* All Sources */}
-            <Select
-              data={sourceOptions}
-              value={filters.source || 'All'}
-              onChange={(val) => setFilters({ source: val || 'All' })}
-              size="sm"
-              radius="md"
-              style={{ width: 118 }}
-              comboboxProps={{ width: 175, position: 'bottom-start', withinPortal: true, shadow: 'md' }}
-              styles={{
-                input: {
-                  backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
-                  fontSize: 12.5,
-                  height: 36,
-                },
-                option: {
-                  fontSize: 12.5,
-                  padding: '7px 12px',
-                  whiteSpace: 'nowrap',
-                },
-              }}
-            />
+            {/* All Sources (Hidden in Bulk Import page) */}
+            {activeTab !== 'BULK_IMPORT' && (
+              <Select
+                data={sourceOptions}
+                value={filters.source || 'All'}
+                onChange={(val) => setFilters({ source: val || 'All' })}
+                size="sm"
+                radius="md"
+                style={{ width: 108 }}
+                comboboxProps={{ width: 175, position: 'bottom-start', withinPortal: true, shadow: 'md' }}
+                styles={{
+                  input: {
+                    backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#E2E8F0',
+                    fontSize: 12.5,
+                    height: 36,
+                  },
+                  option: {
+                    fontSize: 12.5,
+                    padding: '7px 12px',
+                    whiteSpace: 'nowrap',
+                  },
+                }}
+              />
+            )}
 
             {/* All Assigned (Admin Only) */}
             {isAdmin && (
@@ -577,7 +798,7 @@ export const ContactsPage: React.FC = () => {
                 }}
                 size="sm"
                 radius="md"
-                style={{ width: 165 }}
+                style={{ width: 125 }}
                 comboboxProps={{ width: 220, position: 'bottom-start', withinPortal: true, shadow: 'md' }}
                 styles={{
                   input: {
@@ -596,121 +817,241 @@ export const ContactsPage: React.FC = () => {
             )}
 
             {/* Date Filter: Day-wise & Month-wise */}
-            <DateFilterControl value={dateFilter} onChange={setDateFilter} width={112} />
+            <DateFilterControl value={dateFilter} onChange={setDateFilter} width={104} />
 
-            {/* + Add Contact Button */}
-            <Button
-              size="sm"
-              radius="md"
-              leftSection={<IconPlus size={15} stroke={2.5} />}
-              onClick={handleOpenAddModal}
-              style={{
-                background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
-                color: '#FFFFFF',
-                fontWeight: 600,
-                fontSize: 12.5,
-                height: 36,
-                padding: '0 14px',
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)',
-                transition: 'all 0.15s ease',
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}
-            >
-              Add Contact
-            </Button>
+            {/* + Add Contact Button (Hidden in Bulk Import section) */}
+            {activeTab !== 'BULK_IMPORT' && (
+              <Button
+                size="sm"
+                radius="md"
+                leftSection={<IconPlus size={15} stroke={2.5} />}
+                onClick={handleOpenAddModal}
+                style={{
+                  background: 'linear-gradient(135deg, #4F46E5 0%, #2563EB 100%)',
+                  color: '#FFFFFF',
+                  fontWeight: 600,
+                  fontSize: 12.5,
+                  height: 36,
+                  padding: '0 12px',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.35)',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                Add Contact
+              </Button>
+            )}
           </Group>
         </Group>
       </Paper>
 
-      {/* 2. Contact Table View */}
-      <ContactTableView
-        contacts={filteredContacts}
-        activeTab={activeTab}
-        loading={loading}
-        onView={handleOpenViewDetails}
-        onEdit={(contact) => handleOpenEditModal(contact)}
-        onDelete={(contact) => setDeleteTarget(contact)}
-        onAddNew={handleOpenAddModal}
-        onQualify={handleOpenQualification}
-        onTabChange={handleTabChange}
-      />
-
-      {/* 3. Pagination Footer matching Screenshot */}
-      <Paper
-        mt="md"
-        p="sm"
-        radius="lg"
-        style={{
-          backgroundColor: isDark ? '#111827' : '#FFFFFF',
-          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-        }}
-      >
-        <Group justify="space-between" align="center" wrap="wrap">
-          <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-            Showing {startRecord} to {Math.min(endRecord, filteredContacts.length)} of {dateFilter.type !== 'ALL' ? filteredContacts.length : pagination.total} contacts
-          </Text>
-
-          <Group gap={6} align="center">
-            {/* Previous */}
-            <Button
-              variant="default"
-              size="xs"
-              radius="md"
-              disabled={!pagination.hasPrev}
-              onClick={() => setPage(pagination.page - 1)}
-              leftSection={<IconChevronLeft size={13} />}
+      {/* 2. Main Content Area */}
+      {activeTab === 'BULK_IMPORT' ? (
+        selectedBatch ? (
+          /* BATCH-SPECIFIC DETAILS VIEW (Requirements #2, #3, #4) */
+          <BatchDetailsView
+            batchId={selectedBatch.batchId}
+            onBack={() => setSelectedBatch(null)}
+            onViewContact={handleOpenViewDetails}
+            onEditContact={(contact) => handleOpenEditModal(contact)}
+            onDeleteContact={(contact) => setDeleteTarget(contact)}
+            onQualifyContact={handleOpenQualification}
+          />
+        ) : (
+          /* BULK IMPORT HISTORY VIEW (Requirement #1) */
+          <Box>
+            {/* Header Banner with Download Template and Import CSV buttons */}
+            <Paper
+              p="md"
+              radius="lg"
+              mb="md"
               style={{
-                fontSize: 12,
-                fontWeight: 500,
+                backgroundColor: isDark ? '#111827' : '#FFFFFF',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
               }}
             >
-              Previous
-            </Button>
+              <Group justify="space-between" align="center" wrap="wrap" gap="md">
+                <Group gap="sm">
+                  <ThemeIcon
+                    size={40}
+                    radius="md"
+                    style={{
+                      backgroundColor: isDark ? 'rgba(14, 165, 233, 0.15)' : '#E0F2FE',
+                      color: '#0284C7',
+                    }}
+                  >
+                    <IconFileSpreadsheet size={22} stroke={1.8} />
+                  </ThemeIcon>
+                  <Box>
+                    <Text fw={700} size="sm" style={{ color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                      Bulk Import History
+                    </Text>
+                    <Text size="xs" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                      Track uploaded spreadsheet files and view batch-specific imported contacts.
+                    </Text>
+                  </Box>
+                </Group>
 
-            {/* Page number pill */}
-            <Box
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: 28,
-                height: 28,
-                padding: '0 6px',
-                borderRadius: 6,
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1',
-                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                color: isDark ? '#F8FAFC' : '#0F172A',
-                fontWeight: 600,
-                fontSize: 12,
+                <Group gap="xs">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    radius="md"
+                    leftSection={<IconDownload size={15} color="#0284C7" stroke={2} />}
+                    onClick={downloadSampleCSV}
+                    styles={{
+                      root: {
+                        height: 36,
+                        borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#CBD5E1',
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                      },
+                    }}
+                  >
+                    Download Sample CSV
+                  </Button>
+                  <Button
+                    size="sm"
+                    radius="md"
+                    leftSection={<IconUpload size={15} stroke={2.5} />}
+                    onClick={() => setBulkModalOpened(true)}
+                    style={{
+                      height: 36,
+                      background: 'linear-gradient(135deg, #0284C7 0%, #0369A1 100%)',
+                      color: '#FFFFFF',
+                      fontWeight: 600,
+                      fontSize: 12.5,
+                      border: 'none',
+                      boxShadow: '0 2px 8px rgba(2, 132, 199, 0.35)',
+                    }}
+                  >
+                    Import CSV
+                  </Button>
+                </Group>
+              </Group>
+            </Paper>
+
+            {/* Import History Table */}
+            <BulkImportHistoryTable
+              batches={batches}
+              loading={batchesLoading}
+              pagination={batchPagination}
+              onPageChange={(newPage) => {
+                setBatchPage(newPage);
+                fetchImportBatches(newPage);
               }}
-            >
-              {pagination.page}
-            </Box>
+              onSelectBatch={(batch) => setSelectedBatch(batch)}
+              onDeleteBatch={handleDeleteBatch}
+              onBatchUpdated={() => fetchImportBatches(batchPage)}
+            />
+          </Box>
+        )
+      ) : (
+        /* STANDARD UNIFIED CONTACTS LIST FOR NEW & ASSIGNED TABS */
+        <Box>
+          <ContactTableView
+            contacts={filteredContacts}
+            activeTab={activeTab}
+            loading={loading}
+            onView={(contact) => {
+              if (activeTab === 'NEW' || activeTab === 'ASSIGNED') {
+                handleOpenEditModal(contact);
+              } else {
+                handleOpenViewDetails(contact);
+              }
+            }}
+            onRowClick={(contact) => {
+              if (activeTab === 'NEW' || activeTab === 'ASSIGNED') {
+                handleOpenEditModal(contact);
+              } else {
+                handleOpenViewDetails(contact);
+              }
+            }}
+            onEdit={(contact) => handleOpenEditModal(contact)}
+            onDelete={(contact) => setDeleteTarget(contact)}
+            onAddNew={handleOpenAddModal}
+            onQualify={handleOpenQualification}
+            onTabChange={handleTabChange}
+            onContactUpdated={() => {
+              fetchContacts();
+            }}
+          />
 
-            <Text size="12px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
-              of {pagination.totalPages || 1}
-            </Text>
+          {/* Unified Pagination Footer */}
+          <Paper
+            mt="md"
+            p="sm"
+            radius="lg"
+            style={{
+              backgroundColor: isDark ? '#111827' : '#FFFFFF',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+            }}
+          >
+            <Group justify="space-between" align="center" wrap="wrap">
+              <Text size="13px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                Showing {startRecord} to {endRecord} of {totalRecords} contacts
+              </Text>
 
-            {/* Next */}
-            <Button
-              variant="default"
-              size="xs"
-              radius="md"
-              disabled={!pagination.hasNext}
-              onClick={() => setPage(pagination.page + 1)}
-              rightSection={<IconChevronRight size={13} />}
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-              }}
-            >
-              Next
-            </Button>
-          </Group>
-        </Group>
-      </Paper>
+              <Group gap={6} align="center">
+                <Button
+                  variant="default"
+                  size="xs"
+                  radius="md"
+                  disabled={pagination.page <= 1}
+                  onClick={() => setPage(Math.max(1, pagination.page - 1))}
+                  leftSection={<IconChevronLeft size={13} />}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
+                  Previous
+                </Button>
+
+                <Box
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 28,
+                    height: 28,
+                    padding: '0 6px',
+                    borderRadius: 6,
+                    border: isDark ? '1px solid rgba(255, 255, 255, 0.15)' : '1px solid #CBD5E1',
+                    backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                    color: isDark ? '#F8FAFC' : '#0F172A',
+                    fontWeight: 600,
+                    fontSize: 12,
+                  }}
+                >
+                  {pagination.page}
+                </Box>
+
+                <Text size="12px" style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                  of {pagination.totalPages || 1}
+                </Text>
+
+                <Button
+                  variant="default"
+                  size="xs"
+                  radius="md"
+                  disabled={pagination.page >= (pagination.totalPages || 1)}
+                  onClick={() => setPage(pagination.page + 1)}
+                  rightSection={<IconChevronRight size={13} />}
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
+                  Next
+                </Button>
+              </Group>
+            </Group>
+          </Paper>
+        </Box>
+      )}
 
       {/* 4. Modal Popup for Add / Edit Contact */}
       <ContactModal
@@ -720,9 +1061,40 @@ export const ContactsPage: React.FC = () => {
           setModalContact(null);
         }}
         contact={modalContact}
+        title={modalContact ? "Update contact" : "Create contact"}
+        showContactMode={true}
         onSuccess={() => {
-          handleTabChange('NEW');
+          if (activeTab !== 'BULK_IMPORT') {
+            handleTabChange('NEW');
+          }
           fetchContacts();
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
+          }
+        }}
+      />
+
+      {/* 4b. Modal Popup for Bulk Import CSV */}
+      <BulkImportSection
+        opened={bulkModalOpened}
+        onClose={() => setBulkModalOpened(false)}
+        onImportComplete={(newBatchId) => {
+          fetchContacts();
+          fetchStats();
+          fetchImportBatches(1);
+          if (newBatchId) {
+            setSelectedBatch({
+              id: newBatchId,
+              batchId: newBatchId,
+              fileName: 'Uploaded CSV',
+              totalRows: 0,
+              importedCount: 0,
+              failedCount: 0,
+              status: 'Completed',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+          }
         }}
       />
 
@@ -835,6 +1207,121 @@ export const ContactsPage: React.FC = () => {
               }}
             >
               Confirm Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      {/* 6. Modern Delete Batch Confirmation Dialog */}
+      <Modal
+        opened={Boolean(deleteBatchTarget)}
+        onClose={() => !deleteBatchLoading && setDeleteBatchTarget(null)}
+        centered
+        radius="lg"
+        padding="lg"
+        withCloseButton={false}
+        styles={{
+          content: {
+            backgroundColor: isDark ? '#111827' : '#FFFFFF',
+            border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid #E2E8F0',
+            boxShadow: isDark
+              ? '0 20px 45px -10px rgba(0, 0, 0, 0.6)'
+              : '0 20px 45px -10px rgba(0, 0, 0, 0.12)',
+            borderRadius: 16,
+          },
+          body: {
+            padding: 24,
+          },
+        }}
+      >
+        <Stack gap="md">
+          <Group align="flex-start" wrap="nowrap" gap="md">
+            <ThemeIcon
+              size={44}
+              radius="xl"
+              style={{
+                backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2',
+                color: '#EF4444',
+                flexShrink: 0,
+              }}
+            >
+              <IconAlertTriangle size={22} stroke={2} />
+            </ThemeIcon>
+
+            <Box style={{ flex: 1 }}>
+              <Text fw={700} size="md" style={{ color: isDark ? '#F8FAFC' : '#0F172A', lineHeight: 1.3 }}>
+                Delete Import Batch
+              </Text>
+              <Text size="sm" mt={4} style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                Are you sure you want to delete this batch and its associated contacts? This action cannot be undone.
+              </Text>
+            </Box>
+          </Group>
+
+          {/* Batch Details Highlight Card */}
+          {deleteBatchTarget && (
+            <Paper
+              p="sm"
+              radius="md"
+              style={{
+                backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              }}
+            >
+              <Group justify="space-between" align="center" wrap="nowrap">
+                <Group gap="xs" wrap="nowrap" style={{ minWidth: 0 }}>
+                  <IconFileSpreadsheet size={22} color="#0284C7" />
+                  <Box style={{ minWidth: 0 }}>
+                    <Text fw={600} size="sm" truncate style={{ color: isDark ? '#F8FAFC' : '#1E293B' }}>
+                      {deleteBatchTarget.fileName || 'Spreadsheet Batch'}
+                    </Text>
+                    <Text size="xs" truncate style={{ color: isDark ? '#94A3B8' : '#64748B' }}>
+                      {deleteBatchTarget.importedCount ?? 0} contacts • {deleteBatchTarget.batchId}
+                    </Text>
+                  </Box>
+                </Group>
+                <Badge
+                  variant="light"
+                  color="red"
+                  radius="sm"
+                  size="sm"
+                  style={{ fontWeight: 600, flexShrink: 0 }}
+                >
+                  {deleteBatchTarget.batchId}
+                </Badge>
+              </Group>
+            </Paper>
+          )}
+
+          <Group justify="flex-end" gap="sm" mt="xs">
+            <Button
+              variant="default"
+              radius="md"
+              size="sm"
+              onClick={() => setDeleteBatchTarget(null)}
+              disabled={deleteBatchLoading}
+              style={{
+                borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#CBD5E1',
+                color: isDark ? '#CBD5E1' : '#475569',
+                fontWeight: 600,
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              radius="md"
+              size="sm"
+              loading={deleteBatchLoading}
+              onClick={handleConfirmDeleteBatch}
+              leftSection={<IconTrash size={15} stroke={2} />}
+              style={{
+                background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                fontWeight: 600,
+              }}
+            >
+              Delete Batch
             </Button>
           </Group>
         </Stack>

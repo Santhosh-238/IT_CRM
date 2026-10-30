@@ -315,14 +315,22 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    // Validations
-    if (!employeeName.trim()) {
-      notifications.show({
-        title: 'Validation Error',
-        message: 'Please select an assigned employee.',
-        color: 'red',
-      });
-      return;
+    let resolvedEmpName = employeeName?.trim() || editingCall?.employeeName || '';
+    let resolvedEmpId = employeeId || editingCall?.employeeId || null;
+
+    if (!resolvedEmpName) {
+      try {
+        const stored = localStorage.getItem('user') || localStorage.getItem('crm_user');
+        if (stored) {
+          const u = JSON.parse(stored);
+          resolvedEmpName = u.name || u.username || 'Staff';
+          resolvedEmpId = resolvedEmpId || u.id || u.empCode || null;
+        }
+      } catch (_) {}
+    }
+    if (!resolvedEmpName) {
+      resolvedEmpName = employees[0]?.name || 'Staff';
+      resolvedEmpId = resolvedEmpId || employees[0]?.id || employees[0]?.empCode || null;
     }
 
     if (!contactName.trim()) {
@@ -377,8 +385,8 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
 
     const payload: Partial<CallLog> = {
       callType,
-      employeeId,
-      employeeName: employeeName.trim(),
+      employeeId: resolvedEmpId,
+      employeeName: resolvedEmpName,
       contactId: contactId && !contactId.startsWith('lead_') ? contactId : null,
       contactName: contactName.trim(),
       phoneNumber: phoneNumber.trim(),
@@ -451,37 +459,20 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
       </Group>
 
       <Stack gap="md">
-        {/* Row 1: Call Type & Assigned Employee Name */}
-        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
-          <Select
-            label="Call Type"
-            placeholder="Select Call Type"
-            data={[
-              { value: 'Outgoing', label: 'Outgoing' },
-              { value: 'Incoming', label: 'Incoming' },
-            ]}
-            value={callType}
-            onChange={(val) => setCallType((val as CallType) || 'Outgoing')}
-            required
-            allowDeselect={false}
-            radius="md"
-          />
-
-          <Select
-            label="Assigned Employee Name"
-            placeholder="Select Employee"
-            data={employees.map((e) => ({
-              value: e.id || e.empCode,
-              label: `${e.name} (${e.designation || e.role || 'Staff'})`,
-            }))}
-            value={employeeId}
-            onChange={handleEmployeeSelect}
-            searchable
-            clearable
-            required
-            radius="md"
-          />
-        </SimpleGrid>
+        {/* Row 1: Call Type */}
+        <Select
+          label="Call Type"
+          placeholder="Select Call Type"
+          data={[
+            { value: 'Outgoing', label: 'Outgoing' },
+            { value: 'Incoming', label: 'Incoming' },
+          ]}
+          value={callType}
+          onChange={(val) => setCallType((val as CallType) || 'Outgoing')}
+          required
+          allowDeselect={false}
+          radius="md"
+        />
 
         {/* Row 2: Contact Name & Phone Number */}
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">

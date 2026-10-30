@@ -5,6 +5,7 @@ import {
   ContactPagination,
   ContactStats,
   ContactMetadata,
+  ImportBatch,
 } from '../types/contact';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -109,6 +110,160 @@ export const contactService = {
       body: JSON.stringify({ employeeId }),
     });
   },
+
+  // Bulk Import Contacts (Saves to dedicated BulkUploadContact table)
+  bulkImportContacts: async (data: {
+    contacts: any[];
+    defaultAssignedTo?: string;
+    defaultCategory?: string;
+    defaultSource?: string;
+    fileName?: string;
+  }): Promise<{
+    success: boolean;
+    importedCount: number;
+    errorCount: number;
+    data: any[];
+    errors: any[];
+    message: string;
+  }> => {
+    return fetchWithCookies<{
+      success: boolean;
+      importedCount: number;
+      errorCount: number;
+      data: any[];
+      errors: any[];
+      message: string;
+    }>('/contacts/bulk-import', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Get records from dedicated BulkUploadContact table
+  getBulkUploadContacts: async (params?: Record<string, any>): Promise<{
+    success: boolean;
+    data: any[];
+    pagination: { total: number; page: number; limit: number; totalPages: number };
+  }> => {
+    const q = new URLSearchParams(params || {}).toString();
+    return fetchWithCookies<{
+      success: boolean;
+      data: any[];
+      pagination: { total: number; page: number; limit: number; totalPages: number };
+    }>(`/contacts/bulk-data${q ? `?${q}` : ''}`);
+  },
+
+  // Promote a bulk upload record to the official Contact table
+  promoteBulkUploadToContact: async (id: string): Promise<{
+    success: boolean;
+    message: string;
+    data: Contact;
+  }> => {
+    return fetchWithCookies<{
+      success: boolean;
+      message: string;
+      data: Contact;
+    }>(`/contacts/bulk-data/${encodeURIComponent(id)}/promote`, {
+      method: 'POST',
+    });
+  },
+
+  // Delete a bulk upload record (or 'all')
+  deleteBulkUploadContact: async (id: string): Promise<{
+    success: boolean;
+    message: string;
+  }> => {
+    return fetchWithCookies<{
+      success: boolean;
+      message: string;
+    }>(`/contacts/bulk-data/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Get list of import batches
+  getImportBatches: async (params?: Record<string, any>): Promise<{
+    success: boolean;
+    data: ImportBatch[];
+    pagination: ContactPagination;
+  }> => {
+    const q = new URLSearchParams(params || {}).toString();
+    return fetchWithCookies<{
+      success: boolean;
+      data: ImportBatch[];
+      pagination: ContactPagination;
+    }>(`/contacts/import-batches${q ? `?${q}` : ''}`);
+  },
+
+  // Get single batch details
+  getImportBatchDetails: async (batchId: string): Promise<{
+    success: boolean;
+    batch: ImportBatch;
+  }> => {
+    return fetchWithCookies<{
+      success: boolean;
+      batch: ImportBatch;
+    }>(`/contacts/import-batches/${encodeURIComponent(batchId)}`);
+  },
+
+  // Get contacts for a specific batch
+  getBatchContacts: async (
+    batchId: string,
+    params?: Record<string, any>
+  ): Promise<{
+    success: boolean;
+    batch: ImportBatch;
+    data: Contact[];
+    pagination: ContactPagination;
+  }> => {
+    const q = new URLSearchParams(params || {}).toString();
+    return fetchWithCookies<{
+      success: boolean;
+      batch: ImportBatch;
+      data: Contact[];
+      pagination: ContactPagination;
+    }>(`/contacts/import-batches/${encodeURIComponent(batchId)}/contacts${q ? `?${q}` : ''}`);
+  },
+
+  // Delete an entire import batch and its records
+  deleteImportBatch: async (batchId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> => {
+    return fetchWithCookies<{
+      success: boolean;
+      message: string;
+    }>(`/contacts/import-batches/${encodeURIComponent(batchId)}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // Assign/reassign an import batch and all contacts in this batch
+  assignImportBatch: async (
+    batchId: string,
+    employeeId: string | null
+  ): Promise<{
+    success: boolean;
+    message: string;
+    batch?: ImportBatch;
+    assignedCount?: number;
+  }> => {
+    return fetchWithCookies<{
+      success: boolean;
+      message: string;
+      batch?: ImportBatch;
+      assignedCount?: number;
+    }>(`/contacts/import-batches/${encodeURIComponent(batchId)}/assign`, {
+      method: 'PUT',
+      body: JSON.stringify({ employeeId }),
+    });
+  },
+
+  // Download URL for failed rows CSV
+  getFailedReportUrl: (batchId: string): string => {
+    return `${API_BASE_URL}/contacts/import-batches/${encodeURIComponent(batchId)}/failed-report`;
+  },
 };
 
 export default contactService;
+

@@ -312,6 +312,7 @@ export async function createRoleService(data, currentUser = null, ipAddress = '1
       canDelete: Boolean(customPerm?.canDelete),
       canExport: Boolean(customPerm?.canExport),
       canApprove: Boolean(customPerm?.canApprove),
+      dataScope: customPerm?.dataScope || (newRole.appType === 'admin' ? 'All' : 'Own'),
     };
   });
 
@@ -417,6 +418,13 @@ export async function updateRoleService(id, data, currentUser = null, ipAddress 
           },
         },
         update: {
+          canView: isSuperAdmin ? true : Boolean(p.canView),
+          canCreate: isSuperAdmin ? true : Boolean(p.canCreate),
+          canEdit: isSuperAdmin ? true : Boolean(p.canEdit),
+          canDelete: isSuperAdmin ? true : Boolean(p.canDelete),
+          canExport: isSuperAdmin ? true : Boolean(p.canExport),
+          canApprove: isSuperAdmin ? true : Boolean(p.canApprove),
+          dataScope: isSuperAdmin ? 'All' : (p.dataScope || (role.slug === 'admin' ? 'All' : 'Own')),
           canView: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canView),
           canCreate: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canCreate),
           canEdit: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canEdit),
@@ -429,6 +437,13 @@ export async function updateRoleService(id, data, currentUser = null, ipAddress 
           moduleId: p.moduleId,
           moduleName: p.moduleName || p.moduleId,
           category: p.category || 'Core',
+          canView: isSuperAdmin ? true : Boolean(p.canView),
+          canCreate: isSuperAdmin ? true : Boolean(p.canCreate),
+          canEdit: isSuperAdmin ? true : Boolean(p.canEdit),
+          canDelete: isSuperAdmin ? true : Boolean(p.canDelete),
+          canExport: isSuperAdmin ? true : Boolean(p.canExport),
+          canApprove: isSuperAdmin ? true : Boolean(p.canApprove),
+          dataScope: isSuperAdmin ? 'All' : (p.dataScope || (role.slug === 'admin' ? 'All' : 'Own')),
           canView: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canView),
           canCreate: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canCreate),
           canEdit: isSuperAdmin && p.moduleId === 'access_control' ? true : Boolean(p.canEdit),

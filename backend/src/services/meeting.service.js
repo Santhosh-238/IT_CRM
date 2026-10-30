@@ -33,15 +33,15 @@ function getScheduledMeetingSelectQuery(whereClause = 'WHERE 1=1') {
       m."employeeName" AS "assignedTo",
       m."employeeEmail",
       m."employeeDesignation",
-      COALESCE(l.name, m."clientName") AS "leadName",
-      COALESCE(m."clientName", l.name) AS "clientName",
-      l."companyName" AS "companyName",
-      l.email AS "leadEmail",
-      l.phone AS "leadPhone",
-      l."leadId" AS "leadCode",
-      l.id AS "leadDbId",
-      l.stage AS "leadStage",
-      l.status AS "leadStatus",
+      COALESCE(l.name, c.name, b.name, m."clientName") AS "leadName",
+      COALESCE(m."clientName", l.name, c.name, b.name) AS "clientName",
+      COALESCE(l."companyName", c."companyName", b."companyName") AS "companyName",
+      COALESCE(l.email, c.email, b.email) AS "leadEmail",
+      COALESCE(l.phone, c.phone, b.phone) AS "leadPhone",
+      COALESCE(l."leadId", c."contactId", b."bulkId") AS "leadCode",
+      COALESCE(l.id, c.id, b.id) AS "leadDbId",
+      COALESCE(l.stage, c.stage) AS "leadStage",
+      COALESCE(l.status, c.status, b.status) AS "leadStatus",
       m.status,
       m.status AS "meetingStatus",
       m.notes,
@@ -59,6 +59,18 @@ function getScheduledMeetingSelectQuery(whereClause = 'WHERE 1=1') {
       m."lead_id" = l."leadId" OR 
       m."contactId" = l."leadId"
     )
+    LEFT JOIN "Contact" c ON (
+      m."contactId" = c.id OR
+      m."contactId" = c."contactId" OR
+      m."lead_id" = c.id OR
+      m."lead_id" = c."contactId"
+    )
+    LEFT JOIN "BulkUploadContact" b ON (
+      m."contactId" = b.id OR
+      m."contactId" = b."bulkId" OR
+      m."lead_id" = b.id OR
+      m."lead_id" = b."bulkId"
+    )
     ${whereClause}
   `;
 }
@@ -74,7 +86,7 @@ export async function getMeetingsService(queryParams = {}) {
   let paramIdx = 1;
 
   if (leadId && leadId !== 'ALL') {
-    where += ` AND (m."lead_id" = $${paramIdx} OR m."contactId" = $${paramIdx} OR l."leadId" = $${paramIdx} OR l.id = $${paramIdx})`;
+    where += ` AND (m."lead_id" = $${paramIdx} OR m."contactId" = $${paramIdx} OR l."leadId" = $${paramIdx} OR l.id = $${paramIdx} OR c."contactId" = $${paramIdx} OR c.id = $${paramIdx} OR b."bulkId" = $${paramIdx} OR b.id = $${paramIdx})`;
     paramIdx++;
     params.push(leadId);
   }
@@ -114,7 +126,11 @@ export async function getMeetingsService(queryParams = {}) {
       m."clientName" ILIKE $${paramIdx} OR 
       m.location ILIKE $${paramIdx} OR 
       l.name ILIKE $${paramIdx} OR 
-      l."companyName" ILIKE $${paramIdx}
+      l."companyName" ILIKE $${paramIdx} OR
+      c.name ILIKE $${paramIdx} OR 
+      c."companyName" ILIKE $${paramIdx} OR
+      b.name ILIKE $${paramIdx} OR 
+      b."companyName" ILIKE $${paramIdx}
     )`;
     paramIdx++;
     params.push(s);
@@ -202,8 +218,9 @@ export async function createMeetingService(body) {
 
   const targetLeadIdentifier = lead_id || leadId || contactId;
 
-  // Resolve lead from Lead table if identifier provided
+  // Resolve lead from Lead table if identifier provided, or Contact/BulkUploadContact
   let resolvedLead = null;
+  let resolvedContact = null;
   if (targetLeadIdentifier) {
     const leads = await prisma.$queryRawUnsafe(
       `SELECT id, "leadId", name, "companyName", stage, status FROM "Lead" WHERE id = $1 OR "leadId" = $1 LIMIT 1`,
@@ -211,10 +228,27 @@ export async function createMeetingService(body) {
     );
     if (leads && leads.length > 0) {
       resolvedLead = leads[0];
+    } else {
+      const contacts = await prisma.$queryRawUnsafe(
+        `SELECT id, "contactId", name, "companyName", stage, status FROM "Contact" WHERE id = $1 OR "contactId" = $1 LIMIT 1`,
+        targetLeadIdentifier
+      );
+      if (contacts && contacts.length > 0) {
+        resolvedContact = contacts[0];
+      } else {
+        const bulkContacts = await prisma.$queryRawUnsafe(
+          `SELECT id, "bulkId", name, "companyName", status FROM "BulkUploadContact" WHERE id = $1 OR "bulkId" = $1 LIMIT 1`,
+          targetLeadIdentifier
+        );
+        if (bulkContacts && bulkContacts.length > 0) {
+          resolvedContact = bulkContacts[0];
+        }
+      }
     }
   }
 
-  const finalLeadId = resolvedLead ? resolvedLead.id : targetLeadIdentifier || null;
+  const finalLeadId = resolvedLead ? resolvedLead.id : (contactId || targetLeadIdentifier || null);
+  const finalContactId = contactId || (resolvedContact ? resolvedContact.id : (resolvedLead ? resolvedLead.id : targetLeadIdentifier || null));
   const finalTitle = (title || meeting_title || meetingTitle || purpose || 'Client Discovery Meeting').trim();
   const finalPurpose = (purpose || finalTitle).trim();
   const finalDate = meeting_date || meetingDate || date;
@@ -227,10 +261,14 @@ export async function createMeetingService(body) {
   const finalNotes = (description !== undefined ? description : notes || '').trim();
 
   let finalClientName = clientName;
-  if (!finalClientName && resolvedLead) {
-    finalClientName = resolvedLead.companyName ? `${resolvedLead.name} (${resolvedLead.companyName})` : resolvedLead.name;
+  if (!finalClientName) {
+    if (resolvedLead) {
+      finalClientName = resolvedLead.companyName ? `${resolvedLead.name} (${resolvedLead.companyName})` : resolvedLead.name;
+    } else if (resolvedContact) {
+      finalClientName = resolvedContact.companyName ? `${resolvedContact.name} (${resolvedContact.companyName})` : resolvedContact.name;
+    }
   }
-  finalClientName = (finalClientName || 'Lead Client').trim();
+  finalClientName = (finalClientName || 'Client Discussion').trim();
 
   if (!finalDate) {
     const error = new Error('Meeting date is required.');
@@ -314,7 +352,7 @@ export async function createMeetingService(body) {
     finalEmployeeName,
     employeeEmail || null,
     employeeDesignation || null,
-    finalLeadId,
+    finalContactId,
     finalLeadId,
     finalClientName,
     finalStatus,
@@ -357,6 +395,8 @@ export async function createMeetingService(body) {
       leadId: created.leadId || created.lead_id,
       leadCode: created.leadCode,
       leadName: created.leadName,
+      contactId: created.contactId,
+      contactName: created.leadName || created.clientName,
       customerName: created.clientName,
       entityId: created.id,
       entityType: 'Meeting',

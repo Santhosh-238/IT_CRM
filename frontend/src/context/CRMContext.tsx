@@ -77,7 +77,7 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (path === 'leads' || path === 'lead') return 'leads';
 
     if (path === 'scheduled-meetings' || path === 'meetings') return 'scheduled-meetings';
-    if (path === 'call-logs' || path === 'calls' || path === 'call-log') return 'call-logs';
+    if (path === 'call-logs' || path === 'calls' || path === 'call-log' || path === 'activity-logs' || path === 'activity-log') return 'call-logs';
 
     if (path === 'customers/details' || path === 'customer-details') return 'customer-details';
     if (path === 'customers' || path === 'customer' || path === 'customers-all') return 'customers';
@@ -132,7 +132,7 @@ export const CRMProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       else if (normalizedNav === 'leads' || normalizedNav === 'lead') targetPath = '/leads';
       else if (normalizedNav === 'lead-schedule' || normalizedNav === 'lead-details' || normalizedNav === 'schedule-meeting') targetPath = '/leads/schedule';
       else if (normalizedNav === 'scheduled-meetings' || normalizedNav === 'meetings') targetPath = '/scheduled-meetings';
-      else if (normalizedNav === 'call-logs' || normalizedNav === 'calls' || normalizedNav === 'call-log') targetPath = '/call-logs';
+      else if (normalizedNav === 'call-logs' || normalizedNav === 'calls' || normalizedNav === 'call-log' || normalizedNav === 'activity-logs' || normalizedNav === 'activity-log') targetPath = '/call-logs';
       else if (normalizedNav === 'customers' || normalizedNav === 'customer') targetPath = '/customers';
       else if (normalizedNav === 'customer-details') targetPath = '/customers/details';
       else if (normalizedNav === 'negotiations' || normalizedNav === 'negotiation') targetPath = '/negotiations';
