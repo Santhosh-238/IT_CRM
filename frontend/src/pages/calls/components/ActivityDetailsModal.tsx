@@ -24,6 +24,7 @@ import {
   IconActivity,
 } from '@tabler/icons-react';
 import { ActivityLogItem } from '../../../types/callLog';
+import { useEmployee } from '../../../context/EmployeeContext';
 
 interface ActivityDetailsModalProps {
   activity: ActivityLogItem | null;
@@ -40,6 +41,19 @@ export const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
+  const { employees } = useEmployee();
+
+  const getPerformerName = (performedBy?: string, performedById?: string | null) => {
+    if (!performedBy && !performedById) return 'Staff';
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(performedBy || '');
+    if (!isUuid && performedBy && performedBy !== 'Staff') return performedBy;
+    const emp = employees.find(
+      (e) =>
+        (performedBy && (e.id === performedBy || e.empCode === performedBy)) ||
+        (performedById && (e.id === performedById || e.empCode === performedById))
+    );
+    return emp ? emp.name : (performedBy || 'Staff');
+  };
 
   if (!activity) return null;
 
@@ -242,7 +256,7 @@ export const ActivityDetailsModal: React.FC<ActivityDetailsModalProps> = ({
                   Logged / Sent By
                 </Text>
                 <Text size="sm" fw={600} style={{ color: isDark ? '#F1F5F9' : '#0F172A' }}>
-                  {activity.performedBy || 'Staff'}
+                  {getPerformerName(activity.performedBy, activity.performedById)}
                 </Text>
               </div>
             </Group>

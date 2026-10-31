@@ -24,6 +24,7 @@ import {
   SegmentedControl,
   Progress,
   ScrollArea,
+  Modal,
 } from '@mantine/core';
 import {
   IconClock,
@@ -57,6 +58,7 @@ import {
   IconPlus,
   IconEdit,
   IconTrash,
+  IconAlertTriangle,
   IconScale,
   IconReceipt,
   IconSparkles,
@@ -133,8 +135,12 @@ export const ActivityTimelinePage: React.FC = () => {
   const isDark = computedColorScheme === 'dark';
 
   const { setActiveNav } = useCRM();
-  const { leads, setSelectedLead: setGlobalSelectedLead, fetchLeads, loading: leadsLoading } = useLead();
+  const { leads, setSelectedLead: setGlobalSelectedLead, fetchLeads, deleteLead, loading: leadsLoading } = useLead();
   const { customers, setSelectedCustomer } = useCustomer();
+
+  // Delete Confirmation State
+  const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
 
   // Selected Lead state for 2-level navigation
   // null = Level 1 (Leads Table List)
@@ -210,6 +216,29 @@ export const ActivityTimelinePage: React.FC = () => {
     try {
       sessionStorage.removeItem('crm_activity_timeline_selected_lead');
     } catch (_) {}
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      setDeleteLoading(true);
+      const targetId = deleteTarget.id || deleteTarget.leadId;
+      const res = await deleteLead(targetId);
+      if (res && res.success) {
+        if (selectedLead && (selectedLead.id === deleteTarget.id || selectedLead.leadId === deleteTarget.leadId)) {
+          setSelectedLead(null);
+          try {
+            sessionStorage.removeItem('crm_activity_timeline_selected_lead');
+          } catch (_) {}
+        }
+        setDeleteTarget(null);
+        await fetchLeads();
+      }
+    } catch (err: any) {
+      console.error('Error deleting lead from timeline:', err);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   // Fetch activities from backend API for selected lead
@@ -998,7 +1027,7 @@ export const ActivityTimelinePage: React.FC = () => {
                       {/* 6. ACTIONS (Matching user screenshot) */}
                       <Table.Td style={{ textAlign: 'right' }}>
                         <Group gap={4} justify="flex-end" wrap="nowrap">
-                          <Tooltip label="Edit / View Pipeline" withArrow>
+                          <Tooltip label="View Activities & Pipeline" withArrow>
                             <ActionIcon
                               variant="subtle"
                               size="sm"
@@ -1011,14 +1040,14 @@ export const ActivityTimelinePage: React.FC = () => {
                               <IconEdit size={16} stroke={1.8} color="#3B82F6" />
                             </ActionIcon>
                           </Tooltip>
-                          <Tooltip label="View Activities" withArrow>
+                          <Tooltip label="Delete Lead" withArrow>
                             <ActionIcon
                               variant="subtle"
                               size="sm"
                               color="red"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleSelectLead(lead);
+                                setDeleteTarget(lead);
                               }}
                             >
                               <IconTrash size={16} stroke={1.8} color="#F87171" />
@@ -1033,6 +1062,36 @@ export const ActivityTimelinePage: React.FC = () => {
             </Table>
           )}
         </Paper>
+
+        {/* Delete Confirmation Modal for Level 1 */}
+        <Modal
+          opened={Boolean(deleteTarget)}
+          onClose={() => setDeleteTarget(null)}
+          title={
+            <Group gap="xs">
+              <IconAlertTriangle color="#EF4444" size={20} />
+              <Text fw={700}>Delete Lead Record</Text>
+            </Group>
+          }
+          centered
+          radius="lg"
+        >
+          <Text size="sm" c="dimmed" mb="lg">
+            Are you sure you want to delete lead{' '}
+            <Text span fw={700} c={isDark ? 'white' : 'dark'}>
+              {deleteTarget?.name} ({deleteTarget?.leadId})
+            </Text>
+            ? This will remove the lead and all its associated timeline records. This action cannot be undone.
+          </Text>
+          <Group justify="flex-end" gap="sm">
+            <Button variant="default" onClick={() => setDeleteTarget(null)}>
+              Cancel
+            </Button>
+            <Button color="red" onClick={handleConfirmDelete} loading={deleteLoading}>
+              Delete Permanently
+            </Button>
+          </Group>
+        </Modal>
       </Box>
     );
   }
@@ -1233,9 +1292,21 @@ export const ActivityTimelinePage: React.FC = () => {
                     Lead Details
                   </Text>
                 </Group>
-                <Badge size="xs" radius="sm" variant="light" color="oneassist">
-                  {selectedLead.leadId || 'LEAD'}
-                </Badge>
+                <Group gap={6} align="center">
+                  <Badge size="xs" radius="sm" variant="light" color="oneassist">
+                    {selectedLead.leadId || 'LEAD'}
+                  </Badge>
+                  <Tooltip label="Delete Lead" withArrow>
+                    <ActionIcon
+                      variant="subtle"
+                      size="sm"
+                      color="red"
+                      onClick={() => setDeleteTarget(selectedLead)}
+                    >
+                      <IconTrash size={15} stroke={1.8} color="#F87171" />
+                    </ActionIcon>
+                  </Tooltip>
+                </Group>
               </Group>
 
               {/* Lead Avatar & Name */}
@@ -1944,6 +2015,36 @@ export const ActivityTimelinePage: React.FC = () => {
           </Paper>
         </Box>
       </Box>
+
+      {/* Delete Confirmation Modal for Level 2 */}
+      <Modal
+        opened={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        title={
+          <Group gap="xs">
+            <IconAlertTriangle color="#EF4444" size={20} />
+            <Text fw={700}>Delete Lead Record</Text>
+          </Group>
+        }
+        centered
+        radius="lg"
+      >
+        <Text size="sm" c="dimmed" mb="lg">
+          Are you sure you want to delete lead{' '}
+          <Text span fw={700} c={isDark ? 'white' : 'dark'}>
+            {deleteTarget?.name} ({deleteTarget?.leadId})
+          </Text>
+          ? This will remove the lead and all its associated timeline records. This action cannot be undone.
+        </Text>
+        <Group justify="flex-end" gap="sm">
+          <Button variant="default" onClick={() => setDeleteTarget(null)}>
+            Cancel
+          </Button>
+          <Button color="red" onClick={handleConfirmDelete} loading={deleteLoading}>
+            Delete Permanently
+          </Button>
+        </Group>
+      </Modal>
     </Box>
   );
 };

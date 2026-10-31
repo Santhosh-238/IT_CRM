@@ -109,6 +109,7 @@ export const BatchDetailsView: React.FC<BatchDetailsViewProps> = ({
         sortOrder: 'desc',
       });
       if (res.success) {
+        // Keep all contacts in the batch (including Qualified) visible with their status
         setContacts(res.data || []);
         if (res.pagination) {
           setPagination({
@@ -227,13 +228,13 @@ export const BatchDetailsView: React.FC<BatchDetailsViewProps> = ({
     <Box>
       {/* 1. Header Toolbar & Back Navigation */}
       <Paper
-        p="sm"
-        radius="lg"
+        p="md"
+        radius="16px"
         mb="md"
         style={{
           backgroundColor: isDark ? '#111827' : '#FFFFFF',
-          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(0,0,0,0.03)',
+          border: isDark ? '2px solid rgba(255, 255, 255, 0.16)' : '2px solid #CBD5E1',
+          boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 2px 8px rgba(0,0,0,0.03)',
         }}
       >
         <Group justify="space-between" align="center" wrap="wrap" gap="sm">
@@ -349,7 +350,7 @@ export const BatchDetailsView: React.FC<BatchDetailsViewProps> = ({
             loading={contactsLoading}
             onView={handleContactRowClick}
             onRowClick={handleContactRowClick}
-            onEdit={onEditContact}
+            onEdit={handleContactRowClick}
             onDelete={onDeleteContact}
             onAddNew={() => {}}
             onQualify={onQualifyContact}
@@ -360,11 +361,12 @@ export const BatchDetailsView: React.FC<BatchDetailsViewProps> = ({
           {/* Pagination for Batch Contacts */}
           <Paper
             mt="md"
-            p="sm"
-            radius="lg"
+            p="md"
+            radius="16px"
             style={{
               backgroundColor: isDark ? '#111827' : '#FFFFFF',
-              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              border: isDark ? '2px solid rgba(255, 255, 255, 0.16)' : '2px solid #CBD5E1',
+              boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 2px 8px rgba(0,0,0,0.03)',
             }}
           >
             <Group justify="space-between" align="center" wrap="wrap">
@@ -442,6 +444,9 @@ export const BatchDetailsView: React.FC<BatchDetailsViewProps> = ({
           showContactMode={true}
           onSuccess={() => {
             fetchBatchContacts();
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
+            }
           }}
         />
 

@@ -34,8 +34,15 @@ export async function getCallLogsService(queryParams = {}) {
       where.OR = [
         ...(where.OR || []),
         { status: { equals: 'Not Interested', mode: 'insensitive' } },
-        { status: { contains: 'interest', mode: 'insensitive' } },
-        { status: { contains: 'intrest', mode: 'insensitive' } },
+        { status: { contains: 'not interest', mode: 'insensitive' } },
+        { status: { contains: 'not intrest', mode: 'insensitive' } },
+      ];
+    } else if (sLower.includes('interest') || sLower.includes('intrest')) {
+      where.OR = [
+        ...(where.OR || []),
+        { status: { equals: 'Interested', mode: 'insensitive' } },
+        { status: { contains: 'interested', mode: 'insensitive' } },
+        { status: { contains: 'intrested', mode: 'insensitive' } },
       ];
     } else if (sLower.includes('follow')) {
       where.OR = [
@@ -156,9 +163,11 @@ export async function getCallLogsService(queryParams = {}) {
     total = calls.length;
   }
 
+  const enrichedCalls = await enrichCallLogsWithMetadata(calls);
+
   return {
     count: total,
-    calls: calls.map(formatCallLogResponse),
+    calls: enrichedCalls,
   };
 }
 
@@ -166,7 +175,7 @@ export async function getCallLogsService(queryParams = {}) {
  * 2. Get Overview KPI Statistics for Call Logs
  */
 export async function getCallLogStatsService() {
-  const [total, incoming, outgoing, completed, missed, busy, noAnswer, notInterested, followUp] = await Promise.all([
+  const [total, incoming, outgoing, completed, missed, busy, noAnswer, notInterested, followUp, interested] = await Promise.all([
     prisma.callLog.count(),
     prisma.callLog.count({ where: { callType: { equals: 'Incoming', mode: 'insensitive' } } }),
     prisma.callLog.count({ where: { callType: { equals: 'Outgoing', mode: 'insensitive' } } }),
@@ -178,8 +187,8 @@ export async function getCallLogStatsService() {
       where: {
         OR: [
           { status: { equals: 'Not Interested', mode: 'insensitive' } },
-          { status: { contains: 'interest', mode: 'insensitive' } },
-          { status: { contains: 'intrest', mode: 'insensitive' } },
+          { status: { contains: 'not interest', mode: 'insensitive' } },
+          { status: { contains: 'not intrest', mode: 'insensitive' } },
         ],
       },
     }),
@@ -189,6 +198,15 @@ export async function getCallLogStatsService() {
           { status: { equals: 'Follow-up', mode: 'insensitive' } },
           { status: { equals: 'Follow Up', mode: 'insensitive' } },
           { status: { contains: 'follow', mode: 'insensitive' } },
+        ],
+      },
+    }),
+    prisma.callLog.count({
+      where: {
+        OR: [
+          { status: { equals: 'Interested', mode: 'insensitive' } },
+          { status: { contains: 'interested', mode: 'insensitive' } },
+          { status: { contains: 'intrested', mode: 'insensitive' } },
         ],
       },
     }),
@@ -204,7 +222,94 @@ export async function getCallLogStatsService() {
     noAnswer,
     notInterested,
     followUp,
+    interested,
   };
+}
+
+/**
+ * Enrich call log objects with employee name and company name
+ */
+export async function enrichCallLogsWithMetadata(calls) {
+  if (!calls || calls.length === 0) return [];
+
+  const allEmployees = await prisma.employee.findMany({
+    select: { id: true, name: true, empCode: true },
+  });
+  const empMap = new Map();
+  allEmployees.forEach((e) => {
+    if (e.id) empMap.set(e.id, e.name);
+    if (e.empCode) empMap.set(e.empCode, e.name);
+  });
+
+  const contactIds = [...new Set(calls.map((c) => c.contactId).filter(Boolean))];
+  const leadIds = [...new Set(calls.map((c) => c.leadId).filter(Boolean))];
+
+  const [matchedContacts, matchedBulks, matchedLeads] = await Promise.all([
+    contactIds.length > 0
+      ? prisma.contact.findMany({
+          where: { OR: [{ id: { in: contactIds } }, { contactId: { in: contactIds } }] },
+          select: { id: true, contactId: true, companyName: true, name: true },
+        })
+      : [],
+    contactIds.length > 0
+      ? prisma.bulkUploadContact.findMany({
+          where: { OR: [{ id: { in: contactIds } }, { bulkId: { in: contactIds } }] },
+          select: { id: true, bulkId: true, companyName: true, contactPerson: true, name: true },
+        })
+      : [],
+    leadIds.length > 0
+      ? prisma.lead.findMany({
+          where: { OR: [{ id: { in: leadIds } }, { leadId: { in: leadIds } }] },
+          select: { id: true, leadId: true, companyName: true, name: true },
+        })
+      : [],
+  ]);
+
+  const companyMap = new Map();
+  matchedContacts.forEach((c) => {
+    if (c.companyName) {
+      if (c.id) companyMap.set(c.id, c.companyName);
+      if (c.contactId) companyMap.set(c.contactId, c.companyName);
+      if (c.name) companyMap.set(`name_${c.name.toLowerCase()}`, c.companyName);
+    }
+  });
+  matchedBulks.forEach((b) => {
+    if (b.companyName) {
+      if (b.id) companyMap.set(b.id, b.companyName);
+      if (b.bulkId) companyMap.set(b.bulkId, b.companyName);
+      if (b.contactPerson) companyMap.set(`name_${b.contactPerson.toLowerCase()}`, b.companyName);
+      if (b.name) companyMap.set(`name_${b.name.toLowerCase()}`, b.companyName);
+    }
+  });
+  matchedLeads.forEach((l) => {
+    if (l.companyName) {
+      if (l.id) companyMap.set(l.id, l.companyName);
+      if (l.leadId) companyMap.set(l.leadId, l.companyName);
+      if (l.name) companyMap.set(`name_${l.name.toLowerCase()}`, l.companyName);
+    }
+  });
+
+  return calls.map((call) => {
+    let resolvedEmpName = call.employeeName;
+    if (empMap.has(call.employeeName)) {
+      resolvedEmpName = empMap.get(call.employeeName);
+    } else if (call.employeeId && empMap.has(call.employeeId)) {
+      resolvedEmpName = empMap.get(call.employeeId);
+    }
+
+    const resolvedCompanyName =
+      (call.contactId && companyMap.get(call.contactId)) ||
+      (call.leadId && companyMap.get(call.leadId)) ||
+      (call.contactName && companyMap.get(`name_${call.contactName.toLowerCase()}`)) ||
+      null;
+
+    const formatted = formatCallLogResponse(call);
+    return {
+      ...formatted,
+      employeeName: resolvedEmpName,
+      companyName: resolvedCompanyName,
+    };
+  });
 }
 
 /**
@@ -223,7 +328,8 @@ export async function getCallLogByIdService(id) {
     throw error;
   }
 
-  return formatCallLogResponse(call);
+  const enriched = (await enrichCallLogsWithMetadata([call]))[0];
+  return enriched || formatCallLogResponse(call);
 }
 
 /**
@@ -235,8 +341,8 @@ export async function createCallLogService(data) {
   // Receiver Name -> contactName
   // Receiver Number -> phoneNumber
   const callType = data.callType || data.type || 'Outgoing';
-  const employeeId = data.employeeId || null;
-  const employeeName = data.employeeName || data.callerName || '';
+  let employeeId = data.employeeId || null;
+  let employeeName = data.employeeName || data.callerName || '';
   const contactId = data.contactId || null;
   const contactName = data.contactName || data.receiverName || '';
   const phoneNumber = data.phoneNumber || data.receiverNumber || data.phone || '';
@@ -246,6 +352,25 @@ export async function createCallLogService(data) {
   const callDate = data.callDate || data.date || new Date().toISOString().split('T')[0];
   const callTime = data.callTime || data.time || '10:00 AM';
   const description = data.description || data.notes || '';
+
+  // Resolve employee name if given as ID/UUID or empty
+  const isEmpNameId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeName) ||
+                      /^[0-9a-f]{24}$/i.test(employeeName) ||
+                      /^EMP-\d+/i.test(employeeName);
+  if (isEmpNameId || !employeeName.trim()) {
+    const emp = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          ...(employeeName ? [{ id: employeeName }, { empCode: employeeName }] : []),
+          ...(employeeId ? [{ id: employeeId }, { empCode: employeeId }] : []),
+        ],
+      },
+    });
+    if (emp) {
+      employeeName = emp.name;
+      employeeId = emp.id;
+    }
+  }
 
   // If leadId is not provided, try to find matching Lead by contactId, phone, or name:
   if (!leadId) {
@@ -290,7 +415,7 @@ export async function createCallLogService(data) {
     throw error;
   }
 
-  const validStatuses = ['Completed', 'Follow-up', 'Missed', 'Busy', 'No Answer', 'Not Interested'];
+  const validStatuses = ['Completed', 'Follow-up', 'Interested', 'Missed', 'Busy', 'No Answer', 'Not Interested'];
   let normalizedStatus = validStatuses.find(
     (s) => s.toLowerCase() === status.trim().toLowerCase()
   );
@@ -298,6 +423,8 @@ export async function createCallLogService(data) {
     const sLower = status.trim().toLowerCase();
     if (sLower.includes('not') && (sLower.includes('interest') || sLower.includes('intrest'))) {
       normalizedStatus = 'Not Interested';
+    } else if (sLower.includes('interest') || sLower.includes('intrest')) {
+      normalizedStatus = 'Interested';
     } else if (sLower.includes('follow')) {
       normalizedStatus = 'Follow-up';
     }
@@ -325,14 +452,16 @@ export async function createCallLogService(data) {
     },
   });
 
+  const enrichedCall = (await enrichCallLogsWithMetadata([newCall]))[0] || formatCallLogResponse(newCall);
+
   // Socket broadcast if available
   try {
     if (io) {
-      io.emit('call:created', formatCallLogResponse(newCall));
+      io.emit('call:created', enrichedCall);
     }
   } catch (_) {}
 
-  return formatCallLogResponse(newCall);
+  return enrichedCall;
 }
 
 /**
@@ -352,19 +481,44 @@ export async function updateCallLogService(id, data) {
   const updateData = {};
   if (data.callType) updateData.callType = data.callType;
   if (data.employeeId !== undefined) updateData.employeeId = data.employeeId;
-  if (data.employeeName || data.callerName) updateData.employeeName = (data.employeeName || data.callerName).trim();
+  if (data.employeeName || data.callerName) {
+    let empName = (data.employeeName || data.callerName).trim();
+    let empId = data.employeeId !== undefined ? data.employeeId : existing.employeeId;
+    const isEmpNameId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(empName) ||
+                        /^[0-9a-f]{24}$/i.test(empName) ||
+                        /^EMP-\d+/i.test(empName);
+    if (isEmpNameId) {
+      const emp = await prisma.employee.findFirst({
+        where: {
+          OR: [
+            { id: empName },
+            { empCode: empName },
+            ...(empId ? [{ id: empId }, { empCode: empId }] : []),
+          ],
+        },
+      });
+      if (emp) {
+        empName = emp.name;
+        empId = emp.id;
+      }
+    }
+    updateData.employeeName = empName;
+    updateData.employeeId = empId;
+  }
   if (data.contactId !== undefined) updateData.contactId = data.contactId;
   if (data.contactName || data.receiverName) updateData.contactName = (data.contactName || data.receiverName).trim();
   if (data.phoneNumber || data.receiverNumber) updateData.phoneNumber = (data.phoneNumber || data.receiverNumber).trim();
   if (data.leadId !== undefined || data.lead_id !== undefined) updateData.leadId = data.leadId || data.lead_id || null;
   if (data.duration !== undefined) updateData.duration = data.duration.trim();
   if (data.status) {
-    const validStatuses = ['Completed', 'Follow-up', 'Missed', 'Busy', 'No Answer', 'Not Interested'];
+    const validStatuses = ['Completed', 'Follow-up', 'Interested', 'Missed', 'Busy', 'No Answer', 'Not Interested'];
     let matched = validStatuses.find((s) => s.toLowerCase() === data.status.trim().toLowerCase());
     if (!matched) {
       const sLower = data.status.trim().toLowerCase();
       if (sLower.includes('not') && (sLower.includes('interest') || sLower.includes('intrest'))) {
         matched = 'Not Interested';
+      } else if (sLower.includes('interest') || sLower.includes('intrest')) {
+        matched = 'Interested';
       } else if (sLower.includes('follow')) {
         matched = 'Follow-up';
       }
@@ -380,13 +534,15 @@ export async function updateCallLogService(id, data) {
     data: updateData,
   });
 
+  const enrichedUpdated = (await enrichCallLogsWithMetadata([updated]))[0] || formatCallLogResponse(updated);
+
   try {
     if (io) {
-      io.emit('call:updated', formatCallLogResponse(updated));
+      io.emit('call:updated', enrichedUpdated);
     }
   } catch (_) {}
 
-  return formatCallLogResponse(updated);
+  return enrichedUpdated;
 }
 
 /**
@@ -555,9 +711,72 @@ export async function getSectionActivitiesService(section = 'calls', queryParams
     total = items.length;
   }
 
+  // Fetch employees and contacts/leads for enriching WhatsApp/Email/Others
+  const allEmployees = await prisma.employee.findMany({
+    select: { id: true, name: true, empCode: true },
+  });
+  const empMap = new Map();
+  allEmployees.forEach((e) => {
+    if (e.id) empMap.set(e.id, e.name);
+    if (e.empCode) empMap.set(e.empCode, e.name);
+  });
+
+  const contactIds = [...new Set(items.map((i) => i.contactId).filter(Boolean))];
+  const [matchedContacts, matchedBulks] = await Promise.all([
+    contactIds.length > 0
+      ? prisma.contact.findMany({
+          where: { OR: [{ id: { in: contactIds } }, { contactId: { in: contactIds } }] },
+          select: { id: true, contactId: true, companyName: true, name: true },
+        })
+      : [],
+    contactIds.length > 0
+      ? prisma.bulkUploadContact.findMany({
+          where: { OR: [{ id: { in: contactIds } }, { bulkId: { in: contactIds } }] },
+          select: { id: true, bulkId: true, companyName: true, contactPerson: true, name: true },
+        })
+      : [],
+  ]);
+
+  const companyMap = new Map();
+  matchedContacts.forEach((c) => {
+    if (c.companyName) {
+      if (c.id) companyMap.set(c.id, c.companyName);
+      if (c.contactId) companyMap.set(c.contactId, c.companyName);
+      if (c.name) companyMap.set(`name_${c.name.toLowerCase()}`, c.companyName);
+    }
+  });
+  matchedBulks.forEach((b) => {
+    if (b.companyName) {
+      if (b.id) companyMap.set(b.id, b.companyName);
+      if (b.bulkId) companyMap.set(b.bulkId, b.companyName);
+      if (b.contactPerson) companyMap.set(`name_${b.contactPerson.toLowerCase()}`, b.companyName);
+      if (b.name) companyMap.set(`name_${b.name.toLowerCase()}`, b.companyName);
+    }
+  });
+
   return {
     count: total,
-    items: items.map(formatSectionActivity),
+    items: items.map((act) => {
+      const formatted = formatSectionActivity(act);
+      let resolvedPerf = formatted.performedBy;
+      if (empMap.has(formatted.performedBy)) {
+        resolvedPerf = empMap.get(formatted.performedBy);
+      } else if (formatted.performedById && empMap.has(formatted.performedById)) {
+        resolvedPerf = empMap.get(formatted.performedById);
+      }
+
+      const resolvedCompany =
+        formatted.customerName ||
+        (formatted.contactId && companyMap.get(formatted.contactId)) ||
+        (formatted.contactName && companyMap.get(`name_${formatted.contactName.toLowerCase()}`)) ||
+        '';
+
+      return {
+        ...formatted,
+        performedBy: resolvedPerf,
+        customerName: resolvedCompany,
+      };
+    }),
   };
 }
 
@@ -630,6 +849,44 @@ export async function createSectionActivityService(section, data, user) {
   const prefix = sec === 'whatsapp' ? 'WA' : (sec === 'email' ? 'EML' : 'ACT');
   const activityNumber = `${prefix}-2026-${1001 + count}`;
 
+  let performedBy = data.performedBy || user?.name || 'Staff';
+  let performedById = data.performedById ? String(data.performedById) : (user?.id ? String(user.id) : null);
+  const isPerfId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(performedBy) ||
+                   /^[0-9a-f]{24}$/i.test(performedBy) ||
+                   /^EMP-\d+/i.test(performedBy);
+  if (isPerfId) {
+    const emp = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          { id: performedBy },
+          { empCode: performedBy },
+          ...(performedById ? [{ id: performedById }, { empCode: performedById }] : []),
+        ],
+      },
+    });
+    if (emp) {
+      performedBy = emp.name;
+      performedById = emp.id;
+    }
+  }
+
+  let customerName = data.customerName || data.companyName || null;
+  if (!customerName && data.contactId) {
+    const c = await prisma.contact.findFirst({
+      where: { OR: [{ id: data.contactId }, { contactId: data.contactId }] },
+      select: { companyName: true },
+    });
+    if (c?.companyName) {
+      customerName = c.companyName;
+    } else {
+      const b = await prisma.bulkUploadContact.findFirst({
+        where: { OR: [{ id: data.contactId }, { bulkId: data.contactId }] },
+        select: { companyName: true },
+      });
+      if (b?.companyName) customerName = b.companyName;
+    }
+  }
+
   const meta = {
     ...(data.metadata || {}),
     phoneNumber: data.phoneNumber || data.phone || undefined,
@@ -638,7 +895,7 @@ export async function createSectionActivityService(section, data, user) {
     emailType: data.emailType || (sec === 'email' ? 'Outgoing' : undefined),
     activityType: data.activityType || (sec === 'others' ? 'Direct Visit' : undefined),
     nextFollowDate: data.nextFollowDate || undefined,
-    companyName: data.companyName || data.customerName || undefined,
+    companyName: customerName || undefined,
   };
 
   const activity = await prisma.activity.create({
@@ -649,10 +906,10 @@ export async function createSectionActivityService(section, data, user) {
       description: data.description || '',
       contactId: data.contactId || null,
       contactName: data.contactName || 'Contact',
-      customerName: data.customerName || data.companyName || null,
+      customerName: customerName,
       status: data.status || (sec === 'whatsapp' ? 'Msg Sent' : (sec === 'email' ? 'Mail Sent' : 'Interested')),
-      performedBy: data.performedBy || user?.name || 'Staff',
-      performedById: data.performedById ? String(data.performedById) : (user?.id ? String(user.id) : null),
+      performedBy: performedBy,
+      performedById: performedById,
       activityDate: todayStr,
       activityTime: timeStr,
       metadata: meta,

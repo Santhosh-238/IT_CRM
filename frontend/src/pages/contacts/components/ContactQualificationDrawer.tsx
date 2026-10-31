@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Stack,
@@ -21,6 +21,7 @@ import {
   Autocomplete,
 } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { MeetingDatePicker } from '../../meetings/components/MeetingDatePicker';
 import {
   IconTargetArrow,
   IconCheck,
@@ -61,6 +62,15 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
 
   const { currentUser } = useCRM();
   const { updateContact, metadata } = useContact();
+
+  const drawerProductServiceOptions = useMemo(() => {
+    const list = new Set<string>();
+    (metadata?.catalogProducts || []).forEach((p) => p && list.add(p.trim()));
+    (metadata?.productOptions || []).forEach((p) => p && list.add(p.trim()));
+    (metadata?.catalogServices || []).forEach((s) => s && list.add(s.trim()));
+    (metadata?.serviceOptions || []).forEach((s) => s && list.add(s.trim()));
+    return Array.from(list).filter(Boolean);
+  }, [metadata]);
   const { fetchLeads, fetchStats } = useLead();
 
   const todayStr = new Date().toISOString().split('T')[0];
@@ -147,6 +157,10 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
         panNumber: companyPan.trim().toUpperCase() || '',
         unqualifiedReason: qualificationStatus === 'Unqualified' ? unqualifiedReason.trim() : '',
         disqualificationReason: qualificationStatus === 'Unqualified' ? unqualifiedReason.trim() : '',
+        stage: 'Qualification',
+        assignmentStatus: 'Assigned',
+        assignedTo: contact.assignedTo || currentUser?.id || undefined,
+        assignedToName: contact.assignedToName || currentUser?.name || undefined,
         status:
           qualificationStatus === 'Qualified'
             ? 'Qualified'
@@ -176,6 +190,11 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
           });
         }
 
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('crm_contacts_tab', 'ASSIGNED');
+          sessionStorage.setItem('crm_contacts_tab', 'ASSIGNED');
+        }
+        window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
         onSuccess?.();
         onClose();
       }
@@ -450,8 +469,8 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
                   Web app, mobile app, ERP, CRM, etc.
                 </Text>
                 <Autocomplete
-                  placeholder="Select or type custom service..."
-                  data={[]}
+                  placeholder="Select or type custom service or product..."
+                  data={drawerProductServiceOptions}
                   value={interestedService}
                   onChange={(val) => setInterestedService(val)}
                   filter={({ options, search }) => {
@@ -619,18 +638,11 @@ export const ContactQualificationDrawer: React.FC<ContactQualificationDrawerProp
                 <Text size="11px" c="dimmed" mb={4}>
                   Eppo qualify pannanga?
                 </Text>
-                <TextInput
-                  type="date"
+                <MeetingDatePicker
                   value={qualificationDate}
-                  onChange={(e) => setQualificationDate(e.currentTarget.value)}
-                  radius="md"
-                  styles={{
-                    input: {
-                      backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#CBD5E1',
-                      fontSize: 13,
-                    },
-                  }}
+                  placeholder="DD-MM-YYYY"
+                  onChange={(val: string) => setQualificationDate(val)}
+                  zIndex={3000}
                 />
               </Box>
 

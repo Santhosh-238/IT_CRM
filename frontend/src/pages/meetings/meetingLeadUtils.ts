@@ -14,21 +14,18 @@ export const isMeetingForLead = (m: ScheduledMeeting, lead: Lead): boolean => {
   if (m.leadDbId && String(m.leadDbId) === String(lead.id)) return true;
   if (m.contactId && String(m.contactId) === String(lead.id)) return true;
   if (m.leadCode && lead.leadId && String(m.leadCode) === String(lead.leadId)) return true;
+  if (m.contactId && lead.leadId && String(m.contactId) === String(lead.leadId)) return true;
+  if (m.leadId && lead.leadId && String(m.leadId) === String(lead.leadId)) return true;
+  if (m.contactId && (lead as any).contactId && String(m.contactId) === String((lead as any).contactId)) return true;
 
-  // If the meeting has ANY specific lead/contact ID assigned, but did not match this lead,
-  // it belongs to someone else. Never guess by name when IDs exist!
-  if (m.leadId || m.leadDbId || m.contactId || m.leadCode) {
-    return false;
-  }
-
-  // 2. Exact name matching only if NO ID exists on the meeting
+  // 2. Name matching fallback
   const rawClientName = (m.clientName || m.leadName || '').trim().toLowerCase();
   const rawLeadName = (lead.name || '').trim().toLowerCase();
   if (!rawClientName || !rawLeadName) return false;
 
   if (rawClientName === rawLeadName) return true;
 
-  // In case clientName is stored with company: e.g. "athi (Athi tech)"
+  // In case clientName is stored with company: e.g. "athi (Athi tech)" or "athi"
   const clientNameWithoutCompany = rawClientName.split('(')[0].trim();
   return clientNameWithoutCompany === rawLeadName;
 };
@@ -46,17 +43,14 @@ export const findLeadForMeeting = (m: ScheduledMeeting, leads: Lead[]): Lead | u
     if (m.leadDbId && String(m.leadDbId) === String(lead.id)) return true;
     if (m.contactId && String(m.contactId) === String(lead.id)) return true;
     if (m.leadCode && lead.leadId && String(m.leadCode) === String(lead.leadId)) return true;
+    if (m.contactId && lead.leadId && String(m.contactId) === String(lead.leadId)) return true;
+    if (m.leadId && lead.leadId && String(m.leadId) === String(lead.leadId)) return true;
+    if (m.contactId && (lead as any).contactId && String(m.contactId) === String((lead as any).contactId)) return true;
     return false;
   });
   if (matchedById) return matchedById;
 
-  // If the meeting already has an ID assigned that didn't match any lead in list,
-  // never fall back to substring/name guessing!
-  if (m.leadId || m.leadDbId || m.contactId || m.leadCode) {
-    return undefined;
-  }
-
-  // 2. Name matching fallback ONLY if no ID is present
+  // 2. Name matching fallback
   const rawClientName = (m.clientName || m.leadName || '').trim().toLowerCase();
   if (!rawClientName) return undefined;
 

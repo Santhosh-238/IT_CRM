@@ -288,19 +288,15 @@ export const AppLayout: React.FC = () => {
               }
               setActiveNav('contacts');
             }}
-            onSuccess={(resultStatus) => {
+            onSuccess={(_resultStatus) => {
               if (typeof window !== 'undefined') {
                 sessionStorage.removeItem('crm_qualifying_contact');
                 sessionStorage.removeItem('crm_selected_contact');
+                localStorage.setItem('crm_contacts_tab', 'ASSIGNED');
+                sessionStorage.setItem('crm_contacts_tab', 'ASSIGNED');
               }
-              if (resultStatus === 'Qualified') {
-                if (typeof window !== 'undefined') {
-                  sessionStorage.setItem('crm_leads_tab', 'NEW');
-                }
-                setActiveNav('leads');
-              } else {
-                setActiveNav('contacts');
-              }
+              setActiveNav('contacts');
+              window.dispatchEvent(new CustomEvent('crm_contacts_updated'));
             }}
           />
         );
@@ -465,7 +461,7 @@ export const AppLayout: React.FC = () => {
         if (!can('scheduled_meetings', 'view')) {
           return (
             <AccessRestrictedView
-              moduleName="Scheduled Meetings"
+              moduleName="Meetings"
               onGoAllowed={() => setActiveNav(findFirstAllowedNav())}
             />
           );

@@ -213,12 +213,39 @@ export const ContactsPage: React.FC = () => {
         }
       }
 
+      const contactStatus = (c.status || '').toLowerCase().trim();
+      const qualStatus = (c.qualificationStatus || '').toLowerCase().trim();
+      const isNotInterested =
+        contactStatus === 'not interested' ||
+        contactStatus === 'not-interested' ||
+        (c as any).callStatus === 'Not Interested' ||
+        (c as any).whatsappStatus === 'Not Interested' ||
+        (c as any).emailStatus === 'Not Interested';
+
+      const isQualified =
+        !isNotInterested &&
+        (contactStatus === 'qualified' ||
+         qualStatus === 'qualified' ||
+         (c.stage === 'Qualification' && qualStatus !== 'new'));
+
+      const src = (c.source || '').toLowerCase().trim();
+      const isBulk = (c as any).isBulkRecord || src === 'bulk import' || src === 'import';
+
       if (activeTab === 'BULK_IMPORT') {
-        const src = (c.source || '').toLowerCase().trim();
-        if (!(c as any).isBulkRecord && src !== 'bulk import' && src !== 'import') return false;
-      } else {
-        const src = (c.source || '').toLowerCase().trim();
-        if ((c as any).isBulkRecord || src === 'bulk import' || src === 'import') return false;
+        // Bulk import contacts list: show all bulk contacts including Qualified!
+        if (!isBulk) return false;
+      } else if (activeTab === 'NEW') {
+        // New contacts list: show all direct non-bulk contacts including Qualified!
+        if (isBulk) return false;
+      } else if (activeTab === 'ASSIGNED') {
+        // Qualification section contact list: Qualified status shows ONLY here!
+        // Not Interested contacts from Bulk Import or New MUST NOT show here!
+        if (isNotInterested) return false;
+        const isAssignedOrQualified =
+          isQualified ||
+          (!isBulk && c.assignmentStatus === 'Assigned') ||
+          (Boolean(c.qualificationStatus) && qualStatus !== 'new');
+        if (!isAssignedOrQualified) return false;
       }
 
       // Status filter matching (checks both status and qualificationStatus)
@@ -231,11 +258,12 @@ export const ContactsPage: React.FC = () => {
           contactStatus === 'new' ||
           qualStatus === 'new' ||
           (!contactStatus && !qualStatus) ||
-          (contactStatus !== 'qualified' && contactStatus !== 'unqualified' && contactStatus !== 'disqualified' && qualStatus !== 'qualified' && qualStatus !== 'unqualified' && qualStatus !== 'disqualified');
+          (contactStatus !== 'qualified' && contactStatus !== 'unqualified' && contactStatus !== 'disqualified' && contactStatus !== 'interested' && contactStatus !== 'not interested' && qualStatus !== 'qualified' && qualStatus !== 'unqualified' && qualStatus !== 'disqualified');
         const matchesStatus =
           (s === 'not connected' && isNotConnected) ||
           contactStatus === s ||
           qualStatus === s ||
+          (s === 'not interested' && isNotInterested) ||
           (s === 'disqualified' && (qualStatus === 'unqualified' || contactStatus === 'unqualified')) ||
           (s === 'unqualified' && (qualStatus === 'disqualified' || contactStatus === 'disqualified'));
         if (!matchesStatus) return false;
@@ -260,7 +288,7 @@ export const ContactsPage: React.FC = () => {
     } else if (activeTab === 'BULK_IMPORT') {
       setFilters({ source: 'Bulk Import', assignmentStatus: 'All', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     } else {
-      setFilters({ assignmentStatus: 'Unassigned', status: 'All', source: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
+      setFilters({ assignmentStatus: 'All', status: 'All', source: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     }
   }, [activeTab, isAdmin, currentUser?.name]);
 
@@ -273,6 +301,12 @@ export const ContactsPage: React.FC = () => {
   // Listen to contacts update event across CRM components
   useEffect(() => {
     const handleUpdated = () => {
+      if (typeof window !== 'undefined') {
+        const savedTab = localStorage.getItem('crm_contacts_tab') as ActiveTabType;
+        if (savedTab && (savedTab === 'ASSIGNED' || savedTab === 'NEW' || savedTab === 'BULK_IMPORT')) {
+          setActiveTab(savedTab);
+        }
+      }
       fetchContacts();
       fetchStats();
     };
@@ -310,7 +344,7 @@ export const ContactsPage: React.FC = () => {
       setFilters({ source: 'Bulk Import', assignmentStatus: 'All', status: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
       fetchImportBatches(1);
     } else {
-      setFilters({ assignmentStatus: 'Unassigned', status: 'All', source: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
+      setFilters({ assignmentStatus: 'All', status: 'All', source: 'All', assignedTo: 'All', sortBy: 'updatedAt', sortOrder: 'desc' });
     }
   };
 
@@ -351,16 +385,19 @@ export const ContactsPage: React.FC = () => {
   };
 
   const statusOptions = useMemo(() => {
+    const isQualSection = activeTab === 'ASSIGNED';
     const rawOptions = [
       { value: 'All', label: 'All Statuses' },
-      { value: 'Not Connected', label: 'Not Connected' },
-      { value: 'Qualified', label: 'Qualified' },
-      { value: 'In Progress', label: 'In Progress' },
+      ...(isQualSection ? [{ value: 'Qualified', label: 'Qualified' }] : [{ value: 'Not Connected', label: 'Not Connected' }]),
+      { value: 'Interested', label: 'Interested' },
+      { value: 'Not Interested', label: 'Not Interested' },
       { value: 'Follow-up Required', label: 'Follow-up Required' },
+      { value: 'In Progress', label: 'In Progress' },
       { value: 'Disqualified', label: 'Disqualified' },
       ...(metadata?.statuses && metadata.statuses.length > 0
         ? metadata.statuses
             .filter((s) => !['All', 'Not Connected', 'Qualified', 'In Progress', 'Follow-up Required', 'Disqualified'].includes(s))
+            .filter((s) => isQualSection || s.toLowerCase() !== 'qualified')
             .map((s) => ({ value: s, label: s }))
         : [
             { value: 'New', label: 'New' },
@@ -375,7 +412,7 @@ export const ContactsPage: React.FC = () => {
       seen.add(opt.value);
       return true;
     });
-  }, [metadata?.statuses]);
+  }, [metadata?.statuses, activeTab]);
 
   const sourceOptions = useMemo(() => {
     const rawOptions = [
@@ -428,36 +465,80 @@ export const ContactsPage: React.FC = () => {
 
   const totalCount = stats?.total ?? contacts.length;
   const bulkImportCount = useMemo(() => {
-    if (stats?.bulkImport !== undefined) return stats.bulkImport;
-    return contacts.filter((c) => {
+    const qualifiedBulkCount = contacts.filter((c) => {
+      const src = (c.source || '').toLowerCase().trim();
+      const isBulk = (c as any).isBulkRecord || src === 'bulk import' || src === 'import';
+      const status = (c.status || '').toLowerCase().trim();
+      const qual = (c.qualificationStatus || '').toLowerCase().trim();
+      const isNotInterested =
+        status === 'not interested' ||
+        status === 'not-interested' ||
+        (c as any).callStatus === 'Not Interested' ||
+        (c as any).whatsappStatus === 'Not Interested' ||
+        (c as any).emailStatus === 'Not Interested';
+      if (isNotInterested) return false;
+      return isBulk && (status === 'qualified' || qual === 'qualified' || (c.stage === 'Qualification' && qual !== 'new'));
+    }).length;
+
+    const base = stats?.bulkImport ?? contacts.filter((c) => {
       const src = (c.source || '').toLowerCase().trim();
       return src === 'bulk import' || src === 'import';
     }).length;
+    return base;
   }, [stats?.bulkImport, contacts]);
 
   const newCount = useMemo(() => {
-    if (isAdmin) return stats?.unassigned ?? stats?.new ?? 0;
-    if (stats?.unassigned !== undefined) return stats.unassigned;
-    const myName = currentUser?.name?.toLowerCase().trim();
-    const myEmail = currentUser?.email?.toLowerCase().trim();
-    const myId = currentUser?.id?.toLowerCase().trim();
-    return contacts.filter((c) =>
-      c.assignmentStatus === 'Unassigned' &&
-      (((c.createdBy || '').toLowerCase().trim() === myName) ||
-       ((c.createdBy || '').toLowerCase().trim() === myEmail) ||
-       ((c.createdBy || '').toLowerCase().trim() === myId))
-    ).length;
+    const unassignedQualifiedCount = contacts.filter((c) => {
+      const status = (c.status || '').toLowerCase().trim();
+      const qual = (c.qualificationStatus || '').toLowerCase().trim();
+      return (status === 'qualified' || qual === 'qualified' || c.stage === 'Qualification') && (c.assignmentStatus === 'Unassigned' || !c.assignedTo);
+    }).length;
+
+    let base = 0;
+    if (isAdmin) {
+      base = stats?.unassigned ?? stats?.new ?? 0;
+    } else if (stats?.unassigned !== undefined) {
+      base = stats.unassigned;
+    } else {
+      const myName = currentUser?.name?.toLowerCase().trim();
+      const myEmail = currentUser?.email?.toLowerCase().trim();
+      const myId = currentUser?.id?.toLowerCase().trim();
+      base = contacts.filter((c) => {
+        const status = (c.status || '').toLowerCase().trim();
+        const qual = (c.qualificationStatus || '').toLowerCase().trim();
+        if (status === 'qualified' || qual === 'qualified' || c.stage === 'Qualification') return false;
+        return (
+          c.assignmentStatus === 'Unassigned' &&
+          (((c.createdBy || '').toLowerCase().trim() === myName) ||
+           ((c.createdBy || '').toLowerCase().trim() === myEmail) ||
+           ((c.createdBy || '').toLowerCase().trim() === myId))
+        );
+      }).length;
+    }
+    return base;
   }, [isAdmin, stats?.unassigned, stats?.new, contacts, currentUser]);
 
   const assignedCount = useMemo(() => {
-    if (isAdmin) return stats?.assigned ?? 0;
-    if (stats?.assigned !== undefined) return stats.assigned;
-    const myName = currentUser?.name?.toLowerCase().trim();
-    return contacts.filter((c) =>
-      c.assignmentStatus === 'Assigned' &&
-      ((myName && c.assignedToName?.toLowerCase().trim() === myName) || c.assignedTo === currentUser?.id)
-    ).length;
-  }, [isAdmin, stats?.assigned, contacts, currentUser]);
+    const count = contacts.filter((c) => {
+      const status = (c.status || '').toLowerCase().trim();
+      const qual = (c.qualificationStatus || '').toLowerCase().trim();
+      const src = (c.source || '').toLowerCase().trim();
+      const isBulk = (c as any).isBulkRecord || src === 'bulk import' || src === 'import';
+      const isNotInterested =
+        status === 'not interested' ||
+        status === 'not-interested' ||
+        (c as any).callStatus === 'Not Interested' ||
+        (c as any).whatsappStatus === 'Not Interested' ||
+        (c as any).emailStatus === 'Not Interested';
+      if (isNotInterested) return false;
+      const isQualified =
+        status === 'qualified' ||
+        qual === 'qualified' ||
+        (c.stage === 'Qualification' && qual !== 'new');
+      return isQualified || (!isBulk && c.assignmentStatus === 'Assigned') || (Boolean(c.qualificationStatus) && qual !== 'new');
+    }).length;
+    return count;
+  }, [contacts]);
 
   const totalRecords = pagination.total ?? filteredContacts.length ?? 0;
   const startRecord = totalRecords === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
@@ -471,7 +552,7 @@ export const ContactsPage: React.FC = () => {
         radius="lg"
         style={{
           backgroundColor: isDark ? '#111827' : '#FFFFFF',
-          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          border: isDark ? '2px solid rgba(255, 255, 255, 0.16)' : '2px solid #CBD5E1',
           boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0,0,0,0.03)',
         }}
       >
@@ -869,7 +950,7 @@ export const ContactsPage: React.FC = () => {
               mb="md"
               style={{
                 backgroundColor: isDark ? '#111827' : '#FFFFFF',
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+                border: isDark ? '2px solid rgba(255, 255, 255, 0.16)' : '2px solid #CBD5E1',
               }}
             >
               <Group justify="space-between" align="center" wrap="wrap" gap="md">
@@ -982,11 +1063,12 @@ export const ContactsPage: React.FC = () => {
           {/* Unified Pagination Footer */}
           <Paper
             mt="md"
-            p="sm"
-            radius="lg"
+            p="md"
+            radius="16px"
             style={{
               backgroundColor: isDark ? '#111827' : '#FFFFFF',
-              border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+              border: isDark ? '2px solid rgba(255, 255, 255, 0.16)' : '2px solid #CBD5E1',
+              boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 2px 8px rgba(0,0,0,0.03)',
             }}
           >
             <Group justify="space-between" align="center" wrap="wrap">
@@ -1151,7 +1233,7 @@ export const ContactsPage: React.FC = () => {
               radius="md"
               style={{
                 backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+                border: isDark ? '2px solid rgba(255, 255, 255, 0.16)' : '2px solid #CBD5E1',
               }}
             >
               <Group justify="space-between" align="center" wrap="nowrap">
@@ -1265,7 +1347,7 @@ export const ContactsPage: React.FC = () => {
               radius="md"
               style={{
                 backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+                border: isDark ? '2px solid rgba(255, 255, 255, 0.16)' : '2px solid #CBD5E1',
               }}
             >
               <Group justify="space-between" align="center" wrap="nowrap">
