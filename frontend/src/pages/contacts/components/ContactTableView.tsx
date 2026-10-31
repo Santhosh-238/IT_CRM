@@ -483,9 +483,6 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
     const q = (c.qualificationStatus || '').trim();
     const qLow = q.toLowerCase();
 
-    if (sLow === 'interested' || (c as any).callStatus === 'Interested' || (c as any).whatsappStatus === 'Interested') {
-      return 'Interested';
-    }
     if (
       sLow === 'not interested' ||
       sLow === 'not-interested' ||
@@ -495,8 +492,11 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
     ) {
       return 'Not Interested';
     }
-    if (qLow === 'qualified' || sLow === 'qualified') {
+    if (qLow === 'qualified' || sLow === 'qualified' || (c as any).stage === 'Qualification' && qLow === 'qualified') {
       return 'Qualified';
+    }
+    if (sLow === 'interested' || (c as any).callStatus === 'Interested' || (c as any).whatsappStatus === 'Interested') {
+      return 'Interested';
     }
     if (
       qLow === 'unqualified' ||

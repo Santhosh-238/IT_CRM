@@ -36,6 +36,7 @@ import {
   IconCreditCard,
   IconRocket,
   IconSparkles,
+  IconNotes,
 } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { Lead } from '../../../types/lead';
@@ -47,6 +48,7 @@ import { usePermissions } from '../../../context/AccessControlContext';
 interface LeadTableViewProps {
   leads: Lead[];
   onEdit: (lead: Lead) => void;
+  onUpdateLead?: (lead: Lead) => void;
   onDelete: (lead: Lead) => void;
   onAddNew?: () => void;
   loading?: boolean;
@@ -55,6 +57,7 @@ interface LeadTableViewProps {
 export const LeadTableView: React.FC<LeadTableViewProps> = ({
   leads,
   onEdit,
+  onUpdateLead,
   onDelete,
   onAddNew,
   loading = false,
@@ -1013,6 +1016,17 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
                   {/* 5. Actions */}
                   <Table.Td style={{ textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
                     <Group gap={6} justify="flex-end" wrap="nowrap">
+                      <Tooltip label="Update Lead" withArrow>
+                        <ActionIcon
+                          variant="subtle"
+                          color="teal"
+                          size="md"
+                          radius="md"
+                          onClick={() => (onUpdateLead ? onUpdateLead(lead) : onEdit(lead))}
+                        >
+                          <IconNotes size={16} />
+                        </ActionIcon>
+                      </Tooltip>
                       <Tooltip label="Edit Lead" withArrow>
                         <ActionIcon
                           variant="subtle"
@@ -1265,6 +1279,16 @@ export const LeadTableView: React.FC<LeadTableViewProps> = ({
               }}
             >
               <Group gap={6}>
+                <ActionIcon
+                  variant="subtle"
+                  color="teal"
+                  size="md"
+                  radius="md"
+                  onClick={() => (onUpdateLead ? onUpdateLead(lead) : onEdit(lead))}
+                  title="Update Lead"
+                >
+                  <IconNotes size={16} />
+                </ActionIcon>
                 <ActionIcon
                   variant="subtle"
                   color="blue"

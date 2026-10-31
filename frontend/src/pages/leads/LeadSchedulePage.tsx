@@ -534,7 +534,12 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
     try {
       const res = await fetchMeetingsApi({ leadId: activeLead.id });
       if (res && Array.isArray(res.meetings)) {
-        const mapped: ScheduledMeeting[] = res.meetings.map((m) => ({
+        const seenIds = new Set<string>();
+        const mapped: ScheduledMeeting[] = [];
+        for (const m of res.meetings) {
+          if (!m.id || seenIds.has(m.id)) continue;
+          seenIds.add(m.id);
+          mapped.push({
           id: m.id,
           leadId: activeLead.id,
           title: m.meetingTitle || m.title || m.purpose || 'Meeting',
@@ -544,6 +549,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           meetingDate: m.meetingDate || m.date || '',
           time: m.startTime || m.meetingTime || m.time || '',
           startTime: m.startTime || m.meetingTime || m.time || '',
+          endTime: m.endTime || '',
           duration: m.duration || '30 Minutes',
           hostName: m.assignedTo || m.employeeName || currentUser?.name || '',
           employeeName: m.assignedTo || m.employeeName || currentUser?.name || '',
@@ -559,7 +565,8 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
           rescheduleHistory: m.rescheduleHistory,
           notes: m.notes,
           createdAt: m.createdAt || new Date().toISOString(),
-        }));
+          });
+        }
         setScheduledMeetings(mapped);
         try {
           localStorage.setItem(`crm_meetings_${activeLead.id}`, JSON.stringify(mapped));
@@ -570,6 +577,13 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
 
   useEffect(() => {
     fetchLeadBackendMeetings();
+    const handleMeetingSync = () => {
+      fetchLeadBackendMeetings();
+    };
+    window.addEventListener('crm_meetings_updated', handleMeetingSync);
+    return () => {
+      window.removeEventListener('crm_meetings_updated', handleMeetingSync);
+    };
   }, [fetchLeadBackendMeetings]);
 
   // Synchronize call logs for this lead from backend
@@ -909,6 +923,7 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
               time: updatedMeeting.startTime || updatedMeeting.meetingTime || updatedMeeting.time || m.time,
               startTime: updatedMeeting.startTime || updatedMeeting.meetingTime || updatedMeeting.time || m.startTime || m.time,
               meetingTime: updatedMeeting.meetingTime || updatedMeeting.startTime || updatedMeeting.time || m.meetingTime || m.time,
+              endTime: updatedMeeting.endTime !== undefined ? updatedMeeting.endTime : m.endTime,
               duration: updatedMeeting.duration || m.duration,
               meetingType: updatedMeeting.meetingType || m.meetingType,
               hostName: updatedMeeting.employeeName || updatedMeeting.hostName || m.hostName,
@@ -942,6 +957,9 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
         ).catch(() => {});
         setActiveLead((prev) => (prev ? { ...prev, stage: 'Meetings', status: 'In Progress' } : prev));
       }
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('crm_meetings_updated'));
+      }
       return updated;
     });
   };
@@ -950,7 +968,13 @@ export const LeadSchedulePage: React.FC<LeadSchedulePageProps> = ({
   const meetingTableData = useMemo<MeetingTypeScheduledMeeting[]>(() => {
     const lName = activeLead?.name || '';
     const cName = activeLead?.companyName || activeLead?.profession || '';
-    return scheduledMeetings.map((m) => {
+    const seenIds = new Set<string>();
+    const uniqueMeetings = scheduledMeetings.filter((m) => {
+      if (!m.id || seenIds.has(m.id)) return false;
+      seenIds.add(m.id);
+      return true;
+    });
+    return uniqueMeetings.map((m) => {
       const chosenDate = m.meetingDate || m.date || '';
       const chosenTime = m.startTime || m.meetingTime || m.time || '';
       const calcEnd = calculateEndTime(chosenTime, m.duration || '30 Minutes');

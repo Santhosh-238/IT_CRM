@@ -66,6 +66,8 @@ export interface Contact {
   contactId: string;
   bulkId?: string | null;
   batchId?: string | null;
+  importedContactId?: string | null;
+  isImportedToContact?: boolean | null;
 
   // 1. Basic Contact Information
   name: string;
