@@ -168,16 +168,78 @@ export const CallLogsPage: React.FC = () => {
         fetchSectionStatsApi('others').catch(() => null),
       ]);
 
-      setCalls(callsRes.calls || []);
+      const rawCalls: CallLog[] = callsRes.calls || [];
+      const enrichedCalls = rawCalls.map((c) => {
+        let empName = c.employeeName;
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(empName) || empName === c.employeeId) {
+          const emp = employees.find((e) => e.id === empName || e.empCode === empName || e.id === c.employeeId);
+          if (emp) empName = emp.name;
+        }
+
+        let compName = c.companyName;
+        if (!compName) {
+          const foundC = allContacts.find((x) => x.id === c.contactId || x.contactId === c.contactId || (x.name && c.contactName && x.name.toLowerCase() === c.contactName.toLowerCase()));
+          if (foundC?.companyName) {
+            compName = foundC.companyName;
+          } else {
+            const foundL = leads.find((l) => l.id === c.leadId || l.leadId === c.leadId || (l.name && c.contactName && l.name.toLowerCase() === c.contactName.toLowerCase()));
+            if (foundL?.companyName) compName = foundL.companyName;
+          }
+        }
+
+        return {
+          ...c,
+          employeeName: empName,
+          companyName: compName,
+        };
+      });
+
+      setCalls(enrichedCalls);
       if (callStatsRes) setCallStats(callStatsRes);
 
-      setWhatsappItems(waRes.items || []);
+      const enrichActivityItem = (item: ActivityLogItem): ActivityLogItem => {
+        let perfBy = item.performedBy || '';
+        if (!perfBy || perfBy === 'Staff' || /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(perfBy) || perfBy === item.performedById) {
+          const emp = employees.find((e) =>
+            (perfBy && (e.id === perfBy || e.empCode === perfBy)) ||
+            (item.performedById && (e.id === item.performedById || e.empCode === item.performedById))
+          );
+          if (emp) perfBy = emp.name;
+        }
+
+        let compName = item.customerName || (item.metadata as any)?.companyName || '';
+        if (!compName) {
+          const foundC = allContacts.find((x) =>
+            x.id === item.contactId ||
+            x.contactId === item.contactId ||
+            (x.name && item.contactName && x.name.toLowerCase() === item.contactName.toLowerCase())
+          );
+          if (foundC?.companyName) {
+            compName = foundC.companyName;
+          } else {
+            const foundL = leads.find((l) =>
+              l.id === item.leadId ||
+              l.leadId === item.leadId ||
+              (l.name && item.contactName && l.name.toLowerCase() === item.contactName.toLowerCase())
+            );
+            if (foundL?.companyName) compName = foundL.companyName;
+          }
+        }
+
+        return {
+          ...item,
+          performedBy: perfBy || item.performedBy || 'Staff',
+          customerName: compName || item.customerName || '',
+        };
+      };
+
+      setWhatsappItems((waRes.items || []).map(enrichActivityItem));
       if (waStatsRes) setWhatsappStats(waStatsRes as WhatsAppStats);
 
-      setEmailItems(emRes.items || []);
+      setEmailItems((emRes.items || []).map(enrichActivityItem));
       if (emStatsRes) setEmailStats(emStatsRes as EmailStats);
 
-      setOthersItems(othRes.items || []);
+      setOthersItems((othRes.items || []).map(enrichActivityItem));
       if (othStatsRes) setOthersStats(othStatsRes as OthersStats);
 
       if (fetchEmployees) fetchEmployees();
@@ -195,6 +257,63 @@ export const CallLogsPage: React.FC = () => {
   useEffect(() => {
     loadAllData();
   }, []);
+
+  // Re-enrich performer names and assigned employees whenever employee context is ready/updated
+  useEffect(() => {
+    if (employees && employees.length > 0) {
+      setWhatsappItems((prev) =>
+        prev.map((item) => {
+          if (!item.performedBy || /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(item.performedBy) || item.performedBy === item.performedById) {
+            const emp = employees.find(
+              (e) =>
+                (item.performedBy && (e.id === item.performedBy || e.empCode === item.performedBy)) ||
+                (item.performedById && (e.id === item.performedById || e.empCode === item.performedById))
+            );
+            if (emp) return { ...item, performedBy: emp.name };
+          }
+          return item;
+        })
+      );
+
+      setEmailItems((prev) =>
+        prev.map((item) => {
+          if (!item.performedBy || /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(item.performedBy) || item.performedBy === item.performedById) {
+            const emp = employees.find(
+              (e) =>
+                (item.performedBy && (e.id === item.performedBy || e.empCode === item.performedBy)) ||
+                (item.performedById && (e.id === item.performedById || e.empCode === item.performedById))
+            );
+            if (emp) return { ...item, performedBy: emp.name };
+          }
+          return item;
+        })
+      );
+
+      setOthersItems((prev) =>
+        prev.map((item) => {
+          if (!item.performedBy || /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(item.performedBy) || item.performedBy === item.performedById) {
+            const emp = employees.find(
+              (e) =>
+                (item.performedBy && (e.id === item.performedBy || e.empCode === item.performedBy)) ||
+                (item.performedById && (e.id === item.performedById || e.empCode === item.performedById))
+            );
+            if (emp) return { ...item, performedBy: emp.name };
+          }
+          return item;
+        })
+      );
+
+      setCalls((prev) =>
+        prev.map((c) => {
+          if (/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(c.employeeName) || c.employeeName === c.employeeId) {
+            const emp = employees.find((e) => e.id === c.employeeName || e.empCode === c.employeeName || e.id === c.employeeId);
+            if (emp) return { ...c, employeeName: emp.name };
+          }
+          return c;
+        })
+      );
+    }
+  }, [employees]);
 
   // Listen to update events from contact updates or call actions
   useEffect(() => {
@@ -235,8 +354,10 @@ export const CallLogsPage: React.FC = () => {
       if (statusFilter !== 'All') {
         const sFilter = statusFilter.toLowerCase();
         const cStatus = (call.status || '').toLowerCase();
-        if (sFilter.includes('interest') || sFilter.includes('intrest')) {
-          if (!cStatus.includes('interest') && !cStatus.includes('intrest')) return false;
+        if (sFilter.includes('not interest') || sFilter.includes('not intrest')) {
+          if (!cStatus.includes('not interest') && !cStatus.includes('not intrest')) return false;
+        } else if (sFilter.includes('interest') || sFilter.includes('intrest')) {
+          if (cStatus.includes('not') || (!cStatus.includes('interest') && !cStatus.includes('intrest'))) return false;
         } else if (sFilter.includes('follow')) {
           if (!cStatus.includes('follow')) return false;
         } else if (cStatus !== sFilter) {
@@ -252,11 +373,12 @@ export const CallLogsPage: React.FC = () => {
         const q = searchInput.toLowerCase();
         const matchEmp = (call.employeeName || '').toLowerCase().includes(q);
         const matchContact = (call.contactName || '').toLowerCase().includes(q);
+        const matchCompany = (call.companyName || '').toLowerCase().includes(q);
         const matchPhone = (call.phoneNumber || '').toLowerCase().includes(q);
         const matchId = (call.callId || '').toLowerCase().includes(q);
         const matchNotes = (call.description || '').toLowerCase().includes(q);
         const matchStatus = (call.status || '').toLowerCase().includes(q);
-        if (!matchEmp && !matchContact && !matchPhone && !matchId && !matchNotes && !matchStatus) return false;
+        if (!matchEmp && !matchContact && !matchCompany && !matchPhone && !matchId && !matchNotes && !matchStatus) return false;
       }
 
       return true;
@@ -459,6 +581,7 @@ export const CallLogsPage: React.FC = () => {
         { value: 'All', label: 'All Statuses' },
         { value: 'Completed', label: 'Completed' },
         { value: 'Follow-up', label: 'Follow-up' },
+        { value: 'Interested', label: 'Interested' },
         { value: 'Missed', label: 'Missed' },
         { value: 'Busy', label: 'Busy' },
         { value: 'No Answer', label: 'No Answer' },

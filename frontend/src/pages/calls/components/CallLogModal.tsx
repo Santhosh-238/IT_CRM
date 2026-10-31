@@ -74,6 +74,7 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
   const [contactId, setContactId] = useState<string | null>(null);
   const [leadId, setLeadId] = useState<string | null>(null);
   const [contactName, setContactName] = useState<string>('');
+  const [companyName, setCompanyName] = useState<string>('');
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [duration, setDuration] = useState<string>('02:30');
   const [status, setStatus] = useState<CallStatus>('Completed');
@@ -169,6 +170,7 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
         setContactId(editingCall.contactId || null);
         setLeadId(editingCall.leadId || null);
         setContactName(editingCall.contactName || '');
+        setCompanyName(editingCall.companyName || '');
         setPhoneNumber(editingCall.phoneNumber || '');
         setDuration(editingCall.duration || '02:30');
         const rawSt = (editingCall.status || 'Completed').trim();
@@ -255,11 +257,19 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
     }
   }, [opened, editingCall, initialLead, employees, contacts]);
 
+  const employeeOptions = useMemo(() => {
+    return employees.map((e) => ({
+      value: e.id || e.empCode,
+      label: e.name,
+    }));
+  }, [employees]);
+
   // When contact is selected: auto-fill contactName AND phone number!
   const handleContactSelect = (val: string | null) => {
     setContactId(val);
     if (!val) {
       setContactName('');
+      setCompanyName('');
       setPhoneNumber('');
       setLeadId(null);
       return;
@@ -268,6 +278,7 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
     // Check if initialLead
     if (initialLead && (val === initialLead.id || val === `lead_${initialLead.id}`)) {
       setContactName(initialLead.name || '');
+      setCompanyName(initialLead.companyName || '');
       setPhoneNumber(initialLead.phone || '');
       setLeadId(initialLead.id || null);
       return;
@@ -279,6 +290,7 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
       const foundLead = leads.find((l) => l.id === actualLeadId || l.leadId === actualLeadId);
       if (foundLead) {
         setContactName(foundLead.name);
+        setCompanyName(foundLead.companyName || '');
         setPhoneNumber(foundLead.phone || '');
         setLeadId(foundLead.id);
         return;
@@ -289,6 +301,7 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
     const found = contacts.find((c) => c.id === val || c.contactId === val);
     if (found) {
       setContactName(found.name);
+      setCompanyName(found.companyName || '');
       if (found.phone) {
         setPhoneNumber(found.phone);
       }
@@ -389,6 +402,7 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
       employeeName: resolvedEmpName,
       contactId: contactId && !contactId.startsWith('lead_') ? contactId : null,
       contactName: contactName.trim(),
+      companyName: companyName.trim() || undefined,
       phoneNumber: phoneNumber.trim(),
       leadId: leadId || editingCall?.leadId || (initialLead?.id ?? null),
       duration: formattedDuration,
@@ -459,20 +473,33 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
       </Group>
 
       <Stack gap="md">
-        {/* Row 1: Call Type */}
-        <Select
-          label="Call Type"
-          placeholder="Select Call Type"
-          data={[
-            { value: 'Outgoing', label: 'Outgoing' },
-            { value: 'Incoming', label: 'Incoming' },
-          ]}
-          value={callType}
-          onChange={(val) => setCallType((val as CallType) || 'Outgoing')}
-          required
-          allowDeselect={false}
-          radius="md"
-        />
+        {/* Row 1: Call Type & Assigned Employee */}
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
+          <Select
+            label="Call Type"
+            placeholder="Select Call Type"
+            data={[
+              { value: 'Outgoing', label: 'Outgoing' },
+              { value: 'Incoming', label: 'Incoming' },
+            ]}
+            value={callType}
+            onChange={(val) => setCallType((val as CallType) || 'Outgoing')}
+            required
+            allowDeselect={false}
+            radius="md"
+          />
+
+          <Select
+            label="Assigned Employee"
+            placeholder="Select Employee"
+            data={employeeOptions}
+            value={employeeId}
+            onChange={handleEmployeeSelect}
+            searchable
+            clearable
+            radius="md"
+          />
+        </SimpleGrid>
 
         {/* Row 2: Contact Name & Phone Number */}
         <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="sm">
@@ -514,6 +541,7 @@ export const CallLogModal: React.FC<CallLogModalProps> = ({
             data={[
               { value: 'Completed', label: 'Completed' },
               { value: 'Follow-up', label: 'Follow-up' },
+              { value: 'Interested', label: 'Interested' },
               { value: 'Missed', label: 'Missed' },
               { value: 'Busy', label: 'Busy' },
               { value: 'No Answer', label: 'No Answer' },

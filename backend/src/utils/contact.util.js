@@ -86,21 +86,49 @@ export function buildContactFilterQuery(queryParams = {}) {
   if (assignmentStatus && assignmentStatus !== 'All') {
     if (assignmentStatus === 'Unassigned') {
       andConditions.push({
-        OR: [
-          { assignmentStatus: 'Unassigned' },
-          { assignmentStatus: null },
-          { assignedTo: null },
-          { assignedTo: '' },
-          { assignedTo: 'none' },
+        AND: [
+          {
+            OR: [
+              { assignmentStatus: 'Unassigned' },
+              { assignmentStatus: null },
+              { assignedTo: null },
+              { assignedTo: '' },
+              { assignedTo: 'none' },
+            ],
+          },
+          {
+            status: { notIn: ['Qualified', 'qualified', 'Disqualified', 'disqualified', 'Unqualified', 'unqualified'] },
+          },
+          {
+            OR: [
+              { qualificationStatus: 'New' },
+              { qualificationStatus: null },
+              { qualificationStatus: '' },
+            ],
+          },
+          {
+            stage: { not: 'Qualification' },
+          },
         ],
       });
     } else if (assignmentStatus === 'Assigned') {
       andConditions.push({
-        AND: [
+        OR: [
           { assignmentStatus: 'Assigned' },
-          { assignedTo: { not: null } },
-          { assignedTo: { not: '' } },
-          { assignedTo: { not: 'none' } },
+          { stage: 'Qualification' },
+          { status: { in: ['Qualified', 'qualified', 'Disqualified', 'disqualified', 'Unqualified', 'unqualified', 'Follow-up Required', 'Pending'] } },
+          {
+            qualificationStatus: {
+              in: [
+                'Qualified',
+                'Follow-up Required',
+                'Pending',
+                'In Progress',
+                'Disqualified',
+                'Unqualified',
+              ],
+            },
+          },
         ],
       });
     }
@@ -131,8 +159,18 @@ export function buildContactFilterQuery(queryParams = {}) {
  */
 export function formatContactResponse(contact) {
   if (!contact) return null;
+  const loc = contact.location || contact.city || contact.street || contact.address || null;
+  const contactPriority = (contact.priority || contact.tagPriority || 'Medium').trim();
   return {
     ...contact,
+    tagPriority: contactPriority,
+    priority: contactPriority,
+    location: loc,
+    city: contact.city || loc,
+    street: contact.street || loc,
+    address: contact.address || loc,
+    website: contact.website || contact.companyWebsite || null,
+    companyWebsite: contact.companyWebsite || contact.website || null,
     displayCompany: contact.companyName || contact.profession || 'Individual',
     isAssigned: Boolean(contact.assignedTo && contact.assignedTo !== 'none'),
   };

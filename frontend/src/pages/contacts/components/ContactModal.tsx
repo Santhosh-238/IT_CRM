@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Stack,
@@ -11,6 +11,7 @@ import {
   Box,
   Textarea,
   Select,
+  Autocomplete,
   useComputedColorScheme,
 } from '@mantine/core';
 import {
@@ -21,6 +22,7 @@ import {
   IconMail,
   IconPhone,
   IconWorld,
+  IconShare,
   IconMapPin,
   IconPhoneCall,
   IconPhoneOutgoing,
@@ -32,11 +34,13 @@ import {
   IconActivity,
   IconCalendarEvent,
   IconLink,
+  IconTag,
 } from '@tabler/icons-react';
 import { Contact, ContactFormData } from '../../../types/contact';
 import { useContact } from '../../../context/ContactContext';
 import { useCRM } from '../../../context/CRMContext';
 import { createMeetingApi } from '../../../services/meetingService';
+import { createCallLogApi, createSectionActivityApi } from '../../../services/callLogService';
 import { MeetingTimePicker } from '../../meetings/components/MeetingTimePicker';
 import { MeetingDatePicker } from '../../meetings/components/MeetingDatePicker';
 
@@ -157,6 +161,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     contactPerson: '',
     email: '',
     phone: '',
+    website: '',
     contactMode: '',
     source: '',
     location: '',
@@ -168,6 +173,44 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
   const [formData, setFormData] = useState<ContactFormData>(initialFormState);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [tagPriority, setTagPriority] = useState<string>('Medium');
+
+  const priorityOptions = useMemo(() => {
+    const base = ['Low', 'Medium', 'High'];
+    const custom = new Set<string>();
+    if (contact?.priority && !base.some((b) => b.toLowerCase() === contact.priority?.toLowerCase())) {
+      custom.add(contact.priority.trim());
+    }
+    if ((contact as any)?.tagPriority && !base.some((b) => b.toLowerCase() === String((contact as any).tagPriority)?.toLowerCase())) {
+      custom.add(String((contact as any).tagPriority).trim());
+    }
+    if (tagPriority && !base.some((b) => b.toLowerCase() === tagPriority.toLowerCase())) {
+      custom.add(tagPriority.trim());
+    }
+    return [...base, ...Array.from(custom)];
+  }, [contact, tagPriority]);
+
+  const sourceOptions = useMemo(() => {
+    const defaultSources = [
+      'Bulk Import',
+      'Website',
+      'Referral',
+      'Social Media',
+      'LinkedIn',
+      'Cold Call',
+      'Email Campaign',
+      'Direct Visit',
+      'Other',
+    ];
+    const combined = [
+      ...defaultSources,
+      ...(metadata?.sources || []).filter((s) => !defaultSources.includes(s)),
+    ];
+    if (formData.source && !combined.includes(formData.source)) {
+      combined.push(formData.source);
+    }
+    return combined.map((s) => ({ value: s, label: s }));
+  }, [metadata?.sources, formData.source]);
 
   // Dynamic Call Fields State
   const [callType, setCallType] = useState<string>('Outgoing');
@@ -176,6 +219,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
   const [callToTime, setCallToTime] = useState<string>('');
   const [callDuration, setCallDuration] = useState<string>('');
   const [callStatus, setCallStatus] = useState<string>('Follow-up');
+  const [generalStatus, setGeneralStatus] = useState<string>('Not Connected');
   const [nextFollowDate, setNextFollowDate] = useState<string>('');
 
   // Dynamic WhatsApp Fields State
@@ -198,16 +242,18 @@ export const ContactModal: React.FC<ContactModalProps> = ({
 
   // Dynamic Meeting Fields State
   const [meetingTitle, setMeetingTitle] = useState<string>('');
-  const [meetingPurpose, setMeetingPurpose] = useState<string>('Requirement discussion & demo');
+  const [meetingPurpose, setMeetingPurpose] = useState<string>('');
   const [meetingHostId, setMeetingHostId] = useState<string>('');
   const [meetingHostName, setMeetingHostName] = useState<string>('');
   const [meetingDate, setMeetingDate] = useState<string>(getTodayDateStr());
-  const [meetingFromTime, setMeetingFromTime] = useState<string>('10:00 AM');
-  const [meetingToTime, setMeetingToTime] = useState<string>('10:30 AM');
-  const [meetingDuration, setMeetingDuration] = useState<string>('30 Minutes');
-  const [meetingType, setMeetingType] = useState<string>('Virtual');
-  const [meetingLocation, setMeetingLocation] = useState<string>('https://meet.google.com/');
-  const [meetingStatus, setMeetingStatus] = useState<string>('Scheduled');
+  const [meetingFromTime, setMeetingFromTime] = useState<string>('');
+  const [meetingToTime, setMeetingToTime] = useState<string>('');
+  const [meetingDuration, setMeetingDuration] = useState<string>('');
+  const [meetingType, setMeetingType] = useState<string>('');
+  const [meetingLocation, setMeetingLocation] = useState<string>('');
+  const [meetingStatus, setMeetingStatus] = useState<string>('');
+  const [rescheduleDate, setRescheduleDate] = useState<string>(getTodayDateStr());
+  const [rescheduleTime, setRescheduleTime] = useState<string>('');
 
   useEffect(() => {
     if (contact) {
@@ -219,20 +265,23 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         contactPerson: contact.contactPerson || contact.name || '',
         email: contact.email || '',
         phone: contact.phone || '',
-        contactMode: (contact as any).contactMode || 'Call',
+        website: (contact as any).website || (contact as any).companyWebsite || '',
+        contactMode: (contact as any).contactMode || '',
         source: contact.source || '',
         location: (contact as any).location || (contact as any).city || contact.address || (contact as any).street || '',
         assignedTo: contact.assignedTo || '',
         estimatedValue: contact.estimatedValue || '',
         expectedCloseDate: contact.expectedCloseDate || '',
-        description: contact.description || contact.notes || '',
+        description: contact.description || contact.remarks || contact.notes || '',
       });
+      setTagPriority(contact.priority || (contact as any).tagPriority || 'Medium');
       setCallType((contact as any).callType || 'Outgoing');
       setCallDate((contact as any).callDate || getTodayDateStr());
       setCallFromTime((contact as any).callFromTime || (contact as any).fromTime || '');
       setCallToTime((contact as any).callToTime || (contact as any).toTime || '');
       setCallDuration((contact as any).callDuration || (contact as any).duration || '');
-      const existingStatus = (contact as any).callStatus || (contact as any).status;
+      const existingStatus = (contact as any).callStatus || (contact as any).status || 'Not Connected';
+      setGeneralStatus(existingStatus);
       setCallStatus(existingStatus && existingStatus !== 'Completed' ? existingStatus : 'Follow-up');
       setNextFollowDate((contact as any).nextFollowDate || '');
 
@@ -251,22 +300,19 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       setOtherActivityDate((contact as any).activityDate || (contact as any).otherActivityDate || getTodayDateStr());
       setOtherActivityTime((contact as any).activityTime || (contact as any).otherActivityTime || getCurrentTimeStr());
 
-      const contactDisplayName = contact.name || 'Client';
-      setMeetingTitle((contact as any).meetingTitle || `Discovery Call & Demo with ${contactDisplayName}`);
-      setMeetingPurpose((contact as any).meetingPurpose || 'Requirement discussion & demo');
-      const defaultHostName = (contact as any).assignedToName || (contact as any).assignedTo || currentUser?.name || 'Sandy';
-      const defaultHost = metadata?.employees?.find(
-        (e: any) => e.name === defaultHostName || e.id === (contact as any).assignedTo || (e as any).empCode === (contact as any).assignedTo
-      );
-      setMeetingHostId((contact as any).meetingHostId || defaultHost?.id || (contact as any).assignedTo || '');
-      setMeetingHostName((contact as any).meetingHostName || defaultHost?.name || defaultHostName);
+      setMeetingTitle((contact as any).meetingTitle || '');
+      setMeetingPurpose((contact as any).meetingPurpose || '');
+      setMeetingHostId((contact as any).meetingHostId || '');
+      setMeetingHostName((contact as any).meetingHostName || '');
       setMeetingDate((contact as any).meetingDate || getTodayDateStr());
-      setMeetingFromTime((contact as any).meetingFromTime || '10:00 AM');
-      setMeetingToTime((contact as any).meetingToTime || '10:30 AM');
-      setMeetingDuration((contact as any).meetingDuration || '30 Minutes');
-      setMeetingType((contact as any).meetingType || 'Virtual');
-      setMeetingLocation((contact as any).meetingLocation || 'https://meet.google.com/');
-      setMeetingStatus((contact as any).meetingStatus || 'Scheduled');
+      setMeetingFromTime((contact as any).meetingFromTime || '');
+      setMeetingToTime((contact as any).meetingToTime || '');
+      setMeetingDuration((contact as any).meetingDuration || '');
+      setMeetingType((contact as any).meetingType || '');
+      setMeetingLocation((contact as any).meetingLocation || '');
+      setMeetingStatus((contact as any).meetingStatus || '');
+      setRescheduleDate((contact as any).rescheduleDate || (contact as any).rescheduledDate || getTodayDateStr());
+      setRescheduleTime((contact as any).rescheduleTime || (contact as any).rescheduledTime || '');
     } else {
       setFormData(initialFormState);
       setCallType('Outgoing');
@@ -292,18 +338,20 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       setOtherActivityDate(getTodayDateStr());
       setOtherActivityTime(getCurrentTimeStr());
 
-      setMeetingTitle('Discovery Call & Demo');
-      setMeetingPurpose('Requirement discussion & demo');
-      const defaultHost = metadata?.employees?.find((e: any) => e.name === currentUser?.name || e.id === currentUser?.id);
-      setMeetingHostId(defaultHost?.id || currentUser?.id || '');
-      setMeetingHostName(defaultHost?.name || currentUser?.name || 'Sandy');
+      setMeetingTitle('');
+      setMeetingPurpose('');
+      setMeetingHostId('');
+      setMeetingHostName('');
       setMeetingDate(getTodayDateStr());
-      setMeetingFromTime('10:00 AM');
-      setMeetingToTime('10:30 AM');
-      setMeetingDuration('30 Minutes');
-      setMeetingType('Virtual');
-      setMeetingLocation('https://meet.google.com/');
-      setMeetingStatus('Scheduled');
+      setMeetingFromTime('');
+      setMeetingToTime('');
+      setMeetingDuration('');
+      setMeetingType('');
+      setMeetingLocation('');
+      setMeetingStatus('');
+      setRescheduleDate(getTodayDateStr());
+      setRescheduleTime('');
+      setTagPriority('Medium');
     }
     setErrors({});
   }, [contact, opened]);
@@ -372,10 +420,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     }
 
     if (field === 'contactMode' && value === 'Meeting') {
-      if (!meetingTitle) {
-        const nameVal = formData.name || contact?.name || 'Contact';
-        setMeetingTitle(`Discovery & Demo Meeting with ${nameVal}`);
-      }
       if (meetingFromTime && meetingToTime && !meetingDuration) {
         const dur = calculateMeetingDurationStr(meetingFromTime, meetingToTime);
         if (dur) setMeetingDuration(dur);
@@ -410,6 +454,13 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       }
     }
 
+    // 3. Mandatory meeting status validation if contact mode is Meeting
+    if (formData.contactMode === 'Meeting') {
+      if (!meetingStatus || !meetingStatus.trim()) {
+        newErrors.meetingStatus = 'Meeting status is required';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -419,20 +470,20 @@ export const ContactModal: React.FC<ContactModalProps> = ({
     if (!validate()) return;
 
     try {
-      let finalStatus = contact?.status || 'Not Connected';
+      let finalStatus = generalStatus || contact?.status || 'Not Connected';
       let finalFollowDate: string | undefined = undefined;
 
       if (formData.contactMode === 'Call') {
         finalStatus = callStatus === 'Follow-up' ? 'Follow-up Required' : callStatus;
         if (callStatus === 'Follow-up') finalFollowDate = nextFollowDate || undefined;
       } else if (formData.contactMode === 'WhatsApp') {
-        finalStatus = whatsappStatus === 'Follow up' ? 'Follow-up Required' : (whatsappStatus === 'Interested' ? 'Qualified' : (whatsappStatus === 'Not Interested' ? 'Disqualified' : whatsappStatus));
+        finalStatus = whatsappStatus === 'Follow up' ? 'Follow-up Required' : (whatsappStatus === 'Interested' ? 'Interested' : (whatsappStatus === 'Not Interested' ? 'Not Interested' : whatsappStatus));
         if (whatsappStatus === 'Follow up') finalFollowDate = nextFollowDate || undefined;
       } else if (formData.contactMode === 'Email') {
-        finalStatus = emailStatus === 'Follow up' ? 'Follow-up Required' : (emailStatus === 'Interested' ? 'Qualified' : (emailStatus === 'Not Interested' ? 'Disqualified' : emailStatus));
+        finalStatus = emailStatus === 'Follow up' ? 'Follow-up Required' : (emailStatus === 'Interested' ? 'Interested' : (emailStatus === 'Not Interested' ? 'Not Interested' : emailStatus));
         if (emailStatus === 'Follow up') finalFollowDate = nextFollowDate || undefined;
       } else if (formData.contactMode === 'Other' || formData.contactMode === 'Others') {
-        finalStatus = otherStatus === 'Follow up' ? 'Follow-up Required' : (otherStatus === 'Interested' ? 'Qualified' : (otherStatus === 'Not Interested' ? 'Disqualified' : otherStatus));
+        finalStatus = otherStatus === 'Follow up' ? 'Follow-up Required' : (otherStatus === 'Interested' ? 'Interested' : (otherStatus === 'Not Interested' ? 'Not Interested' : otherStatus));
         if (otherStatus === 'Follow up') finalFollowDate = nextFollowDate || undefined;
       } else if (formData.contactMode === 'Meeting') {
         finalStatus = meetingStatus === 'Completed'
@@ -441,12 +492,16 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         if (meetingStatus === 'Follow-up') finalFollowDate = nextFollowDate || undefined;
       }
 
+      const resolvedName = formData.contactPerson?.trim() || formData.companyName?.trim() || formData.name?.trim() || contact?.name || 'Contact';
+
       const payload: ContactFormData = {
-        name: formData.name ? formData.name.trim() : (contact?.name || 'Contact'),
+        name: resolvedName,
         companyName: formData.companyName?.trim() || undefined,
         contactPerson: formData.contactPerson?.trim() || undefined,
         email: formData.email?.trim() || undefined,
         phone: formData.phone ? formData.phone.replace(/\D/g, '') : '',
+        website: formData.website?.trim() || undefined,
+        companyWebsite: formData.website?.trim() || undefined,
         contactMode: formData.contactMode?.trim() || undefined,
         source: formData.source?.trim() || undefined,
         location: formData.location?.trim() || undefined,
@@ -456,9 +511,18 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         estimatedValue: formData.estimatedValue?.trim() || undefined,
         expectedCloseDate: formData.expectedCloseDate?.trim() || undefined,
         description: formData.description?.trim() || undefined,
+        remarks: formData.description?.trim() || undefined,
+        notes: formData.description?.trim() || undefined,
+        priority: tagPriority?.trim() || 'Medium',
+        tagPriority: tagPriority?.trim() || 'Medium',
         status: finalStatus,
-        stage: contact?.stage || 'Initialization',
-        qualificationStatus: finalStatus === 'Qualified' ? 'Qualified' : (finalStatus === 'Follow-up Required' ? 'Follow-up Required' : (finalStatus === 'Disqualified' ? 'Disqualified' : (contact?.qualificationStatus || 'New'))),
+        stage: (finalStatus === 'Not Interested' || finalStatus === 'Not-Interested')
+          ? 'Initialization'
+          : ((finalStatus === 'Qualified' || finalStatus === 'Follow-up Required' || finalStatus === 'Pending' || formData.contactMode === 'Meeting') ? 'Qualification' : (contact?.stage || 'Initialization')),
+        assignmentStatus: (finalStatus === 'Qualified' || finalStatus === 'Follow-up Required' || finalStatus === 'Pending' || formData.contactMode === 'Meeting' || formData.assignedTo) ? 'Assigned' : (contact?.assignmentStatus || 'Unassigned'),
+        qualificationStatus: (finalStatus === 'Not Interested' || finalStatus === 'Not-Interested')
+          ? 'New'
+          : (finalStatus === 'Qualified' ? 'Qualified' : (finalStatus === 'Follow-up Required' ? 'Follow-up Required' : (finalStatus === 'Disqualified' ? 'Disqualified' : (finalStatus === 'Interested' ? 'New' : (contact?.qualificationStatus || 'New'))))),
         // Dynamic Call
         callType: formData.contactMode === 'Call' ? callType : undefined,
         callDate: formData.contactMode === 'Call' ? callDate : undefined,
@@ -488,11 +552,13 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         meetingHostName: formData.contactMode === 'Meeting' ? meetingHostName : undefined,
         meetingDate: formData.contactMode === 'Meeting' ? meetingDate : undefined,
         meetingFromTime: formData.contactMode === 'Meeting' ? meetingFromTime : undefined,
-        meetingToTime: formData.contactMode === 'Meeting' ? meetingToTime : undefined,
-        meetingDuration: formData.contactMode === 'Meeting' ? meetingDuration : undefined,
+        meetingToTime: (formData.contactMode === 'Meeting' && (meetingStatus === 'Completed' || meetingStatus === 'Follow-up')) ? meetingToTime : undefined,
+        meetingDuration: (formData.contactMode === 'Meeting' && (meetingStatus === 'Completed' || meetingStatus === 'Follow-up')) ? meetingDuration : undefined,
         meetingType: formData.contactMode === 'Meeting' ? meetingType : undefined,
         meetingLocation: formData.contactMode === 'Meeting' ? meetingLocation : undefined,
         meetingStatus: formData.contactMode === 'Meeting' ? meetingStatus : undefined,
+        rescheduleDate: (formData.contactMode === 'Meeting' && meetingStatus === 'Rescheduled') ? rescheduleDate : undefined,
+        rescheduleTime: (formData.contactMode === 'Meeting' && meetingStatus === 'Rescheduled') ? rescheduleTime : undefined,
         nextFollowDate: finalFollowDate,
       };
 
@@ -503,32 +569,146 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         res = await createContact(payload);
       }
 
-      // If contact mode is Meeting, automatically update/log the meeting in Scheduled Meetings module
-      if (formData.contactMode === 'Meeting') {
+      const contactIdentifier = res?.data?.id || res?.data?.contactId || contact?.id || contact?.contactId;
+      const contactDisplayName = formData.contactPerson?.trim() || formData.companyName?.trim() || formData.name || contact?.name || 'Contact';
+      const contactCompany = formData.companyName || contact?.companyName || '';
+      const clientDisplayName = contactCompany
+        ? `${contactDisplayName} (${contactCompany})`
+        : contactDisplayName;
+      const contactPhone = (formData.phone ? formData.phone.replace(/\D/g, '') : '') || contact?.phone || '';
+      const foundEmp = (metadata?.employees || []).find(
+        (e: any) => e.id === formData.assignedTo || e.empCode === formData.assignedTo || e.name === formData.assignedTo
+      );
+      const assignedEmployeeName =
+        (contact as any)?.assignedToName ||
+        foundEmp?.name ||
+        (formData.assignedTo && !/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(formData.assignedTo) ? formData.assignedTo : '') ||
+        currentUser?.name ||
+        'Sandy';
+      const assignedEmployeeId = foundEmp?.id || (contact as any)?.assignedTo || currentUser?.id || undefined;
+
+      // 1. If contact mode is Call, auto-log call activity to Activity Logs module
+      if (formData.contactMode === 'Call') {
         try {
-          const contactIdentifier = res?.data?.id || res?.data?.contactId || contact?.id || contact?.contactId;
-          const clientDisplayName = formData.companyName
-            ? `${formData.name || contact?.name || 'Contact'} (${formData.companyName})`
-            : (formData.name || contact?.name || 'Contact');
+          await createCallLogApi({
+            callType: (callType as any) || 'Outgoing',
+            employeeId: assignedEmployeeId,
+            employeeName: assignedEmployeeName,
+            contactId: contactIdentifier,
+            contactName: contactDisplayName,
+            companyName: contactCompany || undefined,
+            phoneNumber: contactPhone || '0000000000',
+            leadId: contactIdentifier,
+            duration: callDuration?.trim() || '01:00',
+            status: (callStatus as any) || 'Completed',
+            callDate: callDate || getTodayDateStr(),
+            callTime: callFromTime || '10:00 AM',
+            description: formData.description?.trim() || undefined,
+          });
+          window.dispatchEvent(new CustomEvent('crm_call_logs_updated'));
+        } catch (callErr) {
+          console.error('Error auto-logging call activity:', callErr);
+        }
+      }
+
+      // 2. If contact mode is WhatsApp, auto-log WhatsApp activity to Activity Logs module
+      else if (formData.contactMode === 'WhatsApp') {
+        try {
+          await createSectionActivityApi('whatsapp', {
+            contactId: contactIdentifier,
+            contactName: contactDisplayName,
+            customerName: contactCompany || undefined,
+            companyName: contactCompany || undefined,
+            phoneNumber: contactPhone,
+            phone: contactPhone,
+            messageType: whatsappMessageType || 'Outgoing',
+            status: whatsappStatus || 'Msg Sent',
+            activityDate: whatsappDate || getTodayDateStr(),
+            activityTime: whatsappTime || getCurrentTimeStr(),
+            nextFollowDate: whatsappStatus.toLowerCase().includes('follow') ? nextFollowDate : undefined,
+            description: formData.description?.trim() || undefined,
+            performedBy: assignedEmployeeName,
+            performedById: assignedEmployeeId ? String(assignedEmployeeId) : undefined,
+          });
+          window.dispatchEvent(new CustomEvent('crm_activities_updated'));
+        } catch (waErr) {
+          console.error('Error auto-logging WhatsApp activity:', waErr);
+        }
+      }
+
+      // 3. If contact mode is Email, auto-log Email activity to Activity Logs module
+      else if (formData.contactMode === 'Email') {
+        try {
+          await createSectionActivityApi('email', {
+            contactId: contactIdentifier,
+            contactName: contactDisplayName,
+            customerName: contactCompany || undefined,
+            companyName: contactCompany || undefined,
+            email: formData.email?.trim() || contact?.email || undefined,
+            emailType: emailType || 'Outgoing',
+            status: emailStatus || 'Mail Sent',
+            activityDate: emailDate || getTodayDateStr(),
+            activityTime: emailTime || getCurrentTimeStr(),
+            nextFollowDate: emailStatus.toLowerCase().includes('follow') ? nextFollowDate : undefined,
+            description: formData.description?.trim() || undefined,
+            performedBy: assignedEmployeeName,
+            performedById: assignedEmployeeId ? String(assignedEmployeeId) : undefined,
+          });
+          window.dispatchEvent(new CustomEvent('crm_activities_updated'));
+        } catch (emailErr) {
+          console.error('Error auto-logging Email activity:', emailErr);
+        }
+      }
+
+      // 4. If contact mode is Other or Others, auto-log interaction to Activity Logs module
+      else if (formData.contactMode === 'Other' || formData.contactMode === 'Others') {
+        try {
+          await createSectionActivityApi('others', {
+            contactId: contactIdentifier,
+            contactName: contactDisplayName,
+            customerName: contactCompany || undefined,
+            companyName: contactCompany || undefined,
+            activityType: otherActivityType || 'Direct Visit',
+            status: otherStatus || 'Follow up',
+            activityDate: otherActivityDate || getTodayDateStr(),
+            activityTime: otherActivityTime || getCurrentTimeStr(),
+            nextFollowDate: otherStatus.toLowerCase().includes('follow') ? nextFollowDate : undefined,
+            description: formData.description?.trim() || undefined,
+            performedBy: assignedEmployeeName,
+            performedById: assignedEmployeeId ? String(assignedEmployeeId) : undefined,
+          });
+          window.dispatchEvent(new CustomEvent('crm_activities_updated'));
+        } catch (otherErr) {
+          console.error('Error auto-logging other activity:', otherErr);
+        }
+      }
+
+      // 5. If contact mode is Meeting, automatically update/log the meeting in Scheduled Meetings module
+      else if (formData.contactMode === 'Meeting') {
+        try {
+          const isCompletedOrFollowUp = meetingStatus === 'Completed' || meetingStatus === 'Follow-up';
+          const isRescheduled = meetingStatus === 'Rescheduled';
 
           await createMeetingApi({
             contactId: contactIdentifier,
             leadId: contactIdentifier,
             clientName: clientDisplayName,
-            title: meetingTitle.trim() || `Meeting with ${formData.name || contact?.name || 'Client'}`,
+            title: meetingTitle.trim() || `Meeting with ${contactDisplayName}`,
             purpose: meetingPurpose.trim() || meetingTitle.trim() || 'Client Meeting',
-            meetingDate: meetingDate,
-            startTime: meetingFromTime,
-            endTime: meetingToTime,
-            meetingTime: meetingFromTime,
-            duration: meetingDuration,
+            meetingDate: isRescheduled && rescheduleDate ? rescheduleDate : meetingDate,
+            startTime: isRescheduled && rescheduleTime ? rescheduleTime : meetingFromTime,
+            endTime: isCompletedOrFollowUp ? meetingToTime : undefined,
+            meetingTime: isRescheduled && rescheduleTime ? rescheduleTime : meetingFromTime,
+            duration: isCompletedOrFollowUp ? meetingDuration : undefined,
             meetingType: meetingType,
             location: meetingLocation.trim(),
             meetingLocation: meetingLocation.trim(),
             meetingLink: meetingLocation.trim(),
-            employeeId: meetingHostId || undefined,
-            employeeName: meetingHostName || formData.assignedTo || currentUser?.name || 'Sandy',
-            notes: formData.description?.trim() || undefined,
+            employeeId: meetingHostId || assignedEmployeeId || undefined,
+            employeeName: meetingHostName || assignedEmployeeName,
+            notes: isRescheduled
+              ? `Rescheduled from ${meetingDate} ${meetingFromTime || ''} to ${rescheduleDate} ${rescheduleTime || ''}.${formData.description ? ` Note: ${formData.description}` : ''}`
+              : (formData.description?.trim() || undefined),
             status: meetingStatus,
             meetingStatus: meetingStatus,
           });
@@ -548,6 +728,13 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       } catch (_) {}
 
       if (res?.success) {
+        const isNotInterested = finalStatus === 'Not Interested' || finalStatus === 'Not-Interested';
+        if (!isNotInterested && (finalStatus === 'Qualified' || finalStatus === 'Follow-up Required' || finalStatus === 'Pending' || formData.contactMode === 'Meeting')) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('crm_contacts_tab', 'ASSIGNED');
+            sessionStorage.setItem('crm_contacts_tab', 'ASSIGNED');
+          }
+        }
         onSuccess?.();
         onClose();
       }
@@ -602,6 +789,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       letterSpacing: '0.01em',
     },
   };
+
+  const isInPersonMeeting = meetingType?.toLowerCase().replace(/[^a-z]/g, '') === 'inperson';
 
   return (
     <Modal
@@ -664,16 +853,15 @@ export const ContactModal: React.FC<ContactModalProps> = ({
       {/* Main Form */}
       <form onSubmit={handleSubmit}>
         <Stack gap="lg">
-          {/* Row 1: Name | Company */}
+          {/* Row 1: Contact person | Company */}
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
             <TextInput
               className="contact-form-field"
-              label="Name"
-              placeholder="e.g. John Doe / Lead Name"
-              leftSection={<IconUser size={18} stroke={1.6} />}
-              value={formData.name || ''}
-              onChange={(e) => handleFieldChange('name', e.target.value)}
-              error={errors.name}
+              label="Contact person"
+              placeholder="e.g. Alex Morgan"
+              leftSection={<IconId size={18} stroke={1.6} />}
+              value={formData.contactPerson || ''}
+              onChange={(e) => handleFieldChange('contactPerson', e.target.value)}
               styles={inputStyles}
             />
 
@@ -689,18 +877,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
             />
           </SimpleGrid>
 
-          {/* Row 2: Contact person | Email */}
+          {/* Row 2: Email | Phone number */}
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-            <TextInput
-              className="contact-form-field"
-              label="Contact person"
-              placeholder="e.g. Alex Morgan (Optional)"
-              leftSection={<IconId size={18} stroke={1.6} />}
-              value={formData.contactPerson || ''}
-              onChange={(e) => handleFieldChange('contactPerson', e.target.value)}
-              styles={inputStyles}
-            />
-
             <TextInput
               className="contact-form-field"
               label="Email"
@@ -712,10 +890,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               error={errors.email}
               styles={inputStyles}
             />
-          </SimpleGrid>
 
-          {/* Row 3: Phone number | Source */}
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
             <TextInput
               className="contact-form-field"
               label="Phone number"
@@ -730,19 +905,35 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               error={errors.phone}
               styles={inputStyles}
             />
+          </SimpleGrid>
+
+          {/* Row 3: Source | Website */}
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+            <Select
+              className="contact-form-field"
+              label="Source"
+              placeholder="Select source (e.g. Bulk Import, Website)"
+              leftSection={<IconShare size={18} stroke={1.6} />}
+              data={sourceOptions}
+              value={formData.source || null}
+              onChange={(val) => handleFieldChange('source', val || '')}
+              searchable
+              clearable
+              styles={inputStyles}
+            />
 
             <TextInput
               className="contact-form-field"
-              label="Source"
-              placeholder="e.g. Bulk Import, Website, Referral"
+              label="Website"
+              placeholder="e.g. https://www.techcorp.com"
               leftSection={<IconWorld size={18} stroke={1.6} />}
-              value={formData.source || ''}
-              onChange={(e) => handleFieldChange('source', e.target.value)}
+              value={formData.website || ''}
+              onChange={(e) => handleFieldChange('website', e.target.value)}
               styles={inputStyles}
             />
           </SimpleGrid>
 
-          {/* Row 4: Location | Contact mode */}
+          {/* Row 4: Location | Tag Priority */}
           <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
             <TextInput
               className="contact-form-field"
@@ -754,6 +945,21 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               styles={inputStyles}
             />
 
+            <Autocomplete
+              className="contact-form-field"
+              label="Tag Priority"
+              placeholder="Select (Low, Medium, High) or type custom..."
+              leftSection={<IconTag size={18} stroke={1.6} />}
+              data={priorityOptions}
+              value={tagPriority}
+              onChange={(val) => setTagPriority(val)}
+              clearable
+              styles={inputStyles}
+            />
+          </SimpleGrid>
+
+          {/* Row 5: Contact mode & Status */}
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
             <Select
               className="contact-form-field"
               label="Contact mode"
@@ -771,6 +977,28 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               clearable
               styles={inputStyles}
             />
+
+            {!formData.contactMode && (
+              <Select
+                className="contact-form-field"
+                label="Status"
+                placeholder="Select Status"
+                data={[
+                  { value: 'Not Connected', label: 'Not Connected' },
+                  { value: 'Interested', label: 'Interested' },
+                  { value: 'Follow-up Required', label: 'Follow-up Required' },
+                  { value: 'Busy', label: 'Busy' },
+                  { value: 'No Answer', label: 'No Answer' },
+                  { value: 'Not Interested', label: 'Not Interested' },
+                  { value: 'Qualified', label: 'Qualified' },
+                  { value: 'Unqualified', label: 'Unqualified' },
+                ]}
+                leftSection={<IconCheck size={18} stroke={1.6} />}
+                value={generalStatus}
+                onChange={(val) => setGeneralStatus(val || 'Not Connected')}
+                styles={inputStyles}
+              />
+            )}
           </SimpleGrid>
 
           {/* Dynamic Call Fields (when Contact mode is Call) */}
@@ -864,7 +1092,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                     label="Status"
                     placeholder="Select Status"
                     data={[
+                      { value: 'Interested', label: 'Interested' },
                       { value: 'Follow-up', label: 'Follow-up' },
+                      { value: 'Qualified', label: 'Qualified' },
                       { value: 'Missed', label: 'Missed' },
                       { value: 'Busy', label: 'Busy' },
                       { value: 'No Answer', label: 'No Answer' },
@@ -1226,7 +1456,11 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                   <TextInput
                     className="contact-form-field"
                     label="Meeting Title"
-                    placeholder="e.g. Discovery & Product Demo"
+                    placeholder={
+                      formData.contactPerson || formData.companyName || formData.name || contact?.name
+                        ? `e.g. Discovery Call & Demo with ${formData.contactPerson || formData.companyName || formData.name || contact?.name}`
+                        : 'e.g. Discovery Call & Demo'
+                    }
                     leftSection={<IconCalendarEvent size={18} stroke={1.6} />}
                     value={meetingTitle}
                     onChange={(e) => setMeetingTitle(e.target.value)}
@@ -1290,7 +1524,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                   />
                 </SimpleGrid>
 
-                {/* From time | To time */}
+                {/* From time | Meeting Type */}
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
                   <MeetingTimePicker
                     label="From time"
@@ -1302,29 +1536,6 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                     hideQuickSelect
                   />
 
-                  <MeetingTimePicker
-                    label="To time"
-                    placeholder="e.g. 10:30 AM"
-                    value={meetingToTime}
-                    onChange={handleMeetingToTimeChange}
-                    styles={inputStyles}
-                    zIndex={3000}
-                    hideQuickSelect
-                  />
-                </SimpleGrid>
-
-                {/* Duration | Meeting Type */}
-                <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-                  <TextInput
-                    className="contact-form-field"
-                    label="Duration"
-                    placeholder="30 Minutes (Auto-calculated)"
-                    leftSection={<IconClock size={18} stroke={1.6} />}
-                    value={meetingDuration}
-                    onChange={(e) => setMeetingDuration(e.target.value)}
-                    styles={inputStyles}
-                  />
-
                   <Select
                     className="contact-form-field"
                     label="Meeting Type"
@@ -1334,20 +1545,31 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                       { value: 'In-person', label: 'In-person' },
                     ]}
                     leftSection={<IconWorld size={18} stroke={1.6} />}
-                    value={meetingType}
-                    onChange={(val) => setMeetingType(val || 'Virtual')}
+                    value={meetingType || null}
+                    onChange={(val) => setMeetingType(val || '')}
                     allowDeselect={false}
+                    clearable
                     styles={inputStyles}
                   />
                 </SimpleGrid>
 
-                {/* Meeting Link | Meeting Status */}
+                {/* Meeting Link / Meeting Location | Meeting Status */}
                 <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
                   <TextInput
                     className="contact-form-field"
-                    label="Meeting Link"
-                    placeholder="e.g. https://meet.google.com/xyz-abc-def"
-                    leftSection={<IconLink size={18} stroke={1.6} />}
+                    label={isInPersonMeeting ? 'Meeting Location' : 'Meeting Link'}
+                    placeholder={
+                      isInPersonMeeting
+                        ? 'e.g. Conference Room A, Office Address'
+                        : 'e.g. https://meet.google.com/xyz-abc-def'
+                    }
+                    leftSection={
+                      isInPersonMeeting ? (
+                        <IconMapPin size={18} stroke={1.6} />
+                      ) : (
+                        <IconLink size={18} stroke={1.6} />
+                      )
+                    }
                     value={meetingLocation}
                     onChange={(e) => setMeetingLocation(e.target.value)}
                     styles={inputStyles}
@@ -1357,6 +1579,8 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                     className="contact-form-field"
                     label="Meeting Status"
                     placeholder="Select Status"
+                    required
+                    error={errors.meetingStatus}
                     data={[
                       { value: 'Scheduled', label: 'Scheduled' },
                       { value: 'Completed', label: 'Completed' },
@@ -1365,12 +1589,54 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                       { value: 'Cancelled', label: 'Cancelled' },
                     ]}
                     leftSection={<IconCheck size={18} stroke={1.6} />}
-                    value={meetingStatus}
-                    onChange={(val) => setMeetingStatus(val || 'Scheduled')}
+                    value={meetingStatus || null}
+                    onChange={(val) => {
+                      const newStatus = val || '';
+                      setMeetingStatus(newStatus);
+                      if (newStatus !== 'Completed' && newStatus !== 'Follow-up') {
+                        setMeetingToTime('');
+                        setMeetingDuration('');
+                      }
+                      if (newStatus !== 'Rescheduled') {
+                        setRescheduleTime('');
+                      }
+                      if (errors.meetingStatus) {
+                        setErrors((prev) => {
+                          const next = { ...prev };
+                          delete next.meetingStatus;
+                          return next;
+                        });
+                      }
+                    }}
                     allowDeselect={false}
                     styles={inputStyles}
                   />
                 </SimpleGrid>
+
+                {/* Dynamic To time & Duration (Shown ONLY when status is Completed or Follow-up) */}
+                {(meetingStatus === 'Completed' || meetingStatus === 'Follow-up') && (
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+                    <MeetingTimePicker
+                      label="To time"
+                      placeholder="e.g. 10:30 AM"
+                      value={meetingToTime}
+                      onChange={handleMeetingToTimeChange}
+                      styles={inputStyles}
+                      zIndex={3000}
+                      hideQuickSelect
+                    />
+
+                    <TextInput
+                      className="contact-form-field"
+                      label="Duration"
+                      placeholder="Auto-calculated (e.g. 30 Minutes)"
+                      leftSection={<IconClock size={18} stroke={1.6} />}
+                      value={meetingDuration}
+                      onChange={(e) => setMeetingDuration(e.target.value)}
+                      styles={inputStyles}
+                    />
+                  </SimpleGrid>
+                )}
 
                 {/* Dynamic Next Follow-up Date (shown when Follow-up is selected) */}
                 {meetingStatus === 'Follow-up' && (
@@ -1384,15 +1650,40 @@ export const ContactModal: React.FC<ContactModalProps> = ({
                     leftSection={<IconCalendar size={18} stroke={1.6} />}
                   />
                 )}
+
+                {/* Dynamic Reschedule Date & Time (shown when Rescheduled is selected) */}
+                {meetingStatus === 'Rescheduled' && (
+                  <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+                    <MeetingDatePicker
+                      label="Reschedule Date"
+                      placeholder="DD-MM-YYYY"
+                      value={rescheduleDate}
+                      onChange={(val) => setRescheduleDate(val)}
+                      styles={inputStyles}
+                      zIndex={3000}
+                      leftSection={<IconCalendar size={18} stroke={1.6} />}
+                    />
+
+                    <MeetingTimePicker
+                      label="Reschedule Time"
+                      placeholder="e.g. 02:30 PM"
+                      value={rescheduleTime}
+                      onChange={(val) => setRescheduleTime(val)}
+                      styles={inputStyles}
+                      zIndex={3000}
+                      hideQuickSelect
+                    />
+                  </SimpleGrid>
+                )}
               </Stack>
             </Box>
           )}
 
-          {/* Row 5: Description */}
+          {/* Row 5: Description & Remarks */}
           <Textarea
             className="contact-form-field"
-            label="Description"
-            placeholder="Add context, requirements, or notes..."
+            label="Description & Remarks"
+            placeholder="Add context, requirements, notes, or remarks..."
             minRows={3}
             value={formData.description || ''}
             onChange={(e) => handleFieldChange('description', e.target.value)}

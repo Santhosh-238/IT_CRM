@@ -140,7 +140,7 @@ export const BulkImportHistoryTable: React.FC<BulkImportHistoryTableProps> = ({
         radius="lg"
         style={{
           backgroundColor: isDark ? '#111827' : '#FFFFFF',
-          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          border: isDark ? '2px solid rgba(255, 255, 255, 0.16)' : '2px solid #CBD5E1',
           boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.25)' : '0 1px 3px rgba(0,0,0,0.03)',
           overflow: 'hidden',
         }}
@@ -592,7 +592,7 @@ export const BulkImportHistoryTable: React.FC<BulkImportHistoryTableProps> = ({
         radius="lg"
         style={{
           backgroundColor: isDark ? '#111827' : '#FFFFFF',
-          border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+          border: isDark ? '2px solid rgba(255, 255, 255, 0.16)' : '2px solid #CBD5E1',
         }}
       >
         <Group justify="space-between" align="center" wrap="wrap">

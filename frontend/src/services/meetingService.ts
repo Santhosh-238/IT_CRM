@@ -1,6 +1,6 @@
 import { ScheduledMeeting, MeetingStats, MeetingFilters } from '../types/meeting';
 
-const API_BASE = 'http://localhost:5000/api/meetings';
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api') + '/meetings';
 
 export async function fetchMeetingsApi(filters?: MeetingFilters): Promise<{
   meetings: ScheduledMeeting[];

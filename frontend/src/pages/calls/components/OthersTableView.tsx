@@ -25,6 +25,7 @@ import {
   IconPlus,
 } from '@tabler/icons-react';
 import { ActivityLogItem } from '../../../types/callLog';
+import { useEmployee } from '../../../context/EmployeeContext';
 
 interface OthersTableViewProps {
   items: ActivityLogItem[];
@@ -43,6 +44,19 @@ export const OthersTableView: React.FC<OthersTableViewProps> = ({
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
+  const { employees } = useEmployee();
+
+  const getPerformerName = (performedBy?: string, performedById?: string | null) => {
+    if (!performedBy && !performedById) return 'Staff';
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(performedBy || '');
+    if (!isUuid && performedBy && performedBy !== 'Staff') return performedBy;
+    const emp = employees.find(
+      (e) =>
+        (performedBy && (e.id === performedBy || e.empCode === performedBy)) ||
+        (performedById && (e.id === performedById || e.empCode === performedById))
+    );
+    return emp ? emp.name : (performedBy || 'Staff');
+  };
 
   const renderStatusBadge = (statusVal?: string | null) => {
     const st = (statusVal || 'Interested').trim();
@@ -263,7 +277,7 @@ export const OthersTableView: React.FC<OthersTableViewProps> = ({
                   {/* Performed By */}
                   <Table.Td>
                     <Text size="xs" fw={500} style={{ color: isDark ? '#E2E8F0' : '#334155' }}>
-                      {item.performedBy || 'Staff'}
+                      {getPerformerName(item.performedBy, item.performedById)}
                     </Text>
                   </Table.Td>
 

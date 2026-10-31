@@ -60,7 +60,7 @@ const DEFAULT_SYSTEM_MODULES: SystemModule[] = [
   { id: 'employee_management', name: 'Employee Management', category: 'Main Navigation', description: 'Staff directory, onboarding, designations, and employee records.' },
   { id: 'contacts', name: 'Contacts', category: 'Main Navigation', description: 'Customer profiles, contact details, and account ownership.' },
   { id: 'leads', name: 'Leads', category: 'Main Navigation', description: 'Prospect pipeline, lead stages, and qualification workflows.' },
-  { id: 'scheduled_meetings', name: 'Scheduled Meetings', category: 'Main Navigation', description: 'Date-wise scheduled client and team meetings, employee creator tracking, and timings.' },
+  { id: 'scheduled_meetings', name: 'Meetings', category: 'Main Navigation', description: 'Date-wise scheduled client and team meetings, employee creator tracking, and timings.' },
   { id: 'call_logs', name: 'Activity Logs', category: 'Main Navigation', description: 'Activity logs including Calls, WhatsApp messages, Emails, and Other interactions.' },
   { id: 'customers', name: 'Customers', category: 'Main Navigation', description: 'Client company directories, accounts, and relationship history.' },
   { id: 'projects', name: 'Projects Management', category: 'Main Navigation', description: 'Client project delivery, sprints, milestones, and task SLAs.' },

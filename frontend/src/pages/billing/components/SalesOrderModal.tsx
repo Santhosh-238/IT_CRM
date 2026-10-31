@@ -1,3 +1,4 @@
+import { MeetingDatePicker } from '../../meetings/components/MeetingDatePicker';
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -582,31 +583,31 @@ export const SalesOrderModal: React.FC<SalesOrderModalProps> = ({
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <TextInput
+              <MeetingDatePicker
                 label="Order Date"
-                type="date"
+                placeholder="DD-MM-YYYY"
                 value={orderDate}
-                onChange={(e) => setOrderDate(e.currentTarget.value)}
+                onChange={(val: string) => setOrderDate(val)}
                 required
-                radius="md"
+                zIndex={3000}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <TextInput
+              <MeetingDatePicker
                 label="Start Date"
-                type="date"
+                placeholder="DD-MM-YYYY"
                 value={startDate}
-                onChange={(e) => setStartDate(e.currentTarget.value)}
-                radius="md"
+                onChange={(val: string) => setStartDate(val)}
+                zIndex={3000}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 4 }}>
-              <TextInput
+              <MeetingDatePicker
                 label="End Date"
-                type="date"
+                placeholder="DD-MM-YYYY"
                 value={endDate}
-                onChange={(e) => setEndDate(e.currentTarget.value)}
-                radius="md"
+                onChange={(val: string) => setEndDate(val)}
+                zIndex={3000}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 6 }}>

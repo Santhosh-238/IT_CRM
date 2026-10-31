@@ -1,6 +1,6 @@
 export type CallType = 'Incoming' | 'Outgoing';
 
-export type CallStatus = 'Completed' | 'Follow-up' | 'Missed' | 'Busy' | 'No Answer' | 'Not Interested';
+export type CallStatus = 'Completed' | 'Follow-up' | 'Interested' | 'Missed' | 'Busy' | 'No Answer' | 'Not Interested';
 
 export type ActivityLogSection = 'calls' | 'whatsapp' | 'email' | 'others';
 
@@ -12,6 +12,7 @@ export interface CallLog {
   employeeName: string;
   contactId?: string | null;
   contactName: string;
+  companyName?: string | null;
   phoneNumber: string;
   leadId?: string | null;
   duration: string;
@@ -33,6 +34,7 @@ export interface ActivityLogItem {
   leadName?: string | null;
   customerId?: string | null;
   customerName?: string | null;
+  companyName?: string | null;
   contactId?: string | null;
   contactName: string;
   phone?: string;

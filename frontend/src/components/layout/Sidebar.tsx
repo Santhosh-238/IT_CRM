@@ -180,10 +180,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}
-            {/* Scheduled Meetings Item - Directly following Leads */}
+            {/* Meetings Item - Directly following Leads */}
             {can('scheduled_meetings', 'view') && (
               <NavLink
-                label="Scheduled Meetings"
+                label="Meetings"
                 leftSection={<IconCalendarEvent size={18} stroke={2} />}
                 active={activeNav === 'scheduled-meetings' || activeNav === 'meetings'}
                 onClick={() => onSelectNav('scheduled-meetings')}
@@ -198,9 +198,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onSelectNav, isMobile = false 
                 leftSection={<IconClipboardList size={18} stroke={2} />}
                 active={activeNav === 'call-logs' || activeNav === 'calls' || activeNav === 'activity-logs'}
                 onClick={() => onSelectNav('call-logs')}
-                className={activeNav === 'call-logs' || activeNav === 'calls' || activeNav === 'activity-logs' ? 'crextio-pill-active' : 'crextio-pill-inactive'}
-                style={{ borderRadius: 10, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
-                className={`sidebar-nav-item ${activeNav === 'call-logs' || activeNav === 'calls' ? 'crextio-pill-active' : 'crextio-pill-inactive'}`}
+                className={`sidebar-nav-item ${activeNav === 'call-logs' || activeNav === 'calls' || activeNav === 'activity-logs' ? 'crextio-pill-active' : 'crextio-pill-inactive'}`}
                 style={{ borderRadius: 12, padding: '9px 14px', height: 42, fontSize: 13, fontWeight: 600 }}
               />
             )}

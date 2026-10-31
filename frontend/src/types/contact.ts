@@ -74,6 +74,7 @@ export interface Contact {
   address?: string | null;
   location?: string | null;
   source?: string | null;
+  website?: string | null;
   customSource?: string | null;
 
   // 2. Professional & Company Information
@@ -148,6 +149,10 @@ export interface Contact {
   meetingDuration?: string | null;
   meetingLocation?: string | null;
   meetingStatus?: string | null;
+  rescheduleDate?: string | null;
+  rescheduleTime?: string | null;
+  rescheduledDate?: string | null;
+  rescheduledTime?: string | null;
 
   // 5. Qualification Details
   status: ContactStatus | string;
@@ -158,6 +163,7 @@ export interface Contact {
   purchaseTimeline?: string | null;
   interestedService?: string | null;
   priority?: ContactPriority | string | null;
+  tagPriority?: string | null;
   qualificationStatus?: QualificationStatus | string | null;
   qualifiedBy?: string | null;
   qualificationDate?: string | null;
@@ -205,6 +211,7 @@ export interface ContactFormData {
   address?: string;
   location?: string;
   source?: string;
+  website?: string;
   customSource?: string;
 
   // 2. Professional & Company Information
@@ -278,6 +285,10 @@ export interface ContactFormData {
   meetingDuration?: string;
   meetingLocation?: string;
   meetingStatus?: string;
+  rescheduleDate?: string;
+  rescheduleTime?: string;
+  rescheduledDate?: string;
+  rescheduledTime?: string;
 
   // 5. Qualification & Status
   status?: ContactStatus | string;
@@ -288,6 +299,7 @@ export interface ContactFormData {
   purchaseTimeline?: string;
   interestedService?: string;
   priority?: ContactPriority | string;
+  tagPriority?: string;
   qualificationStatus?: QualificationStatus | string;
   qualifiedBy?: string;
   qualificationDate?: string;
@@ -302,7 +314,9 @@ export interface ContactFormData {
 
   // 6. Assignment
   assignedTo?: string;
+  assignedToName?: string;
   assignedBy?: string;
+  assignmentStatus?: AssignmentStatus | string;
   createdBy?: string;
 
   // 7. Verified Odoo ERP Contact Fields
@@ -364,6 +378,8 @@ export interface ContactMetadata {
   categories: string[];
   productOptions: string[];
   serviceOptions: string[];
+  catalogProducts?: string[];
+  catalogServices?: string[];
   contactModes: string[];
   meetingTypes: string[];
   statuses: string[];

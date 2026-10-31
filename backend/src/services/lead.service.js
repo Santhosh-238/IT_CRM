@@ -391,6 +391,17 @@ export async function deleteLeadService(id, currentUser = null) {
     where: { id: existing.id },
   });
 
+  // Clean up any activity timeline records referencing this lead
+  await prisma.activity.deleteMany({
+    where: {
+      OR: [
+        { leadId: existing.id },
+        { leadId: existing.leadId },
+        { leadCode: existing.leadId },
+      ],
+    },
+  }).catch(() => {});
+
   await delCache('crm:leads:*').catch(() => {});
 
   return {

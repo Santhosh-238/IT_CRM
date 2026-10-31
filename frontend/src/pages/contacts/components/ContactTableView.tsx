@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Table,
   Group,
@@ -17,6 +17,9 @@ import {
   Loader,
   SimpleGrid,
   ScrollArea,
+  TextInput,
+  ThemeIcon,
+  Divider,
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import {
@@ -40,6 +43,13 @@ import {
   IconUser,
   IconCalendar,
   IconArrowRight,
+  IconTag,
+  IconCheck,
+  IconChevronRight,
+  IconNotes,
+  IconCalendarTime,
+  IconMapPin,
+  IconClock,
 } from '@tabler/icons-react';
 import { Contact } from '../../../types/contact';
 import { useContact } from '../../../context/ContactContext';
@@ -79,7 +89,128 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
   const isDark = computedColorScheme === 'dark';
   const isMobile = useMediaQuery('(max-width: 820px)');
   const { setActiveNav, currentUser } = useCRM();
-  const { setSelectedContact, metadata, assignContact } = useContact();
+  const { setSelectedContact, metadata, assignContact, updateContact } = useContact();
+  const [updatingPriorityId, setUpdatingPriorityId] = useState<string | null>(null);
+
+  // Accordion expansion state: single click toggles row details, double click opens edit form
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const formatDisplayDate = (dateStr?: string | null) => {
+    if (!dateStr) return '—';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const handleRowClick = (contact: Contact) => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      return;
+    }
+
+    clickTimerRef.current = setTimeout(() => {
+      const targetId = contact.id || contact.contactId || '';
+      setExpandedId((prev) => (prev === targetId ? null : targetId));
+      clickTimerRef.current = null;
+    }, 250);
+  };
+
+  const handleRowDoubleClick = (contact: Contact) => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    onEdit(contact);
+  };
+
+  const getContactModeInfo = (contact: Contact) => {
+    const rawMode = (contact.contactMode || (contact as any).mode || '').trim();
+    let mode = rawMode;
+
+    if (!mode) {
+      if (contact.meetingDate || contact.meetingTitle || (contact as any).meetingType) {
+        mode = 'Meeting';
+      } else if (contact.whatsappDate || (contact as any).whatsappStatus) {
+        mode = 'WhatsApp';
+      } else if (contact.emailDate || (contact as any).emailStatus) {
+        mode = 'Email';
+      } else if (
+        contact.callDate ||
+        contact.callStatus ||
+        (contact as any).callType ||
+        Boolean(contact.phone) ||
+        (contact as any).isBulkImport
+      ) {
+        mode = 'Call';
+      } else {
+        return null;
+      }
+    }
+
+    const modeLow = mode.toLowerCase();
+    if (modeLow === 'meeting') {
+      return {
+        label: 'Meeting',
+        color: 'grape',
+        icon: <IconCalendar size={12} />,
+      };
+    }
+    if (modeLow === 'whatsapp') {
+      return {
+        label: 'WhatsApp',
+        color: 'teal',
+        icon: <IconBrandWhatsapp size={12} />,
+      };
+    }
+    if (modeLow === 'email') {
+      return {
+        label: 'Email',
+        color: 'indigo',
+        icon: <IconMail size={12} />,
+      };
+    }
+    if (modeLow === 'other' || modeLow === 'others') {
+      return {
+        label: 'Other',
+        color: 'gray',
+        icon: <IconNotes size={12} />,
+      };
+    }
+    return {
+      label: 'Call',
+      color: 'blue',
+      icon: <IconPhoneCall size={12} />,
+    };
+  };
+
+  const handleUpdatePriority = async (contact: Contact, newPriority: string) => {
+    try {
+      const contactTargetId = contact.id || contact.contactId;
+      if (!contactTargetId) return;
+      setUpdatingPriorityId(contactTargetId);
+      const res = await updateContact(contactTargetId, {
+        priority: newPriority,
+        tagPriority: newPriority,
+      });
+      if (res && res.success && res.data) {
+        onContactUpdated?.(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to update priority:', err);
+    } finally {
+      setUpdatingPriorityId(null);
+    }
+  };
   const { employees: contextEmployees, fetchEmployees } = useEmployee();
   const [assigningId, setAssigningId] = useState<string | null>(null);
 
@@ -293,32 +424,111 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
     );
   };
 
+  // Priority / Tag Priority Badge
+  const renderPriorityBadge = (priorityVal?: string | null) => {
+    const p = (priorityVal || 'Medium').trim();
+    const pLow = p.toLowerCase();
+
+    let bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
+    let color = isDark ? '#93C5FD' : '#2563EB';
+    let border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
+
+    if (pLow === 'high' || pLow.includes('urgent') || pLow.includes('critical')) {
+      bg = isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEF2F2';
+      color = isDark ? '#FCA5A5' : '#DC2626';
+      border = isDark ? 'rgba(239, 68, 68, 0.35)' : '#FECACA';
+    } else if (pLow === 'medium' || pLow === 'med') {
+      bg = isDark ? 'rgba(245, 158, 11, 0.16)' : '#FFFBEB';
+      color = isDark ? '#FCD34D' : '#D97706';
+      border = isDark ? 'rgba(245, 158, 11, 0.35)' : '#FDE68A';
+    } else if (pLow === 'low') {
+      bg = isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF';
+      color = isDark ? '#93C5FD' : '#2563EB';
+      border = isDark ? 'rgba(59, 130, 246, 0.3)' : '#BFDBFE';
+    } else {
+      // Custom entered priority / tag (e.g. VIP, Important, etc.)
+      bg = isDark ? 'rgba(139, 92, 246, 0.16)' : '#F5F3FF';
+      color = isDark ? '#C4B5FD' : '#7C3AED';
+      border = isDark ? 'rgba(139, 92, 246, 0.35)' : '#DDD6FE';
+    }
+
+    return (
+      <Box
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '4px 10px',
+          borderRadius: 100,
+          backgroundColor: bg,
+          color: color,
+          border: `1px solid ${border}`,
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.02em',
+          whiteSpace: 'nowrap',
+          maxWidth: 120,
+        }}
+      >
+        <IconTag size={11} stroke={2.2} style={{ flexShrink: 0 }} />
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p}</span>
+      </Box>
+    );
+  };
+
   // Determine canonical contact display status (Default is 'Not Connected' for uncontacted/new contacts)
   const getContactDisplayStatus = (c: Contact) => {
-    if (
-      c.status === 'Not Connected' ||
-      c.status === 'New' ||
-      c.qualificationStatus === 'New' ||
-      (!c.status && !c.qualificationStatus)
-    ) {
-      return 'Not Connected';
+    const s = (c.status || '').trim();
+    const sLow = s.toLowerCase();
+    const q = (c.qualificationStatus || '').trim();
+    const qLow = q.toLowerCase();
+
+    if (sLow === 'interested' || (c as any).callStatus === 'Interested' || (c as any).whatsappStatus === 'Interested') {
+      return 'Interested';
     }
-    if (c.qualificationStatus === 'Qualified' || c.status === 'Qualified') {
+    if (
+      sLow === 'not interested' ||
+      sLow === 'not-interested' ||
+      (c as any).callStatus === 'Not Interested' ||
+      (c as any).whatsappStatus === 'Not Interested' ||
+      (c as any).emailStatus === 'Not Interested'
+    ) {
+      return 'Not Interested';
+    }
+    if (qLow === 'qualified' || sLow === 'qualified') {
       return 'Qualified';
     }
     if (
-      c.qualificationStatus === 'Unqualified' ||
-      c.qualificationStatus === 'Disqualified' ||
-      c.status === 'Unqualified' ||
-      c.status === 'Disqualified'
+      qLow === 'unqualified' ||
+      qLow === 'disqualified' ||
+      sLow === 'unqualified' ||
+      sLow === 'disqualified'
     ) {
       return 'Unqualified';
     }
-    if (c.qualificationStatus === 'Follow-up Required' || c.status === 'Follow-up Required') {
+    if (
+      qLow === 'follow-up required' ||
+      sLow === 'follow-up required' ||
+      sLow === 'follow-up' ||
+      sLow === 'followup'
+    ) {
       return 'Follow-up Required';
     }
-    if (c.qualificationStatus === 'Pending' || c.status === 'Pending') {
+    if (qLow === 'pending' || sLow === 'pending') {
       return 'Pending';
+    }
+    if (s && s !== 'Not Connected' && s !== 'New' && s !== 'new') {
+      return s;
+    }
+    if (
+      s === 'Not Connected' ||
+      s === 'New' ||
+      s === 'new' ||
+      q === 'New' ||
+      q === 'new' ||
+      (!s && !q)
+    ) {
+      return 'Not Connected';
     }
     return c.status || c.qualificationStatus || 'Not Connected';
   };
@@ -365,29 +575,78 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
     );
   }
 
+  const getStatusDetailText = (contact: Contact, displayStatus: string): { show: boolean; text: string } => {
+    const sLow = (displayStatus || '').toLowerCase();
+    const isUnqualified =
+      sLow.includes('unqual') ||
+      sLow.includes('disqual') ||
+      String(contact.qualificationStatus || '').toLowerCase().includes('unqual') ||
+      String(contact.qualificationStatus || '').toLowerCase().includes('disqual') ||
+      String(contact.status || '').toLowerCase().includes('unqual') ||
+      String(contact.status || '').toLowerCase().includes('disqual');
+
+    const isNotInterested =
+      sLow.includes('not interested') ||
+      sLow.includes('not-interested') ||
+      String(contact.status || '').toLowerCase().includes('not interested') ||
+      String(contact.status || '').toLowerCase().includes('not-interested');
+
+    // 1. If status is Unqualified / Disqualified, show Disqualification Reason
+    if (sLow.includes('unqual') || sLow.includes('disqual')) {
+      const reason =
+        (contact as any).disqualificationReason ||
+        contact.unqualifiedReason ||
+        contact.remarks ||
+        contact.description ||
+        '';
+      const trimmed = String(reason || '').trim();
+      return { show: Boolean(trimmed), text: trimmed };
+    }
+
+    // 2. If status is Not Interested, show Description
+    if (sLow.includes('not interested') || sLow.includes('not-interested')) {
+      const desc =
+        contact.description ||
+        contact.remarks ||
+        contact.notes ||
+        (contact as any).disqualificationReason ||
+        contact.unqualifiedReason ||
+        '';
+      const trimmed = String(desc || '').trim();
+      return { show: Boolean(trimmed), text: trimmed };
+    }
+
+    if (isUnqualified) {
+      const reason =
+        (contact as any).disqualificationReason ||
+        contact.unqualifiedReason ||
+        contact.remarks ||
+        contact.description ||
+        '';
+      const trimmed = String(reason || '').trim();
+      return { show: Boolean(trimmed), text: trimmed };
+    }
+
+    if (isNotInterested) {
+      const desc =
+        contact.description ||
+        contact.remarks ||
+        contact.notes ||
+        '';
+      const trimmed = String(desc || '').trim();
+      return { show: Boolean(trimmed), text: trimmed };
+    }
+
+    return { show: false, text: '' };
+  };
+
   if (isMobile) {
     return (
       <Stack gap="sm" mt="md">
         {contacts.map((contact) => {
           const displayStatus = getContactDisplayStatus(contact);
-          const sLow = displayStatus.toLowerCase();
-          const isNotInterestedOrUnqualified =
-            sLow.includes('not interested') ||
-            sLow.includes('not-interested') ||
-            sLow.includes('unqual') ||
-            sLow.includes('disqual');
-
-          const reasonParts = [
-            contact.remarks,
-            contact.description,
-            contact.unqualifiedReason,
-            (contact as any).disqualificationReason,
-            contact.notes,
-          ]
-            .map((s) => (s ? String(s).trim() : ''))
-            .filter(Boolean);
-
-          const uniqueReason = reasonParts.filter((v, i, a) => a.indexOf(v) === i).join(' • ');
+          const statusDetail = getStatusDetailText(contact, displayStatus);
+          const modeInfo = getContactModeInfo(contact);
 
           return (
           <Paper
@@ -438,23 +697,33 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                 </Box>
               </Group>
               <Box style={{ flexShrink: 0, textAlign: 'right' }}>
-                {renderStatusBadge(displayStatus, contact.stage)}
-                {isNotInterestedOrUnqualified && uniqueReason && (
-                  <Text
-                    size="11px"
+                <Tooltip label="Click to update contact" withArrow position="top">
+                  <UnstyledButton
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(contact);
+                    }}
                     style={{
-                      color: isDark ? '#F87171' : '#DC2626',
-                      fontWeight: 500,
-                      maxWidth: 130,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      fontStyle: 'italic',
-                      marginTop: 2,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      cursor: 'pointer',
                     }}
                   >
-                    {uniqueReason}
-                  </Text>
+                    {renderStatusBadge(displayStatus, contact.stage)}
+                  </UnstyledButton>
+                </Tooltip>
+
+                {modeInfo && (
+                  <Group gap={3} justify="flex-end" align="center" wrap="nowrap" mt={3} style={{ opacity: 0.85 }}>
+                    {React.cloneElement(modeInfo.icon as React.ReactElement<any>, {
+                      size: 11,
+                      color: isDark ? '#94A3B8' : '#64748B',
+                      stroke: 2,
+                    })}
+                    <Text size="10.5px" fw={500} style={{ color: isDark ? '#94A3B8' : '#64748B', lineHeight: 1 }}>
+                      {modeInfo.label}
+                    </Text>
+                  </Group>
                 )}
               </Box>
             </Group>
@@ -577,6 +846,7 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                   </Menu.Dropdown>
                 </Menu>
                 {contact.source && renderSourceBadge(contact.source)}
+                {renderPriorityBadge(contact.priority || (contact as any).tagPriority)}
               </Group>
 
               <Group gap={4} onClick={(e) => e.stopPropagation()}>
@@ -613,13 +883,14 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
 
   return (
     <Paper
-      radius="lg"
+      radius="16px"
       style={{
         background: isDark ? '#111827' : '#FFFFFF',
-        border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+        border: isDark ? '2px solid rgba(255, 255, 255, 0.16)' : '2px solid #CBD5E1',
         overflow: 'hidden',
-        boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.3)' : '0 1px 4px rgba(0,0,0,0.03)',
+        boxShadow: isDark ? '0 10px 30px rgba(0, 0, 0, 0.4)' : '0 4px 20px rgba(0, 0, 0, 0.05)',
         marginTop: 16,
+        width: '100%',
       }}
     >
       <Box
@@ -627,6 +898,7 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
           width: '100%',
           overflowX: 'auto',
           WebkitOverflowScrolling: 'touch',
+          scrollbarWidth: 'thin',
         }}
       >
         <Table
@@ -635,39 +907,41 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
           highlightOnHover
           style={{
             width: '100%',
-            minWidth: 760,
             userSelect: 'none',
           }}
         >
           <Table.Thead
             style={{
-              background: isDark ? '#0F172A' : '#FBFBFC',
-              borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #F1F5F9',
+              background: isDark ? '#0F172A' : '#F8FAFC',
+              borderBottom: isDark ? '2px solid rgba(255, 255, 255, 0.08)' : '2px solid #E2E8F0',
             }}
           >
-            <Table.Tr>
-              <Table.Th style={{ width: 95, minWidth: 90, color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+            <Table.Tr style={{ height: 44 }}>
+              <Table.Th style={{ width: 85, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', padding: '10px 8px' }}>
                 ID
               </Table.Th>
-              <Table.Th style={{ minWidth: 110, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+              <Table.Th style={{ minWidth: 120, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', padding: '10px 8px' }}>
                 COMPANY
               </Table.Th>
-              <Table.Th style={{ minWidth: 105, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+              <Table.Th style={{ minWidth: 105, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', padding: '10px 8px' }}>
                 CONTACT PERSON
               </Table.Th>
-              <Table.Th style={{ minWidth: 120, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+              <Table.Th style={{ minWidth: 130, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', padding: '10px 8px' }}>
                 EMAIL
               </Table.Th>
-              <Table.Th style={{ minWidth: 100, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+              <Table.Th style={{ width: 100, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', padding: '10px 8px' }}>
                 PHONE NUMBER
               </Table.Th>
-              <Table.Th style={{ minWidth: 110, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+              <Table.Th style={{ width: 115, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', padding: '10px 8px' }}>
                 ASSIGNED OWNER
               </Table.Th>
-              <Table.Th style={{ width: 110, minWidth: 100, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+              <Table.Th style={{ width: 105, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', padding: '10px 8px' }}>
+                TAG PRIORITY
+              </Table.Th>
+              <Table.Th style={{ width: 110, whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', padding: '10px 8px' }}>
                 STATUS
               </Table.Th>
-              <Table.Th style={{ width: 85, minWidth: 85, textAlign: 'center', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+              <Table.Th style={{ width: 95, textAlign: 'center', whiteSpace: 'nowrap', color: isDark ? '#94A3B8' : '#64748B', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', padding: '10px 4px' }}>
                 ACTIONS
               </Table.Th>
             </Table.Tr>
@@ -680,110 +954,115 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                 Boolean(contact.assignedToName);
 
               const displayStatus = getContactDisplayStatus(contact);
-              const sLow = displayStatus.toLowerCase();
-              const isNotInterestedOrUnqualified =
-                sLow.includes('not interested') ||
-                sLow.includes('not-interested') ||
-                sLow.includes('unqual') ||
-                sLow.includes('disqual');
-
-              const reasonParts = [
-                contact.remarks,
-                contact.description,
-                contact.unqualifiedReason,
-                (contact as any).disqualificationReason,
-                contact.notes,
-              ]
-                .map((s) => (s ? String(s).trim() : ''))
-                .filter(Boolean);
-
-              const uniqueReason = reasonParts.filter((v, i, a) => a.indexOf(v) === i).join(' • ');
+              const statusDetail = getStatusDetailText(contact, displayStatus);
+              const contactKey = contact.id || contact.contactId || '';
+              const isExpanded = expandedId === contactKey;
+              const modeInfo = getContactModeInfo(contact);
 
               return (
-                <React.Fragment key={contact.id}>
+                <React.Fragment key={contactKey}>
                   <Table.Tr
-                    onClick={() => {
-                      if (onRowClick) {
-                        onRowClick(contact);
-                      } else {
-                        onView(contact);
-                      }
-                    }}
+                    onClick={() => handleRowClick(contact)}
+                    onDoubleClick={() => handleRowDoubleClick(contact)}
                     style={{
                       cursor: 'pointer',
+                      height: 52,
                       transition: 'background 0.12s ease',
                       borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #F1F5F9',
+                      backgroundColor: isExpanded
+                        ? (isDark ? 'rgba(14, 165, 233, 0.12)' : '#F0F9FF')
+                        : undefined,
                     }}
                   >
-                    {/* 1. ID */}
-                    <Table.Td style={{ width: 95, minWidth: 90 }}>
-                      <Text
-                        fw={700}
-                        size="sm"
-                        style={{
-                          color: isDark ? '#F8FAFC' : '#0F172A',
-                          lineHeight: 1.2,
-                          whiteSpace: 'nowrap',
-                          fontFamily: 'monospace',
-                        }}
-                      >
-                        {contact.contactId || contact.bulkId || (contact.id ? (contact.id.startsWith('CNT-') || contact.id.startsWith('BLK-') ? contact.id : ((contact as any).isBulkImport ? `BLK-${contact.id.slice(0, 4).toUpperCase()}` : `CNT-${contact.id.slice(0, 4).toUpperCase()}`)) : '—')}
-                      </Text>
+                    {/* 1. ID with expand toggle */}
+                    <Table.Td style={{ width: 85, whiteSpace: 'nowrap', padding: '8px 8px', verticalAlign: 'middle' }}>
+                      <Group gap={4} wrap="nowrap" align="center">
+                        <ActionIcon
+                          size={18}
+                          variant="subtle"
+                          color={isExpanded ? 'blue' : 'gray'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedId((prev) => (prev === contactKey ? null : contactKey));
+                          }}
+                          title={isExpanded ? 'Collapse description & follow-up' : 'Click to show description & follow-up'}
+                        >
+                          {isExpanded ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+                        </ActionIcon>
+                        <Text
+                          fw={700}
+                          size="12px"
+                          style={{
+                            color: isExpanded ? '#0284C7' : (isDark ? '#F8FAFC' : '#0F172A'),
+                            lineHeight: 1.2,
+                            whiteSpace: 'nowrap',
+                            fontFamily: 'monospace',
+                          }}
+                        >
+                          {contact.contactId || contact.bulkId || (contact.id ? (contact.id.startsWith('CNT-') || contact.id.startsWith('BLK-') ? contact.id : ((contact as any).isBulkImport ? `BLK-${contact.id.slice(0, 4).toUpperCase()}` : `CNT-${contact.id.slice(0, 4).toUpperCase()}`)) : '—')}
+                        </Text>
+                      </Group>
                     </Table.Td>
 
                     {/* 2. COMPANY */}
-                    <Table.Td style={{ minWidth: 110 }}>
-                      <Text
-                        size="13px"
-                        fw={600}
-                        truncate
-                        style={{
-                          color: isDark ? '#F8FAFC' : '#1E293B',
-                          maxWidth: 160,
-                        }}
-                      >
-                        {contact.companyName || '—'}
-                      </Text>
+                    <Table.Td style={{ minWidth: 120, padding: '8px 8px', verticalAlign: 'middle' }}>
+                      <Tooltip label={contact.companyName || ''} withArrow multiline maw={240} disabled={!contact.companyName}>
+                        <Text
+                          size="12.5px"
+                          fw={600}
+                          truncate
+                          style={{
+                            color: isDark ? '#F8FAFC' : '#1E293B',
+                            maxWidth: 160,
+                          }}
+                        >
+                          {contact.companyName || '—'}
+                        </Text>
+                      </Tooltip>
                     </Table.Td>
 
                     {/* 3. CONTACT PERSON */}
-                    <Table.Td style={{ minWidth: 105 }}>
-                      <Text
-                        size="13px"
-                        truncate
-                        style={{
-                          color: isDark ? '#CBD5E1' : '#334155',
-                          maxWidth: 140,
-                        }}
-                      >
-                        {contact.contactPerson || contact.name || '—'}
-                      </Text>
+                    <Table.Td style={{ minWidth: 105, padding: '8px 8px', verticalAlign: 'middle' }}>
+                      <Tooltip label={contact.contactPerson || contact.name || ''} withArrow multiline maw={220}>
+                        <Text
+                          size="12px"
+                          truncate
+                          style={{
+                            color: isDark ? '#CBD5E1' : '#334155',
+                            maxWidth: 140,
+                          }}
+                        >
+                          {contact.contactPerson || contact.name || '—'}
+                        </Text>
+                      </Tooltip>
                     </Table.Td>
 
                     {/* 4. EMAIL */}
-                    <Table.Td style={{ minWidth: 120 }}>
-                      <Text
-                        size="13px"
-                        truncate
-                        style={{
-                          color: isDark ? '#94A3B8' : '#64748B',
-                          maxWidth: 170,
-                        }}
-                      >
-                        {contact.email || '—'}
-                      </Text>
+                    <Table.Td style={{ minWidth: 130, padding: '8px 8px', verticalAlign: 'middle' }}>
+                      <Tooltip label={contact.email || ''} withArrow position="top" disabled={!contact.email}>
+                        <Text
+                          size="12px"
+                          truncate
+                          style={{
+                            color: isDark ? '#94A3B8' : '#64748B',
+                            maxWidth: 160,
+                          }}
+                        >
+                          {contact.email || '—'}
+                        </Text>
+                      </Tooltip>
                     </Table.Td>
 
                     {/* 5. PHONE NUMBER */}
-                    <Table.Td style={{ minWidth: 100, whiteSpace: 'nowrap' }}>
-                      <Text size="13px" fw={500} style={{ color: isDark ? '#CBD5E1' : '#334155', whiteSpace: 'nowrap' }}>
+                    <Table.Td style={{ width: 100, whiteSpace: 'nowrap', padding: '8px 8px', verticalAlign: 'middle' }}>
+                      <Text size="12px" fw={500} style={{ color: isDark ? '#CBD5E1' : '#334155', whiteSpace: 'nowrap' }}>
                         {contact.phone || '—'}
                       </Text>
                     </Table.Td>
 
                     {/* 6. ASSIGNED OWNER: Quick Assign dropdown matching bulk import batches */}
                     <Table.Td
-                      style={{ minWidth: 125, whiteSpace: 'nowrap' }}
+                      style={{ width: 115, whiteSpace: 'nowrap', padding: '8px 8px', verticalAlign: 'middle' }}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Menu
@@ -984,16 +1263,19 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
 
 
 
-                    {/* 7. STATUS */}
-                    <Table.Td style={{ minWidth: 110, verticalAlign: 'middle' }}>
-                      <Stack gap={2} align="flex-start" justify="center">
-                        {isAssigned ? (
-                          <Tooltip label="Click to open Qualification Screen" withArrow position="top">
+                    {/* 6.5 TAG PRIORITY */}
+                    <Table.Td
+                      style={{ width: 105, whiteSpace: 'nowrap', verticalAlign: 'middle', padding: '8px 8px' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Menu shadow="md" width={220} position="bottom-start" radius="md" withinPortal>
+                        <Menu.Target>
+                          <Tooltip
+                            label={`Tag Priority: ${contact.priority || (contact as any).tagPriority || 'Medium'} (Click to change)`}
+                            withArrow
+                            position="top"
+                          >
                             <UnstyledButton
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onQualify?.(contact);
-                              }}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -1007,38 +1289,162 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                                 e.currentTarget.style.transform = 'scale(1)';
                               }}
                             >
-                              {renderStatusBadge(displayStatus, contact.stage)}
+                              {updatingPriorityId === (contact.id || contact.contactId) ? (
+                                <Badge size="xs" radius="xl" color="blue">
+                                  <Loader size={10} color="blue" /> Saving...
+                                </Badge>
+                              ) : (
+                                renderPriorityBadge(contact.priority || (contact as any).tagPriority)
+                              )}
                             </UnstyledButton>
                           </Tooltip>
-                        ) : (
-                          renderStatusBadge(displayStatus, contact.stage)
-                        )}
+                        </Menu.Target>
 
-                        {isNotInterestedOrUnqualified && uniqueReason && (
-                          <Tooltip label={uniqueReason} multiline maw={280} withArrow position="bottom-start">
+                        <Menu.Dropdown onClick={(e) => e.stopPropagation()} style={{ minWidth: 220, padding: 8 }}>
+                          <Menu.Label>SET TAG PRIORITY</Menu.Label>
+                          <Menu.Item
+                            leftSection={<Box style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#DC2626' }} />}
+                            onClick={() => handleUpdatePriority(contact, 'High')}
+                          >
+                            High
+                          </Menu.Item>
+                          <Menu.Item
+                            leftSection={<Box style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#D97706' }} />}
+                            onClick={() => handleUpdatePriority(contact, 'Medium')}
+                          >
+                            Medium
+                          </Menu.Item>
+                          <Menu.Item
+                            leftSection={<Box style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#2563EB' }} />}
+                            onClick={() => handleUpdatePriority(contact, 'Low')}
+                          >
+                            Low
+                          </Menu.Item>
+
+                          {/* Show custom priority if currently active on this contact */}
+                          {contact.priority &&
+                            !['high', 'medium', 'low'].includes(contact.priority.toLowerCase()) && (
+                              <Menu.Item
+                                leftSection={<IconTag size={13} color="#7C3AED" />}
+                                onClick={() => handleUpdatePriority(contact, contact.priority!)}
+                              >
+                                Current: {contact.priority}
+                              </Menu.Item>
+                            )}
+
+                          <Menu.Divider />
+
+                          {/* Quick Custom Tag Priority Entry directly from the table */}
+                          <Box p={4} onClick={(e) => e.stopPropagation()}>
+                            <Text size="11px" fw={700} c="dimmed" mb={5}>
+                              CUSTOM TAG PRIORITY
+                            </Text>
+                            <Group gap={4} wrap="nowrap">
+                              <TextInput
+                                size="xs"
+                                radius="sm"
+                                placeholder="Type custom tag (e.g. VIP)..."
+                                id={`custom-priority-input-${contact.id || contact.contactId}`}
+                                defaultValue={
+                                  contact.priority &&
+                                  !['high', 'medium', 'low'].includes(contact.priority.toLowerCase())
+                                    ? contact.priority
+                                    : ''
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const val = e.currentTarget.value.trim();
+                                    if (val) {
+                                      handleUpdatePriority(contact, val);
+                                    }
+                                  }
+                                }}
+                                style={{ flex: 1 }}
+                              />
+                              <ActionIcon
+                                size="sm"
+                                variant="filled"
+                                color="blue"
+                                radius="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const input = document.getElementById(
+                                    `custom-priority-input-${contact.id || contact.contactId}`
+                                  ) as HTMLInputElement | null;
+                                  const val = input?.value?.trim();
+                                  if (val) {
+                                    handleUpdatePriority(contact, val);
+                                  }
+                                }}
+                              >
+                                <IconCheck size={14} />
+                              </ActionIcon>
+                            </Group>
+                          </Box>
+
+                          <Menu.Divider />
+                          <Menu.Item
+                            leftSection={<IconEdit size={13} />}
+                            onClick={() => onEdit(contact)}
+                          >
+                            Edit in contact form...
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Table.Td>
+
+                    {/* 7. STATUS */}
+                    <Table.Td style={{ width: 110, verticalAlign: 'middle', padding: '8px 8px' }}>
+                      <Stack gap={3} align="flex-start" justify="center">
+                        <Tooltip label="Click to update contact" withArrow position="top">
+                          <UnstyledButton
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEdit(contact);
+                            }}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              cursor: 'pointer',
+                              transition: 'transform 0.12s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.04)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                          >
+                            {renderStatusBadge(displayStatus, contact.stage)}
+                          </UnstyledButton>
+                        </Tooltip>
+
+                        {modeInfo && (
+                          <Group gap={4} align="center" wrap="nowrap" style={{ opacity: 0.85, paddingLeft: 2 }}>
+                            {React.cloneElement(modeInfo.icon as React.ReactElement<any>, {
+                              size: 11,
+                              color: isDark ? '#94A3B8' : '#64748B',
+                              stroke: 2,
+                            })}
                             <Text
                               size="11px"
+                              fw={500}
                               style={{
-                                color: isDark ? '#F87171' : '#DC2626',
-                                fontWeight: 500,
-                                maxWidth: 140,
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                fontStyle: 'italic',
-                                lineHeight: 1.25,
+                                color: isDark ? '#94A3B8' : '#64748B',
+                                lineHeight: 1.2,
                               }}
                             >
-                              {uniqueReason}
+                              {modeInfo.label}
                             </Text>
-                          </Tooltip>
+                          </Group>
                         )}
                       </Stack>
                     </Table.Td>
 
                     {/* 8. ACTIONS */}
-                    <Table.Td style={{ width: 85, minWidth: 85, textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      <Group gap={4} justify="center" wrap="nowrap">
+                    <Table.Td style={{ width: 95, textAlign: 'center', verticalAlign: 'middle', padding: '8px 4px' }} onClick={(e) => e.stopPropagation()}>
+                      <Group gap={3} justify="center" wrap="nowrap">
                         <Tooltip label="Qualify Contact" withArrow>
                           <ActionIcon
                             variant="light"
@@ -1050,7 +1456,7 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                               onQualify?.(contact);
                             }}
                           >
-                            <IconTargetArrow size={16} />
+                            <IconTargetArrow size={15} />
                           </ActionIcon>
                         </Tooltip>
 
@@ -1086,6 +1492,67 @@ export const ContactTableView: React.FC<ContactTableViewProps> = ({
                       </Group>
                     </Table.Td>
                   </Table.Tr>
+
+                  {/* Expanded Sub-Row showing clean description on single click */}
+                  {isExpanded && (
+                    <Table.Tr
+                      style={{
+                        backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                        borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+                      }}
+                    >
+                      <Table.Td colSpan={9} style={{ padding: '8px 16px 12px 16px' }} onClick={(e) => e.stopPropagation()}>
+                        <Box
+                          p="sm"
+                          px="md"
+                          style={{
+                            backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                            border: isDark ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #CBD5E1',
+                            borderRadius: 10,
+                            boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.25)' : '0 1px 3px rgba(0,0,0,0.03)',
+                          }}
+                        >
+                          <Group justify="space-between" align="center" wrap="wrap" gap="xs">
+                            <Text
+                              size="13px"
+                              style={{
+                                color: isDark ? '#F1F5F9' : '#1E293B',
+                                lineHeight: 1.55,
+                                whiteSpace: 'pre-wrap',
+                                flex: 1,
+                              }}
+                            >
+                              {contact.description ||
+                                contact.notes ||
+                                contact.remarks ||
+                                (contact as any).remarks ||
+                                (statusDetail.show ? statusDetail.text : 'No description available')}
+                            </Text>
+
+                            <Group gap="xs" align="center" wrap="nowrap">
+                              {modeInfo && (
+                                <Badge
+                                  size="sm"
+                                  variant="light"
+                                  color={modeInfo.color}
+                                  leftSection={modeInfo.icon}
+                                  styles={{ root: { fontWeight: 600, textTransform: 'capitalize' } }}
+                                >
+                                  Mode: {modeInfo.label}
+                                </Badge>
+                              )}
+
+                              {contact.nextFollowDate && (
+                                <Badge color="orange" variant="light" size="sm" leftSection={<IconCalendar size={11} />}>
+                                  Follow-up: {formatDisplayDate(contact.nextFollowDate)}
+                                </Badge>
+                              )}
+                            </Group>
+                          </Group>
+                        </Box>
+                      </Table.Td>
+                    </Table.Tr>
+                  )}
                 </React.Fragment>
               );
             })}

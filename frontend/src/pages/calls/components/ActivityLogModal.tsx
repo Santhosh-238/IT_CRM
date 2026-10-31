@@ -22,6 +22,7 @@ import {
 } from '@tabler/icons-react';
 import { ActivityLogItem, ActivityLogSection } from '../../../types/callLog';
 import { Contact } from '../../../types/contact';
+import { useEmployee } from '../../../context/EmployeeContext';
 import { MeetingDatePicker } from '../../meetings/components/MeetingDatePicker';
 import { MeetingTimePicker } from '../../meetings/components/MeetingTimePicker';
 
@@ -44,11 +45,14 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
 }) => {
   const computedColorScheme = useComputedColorScheme('light', { getInitialValueInEffect: true });
   const isDark = computedColorScheme === 'dark';
+  const { employees } = useEmployee();
 
   const [contactName, setContactName] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [performedBy, setPerformedBy] = useState('');
+  const [performedById, setPerformedById] = useState<string | null>(null);
   const [channelType, setChannelType] = useState('Outgoing');
   const [status, setStatus] = useState('Msg Sent');
   const [activityDate, setActivityDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -67,6 +71,9 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
       setNextFollowDate('');
       setActivityDate(new Date().toISOString().slice(0, 10));
       setActivityTime('10:00 AM');
+      const defaultEmp = employees.length > 0 ? employees[0] : null;
+      setPerformedBy(defaultEmp ? defaultEmp.name : 'Staff');
+      setPerformedById(defaultEmp ? defaultEmp.id : null);
 
       if (section === 'whatsapp') {
         setChannelType('Outgoing');
@@ -89,6 +96,10 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
       setCustomerName(found.companyName || '');
       setPhone(found.phone || '');
       setEmail(found.email || '');
+      if (found.assignedToName) {
+        setPerformedBy(found.assignedToName);
+        if (found.assignedTo) setPerformedById(found.assignedTo);
+      }
     } else {
       setContactName(val);
     }
@@ -101,6 +112,8 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
     await onSubmit({
       contactName: contactName.trim(),
       customerName: customerName.trim() || undefined,
+      performedBy: performedBy || undefined,
+      performedById: performedById || undefined,
       phone: phone.trim() || undefined,
       phoneNumber: phone.trim() || undefined,
       email: email.trim() || undefined,
@@ -324,6 +337,22 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
               styles={inputStyles}
               zIndex={3000}
               hideQuickSelect
+            />
+            <Select
+              label="Logged By / Assigned Employee"
+              placeholder="Select employee"
+              data={employees.map((e) => ({
+                value: e.id,
+                label: e.name ? `${e.name} (${e.designation || e.role || 'Staff'})` : e.id,
+              }))}
+              value={performedById}
+              onChange={(val) => {
+                setPerformedById(val);
+                const emp = employees.find((e) => e.id === val);
+                if (emp) setPerformedBy(emp.name);
+              }}
+              styles={inputStyles}
+              leftSection={<IconUser size={16} stroke={1.5} />}
             />
           </SimpleGrid>
 

@@ -38,7 +38,7 @@ export const SYSTEM_MODULES = [
   },
   {
     id: 'scheduled_meetings',
-    name: 'Scheduled Meetings',
+    name: 'Meetings',
     category: 'Main Navigation',
     description: 'Date-wise scheduled client and team meetings, employee creator tracking, and timings.',
   },

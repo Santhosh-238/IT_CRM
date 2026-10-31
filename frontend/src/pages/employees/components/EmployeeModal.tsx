@@ -1,3 +1,4 @@
+import { MeetingDatePicker } from '../../meetings/components/MeetingDatePicker';
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -272,15 +273,12 @@ export const EmployeeModal: React.FC<EmployeeModalProps> = ({
               }}
             />
 
-            <TextInput
+            <MeetingDatePicker
               label="Joining Date"
-              type="date"
+              placeholder="DD-MM-YYYY"
               value={formData.joiningDate || ''}
-              onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
-              radius="14px"
-              styles={{
-                input: { background: CRM_COLORS.backgroundLight },
-              }}
+              onChange={(val: string) => setFormData({ ...formData, joiningDate: val })}
+              zIndex={3000}
             />
           </SimpleGrid>
 
