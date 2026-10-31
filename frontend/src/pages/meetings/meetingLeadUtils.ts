@@ -4,7 +4,7 @@ import { Lead } from '../../types/lead';
 /**
  * Checks if a scheduled meeting belongs to a specific lead.
  * Matches strictly by lead IDs first (UUID, leadDbId, leadCode, contactId).
- * Only if the meeting has NO ID assigned at all does it fall back to matching by clientName.
+ * Then matches by phone/email, and finally falls back to matching by clientName.
  */
 export const isMeetingForLead = (m: ScheduledMeeting, lead: Lead): boolean => {
   if (!lead || !m) return false;
@@ -17,8 +17,18 @@ export const isMeetingForLead = (m: ScheduledMeeting, lead: Lead): boolean => {
   if (m.contactId && lead.leadId && String(m.contactId) === String(lead.leadId)) return true;
   if (m.leadId && lead.leadId && String(m.leadId) === String(lead.leadId)) return true;
   if (m.contactId && (lead as any).contactId && String(m.contactId) === String((lead as any).contactId)) return true;
+  if (m.contactId && (lead as any).internalReference && String(m.contactId) === String((lead as any).internalReference)) return true;
 
-  // 2. Name matching fallback
+  // 2. Direct Phone or Email Match (for converted Contact -> Lead synchronization)
+  const cleanLeadPhone = lead.phone ? lead.phone.replace(/\D/g, '') : '';
+  const cleanMeetingPhone = (m.leadPhone || (m as any).phone) ? String(m.leadPhone || (m as any).phone).replace(/\D/g, '') : '';
+  if (cleanLeadPhone && cleanMeetingPhone && cleanLeadPhone === cleanMeetingPhone) return true;
+
+  const cleanLeadEmail = lead.email ? lead.email.toLowerCase().trim() : '';
+  const cleanMeetingEmail = (m.leadEmail || (m as any).email) ? String(m.leadEmail || (m as any).email).toLowerCase().trim() : '';
+  if (cleanLeadEmail && cleanMeetingEmail && cleanLeadEmail === cleanMeetingEmail) return true;
+
+  // 3. Name matching fallback
   const rawClientName = (m.clientName || m.leadName || '').trim().toLowerCase();
   const rawLeadName = (lead.name || '').trim().toLowerCase();
   if (!rawClientName || !rawLeadName) return false;
@@ -32,7 +42,7 @@ export const isMeetingForLead = (m: ScheduledMeeting, lead: Lead): boolean => {
 
 /**
  * Finds the matching lead for a scheduled meeting from a list of leads.
- * Uses strict ID matching first. Only if the meeting has no ID does it match by exact clientName.
+ * Uses strict ID matching first. Then phone/email, and finally matches by exact clientName.
  */
 export const findLeadForMeeting = (m: ScheduledMeeting, leads: Lead[]): Lead | undefined => {
   if (!m || !leads || leads.length === 0) return undefined;
@@ -46,11 +56,25 @@ export const findLeadForMeeting = (m: ScheduledMeeting, leads: Lead[]): Lead | u
     if (m.contactId && lead.leadId && String(m.contactId) === String(lead.leadId)) return true;
     if (m.leadId && lead.leadId && String(m.leadId) === String(lead.leadId)) return true;
     if (m.contactId && (lead as any).contactId && String(m.contactId) === String((lead as any).contactId)) return true;
+    if (m.contactId && (lead as any).internalReference && String(m.contactId) === String((lead as any).internalReference)) return true;
     return false;
   });
   if (matchedById) return matchedById;
 
-  // 2. Name matching fallback
+  // 2. Direct Phone or Email Match
+  const cleanMeetingPhone = (m.leadPhone || (m as any).phone) ? String(m.leadPhone || (m as any).phone).replace(/\D/g, '') : '';
+  const cleanMeetingEmail = (m.leadEmail || (m as any).email) ? String(m.leadEmail || (m as any).email).toLowerCase().trim() : '';
+
+  if (cleanMeetingPhone || cleanMeetingEmail) {
+    const matchedByContactInfo = leads.find((lead) => {
+      if (cleanMeetingPhone && lead.phone && lead.phone.replace(/\D/g, '') === cleanMeetingPhone) return true;
+      if (cleanMeetingEmail && lead.email && lead.email.toLowerCase().trim() === cleanMeetingEmail) return true;
+      return false;
+    });
+    if (matchedByContactInfo) return matchedByContactInfo;
+  }
+
+  // 3. Name matching fallback
   const rawClientName = (m.clientName || m.leadName || '').trim().toLowerCase();
   if (!rawClientName) return undefined;
 

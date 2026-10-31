@@ -47,6 +47,8 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
   const isDark = computedColorScheme === 'dark';
   const { employees } = useEmployee();
 
+  const [contactId, setContactId] = useState<string | null>(null);
+  const [leadId, setLeadId] = useState<string | null>(null);
   const [contactName, setContactName] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
@@ -63,6 +65,8 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
   // Reset / init defaults whenever modal opens or section changes
   useEffect(() => {
     if (opened) {
+      setContactId(null);
+      setLeadId(null);
       setContactName('');
       setCustomerName('');
       setPhone('');
@@ -92,6 +96,8 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
     if (!val) return;
     const found = contacts.find((c) => c.name === val || c.id === val);
     if (found) {
+      setContactId(found.id);
+      setLeadId(found.internalReference || (found as any).leadId || null);
       setContactName(found.name);
       setCustomerName(found.companyName || '');
       setPhone(found.phone || '');
@@ -102,6 +108,8 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
       }
     } else {
       setContactName(val);
+      setContactId(null);
+      setLeadId(null);
     }
   };
 
@@ -110,6 +118,8 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
     if (!contactName.trim()) return;
 
     await onSubmit({
+      contactId: contactId || undefined,
+      leadId: leadId || undefined,
       contactName: contactName.trim(),
       customerName: customerName.trim() || undefined,
       performedBy: performedBy || undefined,
@@ -257,6 +267,7 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
               <Select
                 label="Activity Type"
                 data={[
+                  { value: 'Meeting', label: 'Client Meeting / Discussion' },
                   { value: 'Direct Visit', label: 'Direct Visit' },
                   { value: 'SMS', label: 'SMS' },
                   { value: 'Social Media', label: 'Social Media' },

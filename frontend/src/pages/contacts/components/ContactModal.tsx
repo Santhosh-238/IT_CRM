@@ -688,10 +688,11 @@ export const ContactModal: React.FC<ContactModalProps> = ({
         try {
           const isCompletedOrFollowUp = meetingStatus === 'Completed' || meetingStatus === 'Follow-up';
           const isRescheduled = meetingStatus === 'Rescheduled';
+          const targetLeadId = (contact as any)?.leadId || contact?.internalReference || contactIdentifier;
 
           await createMeetingApi({
             contactId: contactIdentifier,
-            leadId: contactIdentifier,
+            leadId: targetLeadId,
             clientName: clientDisplayName,
             title: meetingTitle.trim() || `Meeting with ${contactDisplayName}`,
             purpose: meetingPurpose.trim() || meetingTitle.trim() || 'Client Meeting',

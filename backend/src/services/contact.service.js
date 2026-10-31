@@ -139,23 +139,93 @@ export async function getContactsService(queryParams = {}, currentUser = null) {
  * 2. Get Single Contact by ID
  */
 export async function getContactByIdService(id) {
+  if (!id) {
+    const error = new Error('Contact ID is required');
+    error.status = 400;
+    throw error;
+  }
+
+  const cleanId = String(id).trim();
+
+  // 1. Try finding in official Contact table by UUID, contactId (e.g. CNT-1001), or internalReference (e.g. BLK-1001)
   let contact = await prisma.contact.findFirst({
     where: {
-      OR: [{ id }, { contactId: id }],
+      OR: [
+        { id: cleanId },
+        { contactId: cleanId },
+        { contactId: { equals: cleanId, mode: 'insensitive' } },
+        { internalReference: cleanId },
+        { internalReference: { equals: cleanId, mode: 'insensitive' } },
+      ],
     },
   });
 
+  // 2. If not found in Contact, check BulkUploadContact table by UUID or bulkId (e.g. BLK-1001)
   if (!contact) {
     const bulk = await prisma.bulkUploadContact.findFirst({
       where: {
-        OR: [{ id }, { bulkId: id }],
+        OR: [
+          { id: cleanId },
+          { bulkId: cleanId },
+          { bulkId: { equals: cleanId, mode: 'insensitive' } },
+          { importedContactId: cleanId },
+        ],
       },
     });
+
     if (bulk) {
+      // If this bulk contact was already imported/qualified into the Contact table, return the linked contact
+      if (bulk.importedContactId) {
+        const linkedContact = await prisma.contact.findFirst({
+          where: { id: bulk.importedContactId },
+        });
+        if (linkedContact) {
+          return {
+            data: {
+              ...formatContactResponse(linkedContact),
+              bulkId: bulk.bulkId || linkedContact.internalReference || bulk.id,
+              contactId: linkedContact.contactId || bulk.bulkId || bulk.id,
+              isBulkImport: true,
+            },
+          };
+        }
+      }
+
       return {
         data: {
           ...formatContactResponse(bulk),
           contactId: bulk.bulkId || bulk.id,
+          isBulkImport: true,
+        },
+      };
+    }
+
+    // 3. Fallback: check if cleanId matches phone or email in Contact or BulkUploadContact
+    const fallbackContact = await prisma.contact.findFirst({
+      where: {
+        OR: [
+          { phone: cleanId },
+          { email: { equals: cleanId, mode: 'insensitive' } },
+        ],
+      },
+    });
+    if (fallbackContact) {
+      return { data: formatContactResponse(fallbackContact) };
+    }
+
+    const fallbackBulk = await prisma.bulkUploadContact.findFirst({
+      where: {
+        OR: [
+          { phone: cleanId },
+          { email: { equals: cleanId, mode: 'insensitive' } },
+        ],
+      },
+    });
+    if (fallbackBulk) {
+      return {
+        data: {
+          ...formatContactResponse(fallbackBulk),
+          contactId: fallbackBulk.bulkId || fallbackBulk.id,
           isBulkImport: true,
         },
       };
@@ -523,7 +593,7 @@ async function getNextLeadId() {
 /**
  * Automatically sync/create a Lead when a Contact is qualified
  */
-export async function syncContactToLead(contact) {
+export async function syncContactToLead(contact, user = null) {
   if (!contact) return null;
 
   const isQualified =
@@ -605,6 +675,65 @@ export async function syncContactToLead(contact) {
         io.emit('lead_updated', updatedLead);
       }
 
+      // Maintain bidirectional relationship: link Contact to Lead
+      try {
+        await prisma.contact.updateMany({
+          where: {
+            OR: [
+              { id: contact.id },
+              ...(contact.contactId ? [{ contactId: contact.contactId }] : []),
+            ],
+          },
+          data: {
+            internalReference: updatedLead.leadId,
+          },
+        });
+      } catch (refErr) {
+        console.warn('[syncContactToLead] Failed to update internalReference on Contact:', refErr.message);
+      }
+
+      // Synchronize existing meetings so Lead Module immediately sees all contact meetings
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "ScheduledMeeting"
+           SET "lead_id" = $1, "updatedAt" = NOW()
+           WHERE "contactId" = $2 OR "contactId" = $3 OR "lead_id" = $2 OR "lead_id" = $3`,
+          updatedLead.id,
+          contact.id,
+          contact.contactId || contact.id
+        );
+        if (io) {
+          io.emit('meeting:updated');
+          io.emit('crm_meetings_updated');
+        }
+      } catch (meetSyncErr) {
+        console.warn('[syncContactToLead] Failed to link existing ScheduledMeeting:', meetSyncErr.message);
+      }
+
+      // Synchronize activity timeline and call logs to the Lead
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE activities
+           SET "leadId" = $1, "leadCode" = $2, "leadName" = $3, "updatedAt" = NOW()
+           WHERE "contactId" = $4 OR "contactId" = $5`,
+          updatedLead.id,
+          updatedLead.leadId,
+          updatedLead.name,
+          contact.id,
+          contact.contactId || contact.id
+        );
+        await prisma.$executeRawUnsafe(
+          `UPDATE "CallLog"
+           SET "lead_id" = $1, "updatedAt" = NOW()
+           WHERE "contactId" = $2 OR "contactId" = $3`,
+          updatedLead.id,
+          contact.id,
+          contact.contactId || contact.id
+        );
+      } catch (actSyncErr) {
+        console.warn('[syncContactToLead] Failed to sync activities/callLogs to Lead:', actSyncErr.message);
+      }
+
       // Record qualification activity for timeline
       recordActivity({
         type: 'qualification',
@@ -658,6 +787,65 @@ export async function syncContactToLead(contact) {
         io.emit('lead_created', newLead);
       }
 
+      // Maintain bidirectional relationship: link Contact to Lead
+      try {
+        await prisma.contact.updateMany({
+          where: {
+            OR: [
+              { id: contact.id },
+              ...(contact.contactId ? [{ contactId: contact.contactId }] : []),
+            ],
+          },
+          data: {
+            internalReference: newLead.leadId,
+          },
+        });
+      } catch (refErr) {
+        console.warn('[syncContactToLead] Failed to update internalReference on Contact:', refErr.message);
+      }
+
+      // Synchronize existing meetings so Lead Module immediately sees all contact meetings
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "ScheduledMeeting"
+           SET "lead_id" = $1, "updatedAt" = NOW()
+           WHERE "contactId" = $2 OR "contactId" = $3 OR "lead_id" = $2 OR "lead_id" = $3`,
+          newLead.id,
+          contact.id,
+          contact.contactId || contact.id
+        );
+        if (io) {
+          io.emit('meeting:updated');
+          io.emit('crm_meetings_updated');
+        }
+      } catch (meetSyncErr) {
+        console.warn('[syncContactToLead] Failed to link existing ScheduledMeeting:', meetSyncErr.message);
+      }
+
+      // Synchronize activity timeline and call logs to the Lead
+      try {
+        await prisma.$executeRawUnsafe(
+          `UPDATE activities
+           SET "leadId" = $1, "leadCode" = $2, "leadName" = $3, "updatedAt" = NOW()
+           WHERE "contactId" = $4 OR "contactId" = $5`,
+          newLead.id,
+          newLead.leadId,
+          newLead.name,
+          contact.id,
+          contact.contactId || contact.id
+        );
+        await prisma.$executeRawUnsafe(
+          `UPDATE "CallLog"
+           SET "lead_id" = $1, "updatedAt" = NOW()
+           WHERE "contactId" = $2 OR "contactId" = $3`,
+          newLead.id,
+          contact.id,
+          contact.contactId || contact.id
+        );
+      } catch (actSyncErr) {
+        console.warn('[syncContactToLead] Failed to sync activities/callLogs to Lead:', actSyncErr.message);
+      }
+
       // Record qualification activity for timeline
       recordActivity({
         type: 'qualification',
@@ -690,13 +878,29 @@ export async function syncContactToLead(contact) {
  * 6. Update Contact
  */
 export async function updateContactService(id, body, user) {
+  const cleanId = String(id || '').trim();
   let existing = await prisma.contact.findFirst({
-    where: { OR: [{ id }, { contactId: id }] },
+    where: {
+      OR: [
+        { id: cleanId },
+        { contactId: cleanId },
+        { contactId: { equals: cleanId, mode: 'insensitive' } },
+        { internalReference: cleanId },
+        { internalReference: { equals: cleanId, mode: 'insensitive' } },
+      ],
+    },
   });
 
   if (!existing) {
     const existingBulk = await prisma.bulkUploadContact.findFirst({
-      where: { OR: [{ id }, { bulkId: id }] },
+      where: {
+        OR: [
+          { id: cleanId },
+          { bulkId: cleanId },
+          { bulkId: { equals: cleanId, mode: 'insensitive' } },
+          { importedContactId: cleanId },
+        ],
+      },
     });
     if (existingBulk) {
       if (existingBulk.importedContactId) {
@@ -874,9 +1078,81 @@ export async function updateContactService(id, body, user) {
       }
     }
 
-    const error = new Error('Contact not found');
-    error.status = 404;
-    throw error;
+    if (!existing) {
+      // 1. Try matching Contact by phone or email
+      if (body.phone || body.email) {
+        const cleanPhone = body.phone ? String(body.phone).replace(/\D/g, '') : '';
+        const cleanEmail = body.email ? String(body.email).toLowerCase().trim() : '';
+        existing = await prisma.contact.findFirst({
+          where: {
+            OR: [
+              ...(cleanPhone ? [{ phone: cleanPhone }] : []),
+              ...(cleanEmail ? [{ email: { equals: cleanEmail, mode: 'insensitive' } }] : []),
+            ],
+          },
+        });
+      }
+    }
+
+    if (!existing) {
+      // 2. Try matching Lead by cleanId, phone, or email
+      const matchedLead = await prisma.lead.findFirst({
+        where: {
+          OR: [
+            { id: cleanId },
+            { leadId: cleanId },
+            ...(body.phone ? [{ phone: String(body.phone).replace(/\D/g, '') }] : []),
+            ...(body.email ? [{ email: { equals: String(body.email).toLowerCase().trim(), mode: 'insensitive' } }] : []),
+          ],
+        },
+      });
+
+      if (matchedLead) {
+        const leadPhone = matchedLead.phone ? String(matchedLead.phone).replace(/\D/g, '') : '';
+        const leadEmail = matchedLead.email ? String(matchedLead.email).toLowerCase().trim() : '';
+        if (leadPhone || leadEmail) {
+          existing = await prisma.contact.findFirst({
+            where: {
+              OR: [
+                ...(leadPhone ? [{ phone: leadPhone }] : []),
+                ...(leadEmail ? [{ email: { equals: leadEmail, mode: 'insensitive' } }] : []),
+              ],
+            },
+          });
+        }
+
+        if (!existing) {
+          const newContactId = await getNextContactId();
+          existing = await prisma.contact.create({
+            data: {
+              contactId: newContactId,
+              name: (body.name || matchedLead.name || 'Contact').trim(),
+              email: body.email || matchedLead.email || null,
+              phone: (body.phone ? String(body.phone).replace(/\D/g, '') : '') || leadPhone || '0000000000',
+              companyName: body.companyName || matchedLead.companyName || null,
+              contactPerson: body.contactPerson || matchedLead.name || null,
+              contactType: body.contactType || matchedLead.contactType || 'Individual',
+              designation: body.designation || matchedLead.designation || null,
+              profession: body.profession || matchedLead.profession || null,
+              address: body.address || matchedLead.address || null,
+              source: body.source || matchedLead.source || 'Lead',
+              category: body.category || matchedLead.category || 'Service',
+              status: body.status || matchedLead.status || 'Qualified',
+              stage: body.stage || matchedLead.stage || 'Qualification',
+              internalReference: matchedLead.leadId,
+              assignedTo: body.assignedTo || matchedLead.assignedTo || null,
+              assignedToName: body.assignedToName || matchedLead.assignedToName || null,
+            },
+          });
+        }
+      }
+    }
+
+    if (!existing) {
+      const error = new Error('Contact not found');
+      error.status = 404;
+      throw error;
+    }
   }
 
   const updated = await prisma.contact.update({
@@ -1022,8 +1298,73 @@ export async function updateContactService(id, body, user) {
     io.emit('crm_contacts_updated');
   }
 
-  // Automatically sync to Lead if contact is Qualified
+  // Automatically sync to Lead
   await syncContactToLead(updated, user);
+
+  try {
+    const leadUpdateData = {
+      ...(updated.status && { status: updated.status }),
+      ...(updated.stage && { stage: updated.stage }),
+      ...(updated.notes && { notes: updated.notes }),
+      ...(updated.assignedTo !== undefined && { assignedTo: updated.assignedTo, assignedToName: updated.assignedToName }),
+    };
+    if (Object.keys(leadUpdateData).length > 0) {
+      await prisma.lead.updateMany({
+        where: {
+          OR: [
+            { id: cleanId },
+            { leadId: cleanId },
+            ...(updated.email ? [{ email: { equals: updated.email, mode: 'insensitive' } }] : []),
+            ...(updated.phone ? [{ phone: updated.phone }] : []),
+          ],
+        },
+        data: leadUpdateData,
+      });
+    }
+  } catch (leadSyncErr) {
+    console.warn('[updateContactService] Failed to sync to Lead:', leadSyncErr.message);
+  }
+
+  // Synchronize status back to BulkUploadContact if linked
+  try {
+    const bulkOrConditions = [
+      { importedContactId: updated.id },
+      { id: cleanId },
+      { bulkId: cleanId },
+    ];
+    if (updated.contactId) {
+      bulkOrConditions.push({ bulkId: updated.contactId });
+    }
+    if (updated.internalReference) {
+      bulkOrConditions.push({ bulkId: updated.internalReference });
+    }
+    if (updated.phone) {
+      bulkOrConditions.push({ phone: updated.phone });
+    }
+    if (updated.email) {
+      bulkOrConditions.push({ email: { equals: updated.email, mode: 'insensitive' } });
+    }
+
+    const bulkUpdateData = {
+      ...(updated.status && { status: updated.status }),
+      ...(updated.stage && { stage: updated.stage }),
+      ...(updated.contactMode !== undefined && { contactMode: updated.contactMode }),
+      ...(updated.priority && { priority: updated.priority }),
+      ...(updated.assignmentStatus && { assignmentStatus: updated.assignmentStatus }),
+      ...(updated.assignedTo !== undefined && { assignedTo: updated.assignedTo }),
+      ...(updated.assignedToName !== undefined && { assignedToName: updated.assignedToName }),
+      isImportedToContact: true,
+      importedContactId: updated.id,
+      updatedAt: new Date(),
+    };
+
+    await prisma.bulkUploadContact.updateMany({
+      where: { OR: bulkOrConditions },
+      data: bulkUpdateData,
+    });
+  } catch (bulkSyncErr) {
+    console.warn('[updateContactService] Failed to sync to BulkUploadContact:', bulkSyncErr.message);
+  }
 
   return {
     message: 'Contact updated successfully',
@@ -1423,11 +1764,7 @@ export async function getBulkUploadContactsService(queryParams = {}, currentUser
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const limitNum = Math.max(1, parseInt(limit, 10) || 10);
 
-  const andConditions = [
-    { isImportedToContact: false },
-    { status: { notIn: ['Qualified', 'qualified'] } },
-    { stage: { not: 'Qualification' } },
-  ];
+  const andConditions = [];
 
   if (batchId) {
     andConditions.push({ batchId });
@@ -1731,11 +2068,59 @@ export async function getBatchContactsService(batchId, queryParams = {}, current
     orderBy: { [sortBy]: sortOrder.toLowerCase() === 'asc' ? 'asc' : 'desc' },
   });
 
-  const contacts = rawContacts.map((c) => ({
-    ...formatContactResponse(c),
-    contactId: c.bulkId || c.id,
-    isBulkImport: true,
-  }));
+  const importedIds = rawContacts.map((c) => c.importedContactId).filter(Boolean);
+  const phones = rawContacts.map((c) => c.phone).filter(Boolean);
+  const emails = rawContacts.map((c) => c.email).filter(Boolean);
+  const bulkIds = rawContacts.map((c) => c.bulkId).filter(Boolean);
+
+  let linkedContacts = [];
+  if (importedIds.length > 0 || phones.length > 0 || emails.length > 0 || bulkIds.length > 0) {
+    linkedContacts = await prisma.contact.findMany({
+      where: {
+        OR: [
+          ...(importedIds.length > 0 ? [{ id: { in: importedIds } }] : []),
+          ...(bulkIds.length > 0 ? [{ contactId: { in: bulkIds } }, { internalReference: { in: bulkIds } }] : []),
+          ...(phones.length > 0 ? [{ phone: { in: phones } }] : []),
+          ...(emails.length > 0 ? [{ email: { in: emails } }] : []),
+        ],
+      },
+    });
+  }
+
+  const linkedMap = new Map();
+  for (const lc of linkedContacts) {
+    if (lc.id) linkedMap.set(lc.id, lc);
+    if (lc.contactId) linkedMap.set(lc.contactId, lc);
+    if (lc.internalReference) linkedMap.set(lc.internalReference, lc);
+    if (lc.phone) linkedMap.set(lc.phone, lc);
+    if (lc.email) linkedMap.set(lc.email.toLowerCase(), lc);
+  }
+
+  const contacts = rawContacts.map((c) => {
+    const linked =
+      (c.importedContactId && linkedMap.get(c.importedContactId)) ||
+      (c.bulkId && linkedMap.get(c.bulkId)) ||
+      (c.phone && linkedMap.get(c.phone)) ||
+      (c.email && linkedMap.get(c.email.toLowerCase())) ||
+      null;
+
+    const base = linked ? { ...formatContactResponse(linked), bulkId: c.bulkId } : formatContactResponse(c);
+    const resolvedStatus = linked ? (linked.status || linked.qualificationStatus || c.status || 'Qualified') : (c.status || 'Not Connected');
+    const resolvedMode = (linked?.contactMode || c.contactMode || '').trim();
+
+    return {
+      ...base,
+      id: c.id,
+      bulkId: c.bulkId || c.id,
+      contactId: c.bulkId || c.id,
+      isBulkImport: true,
+      isBulkRecord: true,
+      contactMode: resolvedMode || null,
+      status: resolvedStatus,
+      stage: linked?.stage || c.stage || 'Initialization',
+      qualificationStatus: linked?.qualificationStatus || (resolvedStatus === 'Qualified' ? 'Qualified' : 'Pending'),
+    };
+  });
 
   const totalPages = Math.ceil(total / limitNum) || 1;
 

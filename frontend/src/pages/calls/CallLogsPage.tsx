@@ -59,6 +59,7 @@ import { useContact } from '../../context/ContactContext';
 import { useLead } from '../../context/LeadContext';
 import { contactService } from '../../services/contactService';
 import { Contact } from '../../types/contact';
+import { createMeetingApi } from '../../services/meetingService';
 import { CallLogTableView } from './components/CallLogTableView';
 import { CallLogModal } from './components/CallLogModal';
 import { CallDetailsModal } from './components/CallDetailsModal';
@@ -520,6 +521,31 @@ export const CallLogsPage: React.FC = () => {
     setSubmitting(true);
     try {
       const created = await createSectionActivityApi(activeSection, payload);
+
+      // If scheduled meeting from Activity Logs, automatically synchronize to Meetings & Lead modules
+      if (activeSection === 'others' && (payload.activityType === 'Meeting' || payload.activityType === 'Client Meeting')) {
+        try {
+          await createMeetingApi({
+            contactId: payload.contactId || undefined,
+            leadId: payload.leadId || undefined,
+            clientName: payload.customerName ? `${payload.contactName} (${payload.customerName})` : payload.contactName,
+            title: `Meeting with ${payload.contactName}`,
+            purpose: payload.description || 'Client Meeting Discussion',
+            meetingDate: payload.activityDate || new Date().toISOString().slice(0, 10),
+            startTime: payload.activityTime || '10:00 AM',
+            status: payload.status === 'Interested' ? 'Scheduled' : (payload.status || 'Scheduled'),
+            employeeId: payload.performedById || undefined,
+            employeeName: payload.performedBy || 'Staff',
+            notes: payload.description || undefined,
+          });
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('crm_meetings_updated'));
+          }
+        } catch (mErr) {
+          console.warn('Error creating scheduled meeting from Activity Logs:', mErr);
+        }
+      }
+
       notifications.show({
         title: 'Activity Logged Successfully',
         message: `${activeSection.toUpperCase()} activity recorded in database.`,

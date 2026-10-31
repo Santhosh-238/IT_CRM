@@ -97,6 +97,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
   // 1. Fetch live contact from server on mount to ensure fresh database data
   useEffect(() => {
     const targetId =
+      propContact?.importedContactId ||
       propContact?.id ||
       propContact?.contactId ||
       (() => {
@@ -104,10 +105,10 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
           const saved = sessionStorage.getItem('crm_qualifying_contact');
           if (saved) {
             const parsed = JSON.parse(saved);
-            return parsed?.id || parsed?.contactId;
+            return parsed?.importedContactId || parsed?.id || parsed?.contactId;
           }
         } catch (e) {}
-        return contacts.length > 0 ? (contacts[0].id || contacts[0].contactId) : null;
+        return contacts.length > 0 ? (contacts[0].importedContactId || contacts[0].id || contacts[0].contactId) : null;
       })();
 
     if (targetId) {
@@ -122,7 +123,7 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
           }
         })
         .catch((err) => {
-          console.error('Error fetching live contact details on mount:', err);
+          console.warn('Live contact details sync notice:', err?.message || err);
         });
     }
   }, []);
@@ -304,6 +305,13 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
 
   useEffect(() => {
     loadContactMeetings();
+    const handleMeetingSync = () => {
+      loadContactMeetings();
+    };
+    window.addEventListener('crm_meetings_updated', handleMeetingSync);
+    return () => {
+      window.removeEventListener('crm_meetings_updated', handleMeetingSync);
+    };
   }, [loadContactMeetings]);
 
   const handleOpenMeetingModal = (meetingToEdit?: ScheduledMeeting) => {
@@ -356,13 +364,14 @@ export const ContactQualificationPage: React.FC<ContactQualificationPageProps> =
     setMeetingSaving(true);
     try {
       const targetContactId = activeContact?.id || activeContact?.contactId || (propContact as any)?.id;
+      const targetLeadId = activeContact?.internalReference || (activeContact as any)?.leadId || targetContactId;
       const clientNameFormatted = activeContact?.companyName
         ? `${activeContact.name} (${activeContact.companyName})`
         : (activeContact?.name || 'Client');
 
       const payload: Partial<ScheduledMeeting> = {
         contactId: targetContactId,
-        leadId: targetContactId,
+        leadId: targetLeadId,
         clientName: clientNameFormatted,
         title: meetingTitle.trim(),
         purpose: meetingPurpose.trim() || meetingTitle.trim(),

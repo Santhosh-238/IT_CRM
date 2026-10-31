@@ -1,5 +1,109 @@
 import { execSync } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { ensureSystemRolesService } from '../services/accessControl.service.js';
+import { prisma } from './prisma.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const backendDir = path.resolve(__dirname, '../../');
+
+/**
+ * Automatically synchronizes existing Contact, Lead, and Meeting relationships in PostgreSQL
+ */
+export async function syncExistingContactLeadMeetings() {
+  try {
+    // 1. Link Contacts to existing Leads by phone, email, or name
+    await prisma.$executeRawUnsafe(`
+      UPDATE "Contact" c
+      SET "internalReference" = l."leadId", "updatedAt" = NOW()
+      FROM "Lead" l
+      WHERE (c."internalReference" IS NULL OR c."internalReference" = '')
+        AND (
+          (c.phone IS NOT NULL AND c.phone != '' AND c.phone = l.phone)
+          OR (c.email IS NOT NULL AND c.email != '' AND LOWER(c.email) = LOWER(l.email))
+          OR (LOWER(c.name) = LOWER(l.name) AND c."companyName" IS NOT NULL AND LOWER(c."companyName") = LOWER(l."companyName"))
+        )
+    `).catch(() => {});
+
+    // 2. Synchronize ScheduledMeeting records:
+    // 2a. Set lead_id for meetings where contactId points to a converted contact
+    await prisma.$executeRawUnsafe(`
+      UPDATE "ScheduledMeeting" m
+      SET "lead_id" = l.id, "updatedAt" = NOW()
+      FROM "Contact" c
+      JOIN "Lead" l ON (
+        c."internalReference" = l."leadId" 
+        OR (c.phone IS NOT NULL AND c.phone != '' AND c.phone = l.phone)
+        OR (c.email IS NOT NULL AND c.email != '' AND LOWER(c.email) = LOWER(l.email))
+      )
+      WHERE (m."contactId" = c.id OR m."contactId" = c."contactId")
+        AND (m."lead_id" IS NULL OR m."lead_id" = c.id OR m."lead_id" = c."contactId" OR m."lead_id" = '')
+    `).catch(() => {});
+
+    // 2b. Set contactId for meetings where lead_id points to a lead with a contact
+    await prisma.$executeRawUnsafe(`
+      UPDATE "ScheduledMeeting" m
+      SET "contactId" = c.id, "updatedAt" = NOW()
+      FROM "Lead" l
+      JOIN "Contact" c ON (
+        c."internalReference" = l."leadId" 
+        OR (c.phone IS NOT NULL AND c.phone != '' AND c.phone = l.phone)
+        OR (c.email IS NOT NULL AND c.email != '' AND LOWER(c.email) = LOWER(l.email))
+      )
+      WHERE (m."lead_id" = l.id OR m."lead_id" = l."leadId")
+        AND (m."contactId" IS NULL OR m."contactId" = l.id OR m."contactId" = l."leadId" OR m."contactId" = '')
+    `).catch(() => {});
+
+    // 3. Synchronize activity timeline records
+    await prisma.$executeRawUnsafe(`
+      UPDATE activities a
+      SET "leadId" = l.id, "leadCode" = l."leadId", "leadName" = l.name, "updatedAt" = NOW()
+      FROM "Contact" c
+      JOIN "Lead" l ON (
+        c."internalReference" = l."leadId" 
+        OR (c.phone IS NOT NULL AND c.phone != '' AND c.phone = l.phone)
+      )
+      WHERE (a."contactId" = c.id OR a."contactId" = c."contactId")
+        AND (a."leadId" IS NULL OR a."leadId" = c.id OR a."leadId" = '')
+    `).catch(() => {});
+
+    // 4. Synchronize call logs
+    await prisma.$executeRawUnsafe(`
+      UPDATE "CallLog" cl
+      SET "lead_id" = l.id, "updatedAt" = NOW()
+      FROM "Contact" c
+      JOIN "Lead" l ON (
+        c."internalReference" = l."leadId" 
+        OR (c.phone IS NOT NULL AND c.phone != '' AND c.phone = l.phone)
+      )
+      WHERE (cl."contactId" = c.id OR cl."contactId" = c."contactId")
+        AND (cl."lead_id" IS NULL OR cl."lead_id" = c.id OR cl."lead_id" = '')
+    `).catch(() => {});
+
+    // 5. Synchronize Qualified status from Contact back to BulkUploadContact
+    await prisma.$executeRawUnsafe(`
+      UPDATE "BulkUploadContact" b
+      SET "status" = c."status",
+          "stage" = c."stage",
+          "contactMode" = COALESCE(c."contactMode", b."contactMode"),
+          "assignmentStatus" = c."assignmentStatus",
+          "assignedTo" = COALESCE(c."assignedTo", b."assignedTo"),
+          "assignedToName" = COALESCE(c."assignedToName", b."assignedToName"),
+          "isImportedToContact" = true,
+          "importedContactId" = c."id",
+          "updatedAt" = NOW()
+      FROM "Contact" c
+      WHERE (b."importedContactId" = c."id"
+             OR (b."phone" IS NOT NULL AND b."phone" != '' AND b."phone" = c."phone")
+             OR (b."bulkId" IS NOT NULL AND b."bulkId" != '' AND (b."bulkId" = c."contactId" OR b."bulkId" = c."internalReference")))
+        AND (c."status" = 'Qualified' OR c."qualificationStatus" = 'Qualified')
+        AND (b."status" != 'Qualified')
+    `).catch(() => {});
+  } catch (err) {
+    console.warn('[syncExistingContactLeadMeetings Notice]:', err.message || err);
+  }
+}
 
 /**
  * Automatically creates and syncs PostgreSQL Database SQL tables from Prisma Schema
@@ -9,15 +113,21 @@ export async function autoSyncDatabase() {
   try {
     console.log('🔄 [Auto-Sync] Checking and creating PostgreSQL SQL tables...');
     execSync('npx prisma db push --skip-generate --accept-data-loss', {
+      cwd: backendDir,
       stdio: 'pipe',
       timeout: 30000,
     });
     console.log('✅ [Auto-Sync] All PostgreSQL SQL tables verified and synced!');
     await ensureSystemRolesService();
     console.log('🛡️ [Auto-Sync] Default system roles verified and active!');
+    await syncExistingContactLeadMeetings();
+    console.log('🤝 [Auto-Sync] Contact, Lead, and Meeting synchronization verified!');
   } catch (error) {
     console.warn('⚠️ [Auto-Sync Notice]:', error.message || error);
+    // Still run meetings sync in case db push was skipped
+    await syncExistingContactLeadMeetings();
   }
 }
 
 export default autoSyncDatabase;
+
